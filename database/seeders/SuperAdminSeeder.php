@@ -2,8 +2,10 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\User;
 use Illuminate\Database\Seeder;
+use Spatie\Permission\Models\Role;
+
 
 class SuperAdminSeeder extends Seeder
 {
@@ -12,6 +14,8 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        //
+        $role = Role::firstOrCreate(['name' => 'super_admin']);
+        $user = User::find(1);
+        $user->assignRole($role);
     }
 }

@@ -20,6 +20,28 @@ class CompanyController extends Controller
 
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'licence_issue_date' => 'string|max:255',
+            'working_date' => 'string|max:255',
+            'reg_number' => 'string|max:255',
+            'full_address' => 'string|max:255',
+            'email_address' => 'string|max:255',
+            'website' => 'string|max:255',
+            'fax' => 'string|max:255',
+            'logo' => 'string|max:255',
+            'province' => 'string|max:255',
+            'district' => 'string|max:255',
+            'palika_name' => 'string|max:255',
+            'ward_number' => 'string|max:255',
+            'contact_number' => 'string|max:255',
+            'contact_person' => 'string|max:255',
+            'contact_person_position' => 'string|max:255',
+            'agreement_holder_name' => 'string|max:255',
+            'phone' => 'string|max:255',
+            'position' => 'string|max:255',
+            'license_number' => 'string|max:255',
+            'activation_key' => 'string|max:255',
+
+            'url_link' => 'string|max:255',
         ]);
 
         $post = Company::create($validated);

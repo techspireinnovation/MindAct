@@ -37,9 +37,13 @@ class CompanyAdminController extends Controller
     // User Profile API (Protected)
     public function profile(Request $request)
     {
+        $user = $request->user();
+        $company = $user->company;
+        $user->company_id = isset($company) ? $company->company_id : 0;
         return response()->json([
             'success' => true,
             'user' => $request->user(),
+
         ]);
     }
 }

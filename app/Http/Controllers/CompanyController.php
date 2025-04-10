@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\CompanyUser;
 use App\Models\User;
 use Hash;
 use Illuminate\Http\JsonResponse;
@@ -48,7 +49,7 @@ class CompanyController extends Controller
             'password' => 'required|string|min:6|confirmed',
         ]);
 
-        $post = Company::create($validated);
+        $company = Company::create($validated);
 
         //create company admin
         $companyAdmin = User::create([
@@ -59,7 +60,10 @@ class CompanyController extends Controller
         $role = Role::firstOrCreate(['name' => 'company_admin']);
         $companyAdmin->assignRole($role);
 
-        return response()->json($post, 201);
+        // map company admin to company
+        CompanyUser::create(['company_id' => $company->id, 'user_id' => $companyAdmin->id]);
+
+        return response()->json($company, 201);
     }
 
     // Show a single resource

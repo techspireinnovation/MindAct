@@ -12,8 +12,8 @@ return new class extends Migration {
     {
         Schema::create('company_users', function (Blueprint $table) {
             $table->id();
-            $table->bigInteger('company_id');
-            $table->bigInteger('user_id');
+            $table->foreignId('company_id')->references('id')->on('companies')->cascadeOnDelete();
+            $table->foreignId('user_id')->references('id')->on('users')->cascadeOnDelete();
             $table->timestamps();
         });
     }

@@ -14,8 +14,10 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $role = Role::firstOrCreate(['name' => 'super_admin']);
-        $user = User::find(1);
+        $role = Role::firstOrCreate(['name' => 'super_admin',
+                                     'guard_name' => 'api',
+                                    ]);
+        $user = User::find(3);
         $user->assignRole($role);
     }
 }

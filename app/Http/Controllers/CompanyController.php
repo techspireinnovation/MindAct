@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
+use App\Models\User;
+use Hash;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Role;
 
 class CompanyController extends Controller
 {
@@ -17,7 +20,6 @@ class CompanyController extends Controller
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
-
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'licence_issue_date' => 'string|max:255',
@@ -40,11 +42,22 @@ class CompanyController extends Controller
             'position' => 'string|max:255',
             'license_number' => 'string|max:255',
             'activation_key' => 'string|max:255',
-
             'url_link' => 'string|max:255',
+            'admin_email' => 'required|string|email|max:255|unique:users,email',
+            'admin_name' => 'required|string|max:255',
+            'password' => 'required|string|min:6|confirmed',
         ]);
 
         $post = Company::create($validated);
+
+        //create company admin
+        $companyAdmin = User::create([
+            'email' => $request->admin_email,
+            'name' => $request->admin_name,
+            'password' => Hash::make($request->password),
+        ]);
+        $role = Role::firstOrCreate(['name' => 'company_admin']);
+        $companyAdmin->assignRole($role);
 
         return response()->json($post, 201);
     }

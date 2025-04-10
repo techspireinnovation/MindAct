@@ -17,5 +17,8 @@ class SuperAdminSeeder extends Seeder
         $role = Role::firstOrCreate(['name' => 'super_admin']);
         $user = User::find(1);
         $user->assignRole($role);
+
+        // Create Company Admin
+        Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
     }
 }

@@ -19,5 +19,8 @@ class SuperAdminSeeder extends Seeder
                                     ]);
         $user = User::find(3);
         $user->assignRole($role);
+
+        // Create Company Admin
+        Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
     }
 }

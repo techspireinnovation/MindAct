@@ -11,18 +11,22 @@ class ProductCategoryController extends Controller
     // Display a listing
     public function index(): JsonResponse
     {
+        $product=ProductCategory::all();
+       
         return response()->json(ProductCategory::paginate(10));
     }
 
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
-
+    
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'company_id' => 'required',
+            'company_id' => 'required|integer|exists:companies,id',
             'is_active'=>''
         ]);
+
 
         $post = ProductCategory::create($validated);
 
@@ -30,29 +34,31 @@ class ProductCategoryController extends Controller
     }
 
     // Show a single resource
-    public function show(Company $post): JsonResponse
+    public function show(ProductCategory $productCategory): JsonResponse
     {
-        return response()->json($post);
+        
+        return response()->json($productCategory);
     }
 
     // Update a resource
-    public function update(Request $request, Company $post): JsonResponse
+    public function update(Request $request, ProductCategory $productCategory): JsonResponse
     {
         $validated = $request->validate([
-            'title' => 'sometimes|required|string|max:255',
-            'body' => 'sometimes|required|string',
+            'name' => 'sometimes|required|string|max:255',
+            'company_id' => 'sometimes|required|integer|exists:companies,id',
+            'is_active' => 'sometimes|nullable|boolean',
         ]);
 
-        $post->update($validated);
+        $productCategory->update($validated);
 
-        return response()->json($post);
+        return response()->json($productCategory);
     }
 
     // Delete a resource
-    public function destroy(Company $post): JsonResponse
+    public function destroy(ProductCategory $productCategory): JsonResponse
     {
-        $post->delete();
+        $productCategory->delete();
 
-        return response()->json(['message' => 'Company deleted']);
+        return response()->json(['message' => 'Product Category deleted']);
     }
 }

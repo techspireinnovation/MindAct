@@ -57,7 +57,6 @@ class ProductTypeController extends Controller
         }
     }
 
-
     public function destroy($id): JsonResponse
     {
         try {

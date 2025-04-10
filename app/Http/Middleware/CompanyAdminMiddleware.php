@@ -15,6 +15,9 @@ class CompanyAdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        return $next($request);
+        if ($request->user() && $request->user()->hasRole('company_admin')) {
+            return $next($request);
+        }
+        return response()->json(['message' => 'Forbidden: Company Admins only'], 403);
     }
 }

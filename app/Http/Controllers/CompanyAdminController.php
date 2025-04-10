@@ -15,13 +15,31 @@ class CompanyAdminController extends Controller
         }
 
         $user = Auth::user();
-        $token = $user->createToken('MyAppToken')->plainTextToken;
+
+        // check if it is company role
+        if (!$user->hasRole('company_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Login failed. Not a Company Admin',
+            ]);
+        }
+
+        $token = $user->createToken('MatraErpToken')->plainTextToken;
 
         return response()->json([
             'success' => true,
-            'message' => 'Login successful.',
+            'message' => 'Company Admin Login successful.',
             'token' => $token,
             'user' => $user,
+        ]);
+    }
+
+    // User Profile API (Protected)
+    public function profile(Request $request)
+    {
+        return response()->json([
+            'success' => true,
+            'user' => $request->user(),
         ]);
     }
 }

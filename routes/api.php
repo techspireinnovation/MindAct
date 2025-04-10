@@ -5,6 +5,7 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\ProductTypeController;
 
 
 // super admin auth
@@ -30,7 +31,11 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 // company admin operations
 Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
     Route::get('profile', [CompanyAdminController::class, 'profile']);
+
     Route::apiResource('product-categories', ProductCategoryController::class);
+
+    Route::resource('product-types', ProductTypeController::class);
+
 });
 
 

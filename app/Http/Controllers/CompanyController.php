@@ -84,8 +84,6 @@ class CompanyController extends Controller
 
         return response()->json($post);
     }
-
-    // Delete a resource
     public function destroy(Company $post): JsonResponse
     {
         $post->delete();

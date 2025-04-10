@@ -10,6 +10,7 @@ class ProductType extends Model
         'name',
         'is_active',
         'deleted_at',
+        'company_id',
     ];
     use SoftDeletes;
     protected $dates = ['deleted_at'];

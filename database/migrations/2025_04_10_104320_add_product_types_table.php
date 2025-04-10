@@ -12,6 +12,7 @@ return new class extends Migration {
     {
         Schema::create('product_types', function (Blueprint $table) {
             $table->id();
+            $table->bigInteger('company_id');
             $table->string('name');
             $table->boolean('is_active')->default(true);
             $table->timestamps();

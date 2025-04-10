@@ -22,6 +22,7 @@ class ProductTypeController extends Controller
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'is_active' => 'boolean|required',
+                'company_id' => 'integer|exists:companies,id'
             ]);
             $item->update($validated);
             return response()->json($item);
@@ -37,6 +38,7 @@ class ProductTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'is_active' => 'boolean|required',
+            'company_id' => 'integer|exists:companies,id'
         ]);
 
         $item = ProductType::create($validated);

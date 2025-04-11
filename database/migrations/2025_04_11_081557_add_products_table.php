@@ -33,9 +33,8 @@ return new class extends Migration {
 
             $table->boolean('is_vatable')->default(0);
 
-            $table->string('name');
-            $table->string('name');
-            $table->string('name');
+            $table->foreignId('product_type_id')->nullable();
+            $table->foreignId('location_id')->nullable();
 
             $table->timestamps();
             $table->softDeletes(); // Adds the 'deleted_at' column

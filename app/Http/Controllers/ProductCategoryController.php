@@ -11,8 +11,9 @@ class ProductCategoryController extends Controller
     // Display a listing
     public function index(): JsonResponse
     {
+        
         $product = ProductCategory::all();
-
+ 
         return response()->json(ProductCategory::paginate(10));
     }
 

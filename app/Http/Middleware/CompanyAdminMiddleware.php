@@ -16,8 +16,9 @@ class CompanyAdminMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         if ($request->user() && $request->user()->hasRole('company_admin')) {
-            $user = $request->user();
-            $request->merge(['company_id' => $user->company->company_id]);
+            $user = $request->user();                        
+           $userId =  $request->merge(['company_id' => $user->company->company_id]);
+           
             return $next($request);
         }
         return response()->json(['message' => 'Forbidden: Company Admins only'], 403);

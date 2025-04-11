@@ -18,6 +18,7 @@ return new class extends Migration {
             $table->foreignID('company_id')->constrained();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->softDeletes(); // Adds the 'deleted_at' column
         });
     }
 

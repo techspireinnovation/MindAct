@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductTypeController;
 
@@ -33,6 +34,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('profile', [CompanyAdminController::class, 'profile']);
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
+    Route::resource('measure-units', MeasureUnitController::class);
 
 });
 

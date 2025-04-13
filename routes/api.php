@@ -1,16 +1,22 @@
 <?php
 
+use App\Http\Controllers\AccountGroupController;
+use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\LocationController;
+use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\ProductFieldController;
+use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
+use App\Http\Controllers\SubGroupController;
 
 
 // super admin auth
@@ -43,6 +49,12 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
     Route::apiResource('locations', LocationController::class);
+    Route::apiResource('main-groups', MainGroupController::class);
+    Route::apiResource('sub-groups', SubGroupController::class);
+    Route::apiResource('account-groups', AccountGroupController::class);
+    Route::apiResource('account-heads', AccountHeadController::class);
+    Route::apiResource('product-fields', ProductFieldController::class);
+    Route::apiResource('product-field-values', ProductFieldValueController::class);
 
 });
 

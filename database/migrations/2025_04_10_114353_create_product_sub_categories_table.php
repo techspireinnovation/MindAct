@@ -14,7 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->string('name');
             $table->foreignID('company_id')->constrained();
-            $table->foreignID('category_id')->constrained('product_categories')->nullable();
+            $table->foreignID('category_id')->constrained('product_categories');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();

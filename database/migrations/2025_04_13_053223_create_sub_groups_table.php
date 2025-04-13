@@ -11,14 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_categories', function (Blueprint $table) {
+        Schema::create('sub_groups', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
             $table->foreignID('company_id')->constrained();
+            $table->string('name');
+            $table->string('main_group_id')->constrained('main_groups');
+            $table->string('code')->nullable();
+            $table->string('ranking_for_trial')->nullable();
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
             $table->timestamps();
-
         });
     }
 
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_categories');
+        Schema::dropIfExists('sub_groups');
     }
 };

@@ -19,7 +19,7 @@ return new class extends Migration
             $table->string('code')->nullable();
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
-             $table->timestamps();
+            $table->timestamps();
         });
     }
 

@@ -81,7 +81,6 @@ class CompanyController extends Controller
         ]);
 
         $post->update($validated);
-
         return response()->json($post);
     }
     public function destroy(Company $post): JsonResponse

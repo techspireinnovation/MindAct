@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignID('company_id')->constrained();
             $table->foreignID('product_field_id')->constrained('product_fields');
-            $table->string('value')->nullable();
+            $table->string('value');
             $table->softDeletes();
             $table->timestamps();
         });

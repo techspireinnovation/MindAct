@@ -88,6 +88,6 @@ class CompanyController extends Controller
     {
         $post->delete();
 
-        return response()->json(['message' => 'Company deleted']);
+        return response()->json(['message' => 'Company deleted!!']);
     }
 }

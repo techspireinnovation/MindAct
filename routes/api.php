@@ -12,6 +12,7 @@ use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductSubCategoryController;
@@ -55,6 +56,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('account-heads', AccountHeadController::class);
     Route::apiResource('product-fields', ProductFieldController::class);
     Route::apiResource('product-field-values', ProductFieldValueController::class);
+    Route::apiResource('products', ProductController::class);
 
 });
 

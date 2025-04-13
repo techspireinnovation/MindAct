@@ -53,7 +53,21 @@ class ProductController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'is_active' => 'boolean|required',
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'integer|exists:companies,id',
+            'category_id' => 'integer|exists:product_categories,id',
+            'brand_id' => 'integer|exists:brands,id',
+            'measure_unit_id' => 'integer|exists:measure_units,id',
+            'purchase_rate' => 'numeric',
+            'purchase_rate_vat' => 'numeric',
+            'retail_sales_price' => 'numeric',
+            'retail_sales_price_vat' => 'numeric',
+            'retail_sales_price_profit_percent' => 'numeric',
+            'wholesales_price' => 'numeric',
+            'wholesales_price_vat' => 'numeric',
+            'wholesales_price_profit_percent' => 'numeric',
+            'is_vatable' => 'boolean',
+            'product_type_id' => 'integer|exists:product_types,id',
+            'location_id' => 'integer|exists:locations,id',
         ]);
 
         $item = Product::create($validated);

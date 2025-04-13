@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\User;
+use Hash;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 
@@ -14,10 +15,18 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $role = Role::firstOrCreate(['name' => 'super_admin',
-                                     'guard_name' => 'api',
-                                    ]);
-        $user = User::find(3);
+        $role = Role::firstOrCreate([
+            'name' => 'super_admin',
+            'guard_name' => 'api',
+        ]);
+
+        $user = User::firstOrCreate([
+            'name' => "Matra Admin",
+            'email' => "superadmin@matraerp.com",
+            'password' => Hash::make("password890"),
+        ]);
+
+        $user = User::find(1);
         $user->assignRole($role);
 
         // Create Company Admin

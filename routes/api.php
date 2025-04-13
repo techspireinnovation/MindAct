@@ -1,11 +1,12 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
-use App\Http\Controllers\BrandController;
-use App\Http\Controllers\LocationController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\LocationController;
+use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductSubCategoryController;
@@ -37,6 +38,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('profile', [CompanyAdminController::class, 'profile']);
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
+    Route::resource('branches', BranchController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);

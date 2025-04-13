@@ -1,35 +1,35 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\ProductSubCategory;
+
+use App\Models\MainGroup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-
 use Illuminate\Http\Request;
 
-class ProductSubCategoryController extends Controller
+class MainGroupController extends Controller
 {
+    
     public function index(): JsonResponse
     {
-        
-        return response()->json(ProductSubCategory::paginate(10));
+        return response()->json(MainGroup::paginate(10));
     }
+    
 
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            $item = ProductSubCategory::findOrFail($id);
+            $group = MainGroup::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',             
-                'category_id' => 'integer|exists:product_categories,id',
+                'is_active' => 'boolean|required',                
                 'company_id' => 'integer|exists:companies,id'
             ]);
-            $item->update($validated);
-            return response()->json($item);
+            $group->update($validated);
+            return response()->json($group);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found!!'], 404);
+            return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
@@ -37,25 +37,23 @@ class ProductSubCategoryController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',
-            'category_id' => 'integer|exists:product_categories,id',
+            'is_active' => 'boolean|required',           
             'company_id' => 'integer|exists:companies,id'
         ]);
 
-        $item = ProductSubCategory::create($validated);
-        return response()->json($item, 201);
+        $group = MainGroup::create($validated);
+        return response()->json($group, 201);
     }
 
     public function show($id): JsonResponse
     {
         try {
-            $item = ProductSubCategory::findOrFail($id);
-            return response()->json($item);
+            $group = MainGroup::findOrFail($id);
+            return response()->json($group);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found!!'], 404);
+            return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
@@ -64,14 +62,13 @@ class ProductSubCategoryController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = ProductSubCategory::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Product Sub Category deleted!!']);
+            $group = MainGroup::findOrFail($id);
+            $group->delete();
+            return response()->json(['message' => 'Main Group deleted!!']);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found!!'], 404);
+            return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
-
 }

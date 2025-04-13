@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 use App\Models\ProductCategory;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class ProductCategoryController extends Controller
@@ -30,27 +32,58 @@ class ProductCategoryController extends Controller
     }
 
     // Show a single resource
-    public function show(ProductCategory $productCategory): JsonResponse
+    public function show($id): JsonResponse
     {
-        return response()->json($productCategory);
+        try {
+            $category = ProductCategory::findOrFail($id);
+            return response()->json($category);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product Category not found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }
     }
 
     // Update a resource
-    public function update(Request $request, ProductCategory $productCategory): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        try{
+        $product_category = ProductCategory::findOrFail($id);
+
         $validated = $request->validate([
+
             'name' => 'sometimes|required|string|max:255',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'is_active' => 'sometimes|nullable|boolean',
         ]);
-        $productCategory->update($validated);
-        return response()->json($productCategory);
+
+        $product_category->update($validated);
+
+        return response()->json($product_category);
+
+       }catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Product Category not found!!'], 404);
+        }catch (QueryException $e) {
+             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }
     }
 
     // Delete a resource
-    public function destroy(ProductCategory $productCategory): JsonResponse
+    public function destroy($id): JsonResponse
     {
-        $productCategory->delete();
-        return response()->json(['message' => 'Product Category deleted']);
+        try{
+
+            $product_category = ProductCategory::findorFail($id);
+
+            $product_category->delete();
+
+           return response()->json(['message' => 'Product Category deleted!!']);
+
+        }catch(ModelNotFoundException){
+            return response()->json(['error' => 'Product Category not found'], 404);
+        }catch(QueryException){
+            return response()->json(['error' => 'An unexpected error occurred!!'],500);
+
+        }
     }
 }

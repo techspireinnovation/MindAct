@@ -68,6 +68,11 @@ class ProductController extends Controller
             'is_vatable' => 'boolean',
             'product_type_id' => 'integer|exists:product_types,id',
             'location_id' => 'integer|exists:locations,id',
+
+            'field_values' => 'required|array',
+            'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
+            'field_values.*.value' => 'required|string|max:255',
+
         ]);
 
         $item = Product::create($validated);

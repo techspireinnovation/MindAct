@@ -2,6 +2,12 @@
 
 namespace App\Models;
 
+
+use App\Models\ProductCategory;
+use App\Models\Brand;
+use App\Models\MeasureUnit;
+use App\Models\ProductType;
+use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -36,4 +42,26 @@ class Product extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function category(){
+        return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+    public function brand(){
+        return $this->belongsTo(Brand::class, 'brand_id');
+    }
+
+    public function measureUnit(){
+        return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
+    }
+
+    public function productType(){
+        return $this->belongsTo(ProductType::class, 'product_type_id');
+    }
+
+    public function location(){
+        return $this->belongsTo(Location::class, 'location_id');
+    }
+
+
 }

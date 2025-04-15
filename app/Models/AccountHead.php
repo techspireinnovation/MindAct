@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+
+use App\Models\AccountGroup;
 use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Scopes\CompanyIdScope;
@@ -24,5 +26,9 @@ class AccountHead extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function accountGroup(){
+        return $this->belongsTo(AccountGroup::class,'account_group_id');
     }
 }

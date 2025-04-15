@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\MainGroup;
+use App\Models\SubGroup;
 use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Scopes\CompanyIdScope;
@@ -21,6 +23,14 @@ class AccountGroup extends Model
         'is_active',
         'deleted_at'
     ];
+
+    public function mainGroup(){
+        return $this->belongsTO(MainGroup::class,'main_group_id');
+    }
+
+    public function subGroup(){
+        return $this->belongsTO(SubGroup::class,'sub_group_id');
+    }
 
     protected $dates = ['deleted_at'];
 

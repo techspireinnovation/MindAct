@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+
+use App\Models\MainGroup;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -24,5 +26,10 @@ class SubGroup extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function mainGroup(){
+        return $this->belongsTo(MainGroup::class, 'main_group_id');
+
     }
 }

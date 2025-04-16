@@ -38,6 +38,7 @@ return new class extends Migration {
 
             $table->timestamps();
             $table->softDeletes(); // Adds the 'deleted_at' column
+            $table->boolean('is_active')->default(true);
         });
     }
 

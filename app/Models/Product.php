@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\MeasureUnit;
 use App\Models\ProductCategory;
 use App\Models\ProductType;
+use App\Models\ProductList;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -74,6 +75,11 @@ class Product extends Model
     public function productFieldValues(): HasMany
     {
         return $this->hasMany(ProductFieldValue::class);
+    }
+
+    public function productLists(): HasMany
+    {
+        return $this->hasMany(ProductList::class);
     }
 
 

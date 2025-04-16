@@ -5,8 +5,9 @@ namespace App\Models;
 
 use App\Models\ProductField;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\softDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\softDeletes;
+use Request;
 
 class ProductFieldValue extends Model
 {
@@ -15,6 +16,7 @@ class ProductFieldValue extends Model
     protected $fillable = [
         'company_id',
         'product_field_id',
+        'product_id',
         'value',
         'deleted_at'
     ];
@@ -25,10 +27,24 @@ class ProductFieldValue extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+        static::creating(function ($model) {
+            // Only set if not already set
+            if (empty($model->company_id)) {
+                // Get the header value, fallback to 'US'
+                $headerValue = Request::input('company_id');
+                $model->company_id = $headerValue;
+            }
+        });
     }
 
-    public function productField(){
+    public function productField()
+    {
         return $this->belongsTo(ProductField::class, 'product_field_id');
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
     }
 
 

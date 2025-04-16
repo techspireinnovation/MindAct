@@ -76,6 +76,11 @@ class ProductController extends Controller
         ]);
 
         $item = Product::create($validated);
+
+        if (isset($validated['field_values'])) {
+            $item->productFieldValues()->createMany($validated['field_values']);
+        }
+
         return response()->json($item, 201);
     }
 

@@ -17,6 +17,8 @@ class Product extends Model
 {
     protected $fillable = [
         'name',
+        'debit_note',
+        'credit_note',
         'is_active',
         'deleted_at',
         'company_id',

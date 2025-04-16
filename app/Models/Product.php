@@ -3,13 +3,14 @@
 namespace App\Models;
 
 
-use App\Models\ProductCategory;
 use App\Models\Brand;
-use App\Models\MeasureUnit;
-use App\Models\ProductType;
 use App\Models\Location;
+use App\Models\MeasureUnit;
+use App\Models\ProductCategory;
+use App\Models\ProductType;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
@@ -43,24 +44,34 @@ class Product extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function category(){
+    public function category()
+    {
         return $this->belongsTo(ProductCategory::class, 'category_id');
     }
 
-    public function brand(){
+    public function brand()
+    {
         return $this->belongsTo(Brand::class, 'brand_id');
     }
 
-    public function measureUnit(){
+    public function measureUnit()
+    {
         return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
     }
 
-    public function productType(){
+    public function productType()
+    {
         return $this->belongsTo(ProductType::class, 'product_type_id');
     }
 
-    public function location(){
+    public function location()
+    {
         return $this->belongsTo(Location::class, 'location_id');
+    }
+
+    public function productFieldValues(): HasMany
+    {
+        return $this->hasMany(ProductFieldValue::class);
     }
 
 

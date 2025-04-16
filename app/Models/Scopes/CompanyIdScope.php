@@ -22,5 +22,7 @@ class CompanyIdScope implements Scope
         if ($company_id) {
             $builder->where('company_id', $company_id);
         }
+
+
     }
 }

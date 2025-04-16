@@ -4,10 +4,12 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\ProductFieldController;
+use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
@@ -44,6 +46,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('measure-units', MeasureUnitController::class);
+    Route::resource('products', ProductController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
     Route::apiResource('locations', LocationController::class);
@@ -53,6 +56,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('account-heads', AccountHeadController::class);
     Route::apiResource('product-fields', ProductFieldController::class);
     Route::apiResource('product-field-values', ProductFieldValueController::class);
+    Route::apiResource('product-lists', ProductListController::class);
 
 });
 

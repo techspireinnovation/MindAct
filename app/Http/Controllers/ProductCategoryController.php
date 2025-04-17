@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\Models\ProductCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Auth;
+
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
@@ -11,14 +13,14 @@ class ProductCategoryController extends Controller
 {
 
     // Display a listing
-    public function index(): JsonResponse
-    {
-        
-        $product = ProductCategory::all();
- 
-        return response()->json(ProductCategory::paginate(10));
-    }
 
+    public function index(): JsonResponse
+{
+    $companyId = request()->input('company_id');
+    $categories = ProductCategory::where('company_id', $companyId)->paginate(10);
+    return response()->json($categories);
+}
+    
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
@@ -46,27 +48,31 @@ class ProductCategoryController extends Controller
 
     // Update a resource
     public function update(Request $request, $id): JsonResponse
-    {
-        try{
+{
+    try {
         $product_category = ProductCategory::findOrFail($id);
 
         $validated = $request->validate([
-
             'name' => 'sometimes|required|string|max:255',
             'company_id' => 'sometimes|required|integer|exists:companies,id',
-            'is_active' => 'sometimes|nullable|boolean',
+            'is_active' => 'sometimes|boolean',
         ]);
 
+        // Explicit boolean handling
+        if ($request->has('is_active')) {
+            $validated['is_active'] = (bool)$request->input('is_active');
+        }
+
         $product_category->update($validated);
+        $product_category->refresh(); // Refresh to get updated values
 
         return response()->json($product_category);
-
-       }catch (ModelNotFoundException $e) {
+    } catch (ModelNotFoundException $e) {
         return response()->json(['error' => 'Product Category not found!!'], 404);
-        }catch (QueryException $e) {
-             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-        }
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'Update failed'], 500);
     }
+}
 
     // Delete a resource
     public function destroy($id): JsonResponse

@@ -4,12 +4,15 @@ namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\Validator;
+
 
 use Illuminate\Database\Eloquent\Model;
 
 class Brand extends Model
 {
-    use softDeletes;
+    use softDeletes,HasFactory;
 
     protected $fillable=[
         'name',
@@ -24,4 +27,29 @@ class Brand extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+
+    //Below code for testing
+
+    public function isValid()
+{
+    $validator = Validator::make($this->attributes, [
+        'name' => 'required|string|max:255',
+        'company_id' => 'required|exists:companies,id', // Assuming company_id exists in the companies table
+        'is_active' => 'boolean', // Assuming is_active is a boolean
+    ]);
+
+    if ($validator->fails()) {
+        // Debugging: Show the validation error messages
+        dd($validator->errors());
+    }
+
+    return !$validator->fails();  // Returns true if validation passes, false if it fails
+}
+public function isActive()
+{
+    return $this->is_active;
+}
+
+
 }

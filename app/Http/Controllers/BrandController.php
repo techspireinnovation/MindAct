@@ -20,7 +20,7 @@ class BrandController extends Controller
             $item = Brand::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',
+                'is_active' => 'sometimes|boolean|required',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
                 'company_id' => 'integer|exists:companies,id'

@@ -37,6 +37,7 @@ class ProductListController extends Controller
             return response()->json($validator->errors(),422);
         }
         $item = ProductList::create($validator->validated());
+        
         return response()->json($item, 201);
 
         }catch(ModelNotFoundException $e){
@@ -87,6 +88,7 @@ class ProductListController extends Controller
             }
 
             $list->update($validator->validated());
+
             return response()->json($list);
         }catch(ModelNotFoundException $e){
             return response()->json(['error'=>'Item not found!!'],404);

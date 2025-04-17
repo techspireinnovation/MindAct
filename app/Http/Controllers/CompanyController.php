@@ -57,7 +57,9 @@ class CompanyController extends Controller
             'name' => $request->admin_name,
             'password' => Hash::make($request->password),
         ]);
-        $role = Role::firstOrCreate(['name' => 'company_admin']);
+        $role = Role::firstOrCreate(['name' => 'company_admin',
+         'guard_name' => 'api'
+        ]);
         $companyAdmin->assignRole($role);
 
         // map company admin to company

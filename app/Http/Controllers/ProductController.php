@@ -57,14 +57,13 @@ class ProductController extends Controller
 
                 foreach ($validated['field_values'] ?? [] as $data) {
                     if (isset($data['id'])) {
-                        // 🛠 Update existing comment
+                        // 🛠 Update existing item
                         $comment = ProductFieldValue::find($data['id']);
                         $comment->update([
                             'product_field_id' => $data['product_field_id'],
                             'value' => $data['value'],
                         ]);
                     } else {
-                        // ➕ Create new comment
                         $product->productFieldValues()->create($data);
                     }
                 }
@@ -99,9 +98,18 @@ class ProductController extends Controller
             'is_vatable' => 'boolean',
             'product_type_id' => 'integer|exists:product_types,id',
             'location_id' => 'integer|exists:locations,id',
-            'field_values' => 'required|array',
+            'field_values' => 'required',
             'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
             'field_values.*.value' => 'required|string|max:255',
+            'product_list' => 'required|array',
+            'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
+            'product_list.*.quantity' => 'nullable|integer',
+            'product_list.*.barcode' => 'nullable|string|max:255',
+            'product_list.*.hs_code' => 'nullable|string|max:255',
+            'product_list.*.price' => 'nullable|numeric',
+            'product_list.*.discount' => 'nullable|numeric',
+            'product_list.*.final_price' => 'nullable|numeric',
+            'product_list.*.primary_measure_unit_id' => 'required|integer|exists:measure_units,id',
             'company_id' => 'integer|exists:companies,id'
         ]);
 
@@ -109,6 +117,10 @@ class ProductController extends Controller
 
         if (isset($validated['field_values'])) {
             $item->productFieldValues()->createMany($validated['field_values']);
+        }
+
+        if (isset($validated['product_list'])) {
+            $item->productList()->createMany($validated['product_list']);
         }
 
         return response()->json($item, 201);

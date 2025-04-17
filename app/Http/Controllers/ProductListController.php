@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Models\ProductList;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 class ProductListController extends Controller
 {
@@ -18,47 +18,47 @@ class ProductListController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-      try{  
-        
-        $validator = Validator::make($request->all(),[
-            'product_id' => 'required|integer|exists:products,id',
-            'measure_unit_id' => 'required|integer|exists:measure_units,id',
-            'company_id' => 'required|integer|exists:companies,id',
-            'quantity' => 'nullable|integer',
-            'barcode' => 'nullable|string|max:255',
-            'hs_code' => 'nullable|string|max:255',
-            'price' => 'nullable|numeric',
-            'discount' => 'nullable|numeric',
-            'final_price' => 'nullable|numeric',
-            'primary_measure_unit_id' => 'required|integer|exists:measure_units,id'
-        ]);
+        try {
 
-        if($validator->fails()){
-            return response()->json($validator->errors(),422);
+            $validator = Validator::make($request->all(), [
+                'product_id' => 'required|integer|exists:products,id',
+                'measure_unit_id' => 'required|integer|exists:measure_units,id',
+                'company_id' => 'required|integer|exists:companies,id',
+                'quantity' => 'nullable|integer',
+                'barcode' => 'nullable|string|max:255',
+                'hs_code' => 'nullable|string|max:255',
+                'price' => 'nullable|numeric',
+                'discount' => 'nullable|numeric',
+                'final_price' => 'nullable|numeric',
+                'primary_measure_unit_id' => 'required|integer|exists:measure_units,id'
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
+            }
+            $item = ProductList::create($validator->validated());
+            return response()->json($item, 201);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-        $item = ProductList::create($validator->validated());
-        return response()->json($item, 201);
-
-        }catch(ModelNotFoundException $e){
-        return response()->json(['error' => 'Item not found'], 404);
-       }catch(QueryException $e){
-        return response()->json(['error' => 'Database error occurred'], 500);
-       }catch(\Exception $e){
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
-      }
     }
 
-    public function show($id):JsonResponse
+    public function show($id): JsonResponse
     {
-        try{
+        try {
             $item = ProductList::findorFail($id);
             return response()->json($item);
-        }catch(ModelNotFoundException $e){
-            return response()->json(['error'=>'Item not found!!'],404);
-        }catch(QueryException $e){
-            return resposne()->json(['error'=>'Database error occurred!!'],500);
-        }catch(\Exception $e){
-            return response()->json(['error'=>'An unexpected error occurred!!'],500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not found!!'], 404);
+        } catch (QueryException $e) {
+            return resposne()->json(['error' => 'Database error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
 
     }
@@ -66,9 +66,9 @@ class ProductListController extends Controller
 
     public function update(Request $request, $id): JsonResponse
     {
-        try{
+        try {
             $list = ProductList::findOrFail($id);
-            $validator  = Validator::make($request->all(),[
+            $validator = Validator::make($request->all(), [
                 'product_id' => 'required|integer|exists:products,id',
                 'measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'company_id' => 'required|integer|exists:companies,id',
@@ -80,43 +80,43 @@ class ProductListController extends Controller
                 'final_price' => 'nullable|numeric',
                 'primary_measure_unit_id' => 'required|integer|exists:measure_units,id'
 
-            
+
             ]);
-            if($validator->fails()){
-                return response()->json($validator->errors(),422);
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
             }
 
             $list->update($validator->validated());
             return response()->json($list);
-        }catch(ModelNotFoundException $e){
-            return response()->json(['error'=>'Item not found!!'],404);
-        }catch(QueryException $e){
-            return response()->json(['error'=>'Database error occurred!!'],500);
-        }catch(\Exception $e){
-            return response()->json(['error'=>'An unexpected error occurred!!'],500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
 
 
-    public function destroy($id):JsonResponse
+    public function destroy($id): JsonResponse
     {
-        try{
+        try {
             $list = ProductList::findOrFail($id);
             $list->delete();
-            return response()->json(['message'=>'Product List deleted!!'],200);
-        }catch(ModelNotFoundException $e){
-            return response()->json(['error'=>'Item not found!!'],404);
-        }catch(QueryException $e){
-            return response()->json(['error'=>'Database error occurred!!'],500);
-        }catch(\Exception $e){
-            return response()->json(['error'=>'An unexpected error occurred!!'],500);
+            return response()->json(['message' => 'Product List deleted!!'], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
 
     }
 
 
 
-    
 
-   
+
+
 }

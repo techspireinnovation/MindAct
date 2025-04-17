@@ -76,5 +76,10 @@ class Product extends Model
         return $this->hasMany(ProductFieldValue::class);
     }
 
+    public function productList(): HasMany
+    {
+        return $this->hasMany(ProductList::class);
+    }
+
 
 }

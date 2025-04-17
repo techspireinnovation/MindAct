@@ -26,7 +26,7 @@ class SuperAdminSeeder extends Seeder
             'password' => Hash::make("password890"),
         ]);
 
-        $user = User::find(1);
+        $user = User::whereName('Matra Admin')->first();
         $user->assignRole($role);
 
         // Create Company Admin

@@ -13,29 +13,24 @@ return new class extends Migration {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->text('debit_note')->nullable();
+            $table->text('credit_note')->nullable();
             $table->foreignId('company_id');
-
             $table->foreignId('category_id');
             $table->foreignId('sub_category_id')->nullable();
             $table->foreignId('brand_id')->nullable();
             $table->foreignId('measure_unit_id')->nullable();
-
             $table->double('purchase_rate')->nullable();
             $table->double('purchase_rate_vat')->nullable();
-
             $table->double('retail_sales_price')->nullable();
             $table->double('retail_sales_price_vat')->nullable();
             $table->double('retail_sales_price_profit_percent')->nullable();
-
             $table->double('wholesales_price')->nullable();
             $table->double('wholesales_price_vat')->nullable();
             $table->double('wholesales_price_profit_percent')->nullable();
-
             $table->boolean('is_vatable')->default(0);
-
             $table->foreignId('product_type_id')->nullable();
             $table->foreignId('location_id')->nullable();
-
             $table->timestamps();
             $table->softDeletes(); // Adds the 'deleted_at' column
             $table->boolean('is_active')->default(true);

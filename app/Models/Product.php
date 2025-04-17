@@ -17,6 +17,8 @@ class Product extends Model
 {
     protected $fillable = [
         'name',
+        'debit_note',
+        'credit_note',
         'is_active',
         'deleted_at',
         'company_id',
@@ -72,6 +74,11 @@ class Product extends Model
     public function productFieldValues(): HasMany
     {
         return $this->hasMany(ProductFieldValue::class);
+    }
+
+    public function productList(): HasMany
+    {
+        return $this->hasMany(ProductList::class);
     }
 
 

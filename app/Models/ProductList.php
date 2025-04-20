@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
-use App\Models\Product;
 use App\Models\MeasureUnit;
+use App\Models\Product;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\softDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\softDeletes;
+use Request;
 
 class ProductList extends Model
 {
   use softDeletes;
 
-  protected $fillable=[
+  protected $fillable = [
     'product_id',
     'measure_unit_id',
     'company_id',
@@ -29,17 +30,27 @@ class ProductList extends Model
 
   protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+  protected static function booted()
+  {
+    static::addGlobalScope(new CompanyIdScope());
+    static::creating(function ($model) {
+      // Only set if not already set
+      if (empty($model->company_id)) {
+        // Get the header value, fallback to 'US'
+        $headerValue = Request::input('company_id');
+        $model->company_id = $headerValue;
+      }
+    });
+  }
 
-    public function product(){
-        return $this->belongsTo(Product::class, 'product_id');
-    }
+  public function product()
+  {
+    return $this->belongsTo(Product::class, 'product_id');
+  }
 
-    public function measureUnit(){
-        return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
-    }
+  public function measureUnit()
+  {
+    return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
+  }
 
 }

@@ -17,9 +17,12 @@ class SuperAdminMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && $request->user()->hasRole('super_admin')) {
+        $user = $request->user();
+
+        if ($user && $user->hasRole('super_admin') && $user->tokenCan('super_admin')) {
             return $next($request);
         }
+
         return response()->json(['message' => 'Forbidden: Super Admins only'], 403);
     }
 }

@@ -8,23 +8,66 @@ use Illuminate\Support\Facades\Storage;
 class FileUploadController extends Controller
 {
 
+    // public function upload(Request $request)
+    // {
+    //     // Validate the uploaded file
+    //     $request->validate([
+    //         'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', // Restrict file types and size
+    //     ]);
+
+    //     if ($request->file('file')->isValid()) {
+    //         // Store the file securely in the private disk
+    //         $path = $request->file('file')->store('', 'private');
+
+    //         // Return success response with file path
+    //         return response()->json(['message' => 'File uploaded successfully', 'path' => ($path)]);
+    //     }
+
+    //     return response()->json(['error' => 'Invalid file upload'], 400);
+    // }
+
     public function upload(Request $request)
-    {
+{
+    try {
         // Validate the uploaded file
         $request->validate([
-            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', // Restrict file types and size
+            'file' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', // 2MB max
         ]);
 
-        if ($request->file('file')->isValid()) {
-            // Store the file securely in the private disk
-            $path = $request->file('file')->store('', 'private');
+        $file = $request->file('file');
 
-            // Return success response with file path
-            return response()->json(['message' => 'File uploaded successfully', 'path' => ($path)]);
+        if ($file && $file->isValid()) {
+            // Store the file in the private disk
+            $path = $file->store('', 'private');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'File uploaded successfully.',
+                'path' => $path,
+            ], 200);
         }
 
-        return response()->json(['error' => 'Invalid file upload'], 400);
+        return response()->json([
+            'success' => false,
+            'message' => 'Uploaded file is not valid.',
+        ], 400);
+
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation error.',
+            'errors' => $e->errors(),
+        ], 422);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'An unexpected error occurred during file upload.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
+
 
     public function download($filename)
     {

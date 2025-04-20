@@ -27,7 +27,7 @@ class CompanyController extends Controller
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
-        // Verify super_admin authentication
+      
         $user = Auth::user();
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
@@ -37,7 +37,7 @@ class CompanyController extends Controller
         }
 
         try {
-            // Validate request data
+          
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
                 'licence_issue_date' => 'nullable|string|max:255',
@@ -66,29 +66,29 @@ class CompanyController extends Controller
                 'password' => 'required|string|min:6|confirmed',
             ]);
 
-            // Start database transaction
+    
             DB::beginTransaction();
 
-            // Create company
+    
             $company = Company::create($validated);
 
-            // Create company admin user
+     
             $companyAdmin = User::create([
                 'email' => $validated['admin_email'],
                 'name' => $validated['admin_name'],
                 'password' => Hash::make($validated['password']),
             ]);
 
-            // Get or create company_admin role
+     
             $role = Role::firstOrCreate([
                 'name' => 'company_admin',
                 'guard_name' => 'api'
             ]);
 
-            // Assign role to admin user
+      
             $companyAdmin->assignRole($role);
 
-            // Map company admin to company
+           
             CompanyUser::create([
                 'company_id' => $company->id,
                 'user_id' => $companyAdmin->id

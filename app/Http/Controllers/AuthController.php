@@ -104,7 +104,7 @@ class AuthController extends Controller
     
         return response()->json([
             'success' => true,
-            'message' => 'Super admin login successful',
+            'message' => 'Super admin login successfull',
             'token' => $token,
             'data' => [
                 

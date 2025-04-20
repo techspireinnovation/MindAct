@@ -179,10 +179,10 @@ class AuthController extends Controller
     $user->password = Hash::make($request->new_password);
     $user->save();
 
-    // Revoke only super_admin tokens
+    
     $user->tokens()->where('abilities', '["super_admin"]')->delete();
 
-    // Create new super_admin token
+    
     $newToken = $user->createToken('SuperAdminToken', ['super_admin'])->plainTextToken;
 
     return response()->json([

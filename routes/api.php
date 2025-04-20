@@ -28,32 +28,35 @@ use App\Http\Controllers\Master\BranchController;
 
 
 
-Route::middleware('cors')->get('/some-endpoint', function () {
-    return response()->json(['message' => 'CORS is working']);
-});
-// super admin auth
+
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
-// company auth
+
 Route::post('/company/login', [CompanyAdminController::class, 'login']);
 
 
-// super admin operations
+
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
+    Route::put('change-password', [AuthController::class, 'changePassword']);
+    Route::put('update', [AuthController::class, 'update']);
     Route::get('logout', [AuthController::class, 'logout']);
     Route::apiResource('companies', CompanyController::class);
+    Route::post('/upload', [FileUploadController::class, 'upload']);
+    Route::get('/download/{filename}', [FileUploadController::class, 'download']);
+
 
 });
-Route::post('/upload', [FileUploadController::class, 'upload']);
-Route::get('/download/{filename}', [FileUploadController::class, 'download']);
 
 
 
 // company admin operations
 Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
     Route::get('profile', [CompanyAdminController::class, 'profile']);
+    Route::get('logout', [CompanyAdminController::class, 'logout']);
+    Route::put('update', [CompanyController::class, 'update']);
+    Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
@@ -71,5 +74,3 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-lists', ProductListController::class);
 
 });
-
-

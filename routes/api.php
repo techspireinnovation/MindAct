@@ -28,6 +28,9 @@ use App\Http\Controllers\Master\BranchController;
 
 
 
+Route::middleware('cors')->get('/some-endpoint', function () {
+    return response()->json(['message' => 'CORS is working']);
+});
 // super admin auth
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);

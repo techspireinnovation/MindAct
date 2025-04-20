@@ -46,6 +46,7 @@ class ProductListController extends Controller
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
+
     }
 
     public function show($id): JsonResponse
@@ -87,6 +88,7 @@ class ProductListController extends Controller
             }
 
             $list->update($validator->validated());
+
             return response()->json($list);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 use Validator;
 
 class AuthController extends Controller
@@ -29,6 +30,15 @@ class AuthController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
+
+        // Create or get the super_admin role with api guard
+        $role = Role::firstOrCreate([
+            'name' => 'super_admin',
+            'guard_name' => 'api'
+        ]);
+
+        // Assign the super_admin role to the user
+        $user->assignRole($role);
 
         $token = $user->createToken('MyAppToken')->plainTextToken;
 

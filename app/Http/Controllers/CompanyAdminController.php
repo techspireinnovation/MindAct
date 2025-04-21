@@ -58,6 +58,10 @@ class CompanyAdminController extends Controller
     ], 200);
 }
 
+
+
+
+
 public function changePassword(Request $request)
 {
     $validator = Validator::make($request->all(), [

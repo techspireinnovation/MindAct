@@ -19,7 +19,7 @@ class CompanyUser extends Model
 
 
     public function user(){
-        return $this->belogsTo(User::class,'user_id');
+        return $this->belongsTo(User::class,'user_id');
     }
 
     public function company()

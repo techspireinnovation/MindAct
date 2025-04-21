@@ -26,6 +26,7 @@ Route::post('/company/login', [CompanyAdminController::class, 'login']);
 
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
+    Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
     Route::put('change-password', [AuthController::class, 'changePassword']);
     Route::put('update', [AuthController::class, 'update']);
     Route::get('logout', [AuthController::class, 'logout']);

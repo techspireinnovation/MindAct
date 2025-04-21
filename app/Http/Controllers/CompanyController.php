@@ -226,7 +226,117 @@ class CompanyController extends Controller
     }
 
 
+   
+    public function updateCompany(Request $request, $id): JsonResponse
+    {
+        try {
+      
+            $user = Auth::user();
 
+        
+            if (!$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Not a super admin',
+                ], 403);
+            }
+
+      
+            $company = Company::findOrFail($id);
+
+         
+            $companyUser = CompanyUser::where('company_id', $company->id)->first();
+            if (!$companyUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No user associated with this company',
+                ], 404);
+            }
+
+            $userAdmin = $companyUser->user;
+            if (!$userAdmin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No user associated with this company',
+                ], 404);
+            }
+
+       
+            $validated = $request->validate([
+                'name' => 'sometimes|required|string|max:255',
+                'licence_issue_date' => 'nullable|string|max:255',
+                'working_date' => 'nullable|string|max:255',
+                'reg_number' => 'nullable|string|max:255',
+                'full_address' => 'nullable|string|max:255',
+                'email_address' => 'nullable|string|email|max:255',
+                'website' => 'nullable|string|max:255',
+                'fax' => 'nullable|string|max:255',
+                'logo' => 'nullable|string|max:255',
+                'province' => 'nullable|string|max:255',
+                'district' => 'nullable|string|max:255',
+                'palika_name' => 'nullable|string|max:255',
+                'ward_number' => 'nullable|string|max:255',
+                'contact_number' => 'nullable|string|max:255',
+                'contact_person' => 'nullable|string|max:255',
+                'contact_person_position' => 'nullable|string|max:255',
+                'agreement_holder_name' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:255',
+                'position' => 'nullable|string|max:255',
+                'license_number' => 'nullable|string|max:255',
+                'activation_key' => 'nullable|string|max:255',
+                'url_link' => 'nullable|string|max:255',
+                'admin_name' => 'sometimes|required|string|max:255',
+                'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
+                'password' => 'sometimes|required|string|min:6',
+            ]);
+
+           
+            $company->update($validated);
+
+         
+            $userUpdates = [];
+            $newToken = null;
+            if ($request->has('admin_name')) {
+                $userUpdates['name'] = $validated['admin_name'];
+            }
+            if ($request->has('admin_email')) {
+                $userUpdates['email'] = $validated['admin_email'];
+            }
+            if ($request->has('password')) {
+                $userUpdates['password'] = Hash::make($validated['password']);
+              
+                $userAdmin->tokens()->where('abilities', '["company_admin"]')->delete();
+               
+                $newToken = $userAdmin->createToken('MatraErpToken', ['company_admin'])->plainTextToken;
+            }
+            if (!empty($userUpdates)) {
+                $userAdmin->update($userUpdates);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company and admin details updated successfully',
+                'data' => [
+                    'company' => $company->fresh(),
+                    'user' => $userAdmin->fresh(),
+                    'new_token' => $newToken,
+                ],
+            ], 200);
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
     // Show a single resource
     public function show(Company $post): JsonResponse
     {

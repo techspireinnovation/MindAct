@@ -62,7 +62,7 @@ class ProductTypeController extends Controller
         try {
             $item = ProductType::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'Product Type deleted!!']);
+            return response()->json(['message' => 'Product Type deleted!!'], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {

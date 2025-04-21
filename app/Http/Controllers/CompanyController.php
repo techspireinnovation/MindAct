@@ -225,6 +225,34 @@ class CompanyController extends Controller
         }
     }
 
+    public function show($id){
+        try{
+            $company = Company::findOrFail($id);
+            return response()->json([
+                'success' => true,
+                'data' => $company
+            ], 200);
+        }catch(ModelNotFoundException $e){
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found',
+            ], 404);
+        }catch(QueryException $e){  
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }catch(\Exception $e){
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+    }
+ 
 
    
     public function updateCompany(Request $request, $id): JsonResponse
@@ -338,10 +366,10 @@ class CompanyController extends Controller
         }
     }
     // Show a single resource
-    public function show(Company $post): JsonResponse
-    {
-        return response()->json($post);
-    }
+    // public function show(Company $post): JsonResponse
+    // {
+    //     return response()->json($post);
+    // }
 
     // Update a resource
     /**
@@ -349,10 +377,18 @@ class CompanyController extends Controller
  */
 
 
-    public function destroy(Company $post): JsonResponse
+    public function destroy($id): JsonResponse
     {
-        $post->delete();
+        
+       $company = Company::find($id);
+        if($company){
+            $company->delete();
+            return response()->json(['message' => 'Company deleted!!']);
+        }else{
+            return response()->json(['message' => 'Company not found'], 404);
+        }
+       
 
-        return response()->json(['message' => 'Company deleted!!']);
+        
     }
 }

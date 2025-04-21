@@ -2,22 +2,25 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanyUser;
-use App\Models\ProductType;
+use App\Models\MeasureUnit;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+
+use Spatie\Permission\Models\Role;
 use Laravel\Sanctum\Sanctum;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
-class ProductTypeTest extends TestCase
+class MeasureUnitTest extends TestCase
 {
     /**
      * A basic feature test example.
      */
     use RefreshDatabase;
+
 
     protected $company;
 
@@ -45,14 +48,14 @@ class ProductTypeTest extends TestCase
   
 }
 
-public function test_lists_all_product_types(): void
+public function test_lists_all_measure_units(): void
 {
    
-    ProductType::factory()->count(15)->create([
+    MeasureUnit::factory()->count(15)->create([
         'company_id' => $this->company->id 
     ]);
 
-    $response = $this->getJson('/api/company/product-types');
+    $response = $this->getJson('/api/company/measure-units');
 
     $response->assertStatus(200)
              ->assertJsonStructure([
@@ -87,7 +90,7 @@ public function test_lists_all_product_types(): void
     // First check if we have any data at all
     $responseData = $response->json();
     $this->assertGreaterThan(0, count($responseData['data']), 
-        'Expected at least one product category but got none. Check company filtering.');
+        'Expected at least one measure unit but got none. Check company filtering.');
     
     // Then verify pagination
     if (count($responseData['data']) > 0) {
@@ -99,65 +102,76 @@ public function test_lists_all_product_types(): void
     $this->assertLessThanOrEqual(10, count($responseData['data']));
 }
 
-    public function test_creates_a_product_type(): void
+    public function test_creates_a_measure_unit(): void
     {
-        $response = $this->postJson('/api/company/product-types', [
-            'name' => 'Electronics',
+        $response = $this->postJson('/api/company/measure-units', [
+            'name' => 'Kilo gram',
+            'quantity' => '20',
+            'symbol' => 'shjdgvd15',
             'company_id' => $this->company->id,
             'is_active' => true,
         ]);
 
         $response->assertStatus(201)
                  ->assertJsonFragment([
-                     'name' => 'Electronics',
+                     'name' => 'Kilo gram',
+                     'quantity' => '20',
+                     'symbol' => 'shjdgvd15',
                      'company_id' => $this->company->id,
                      'is_active' => true,
                  ]);
-        $this->assertTrue(ProductType::where('name', 'Electronics')->exists());
+        $this->assertTrue(MeasureUnit::where('name','Kilo gram')->where('quantity','20')->where('symbol','shjdgvd15')->exists());
     }
 
   
 
 
-    public function test_updates_a_product_type(): void
+    public function test_updates_a_measure_unit(): void
     {
-        $type = ProductType::create([
-            'name' => 'Electronics',
+        $units = MeasureUnit::create([
+            'name' => 'Update me',
+            'quantity' => '20',
+            'symbol' => 'shjdgvd15',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->putJson("/api/company/product-types/{$type->id}", [
-            'name' => 'Updated Electronics',
+        $response = $this->putJson("/api/company/measure-units/{$units->id}", [
+            'name' => 'updated done',
+            'quantity' => '202',
+            'symbol' => 'shjdgvd15updated',
             'company_id' => $this->company->id,
             'is_active' => false,
         ]);
 
         $response->assertStatus(200)
                  ->assertJsonFragment([
-                     'name' => 'Updated Electronics',
+                     'name' => 'Tikapur',
+                     'name' => 'updated done',
+                     'quantity' => '202',
+                     'symbol' => 'shjdgvd15updated',
+                     'company_id' => $this->company->id,
                      'is_active' => false,
                  ]);
-        $this->assertFalse(ProductType::find($type->id)->is_active);
+        $this->assertFalse(MeasureUnit::find($units->id)->is_active);
     }
 
   
    
 
-    public function test_deletes_a_product_type(): void
+    public function test_deletes_a_measure_unit(): void
     {
-        $type = ProductType::create([
-            'name' => 'Deleted Electronics',
+        $unit = MeasureUnit::create([
+            'name' => 'Delete me',
+            'quantity' => '20',
+            'symbol' => 'shjdgvd15',           
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->deleteJson("/api/company/product-types/{$type->id}");
+        $response = $this->deleteJson("/api/company/measure-units/{$unit->id}");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Product Type deleted!!']);
-        $this->assertNotNull(ProductType::withTrashed()->find($type->id)->deleted_at);
+                 ->assertJson(['message' => 'Unit of Measurement deleted!!']);
+        $this->assertNotNull(MeasureUnit::withTrashed()->find($unit->id)->deleted_at);
     }
-
-  
-
    
 }

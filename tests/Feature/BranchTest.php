@@ -2,22 +2,25 @@
 
 namespace Tests\Feature;
 
+
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanyUser;
-use App\Models\ProductType;
+use App\Models\Branch;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Illuminate\Foundation\Testing\WithFaker;
+use Spatie\Permission\Models\Role;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-class ProductTypeTest extends TestCase
+class BranchTest extends TestCase
 {
     /**
      * A basic feature test example.
      */
     use RefreshDatabase;
+
 
     protected $company;
 
@@ -45,14 +48,14 @@ class ProductTypeTest extends TestCase
   
 }
 
-public function test_lists_all_product_types(): void
+public function test_lists_all_branches(): void
 {
    
-    ProductType::factory()->count(15)->create([
+    Branch::factory()->count(15)->create([
         'company_id' => $this->company->id 
     ]);
 
-    $response = $this->getJson('/api/company/product-types');
+    $response = $this->getJson('/api/company/branches');
 
     $response->assertStatus(200)
              ->assertJsonStructure([
@@ -87,7 +90,7 @@ public function test_lists_all_product_types(): void
     // First check if we have any data at all
     $responseData = $response->json();
     $this->assertGreaterThan(0, count($responseData['data']), 
-        'Expected at least one product category but got none. Check company filtering.');
+        'Expected at least one branch but got none. Check company filtering.');
     
     // Then verify pagination
     if (count($responseData['data']) > 0) {
@@ -99,65 +102,64 @@ public function test_lists_all_product_types(): void
     $this->assertLessThanOrEqual(10, count($responseData['data']));
 }
 
-    public function test_creates_a_product_type(): void
+    public function test_creates_a_branch(): void
     {
-        $response = $this->postJson('/api/company/product-types', [
-            'name' => 'Electronics',
+        $response = $this->postJson('/api/company/branches', [
+            'name' => 'Kathmandu',
             'company_id' => $this->company->id,
             'is_active' => true,
         ]);
 
         $response->assertStatus(201)
                  ->assertJsonFragment([
-                     'name' => 'Electronics',
+                     'name' => 'Kathmandu',
                      'company_id' => $this->company->id,
                      'is_active' => true,
                  ]);
-        $this->assertTrue(ProductType::where('name', 'Electronics')->exists());
+        $this->assertTrue(Branch::where('name', 'Kathmandu')->exists());
     }
 
   
 
 
-    public function test_updates_a_product_type(): void
+    public function test_updates_a_branch(): void
     {
-        $type = ProductType::create([
-            'name' => 'Electronics',
+        $branch = Branch::create([
+            'name' => 'Butwal',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->putJson("/api/company/product-types/{$type->id}", [
-            'name' => 'Updated Electronics',
+        $response = $this->putJson("/api/company/branches/{$branch->id}", [
+            'name' => 'Tikapur',
             'company_id' => $this->company->id,
             'is_active' => false,
         ]);
 
         $response->assertStatus(200)
                  ->assertJsonFragment([
-                     'name' => 'Updated Electronics',
+                     'name' => 'Tikapur',
+                     'company_id' => $this->company->id,
                      'is_active' => false,
                  ]);
-        $this->assertFalse(ProductType::find($type->id)->is_active);
+        $this->assertFalse(Branch::find($branch->id)->is_active);
     }
 
   
    
 
-    public function test_deletes_a_product_type(): void
+    public function test_deletes_a_branch(): void
     {
-        $type = ProductType::create([
-            'name' => 'Deleted Electronics',
+        $branch = Branch::create([
+            'name' => 'Kamalpokhari',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->deleteJson("/api/company/product-types/{$type->id}");
+        $response = $this->deleteJson("/api/company/branches/{$branch->id}");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Product Type deleted!!']);
-        $this->assertNotNull(ProductType::withTrashed()->find($type->id)->deleted_at);
+                 ->assertJson(['message' => 'Branch deleted']);
+        $this->assertNotNull(Branch::withTrashed()->find($branch->id)->deleted_at);
     }
 
-  
 
-   
 }

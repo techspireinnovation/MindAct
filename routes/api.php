@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
+use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
@@ -62,3 +63,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-lists', ProductListController::class);
 
 });
+
+
+// forget password
+Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
+Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);

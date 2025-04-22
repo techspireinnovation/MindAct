@@ -26,7 +26,7 @@ class PasswordResetController extends Controller
             'expires_at' => Carbon::now()->addMinutes(15),
         ]);
 
-        Mail::to($request->email)->send(new PasswordResetCodeMail($code));
+        Mail::to($request->email)->queue(new PasswordResetCodeMail($code));
 
         return response()->json(['message' => 'Reset code sent to your email.']);
     }

@@ -35,6 +35,7 @@ return new class extends Migration {
             $table->string('license_number')->nullable();
             $table->string('activation_key')->nullable();
             $table->string('url_link')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }

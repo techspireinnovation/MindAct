@@ -29,6 +29,31 @@ class CompanyAdminTest extends TestCase
 
     }
 
+    public function test_lists_companies()
+    {
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('super_admin');
+        $companies = Company::factory()->count(5)->create();
+        Sanctum::actingAs($superAdmin, ['*']);
+        $response = $this->getJson('/api/admin/companies');
+        $response->assertStatus(200)
+                 ->assertJsonStructure([
+                     'data',
+                     'links',
+                     'current_page',
+                     'from',
+                     'last_page',
+                     'last_page_url',
+                     'next_page_url',
+                     'path',
+                     'per_page',
+                     'prev_page_url',
+                     'to',
+                     'total'
+                 ])
+                 ->assertJsonCount(5, 'data');
+    }
+
     public function test_super_admin_can_store_company_and_admin()
     {
         $superAdmin = User::factory()->create();
@@ -101,4 +126,50 @@ class CompanyAdminTest extends TestCase
         $this->assertDatabaseHas('companies', ['name' => 'UpdatedBySuper']);
         $this->assertDatabaseHas('users', ['email' => 'updated@company.com']);
     }
+
+    public function test_super_admin_can_soft_delete_company()
+    {
+     
+        $company = Company::factory()->create([
+            'name' => 'Delete Me'
+        ]);
+    
+     
+        $superAdmin = User::factory()->create();
+        $superAdmin->assignRole('super_admin');
+    
+  
+        if (!$superAdmin->hasRole('super_admin')) {
+            throw new \Exception('Super admin role not assigned');
+        }
+    
+        
+        Sanctum::actingAs($superAdmin, ['*']);
+    
+        
+        if (!auth()->check()) {
+            throw new \Exception('Sanctum authentication failed');
+        }
+    
+     
+        $response = $this->deleteJson("/api/admin/companies/{$company->id}");
+    
+        
+        if ($response->status() !== 200) {
+            dd($response->json());
+        }
+    
+        
+        $response->assertStatus(200)
+                 ->assertJson([
+                     'message' => 'Company deleted!!'
+                 ]);
+    
+        
+        $this->assertSoftDeleted('companies', [
+            'id' => $company->id,
+            'name' => 'Delete Me',
+        ]);
+    }
+
 }

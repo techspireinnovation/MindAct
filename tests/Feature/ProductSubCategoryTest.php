@@ -2,22 +2,25 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanyUser;
-use App\Models\ProductType;
+use App\Models\ProductCategory;
+use App\Models\ProductSubCategory;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Role;
 use Laravel\Sanctum\Sanctum;
-use Illuminate\Foundation\Testing\WithFaker;
 use Tests\TestCase;
 
-class ProductTypeTest extends TestCase
+class ProductSubCategoryTest extends TestCase
 {
     /**
      * A basic feature test example.
      */
     use RefreshDatabase;
+
 
     protected $company;
 
@@ -28,6 +31,7 @@ class ProductTypeTest extends TestCase
 {
     parent::setUp();
     $this->company = Company::factory()->create();
+    $this->category = ProductCategory::factory()->create();
 
     $this->companyAdmin = User::factory()->companyAdmin()->create();
 
@@ -45,14 +49,14 @@ class ProductTypeTest extends TestCase
   
 }
 
-public function test_lists_all_product_types(): void
+public function test_lists_all_product_sub_categories(): void
 {
    
-    ProductType::factory()->count(15)->create([
+    ProductSubCategory::factory()->count(15)->create([
         'company_id' => $this->company->id 
     ]);
 
-    $response = $this->getJson('/api/company/product-types');
+    $response = $this->getJson('/api/company/product-sub-categories');
 
     $response->assertStatus(200)
              ->assertJsonStructure([
@@ -87,7 +91,7 @@ public function test_lists_all_product_types(): void
     // First check if we have any data at all
     $responseData = $response->json();
     $this->assertGreaterThan(0, count($responseData['data']), 
-        'Expected at least one product category but got none. Check company filtering.');
+        'Expected at least one product sub category but got none. Check company filtering.');
     
     // Then verify pagination
     if (count($responseData['data']) > 0) {
@@ -99,65 +103,78 @@ public function test_lists_all_product_types(): void
     $this->assertLessThanOrEqual(10, count($responseData['data']));
 }
 
-    public function test_creates_a_product_type(): void
+    public function test_creates_a_product_sub_category(): void
     {
-        $response = $this->postJson('/api/company/product-types', [
-            'name' => 'Electronics',
+        $response = $this->postJson('/api/company/product-sub-categories', [
+            'name' => 'Sub Category',
+          
+            'category_id' => $this->category->id,
             'company_id' => $this->company->id,
             'is_active' => true,
         ]);
 
         $response->assertStatus(201)
                  ->assertJsonFragment([
-                     'name' => 'Electronics',
-                     'company_id' => $this->company->id,
-                     'is_active' => true,
+                    'name' => 'Sub Category',
+          
+                    'category_id' => $this->category->id,
+                    'company_id' => $this->company->id,
+                    'is_active' => true,
                  ]);
-        $this->assertTrue(ProductType::where('name', 'Electronics')->exists());
+        $this->assertTrue(ProductSubCategory::where('name','Sub Category')->exists());
     }
 
   
 
 
-    public function test_updates_a_product_type(): void
+    public function test_updates_a_product_sub_category(): void
     {
-        $type = ProductType::create([
-            'name' => 'Electronics',
+        $sub_category = ProductSubCategory::create([
+      
+            'name' => 'Sub Category',
+          
+            'category_id' => $this->category->id,
+            'company_id' => $this->company->id,
             'is_active' => true,
-            'company_id' => $this->company->id]);
 
-        $response = $this->putJson("/api/company/product-types/{$type->id}", [
-            'name' => 'Updated Electronics',
+        ]);
+
+        $response = $this->putJson("/api/company/product-sub-categories/{$sub_category->id}", [
+            'name' => 'Sub update Category',
+            'category_id' => $this->category->id,
+       
             'company_id' => $this->company->id,
             'is_active' => false,
         ]);
 
         $response->assertStatus(200)
                  ->assertJsonFragment([
-                     'name' => 'Updated Electronics',
+                     'name' => 'Sub update Category',
+                
+                     'category_id' => $this->category->id,
+                     'company_id' => $this->company->id,
                      'is_active' => false,
                  ]);
-        $this->assertFalse(ProductType::find($type->id)->is_active);
+        $this->assertFalse(ProductSubCategory::find($sub_category->id)->is_active);
     }
 
   
    
 
-    public function test_deletes_a_product_type(): void
+    public function test_deletes_a_sub_cataegory(): void
     {
-        $type = ProductType::create([
-            'name' => 'Deleted Electronics',
+        $sub_category = ProductSubCategory::create([
+            'name' => 'Delete me',
+            'category_id' => $this->category->id,       
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->deleteJson("/api/company/product-types/{$type->id}");
+        $response = $this->deleteJson("/api/company/product-sub-categories/{$sub_category->id}");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Product Type deleted!!']);
-        $this->assertNotNull(ProductType::withTrashed()->find($type->id)->deleted_at);
+                 ->assertJson(['message' => 'Product Sub Category deleted!!']);
+        $this->assertNotNull(ProductSubCategory::withTrashed()->find($sub_category->id)->deleted_at);
     }
-
-  
-
+   
    
 }

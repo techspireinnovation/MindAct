@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ProductField;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use App\Models\ProductField;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -20,9 +20,13 @@ class ProductFieldController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',                
+            'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
-           
+            'type' => 'required|string|in:text,dropdown',
+            'values' => 'required_if:type,dropdown|array',
+            'values.*' => 'required_if:type,dropdown|string|max:255',
+
+
         ]);
 
         $product_field = ProductField::create($validated);
@@ -44,7 +48,7 @@ class ProductFieldController extends Controller
     }
 
 
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -52,9 +56,9 @@ class ProductFieldController extends Controller
             $product_field = ProductField::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',                
+                'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
-               
+
             ]);
             $product_field->update($validated);
             return response()->json($product_field);
@@ -65,9 +69,9 @@ class ProductFieldController extends Controller
         }
     }
 
-   
 
-    
+
+
 
     public function destroy($id): JsonResponse
     {

@@ -10,15 +10,19 @@ class ProductField extends Model
 {
     use softDeletes;
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
+        'values',
         'company_id',
         'is_active',
         'deleted_at'
     ];
 
+    protected $casts = [
+        'values' => 'array',
+    ];
 
-    protected $dates =['deleted_at'];
+    protected $dates = ['deleted_at'];
 
     protected static function booted()
     {

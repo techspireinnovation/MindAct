@@ -12,6 +12,7 @@ class ProductField extends Model
 
     protected $fillable = [
         'name',
+        'type',
         'values',
         'company_id',
         'is_active',

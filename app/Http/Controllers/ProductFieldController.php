@@ -25,8 +25,6 @@ class ProductFieldController extends Controller
             'type' => 'required|string|in:text,dropdown',
             'values' => 'required_if:type,dropdown|array',
             'values.*' => 'required_if:type,dropdown|string|max:255',
-
-
         ]);
 
         $product_field = ProductField::create($validated);
@@ -58,6 +56,9 @@ class ProductFieldController extends Controller
                 'name' => 'required|string|max:255',
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
+                'type' => 'required|string|in:text,dropdown',
+                'values' => 'required_if:type,dropdown|array',
+                'values.*' => 'required_if:type,dropdown|string|max:255',
 
             ]);
             $product_field->update($validated);

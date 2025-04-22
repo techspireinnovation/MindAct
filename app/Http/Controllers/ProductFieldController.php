@@ -15,7 +15,6 @@ class ProductFieldController extends Controller
         return response()->json(ProductField::paginate(10));
     }
 
-
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -45,9 +44,6 @@ class ProductFieldController extends Controller
         }
     }
 
-
-
-
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -69,10 +65,6 @@ class ProductFieldController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
-
-
-
-
 
     public function destroy($id): JsonResponse
     {

@@ -58,4 +58,8 @@ class User extends Authenticatable
         return $this->hasOne(CompanyUser::class, 'user_id')->with('company');
     }
 
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
+    }
 }

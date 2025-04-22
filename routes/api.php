@@ -21,7 +21,7 @@ use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\SubGroupController;
 
-//Route::post('/register', [AuthController::class, 'register']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/company/login', [CompanyAdminController::class, 'login']);
 

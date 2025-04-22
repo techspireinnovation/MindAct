@@ -11,11 +11,17 @@ use App\Models\ProductType;
 use App\Models\ProductList;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model
 {
+    use SoftDeletes, HasFactory;
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
     protected $fillable = [
         'name',
         'debit_note',
@@ -37,9 +43,10 @@ class Product extends Model
         'is_vatable',
         'product_type_id',
         'location_id',
+        
     ];
 
-    use SoftDeletes;
+    
     protected $dates = ['deleted_at'];
 
     protected static function booted()

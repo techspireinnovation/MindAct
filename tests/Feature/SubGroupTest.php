@@ -2,11 +2,13 @@
 
 namespace Tests\Feature;
 
-
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanyUser;
-use App\Models\Branch;
+use App\Models\SubGroup;
+use App\Models\MainGroup;
+
+
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -14,7 +16,7 @@ use Spatie\Permission\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-class BranchTest extends TestCase
+class SubGroupTest extends TestCase
 {
     /**
      * A basic feature test example.
@@ -48,14 +50,14 @@ class BranchTest extends TestCase
   
 }
 
-public function test_lists_all_branches(): void
+public function test_lists_all_sub_groups(): void
 {
    
-    Branch::factory()->count(15)->create([
+    SubGroup::factory()->count(15)->create([
         'company_id' => $this->company->id 
     ]);
 
-    $response = $this->getJson('/api/company/branches');
+    $response = $this->getJson('/api/company/sub-groups');
 
     $response->assertStatus(200)
              ->assertJsonStructure([
@@ -90,7 +92,7 @@ public function test_lists_all_branches(): void
    
     $responseData = $response->json();
     $this->assertGreaterThan(0, count($responseData['data']), 
-        'Expected at least one branch but got none. Check company filtering.');
+        'Expected at least one sub Group but got none. Check company filtering.');
     
    
     if (count($responseData['data']) > 0) {
@@ -102,64 +104,99 @@ public function test_lists_all_branches(): void
     $this->assertLessThanOrEqual(10, count($responseData['data']));
 }
 
-    public function test_creates_a_branch(): void
+    public function test_creates_a_sub_group(): void
     {
-        $response = $this->postJson('/api/company/branches', [
-            'name' => 'Kathmandu',
+        $main_group = MainGroup::create([
+            'name' => 'Assets',
+            'is_active' => true,
+            'company_id' => $this->company->id]);
+     
+        $response = $this->postJson('/api/company/sub-groups', [
+            'name' => 'Assets',
+            'code' => 'AS',
+            'ranking_for_trial' => '1',
             'company_id' => $this->company->id,
+            'main_group_id' => $main_group->id,
             'is_active' => true,
         ]);
 
         $response->assertStatus(201)
                  ->assertJsonFragment([
-                     'name' => 'Kathmandu',
+                     'name' => 'Assets',
+                     'code' => 'AS',
+                     'ranking_for_trial' => '1',
                      'company_id' => $this->company->id,
+                     'main_group_id' => $main_group->id,
+                     
                      'is_active' => true,
                  ]);
-        $this->assertTrue(Branch::where('name', 'Kathmandu')->exists());
+        $this->assertTrue(SubGroup::where('name', 'Assets')->where('code', 'AS')->where('ranking_for_trial','1')->exists());
     }
 
   
 
 
-    public function test_updates_a_branch(): void
+    public function test_updates_a_sub_group(): void
     {
-        $branch = Branch::create([
-            'name' => 'Butwal',
+        $main_group = MainGroup::create([
+            'name' => 'Liabilities',
             'is_active' => true,
-            'company_id' => $this->company->id]);
+            'company_id' => $this->company->id
+        ]);
+        $group = SubGroup::create([
+            'name' => 'Liabilities',
+            'code' => 'LI',
+            'ranking_for_trial' => '2',
+            'main_group_id' => $main_group->id,
+            'is_active' => true,
+            'company_id' => $this->company->id
+        ]);
 
-        $response = $this->putJson("/api/company/branches/{$branch->id}", [
-            'name' => 'Tikapur',
+
+        $response = $this->putJson("/api/company/sub-groups/{$group->id}", [
+            'name' => 'Liabilities Update',
+            'code' => 'LIupdate',
+            'ranking_for_trial' => 23,
+            'main_group_id' => $main_group->id,
             'company_id' => $this->company->id,
             'is_active' => false,
         ]);
 
         $response->assertStatus(200)
                  ->assertJsonFragment([
-                     'name' => 'Tikapur',
+                     'name' => 'Liabilities Update',
+                     'code' => 'LIupdate',
+                     'ranking_for_trial' => 23,
+                     'main_group_id' => $main_group->id,
                      'company_id' => $this->company->id,
                      'is_active' => false,
                  ]);
-        $this->assertFalse(Branch::find($branch->id)->is_active);
+        $this->assertFalse(SubGroup::find($group->id)->is_active);
     }
 
   
    
 
-    public function test_deletes_a_branch(): void
+    public function test_deletes_a_sub_group(): void
     {
-        $branch = Branch::create([
-            'name' => 'Kamalpokhari',
+        $main_group = MainGroup::create([
+            'name' => 'Property',
             'is_active' => true,
-            'company_id' => $this->company->id]);
+            'company_id' => $this->company->id
+        ]);
+         $group = SubGroup::create([
+            'name' => 'Property',
+            'code' => 'PR',
+            'ranking_for_trial' => 3,
+            'main_group_id' => $main_group->id,
+            'is_active' => true,
+            'company_id' => $this->company->id
+        ]);      
 
-        $response = $this->deleteJson("/api/company/branches/{$branch->id}");
+        $response = $this->deleteJson("/api/company/sub-groups/{$group->id}");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Branch deleted']);
-        $this->assertNotNull(Branch::withTrashed()->find($branch->id)->deleted_at);
+                 ->assertJson(['message' => 'Sub Group deleted!!']);
+        $this->assertNotNull(SubGroup::withTrashed()->find($group->id)->deleted_at);
     }
-
-
 }

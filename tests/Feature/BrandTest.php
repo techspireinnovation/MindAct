@@ -144,55 +144,76 @@ class BrandTest extends TestCase
 
     public function test_fails_to_create_brand_with_invalid_data(): void
     {
-
         $company = Company::factory()->create();
-
+    
         $user = User::factory()->companyAdmin()->create();
-
+    
         CompanyUser::factory()->create([
             'user_id' => $user->id,
             'company_id' => $company->id,
         ]);
-        Sanctum::actingAs($user);
-        $response = $this->postJson('/api/company/brands', [
-            'name' => '',
-            'company_id' => 999,
-        ]);
-
-        $response->assertStatus(422)
-                 ->assertJsonValidationErrors(['name']);
-    }
-    public function test_updates_only_specific_fields(): void
-    {
-        
-        $company = Company::factory()->create();
-        $user = User::factory()->companyAdmin()->create();
-
-        $companyUser = CompanyUser::factory()->create([
-            'user_id' => $user->id,
-            'company_id' => $company->id,
-        ]);
-          // Assign company.admin role to the user
-         $role = Role::firstOrCreate([
+    
+        $role = Role::firstOrCreate([
             'name' => 'company_admin',
             'guard_name' => 'api'
         ]);
-        
         $user->assignRole($role);
-        
-        Sanctum::actingAs($user);
-
-        $brand = Brand::factory()->create(['company_id' => $company->id]);
-
+    
+        Sanctum::actingAs($user, ['*']);
+    
         $response = $this->withHeaders(['company_id' => $company->id])
-        ->putJson("/api/company/brands/{$brand->id}", [
+                         ->postJson('/api/company/brands', [
+                             'name' => '',
+                             'company_id' => 999, // you might even remove this to test only name validation
+                         ]);
+    
+        $response->assertStatus(422)
+                 ->assertJsonValidationErrors(['name']);
+    }
+    
+    public function test_updates_only_specific_fields(): void
+    {
+        $company = Company::factory()->create();
+    
+        $user = User::factory()->companyAdmin()->create();
+    
+        CompanyUser::factory()->create([
+            'user_id' => $user->id,
+            'company_id' => $company->id,
+        ]);
+    
+        $role = Role::firstOrCreate([
+            'name' => 'company_admin',
+            'guard_name' => 'api'
+        ]);
+    
+        $user->assignRole($role);
+    
+        Sanctum::actingAs($user, ['*']);
+    
+        $brand = Brand::factory()->create([
+            'company_id' => $company->id,
+            'name' => 'Original Brand',
+            'is_active' => true,
+        ]);
+    
+        $response = $this->withHeaders(['company_id' => $company->id])
+                         ->putJson("/api/company/brands/{$brand->id}", [
+                             'name' => 'New Name',
+                         ]);
+    
+        $response->assertStatus(200)
+                 ->assertJsonFragment([
+                     'name' => 'New Name',
+                     'company_id' => $company->id,
+                 ]);
+    
+        $this->assertDatabaseHas('brands', [
+            'id' => $brand->id,
             'name' => 'New Name',
         ]);
-
-
-        $response->assertStatus(200)
-                 ->assertJsonFragment(['name' => 'New Name']);
     }
+    
 
     /**
      * Test that a company admin can delete a brand.

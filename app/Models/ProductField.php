@@ -15,15 +15,20 @@ class ProductField extends Model
         'is_active' => 'boolean',
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
+        'type',
+        'values',
         'company_id',
         'is_active',
         'deleted_at'
     ];
 
+    protected $casts = [
+        'values' => 'array',
+    ];
 
-    protected $dates =['deleted_at'];
+    protected $dates = ['deleted_at'];
 
     protected static function booted()
     {

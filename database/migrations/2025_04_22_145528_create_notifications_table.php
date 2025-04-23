@@ -10,14 +10,12 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('product_fields', function (Blueprint $table) {
+        Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignID('company_id')->constrained();
-            $table->string('name');
-            $table->enum('type', ['text', 'dropdown']);
-            $table->json('values')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->softDeletes();
+            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
+            $table->string('type', 20);
+            $table->text('data');
+            $table->timestamp('read_at')->nullable();
             $table->timestamps();
         });
     }
@@ -27,6 +25,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('product_fields');
+        Schema::dropIfExists('notifications');
     }
 };

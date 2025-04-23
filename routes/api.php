@@ -8,6 +8,9 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\SubGroupController;
@@ -52,7 +55,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
 
 
-// company admin operations
+
 Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
     Route::get('profile', [CompanyAdminController::class, 'profile']);
     Route::get('logout', [CompanyAdminController::class, 'logout']);
@@ -61,6 +64,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
+    Route::resource('customers', CustomerController::class);
+    Route::resource('sales', SaleController::class);
+    Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);

@@ -64,7 +64,7 @@ class ProductCategoryController extends Controller
         }
 
         $product_category->update($validated);
-        $product_category->refresh(); // Refresh to get updated values
+        $product_category->refresh(); 
 
         return response()->json($product_category);
     } catch (ModelNotFoundException $e) {

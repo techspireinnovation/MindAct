@@ -228,9 +228,27 @@ class CompanyController extends Controller
     public function show($id){
         try{
             $company = Company::findOrFail($id);
+            
+            $companyUser = CompanyUser::where('company_id', $company->id)->first();
+            if (!$companyUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company Not found',
+                ], 404);
+            }
+            $userAdmin = $companyUser->user;
+            if (!$userAdmin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No user associated with this company',
+                ], 404);
+            }
             return response()->json([
                 'success' => true,
-                'data' => $company
+                'data' =>[ 
+                'company'=> $company,
+                'user' => $userAdmin,
+                ]
             ], 200);
         }catch(ModelNotFoundException $e){
             return response()->json([

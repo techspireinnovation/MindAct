@@ -4,10 +4,10 @@ namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
-
+use Illuminate\Database\Eloquent\SoftDeletes;
 class Supplier extends Model
 {
-
+    use softDeletes;
     protected $fillable = [
         'name',
         'company_id',

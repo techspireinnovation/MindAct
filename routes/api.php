@@ -54,6 +54,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('products', ProductController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
+    Route::apiResource('suppliers', BrandController::class);
     Route::apiResource('locations', LocationController::class);
     Route::apiResource('main-groups', MainGroupController::class);
     Route::apiResource('sub-groups', SubGroupController::class);

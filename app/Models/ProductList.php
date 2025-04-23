@@ -5,13 +5,21 @@ namespace App\Models;
 use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\Scopes\CompanyIdScope;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\softDeletes;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\softDeletes;
 use Request;
 
 class ProductList extends Model
 {
-  use softDeletes;
+  use softDeletes, HasFactory;
+
+  protected $casts = [
+    'is_active' => 'boolean',
+  ];
 
   protected $fillable = [
     'product_id',

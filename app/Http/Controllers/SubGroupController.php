@@ -27,7 +27,7 @@ class SubGroupController extends Controller
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'code' => 'string|max:255',
-                'ranking_for_trial' => 'string|max:255'
+                'ranking_for_trial' => 'integer|max:255'
             ]);
             $group->update($validated);
             return response()->json($group);

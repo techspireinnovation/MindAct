@@ -2,21 +2,24 @@
 
 namespace Tests\Feature;
 
+use Illuminate\Foundation\Testing\RefreshDatabase;
+
 
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanyUser;
-use App\Models\Branch;
+use App\Models\MainGroup;
 
-use Illuminate\Foundation\Testing\RefreshDatabase;
+
 use Illuminate\Foundation\Testing\WithFaker;
-use Spatie\Permission\Models\Role;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-class BranchTest extends TestCase
+use Spatie\Permission\Models\Role;
+use Laravel\Sanctum\Sanctum;
+
+class MainGroupTest extends TestCase
 {
-    /**
+     /**
      * A basic feature test example.
      */
     use RefreshDatabase;
@@ -48,14 +51,14 @@ class BranchTest extends TestCase
   
 }
 
-public function test_lists_all_branches(): void
+public function test_lists_all_main_groups(): void
 {
    
-    Branch::factory()->count(15)->create([
+    MainGroup::factory()->count(15)->create([
         'company_id' => $this->company->id 
     ]);
 
-    $response = $this->getJson('/api/company/branches');
+    $response = $this->getJson('/api/company/main-groups');
 
     $response->assertStatus(200)
              ->assertJsonStructure([
@@ -90,7 +93,7 @@ public function test_lists_all_branches(): void
    
     $responseData = $response->json();
     $this->assertGreaterThan(0, count($responseData['data']), 
-        'Expected at least one branch but got none. Check company filtering.');
+        'Expected at least one Main Group but got none. Check company filtering.');
     
    
     if (count($responseData['data']) > 0) {
@@ -102,64 +105,63 @@ public function test_lists_all_branches(): void
     $this->assertLessThanOrEqual(10, count($responseData['data']));
 }
 
-    public function test_creates_a_branch(): void
+    public function test_creates_a_main_group(): void
     {
-        $response = $this->postJson('/api/company/branches', [
-            'name' => 'Kathmandu',
+        $response = $this->postJson('/api/company/main-groups', [
+            'name' => 'Assets',
             'company_id' => $this->company->id,
             'is_active' => true,
         ]);
 
         $response->assertStatus(201)
                  ->assertJsonFragment([
-                     'name' => 'Kathmandu',
+                     'name' => 'Assets',
                      'company_id' => $this->company->id,
                      'is_active' => true,
                  ]);
-        $this->assertTrue(Branch::where('name', 'Kathmandu')->exists());
+        $this->assertTrue(MainGroup::where('name', 'Assets')->exists());
     }
 
   
 
 
-    public function test_updates_a_branch(): void
+    public function test_updates_a_main_group(): void
     {
-        $branch = Branch::create([
-            'name' => 'Butwal',
+        $group = MainGroup::create([
+            'name' => 'Liabilities',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->putJson("/api/company/branches/{$branch->id}", [
-            'name' => 'Tikapur',
+        $response = $this->putJson("/api/company/main-groups/{$group->id}", [
+            'name' => 'Liabilities Update',
             'company_id' => $this->company->id,
             'is_active' => false,
         ]);
 
         $response->assertStatus(200)
                  ->assertJsonFragment([
-                     'name' => 'Tikapur',
+                     'name' => 'Liabilities Update',
                      'company_id' => $this->company->id,
                      'is_active' => false,
                  ]);
-        $this->assertFalse(Branch::find($branch->id)->is_active);
+        $this->assertFalse(MainGroup::find($group->id)->is_active);
     }
 
   
    
 
-    public function test_deletes_a_branch(): void
+    public function test_deletes_a_main_group(): void
     {
-        $branch = Branch::create([
-            'name' => 'Kamalpokhari',
+        $group = MainGroup::create([
+            'name' => 'Property',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->deleteJson("/api/company/branches/{$branch->id}");
+        $response = $this->deleteJson("/api/company/main-groups/{$group->id}");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Branch deleted']);
-        $this->assertNotNull(Branch::withTrashed()->find($branch->id)->deleted_at);
+                 ->assertJson(['message' => 'Main Group deleted!!']);
+        $this->assertNotNull(MainGroup::withTrashed()->find($group->id)->deleted_at);
     }
-
 
 }

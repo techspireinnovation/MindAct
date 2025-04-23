@@ -61,9 +61,6 @@ class ProductController extends Controller
                 $existingProductIds = $product->productFieldValues()->pluck('id')->toArray();
                 $incomingProductIds = collect($validated['field_values'] ?? [])->pluck('id')->filter()->toArray();
 
-                // 🧼 Delete key values not in request
-                $fieldsValuesToDelete = array_diff($existingProductIds, $incomingProductIds);
-                ProductFieldValue::forceDestroy($fieldsValuesToDelete);
 
                 foreach ($validated['field_values'] ?? [] as $data) {
                     if (isset($data['id'])) {
@@ -78,25 +75,13 @@ class ProductController extends Controller
                     }
                 }
 
-                $existingProductIds = $product->productList()->pluck('id')->toArray();
-                $incomingProductIds = collect($validated['product_list'] ?? [])->pluck('id')->filter()->toArray();
 
                 // 🧼 Delete key values not in request
                 $fieldsValuesToDelete = array_diff($existingProductIds, $incomingProductIds);
-                ProductList::forceDestroy($fieldsValuesToDelete);
+                ProductFieldValue::forceDestroy($fieldsValuesToDelete);
 
-                foreach ($validated['product_list'] ?? [] as $data) {
-                    if (isset($data['id'])) {
-                        // 🛠 Update existing item
-                        $comment = ProductList::find($data['id']);
-                        $comment->update([
-                            'product_id' => $data['product_id'],
-                            'value' => $data['value'],
-                        ]);
-                    } else {
-                        $product->productList()->create($data);
-                    }
-                }
+                
+
             });
             return response()->json(['message' => 'Product Updated']);
 
@@ -179,7 +164,7 @@ class ProductController extends Controller
         try {
             $item = Product::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'Product Type deleted']);
+            return response()->json(['message' => 'Product deleted!!']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {

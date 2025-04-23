@@ -20,6 +20,7 @@ use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
+use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -54,6 +55,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('products', ProductController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
+    Route::apiResource('stores', StoreController::class);
     Route::apiResource('locations', LocationController::class);
     Route::apiResource('main-groups', MainGroupController::class);
     Route::apiResource('sub-groups', SubGroupController::class);

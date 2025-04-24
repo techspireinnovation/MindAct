@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
@@ -47,6 +48,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('profile', [CompanyAdminController::class, 'profile']);
     Route::get('logout', [CompanyAdminController::class, 'logout']);
+    Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
     Route::put('update', [CompanyController::class, 'update']);
     Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);

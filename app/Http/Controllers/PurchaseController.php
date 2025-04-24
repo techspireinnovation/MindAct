@@ -123,12 +123,9 @@ class PurchaseController extends Controller
         ]);
 
         $item = Purchase::create($validated);
-
-
         if (isset($validated['purchase_products'])) {
             $item->purchaseProducts()->createMany($validated['purchase_products']);
         }
-
         return response()->json($item, 201);
     }
 

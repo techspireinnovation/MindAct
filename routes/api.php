@@ -22,6 +22,7 @@ use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\SupplierController;
 
@@ -57,7 +58,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);
     Route::resource('purchases', PurchaseController::class);
-    Route::resource('purchases-returns', PurchaseController::class);
+    Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
     Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);

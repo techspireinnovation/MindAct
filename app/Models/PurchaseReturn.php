@@ -43,9 +43,9 @@ class PurchaseReturn extends Model
         return $this->belongsTo(Location::class, 'location_id');
     }
 
-    public function purchaseProducts(): HasMany
+    public function purchaseReturnProducts(): HasMany
     {
-        return $this->hasMany(PurchaseProduct::class);
+        return $this->hasMany(PurchaseProductReturn::class);
     }
 
 

@@ -6,6 +6,7 @@ use App\Models\ProductFieldValue;
 use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
+use App\Models\PurchaseReturn;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -16,7 +17,7 @@ class PurchaseReturnController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Purchase::paginate(50));
+        return response()->json(PurchaseReturn::paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -109,22 +110,22 @@ class PurchaseReturnController extends Controller
             'discount_amount_vat' => 'numeric',
             'store_id' => 'integer|exists:stores,id',
             'location_id' => 'integer|exists:locations,id',
-            'purchase_products' => 'nullable|array',
-            'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-            'purchase_products.*.quantity' => 'nullable|integer',
-            'purchase_products.*.product_id' => 'required|integer|exists:products,id',
-            'purchase_products.*.free_quantity' => 'nullable|numeric',
-            'purchase_products.*.price' => 'nullable|numeric',
-            'purchase_products.*.discount' => 'nullable|numeric',
-            'purchase_products.*.discount_percent' => 'nullable|numeric',
-            'purchase_products.*.discount_amount' => 'nullable|numeric',
-            'purchase_products.*.is_vatable' => 'required',
+            'purchase_return_products' => 'nullable|array',
+            'purchase_return_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
+            'purchase_return_products.*.quantity' => 'nullable|integer',
+            'purchase_return_products.*.product_id' => 'required|integer|exists:products,id',
+            'purchase_return_products.*.free_quantity' => 'nullable|numeric',
+            'purchase_return_products.*.price' => 'nullable|numeric',
+            'purchase_return_products.*.discount' => 'nullable|numeric',
+            'purchase_return_products.*.discount_percent' => 'nullable|numeric',
+            'purchase_return_products.*.discount_amount' => 'nullable|numeric',
+            'purchase_return_products.*.is_vatable' => 'required',
             'company_id' => 'integer|exists:companies,id'
         ]);
 
-        $item = Purchase::create($validated);
-        if (isset($validated['purchase_products'])) {
-            $item->purchaseProducts()->createMany($validated['purchase_products']);
+        $item = PurchaseReturn::create($validated);
+        if (isset($validated['purchase_return_products'])) {
+            $item->purchaseReturnProducts()->createMany($validated['purchase_return_products']);
         }
         return response()->json($item, 201);
     }

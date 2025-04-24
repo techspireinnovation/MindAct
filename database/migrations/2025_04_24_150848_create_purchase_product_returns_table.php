@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('purchase_product_returns', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
-            $table->foreignID(column: 'purchase_id')->constrained('purchases');
+            $table->foreignID(column: 'purchase_return_id')->constrained('purchase_returns');
             $table->foreignID(column: 'product_id')->constrained('products');
             $table->double('quantity')->nullable();
             $table->double('free_quantity')->nullable();

@@ -10,13 +10,13 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('password_reset_codes', function (Blueprint $table) {
+        Schema::create('stores', function (Blueprint $table) {
             $table->id();
-            $table->string('email')->index();
-            $table->string('code');
-            $table->timestamp('expires_at');
+            $table->string('name');
+            $table->foreignID('company_id')->constrained();
+            $table->boolean('is_active')->default(true);
+            $table->softDeletes();
             $table->timestamps();
-
         });
     }
 
@@ -25,6 +25,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('password_reset_codes');
+        Schema::dropIfExists('stores');
     }
 };

@@ -12,7 +12,7 @@ class MeasureUnitController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(MeasureUnit::paginate(10));
+        return response()->json(MeasureUnit::paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

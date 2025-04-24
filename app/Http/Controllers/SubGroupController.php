@@ -10,12 +10,12 @@ use Illuminate\Http\JsonResponse;
 
 class SubGroupController extends Controller
 {
-    
+
     public function index(): JsonResponse
     {
-        return response()->json(SubGroup::paginate(10));
+        return response()->json(SubGroup::paginate(50));
     }
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -23,7 +23,7 @@ class SubGroupController extends Controller
             $group = SubGroup::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',                
+                'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'code' => 'string|max:255',
@@ -42,7 +42,7 @@ class SubGroupController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',                
+            'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'main_group_id' => 'integer|exists:main_groups,id',
             'code' => 'string|max:255',

@@ -9,8 +9,6 @@ use Illuminate\Http\Request;
 
 class AccountGroupController extends Controller
 {
-
-
     public function index(Request $request): JsonResponse
     {
         $query = AccountGroup::query();

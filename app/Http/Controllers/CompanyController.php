@@ -6,22 +6,16 @@ use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\User;
 use Hash;
-
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
-
-
-class CompanyController extends Controller
-{
     // Display a listing
     public function index(): JsonResponse
     {
-        return response()->json(Company::paginate(10));
+        return response()->json(Company::paginate(50));
     }
 
     // Store a new resource

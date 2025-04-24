@@ -12,10 +12,10 @@ use Illuminate\Http\Request;
 
 class ProductFieldValueController extends Controller
 {
-    
+
     public function index(): JsonResponse
     {
-        return response()->json(ProductFieldValue::paginate(10));
+        return response()->json(ProductFieldValue::paginate(50));
     }
 
 
@@ -56,21 +56,22 @@ class ProductFieldValueController extends Controller
     }
 
 
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
         try {
             $field_value = ProductFieldValue::findOrFail($id);
             $validated = $request->validate([
-                            
-               'company_id' => 'integer|exists:companies,id',
-               'product_id' => 'integer|required|exists:products,id',
-               'product_field_id' => 'integer|exists:product_fields,id',
-               'value' =>'string|max:255'
-               
+
+
+                'company_id' => 'integer|exists:companies,id',
+                'product_field_id' => 'integer|exists:product_fields,id',
+                'value' => 'string|max:255'
+
+
             ]);
-          
+
             $field_value->update($validated);
             return response()->json($field_value);
         } catch (ModelNotFoundException $e) {
@@ -80,9 +81,9 @@ class ProductFieldValueController extends Controller
         }
     }
 
-   
 
-    
+
+
 
     public function destroy($id): JsonResponse
     {

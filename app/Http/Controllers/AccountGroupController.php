@@ -9,13 +9,13 @@ use Illuminate\Http\Request;
 
 class AccountGroupController extends Controller
 {
-    
-    
+
+
     public function index(): JsonResponse
     {
-        return response()->json(AccountGroup::paginate(10));
+        return response()->json(AccountGroup::paginate(50));
     }
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -23,12 +23,12 @@ class AccountGroupController extends Controller
             $group = AccountGroup::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',                
+                'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
                 'code' => 'string|max:255',
-              
+
             ]);
             $group->update($validated);
             return response()->json($group);
@@ -43,7 +43,7 @@ class AccountGroupController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',                
+            'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'main_group_id' => 'integer|exists:main_groups,id',
             'sub_group_id' => 'integer|exists:sub_groups,id',

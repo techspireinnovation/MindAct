@@ -133,7 +133,7 @@ class PurchaseReturnController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = Purchase::with(['purchaseProducts'])->findOrFail($id);
+            $item = PurchaseReturn::with(['purchaseReturnProducts'])->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

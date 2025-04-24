@@ -3,12 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductFieldValue;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ProductFieldValueController extends Controller
 {
@@ -21,24 +20,18 @@ class ProductFieldValueController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-<<<<<<< HEAD
-        $validator = Validator::make($request->all(),[
-                        
-=======
-        $validated = $request->validate([
-
->>>>>>> d34212098159e8bac02b804ed39adc2f52ad0c19
+        $validator = Validator::make($request->all(), [
             'company_id' => 'integer|exists:companies,id',
             'product_id' => 'integer|required|exists:products,id',
             'product_field_id' => 'integer|exists:product_fields,id',
             'value' => 'string|max:255'
 
         ]);
-        if($validator->fails()){
+        if ($validator->fails()) {
             return response()->json([
                 'error' => $validator->errors()
             ], 422);
-        
+
         }
         $validated = $validator->validated();
 

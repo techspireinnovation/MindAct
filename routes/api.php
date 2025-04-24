@@ -8,15 +8,8 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
-
-
-use App\Http\Controllers\ProductController;
 use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\SaleController;
-use App\Http\Controllers\SaleProductController;
-
 use App\Http\Controllers\FileUploadController;
-
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\Master\BranchController;
@@ -29,14 +22,12 @@ use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
-
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseReturnController;
-
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\StoreController;
-
 use App\Http\Controllers\SubGroupController;
-use App\Http\Controllers\SupplierController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);

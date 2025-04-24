@@ -11,9 +11,9 @@ class LocationController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Location::paginate(10));
+        return response()->json(Location::paginate(50));
     }
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -21,7 +21,7 @@ class LocationController extends Controller
             $item = Location::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',                
+                'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
             $item->update($validated);
@@ -37,7 +37,7 @@ class LocationController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',           
+            'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);
 

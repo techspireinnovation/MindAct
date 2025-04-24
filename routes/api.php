@@ -4,6 +4,7 @@ use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
@@ -20,8 +21,14 @@ use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
+
+use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\PurchaseReturnController;
+
 use App\Http\Controllers\StoreController;
+
 use App\Http\Controllers\SubGroupController;
+use App\Http\Controllers\SupplierController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -46,6 +53,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('profile', [CompanyAdminController::class, 'profile']);
     Route::get('logout', [CompanyAdminController::class, 'logout']);
+    Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
     Route::put('update', [CompanyController::class, 'update']);
     Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);
@@ -53,9 +61,15 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('branches', BranchController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);
+    Route::resource('purchases', PurchaseController::class);
+    Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
+
+    Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
+
     Route::apiResource('stores', StoreController::class);
+
     Route::apiResource('locations', LocationController::class);
     Route::apiResource('main-groups', MainGroupController::class);
     Route::apiResource('sub-groups', SubGroupController::class);

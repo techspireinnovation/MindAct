@@ -1,13 +1,15 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Master;
+use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Models\Supplier;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class BrandController extends Controller
+class SupplierController extends Controller
 {
     public function index(): JsonResponse
     {
@@ -17,12 +19,13 @@ class BrandController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            $item = Brand::findOrFail($id);
+            $item = Supplier::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'sometimes|boolean|required',
-                'quantity' => 'integer',
-                'symbol' => 'string|max:255',
+                'email' => 'string|max:255',
+                'pan_vat_number' => 'string|max:255',
+                'mobile' => 'required|string|max:255',
+                'address' => 'required|string|max:255',
                 'company_id' => 'integer|exists:companies,id'
             ]);
             $item->update($validated);
@@ -38,20 +41,21 @@ class BrandController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',
-            'quantity' => 'integer',
-            'symbol' => 'string|max:255',
+            'email' => 'string|max:255',
+            'pan_vat_number' => 'string|max:255',
+            'mobile' => 'required|string|max:255',
+            'address' => 'required|string|max:255',
             'company_id' => 'integer|exists:companies,id'
         ]);
 
-        $item = Brand::create($validated);
+        $item = Supplier::create($validated);
         return response()->json($item, 201);
     }
 
     public function show($id): JsonResponse
     {
         try {
-            $item = Brand::findOrFail($id);
+            $item = Supplier::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -63,9 +67,9 @@ class BrandController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Brand::findOrFail($id);
+            $item = Supplier::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'Brand deleted']);
+            return response()->json(['message' => 'Supplier deleted']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {

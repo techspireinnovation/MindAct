@@ -13,7 +13,7 @@ class BranchController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Branch::paginate(10));
+        return response()->json(Branch::paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

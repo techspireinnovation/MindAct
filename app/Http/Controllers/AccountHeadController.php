@@ -10,12 +10,12 @@ use Illuminate\Http\Request;
 
 class AccountHeadController extends Controller
 {
-    
+
     public function index(): JsonResponse
     {
-        return response()->json(AccountHead::paginate(10));
+        return response()->json(AccountHead::paginate(50));
     }
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -23,11 +23,11 @@ class AccountHeadController extends Controller
             $account_head = AccountHead::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',                
+                'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'account_group_id' => 'integer|exists:account_groups,id',
                 'code' => 'string|max:255',
-              
+
             ]);
             $account_head->update($validated);
             return response()->json($account_head);
@@ -42,7 +42,7 @@ class AccountHeadController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',                
+            'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'account_group_id' => 'integer|exists:account_groups,id',
             'code' => 'string|max:255'

@@ -6,10 +6,15 @@ namespace App\Models;
 use App\Models\MainGroup;
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 use Illuminate\Database\Eloquent\SoftDeletes;
 class SubGroup extends Model
 {
-    use softDeletes;
+    use softDeletes, HasFactory;
+    protected $casts = [
+        'is_active' => 'boolean'
+    ];
 
     protected $fillable=[
         'name',

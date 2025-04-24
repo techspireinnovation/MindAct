@@ -7,11 +7,16 @@ use App\Models\SubGroup;
 use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class AccountGroup extends Model
 {
-    use softDeletes;
+    use softDeletes, HasFactory;
+
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
 
 
     protected $fillable=[

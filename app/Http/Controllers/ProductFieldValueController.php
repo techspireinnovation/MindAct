@@ -24,6 +24,7 @@ class ProductFieldValueController extends Controller
         $validated = $request->validate([
 
             'company_id' => 'integer|exists:companies,id',
+            'product_id' => 'integer|required|exists:products,id',
             'product_field_id' => 'integer|exists:product_fields,id',
             'value' => 'string|max:255'
 
@@ -56,9 +57,11 @@ class ProductFieldValueController extends Controller
             $field_value = ProductFieldValue::findOrFail($id);
             $validated = $request->validate([
 
+
                 'company_id' => 'integer|exists:companies,id',
                 'product_field_id' => 'integer|exists:product_fields,id',
                 'value' => 'string|max:255'
+
 
             ]);
 

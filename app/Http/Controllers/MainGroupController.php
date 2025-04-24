@@ -27,7 +27,7 @@ class MainGroupController extends Controller
                 'company_id' => 'integer|exists:companies,id'
             ]);
             $group->update($validated);
-            return response()->json($group);
+            return response()->json($group, 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {

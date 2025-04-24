@@ -6,7 +6,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\CompanyUser;
-use App\Models\Branch;
+use App\Models\Location;
+
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
@@ -14,7 +15,7 @@ use Spatie\Permission\Models\Role;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
-class BranchTest extends TestCase
+class LocationTest extends TestCase
 {
     /**
      * A basic feature test example.
@@ -48,14 +49,14 @@ class BranchTest extends TestCase
   
 }
 
-public function test_lists_all_branches(): void
+public function test_lists_all_locations(): void
 {
    
-    Branch::factory()->count(15)->create([
+    Location::factory()->count(15)->create([
         'company_id' => $this->company->id 
     ]);
 
-    $response = $this->getJson('/api/company/branches');
+    $response = $this->getJson('/api/company/locations');
 
     $response->assertStatus(200)
              ->assertJsonStructure([
@@ -90,7 +91,7 @@ public function test_lists_all_branches(): void
    
     $responseData = $response->json();
     $this->assertGreaterThan(0, count($responseData['data']), 
-        'Expected at least one branch but got none. Check company filtering.');
+        'Expected at least one location but got none. Check company filtering.');
     
    
     if (count($responseData['data']) > 0) {
@@ -102,9 +103,9 @@ public function test_lists_all_branches(): void
     $this->assertLessThanOrEqual(10, count($responseData['data']));
 }
 
-    public function test_creates_a_branch(): void
+    public function test_creates_a_location(): void
     {
-        $response = $this->postJson('/api/company/branches', [
+        $response = $this->postJson('/api/company/locations', [
             'name' => 'Kathmandu',
             'company_id' => $this->company->id,
             'is_active' => true,
@@ -116,20 +117,20 @@ public function test_lists_all_branches(): void
                      'company_id' => $this->company->id,
                      'is_active' => true,
                  ]);
-        $this->assertTrue(Branch::where('name', 'Kathmandu')->exists());
+        $this->assertTrue(Location::where('name', 'Kathmandu')->exists());
     }
 
   
 
 
-    public function test_updates_a_branch(): void
+    public function test_updates_a_location(): void
     {
-        $branch = Branch::create([
+        $location = Location::create([
             'name' => 'Butwal',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->putJson("/api/company/branches/{$branch->id}", [
+        $response = $this->putJson("/api/company/locations/{$location->id}", [
             'name' => 'Tikapur',
             'company_id' => $this->company->id,
             'is_active' => false,
@@ -141,24 +142,24 @@ public function test_lists_all_branches(): void
                      'company_id' => $this->company->id,
                      'is_active' => false,
                  ]);
-        $this->assertFalse(Branch::find($branch->id)->is_active);
+        $this->assertFalse(Location::find($location->id)->is_active);
     }
 
   
    
 
-    public function test_deletes_a_branch(): void
+    public function test_deletes_a_location(): void
     {
-        $branch = Branch::create([
+        $location = Location::create([
             'name' => 'Kamalpokhari',
             'is_active' => true,
             'company_id' => $this->company->id]);
 
-        $response = $this->deleteJson("/api/company/branches/{$branch->id}");
+        $response = $this->deleteJson("/api/company/locations/{$location->id}");
 
         $response->assertStatus(200)
-                 ->assertJson(['message' => 'Branch deleted']);
-        $this->assertNotNull(Branch::withTrashed()->find($branch->id)->deleted_at);
+                 ->assertJson(['message' => 'Location deleted!!']);
+        $this->assertNotNull(Location::withTrashed()->find($location->id)->deleted_at);
     }
 
 

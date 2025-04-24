@@ -57,6 +57,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);
     Route::resource('purchases', PurchaseController::class);
+    Route::resource('purchases-returns', PurchaseController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
     Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);

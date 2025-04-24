@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 use App\Models\ProductCategory;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProductCategoryController extends Controller
 {
@@ -51,7 +50,6 @@ class ProductCategoryController extends Controller
     {
         try {
             $product_category = ProductCategory::findOrFail($id);
-
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255',
                 'company_id' => 'sometimes|required|integer|exists:companies,id',
@@ -72,18 +70,6 @@ class ProductCategoryController extends Controller
         } catch (QueryException $e) {
             return response()->json(['error' => 'Update failed'], 500);
         }
-<<<<<<< HEAD
-
-        $product_category->update($validated);
-        $product_category->refresh(); 
-
-        return response()->json($product_category);
-    } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Product Category not found!!'], 404);
-    } catch (QueryException $e) {
-        return response()->json(['error' => 'Update failed'], 500);
-=======
->>>>>>> d34212098159e8bac02b804ed39adc2f52ad0c19
     }
 
     // Delete a resource

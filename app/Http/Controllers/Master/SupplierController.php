@@ -13,7 +13,7 @@ class SupplierController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Brand::paginate(10));
+        return response()->json(Brand::paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

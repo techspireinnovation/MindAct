@@ -10,12 +10,12 @@ use Illuminate\Http\Request;
 
 class MainGroupController extends Controller
 {
-    
+
     public function index(): JsonResponse
     {
-        return response()->json(MainGroup::paginate(10));
+        return response()->json(MainGroup::paginate(50));
     }
-    
+
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -23,7 +23,7 @@ class MainGroupController extends Controller
             $group = MainGroup::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',                
+                'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
             $group->update($validated);
@@ -39,7 +39,7 @@ class MainGroupController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',           
+            'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);
 

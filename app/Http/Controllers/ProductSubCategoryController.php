@@ -12,8 +12,8 @@ class ProductSubCategoryController extends Controller
 {
     public function index(): JsonResponse
     {
-        
-        return response()->json(ProductSubCategory::paginate(10));
+
+        return response()->json(ProductSubCategory::paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -22,7 +22,7 @@ class ProductSubCategoryController extends Controller
             $item = ProductSubCategory::findOrFail($id);
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'is_active' => 'boolean|required',             
+                'is_active' => 'boolean|required',
                 'category_id' => 'integer|exists:product_categories,id',
                 'company_id' => 'integer|exists:companies,id'
             ]);
@@ -37,7 +37,7 @@ class ProductSubCategoryController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'is_active' => 'boolean|required',

@@ -2,20 +2,20 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
 use App\Models\ProductFieldValue;
 use App\Models\ProductList;
+use App\Models\Purchase;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
-class ProductController extends Controller
+class PurchaseController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(Product::paginate(50));
+        return response()->json(Purchase::paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -114,44 +114,37 @@ class ProductController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'is_active' => 'boolean|required',
-            'category_id' => 'integer|exists:product_categories,id',
-            'brand_id' => 'integer|exists:brands,id',
-            'measure_unit_id' => 'integer|exists:measure_units,id',
-            'purchase_rate' => 'numeric',
-            'purchase_rate_vat' => 'numeric',
-            'retail_sales_price' => 'numeric',
-            'retail_sales_price_vat' => 'numeric',
-            'retail_sales_price_profit_percent' => 'numeric',
-            'wholesales_price' => 'numeric',
-            'wholesales_price_vat' => 'numeric',
-            'wholesales_price_profit_percent' => 'numeric',
-            'is_vatable' => 'boolean',
-            'product_type_id' => 'integer|exists:product_types,id',
+            'mrn_number' => 'required|string|max:255',
+            'bill_number' => 'string|max:255',
+            'pan_vat_number' => 'string|max:255',
+            'mrn_date' => 'string|max:255',
+            'bill_date' => 'string|max:255',
+            'discount_percent' => 'numeric',
+            'discount_percent_vat' => 'numeric',
+            'discount_amount' => 'numeric',
+            'roundoff_amount' => 'numeric',
+            'payment_type' => 'string|in:cash,bank,credit',
+            'discount_amount_vat' => 'numeric',
+            'supplier_id' => 'integer|exists:suppliers,id',
             'location_id' => 'integer|exists:locations,id',
-            'field_values' => 'required',
-            'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
-            'field_values.*.value' => 'required|string|max:255',
-            'product_list' => 'required|array',
-            'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-            'product_list.*.quantity' => 'nullable|integer',
-            'product_list.*.barcode' => 'nullable|string|max:255',
-            'product_list.*.hs_code' => 'nullable|string|max:255',
-            'product_list.*.price' => 'nullable|numeric',
-            'product_list.*.discount' => 'nullable|numeric',
-            'product_list.*.final_price' => 'nullable|numeric',
-            'product_list.*.primary_measure_unit_id' => 'required|integer|exists:measure_units,id',
+
+
+            'purchase_products' => 'nullable|array',
+            'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
+            'purchase_products.*.quantity' => 'nullable|integer',
+            'purchase_products.*.barcode' => 'required|string|max:255',
+            'purchase_products.*.information' => 'nullable|string|max:255',
+            'purchase_products.*.price' => 'nullable|numeric',
+            'purchase_products.*.discount' => 'nullable|numeric',
+            'purchase_products.*.discount_percent' => 'nullable|numeric',
+
             'company_id' => 'integer|exists:companies,id'
         ]);
 
-        $item = Product::create($validated);
+        $item = Purchase::create($validated);
 
-        if (isset($validated['field_values'])) {
-            $item->productFieldValues()->createMany($validated['field_values']);
-        }
 
-        if (isset($validated['product_list'])) {
+        if (isset($validated['purchase_products'])) {
             $item->productList()->createMany($validated['product_list']);
         }
 

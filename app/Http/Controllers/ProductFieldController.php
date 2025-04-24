@@ -12,7 +12,7 @@ class ProductFieldController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(ProductField::paginate(10));
+        return response()->json(ProductField::paginate(50));
     }
 
     public function store(Request $request): JsonResponse

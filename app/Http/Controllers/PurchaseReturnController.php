@@ -6,6 +6,7 @@ use App\Models\ProductFieldValue;
 use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
+use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseReturn;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -41,44 +42,44 @@ class PurchaseReturnController extends Controller
                 'discount_amount_vat' => 'numeric',
                 'store_id' => 'integer|exists:stores,id',
                 'location_id' => 'integer|exists:locations,id',
-                'purchase_products' => 'nullable|array',
-                'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-                'purchase_products.*.quantity' => 'nullable|integer',
-                'purchase_products.*.product_id' => 'required|integer|exists:products,id',
-                'purchase_products.*.free_quantity' => 'nullable|numeric',
-                'purchase_products.*.price' => 'nullable|numeric',
-                'purchase_products.*.discount' => 'nullable|numeric',
-                'purchase_products.*.discount_percent' => 'nullable|numeric',
-                'purchase_products.*.discount_amount' => 'nullable|numeric',
-                'purchase_products.*.is_vatable' => 'required',
+                'purchase_return_products' => 'nullable|array',
+                'purchase_return_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
+                'purchase_return_products.*.quantity' => 'nullable|integer',
+                'purchase_return_products.*.product_id' => 'required|integer|exists:products,id',
+                'purchase_return_products.*.free_quantity' => 'nullable|numeric',
+                'purchase_return_products.*.price' => 'nullable|numeric',
+                'purchase_return_products.*.discount' => 'nullable|numeric',
+                'purchase_return_products.*.discount_percent' => 'nullable|numeric',
+                'purchase_return_products.*.discount_amount' => 'nullable|numeric',
+                'purchase_return_products.*.is_vatable' => 'required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
 
             DB::transaction(function () use ($validated, $id) {
-                $product = Purchase::findOrFail($id);
+                $product = PurchaseReturn::findOrFail($id);
                 $product->update($validated);
 
-                $existingProductIds = $product->purchaseProducts()->pluck('id')->toArray();
-                $incomingProductIds = collect($validated['purchase_products'] ?? [])->pluck('id')->filter()->toArray();
+                $existingProductIds = $product->purchaseReturnProducts()->pluck('id')->toArray();
+                $incomingProductIds = collect($validated['purchase_return_products'] ?? [])->pluck('id')->filter()->toArray();
 
                 // 🧼 Delete key values not in request
                 $fieldsValuesToDelete = array_diff($existingProductIds, $incomingProductIds);
-                PurchaseProduct::forceDestroy($fieldsValuesToDelete);
+                PurchaseProductReturn::forceDestroy($fieldsValuesToDelete);
 
-                foreach ($validated['field_values'] ?? [] as $data) {
+                foreach ($validated['purchase_return_products'] ?? [] as $data) {
                     if (isset($data['id'])) {
                         // 🛠 Update existing item
-                        $comment = PurchaseProduct::find($data['id']);
+                        $comment = PurchaseProductReturn::find($data['id']);
                         $comment->update([
-                            'purchase_id' => $data['purchase_id'],
+                            'purchase_return_id' => $data['purchase_return_id'],
                             'value' => $data['value'],
                         ]);
                     } else {
-                        $product->productFieldValues()->create($data);
+                        $product->purchaseReturnProducts()->create($data);
                     }
                 }
             });
-            return response()->json(['message' => 'Purchase Updated']);
+            return response()->json(['message' => 'Purchase Return Updated']);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -149,9 +150,9 @@ class PurchaseReturnController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Purchase::findOrFail($id);
+            $item = PurchaseReturn::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'Purchase deleted']);
+            return response()->json(['message' => 'Purchase Return deleted']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {

@@ -17,21 +17,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Purchase extends Model
 {
     protected $fillable = [
-        'mrn_number',
+        'customer_id',
         'company_id',
-        'bill_number',
-        'pan_vat_number',
+        'ref_bill_number',
+        'discount_after_vat',
+        'purchase_bill_number',
         'deleted_at',
-        'mrn_date',
-        'bill_date',
-        'supplier_id',
+        'balance',
+        'invoice_date',
+        'remarks',
+        'store_id',
         'location_id',
-        'discount_percent',
-        'discount_percent_vat',
-        'discount_amount_vat',
         'discount_amount',
         'roundoff_amount',
-        'payment_type',
+        'excise_duty',
+        'health_insurance',
+        'freight_amount',
     ];
 
     use SoftDeletes;
@@ -42,31 +43,14 @@ class Purchase extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-
-    public function measureUnit()
-    {
-        return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
-    }
-
-    public function productType()
-    {
-        return $this->belongsTo(ProductType::class, 'product_type_id');
-    }
-
     public function location()
     {
         return $this->belongsTo(Location::class, 'location_id');
     }
 
-    public function productFieldValues(): HasMany
-    {
-        return $this->hasMany(ProductFieldValue::class);
-    }
-
-
     public function purchaseProducts(): HasMany
     {
-        return $this->hasMany(ProductList::class);
+        return $this->hasMany(PurchaseProduct::class);
     }
 
 

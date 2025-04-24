@@ -114,30 +114,32 @@ class PurchaseController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'mrn_number' => 'required|string|max:255',
-            'bill_number' => 'string|max:255',
-            'pan_vat_number' => 'string|max:255',
-            'mrn_date' => 'string|max:255',
-            'bill_date' => 'string|max:255',
+            'ref_bill_number' => 'required|string|max:255',
+            'purchase_bill_number' => 'string|max:255',
+            'remarks' => 'string|max:255',
+            'invoice_date' => 'string|max:255',
             'discount_percent' => 'numeric',
-            'discount_percent_vat' => 'numeric',
+            'freight_amount' => 'numeric',
+            'health_insurance' => 'numeric',
+            'balance' => 'numeric',
+            'excise_duty' => 'numeric',
             'discount_amount' => 'numeric',
+            'discount_after_vat' => 'numeric',
             'roundoff_amount' => 'numeric',
             'payment_type' => 'string|in:cash,bank,credit',
             'discount_amount_vat' => 'numeric',
-            'supplier_id' => 'integer|exists:suppliers,id',
+            'store_id' => 'integer|exists:stores,id',
             'location_id' => 'integer|exists:locations,id',
-
-
             'purchase_products' => 'nullable|array',
             'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'purchase_products.*.quantity' => 'nullable|integer',
-            'purchase_products.*.barcode' => 'required|string|max:255',
-            'purchase_products.*.information' => 'nullable|string|max:255',
+            'purchase_products.*.product_id' => 'required|integer|exists:products,id',
+            'purchase_products.*.free_quantity' => 'nullable|numeric',
             'purchase_products.*.price' => 'nullable|numeric',
             'purchase_products.*.discount' => 'nullable|numeric',
             'purchase_products.*.discount_percent' => 'nullable|numeric',
-
+            'purchase_products.*.discount_amount' => 'nullable|numeric',
+            'purchase_products.*.is_vatable' => 'required',
             'company_id' => 'integer|exists:companies,id'
         ]);
 
@@ -145,7 +147,7 @@ class PurchaseController extends Controller
 
 
         if (isset($validated['purchase_products'])) {
-            $item->productList()->createMany($validated['product_list']);
+            $item->purchaseProducts()->createMany($validated['purchase_products']);
         }
 
         return response()->json($item, 201);
@@ -154,7 +156,7 @@ class PurchaseController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = Product::with(['productFieldValues', 'productList'])->findOrFail($id);
+            $item = Purchase::with(['purchaseProducts'])->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -170,7 +172,7 @@ class PurchaseController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Product::findOrFail($id);
+            $item = Purchase::findOrFail($id);
             $item->delete();
             return response()->json(['message' => 'Product Type deleted']);
         } catch (ModelNotFoundException $e) {

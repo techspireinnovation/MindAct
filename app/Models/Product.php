@@ -7,8 +7,8 @@ use App\Models\Brand;
 use App\Models\Location;
 use App\Models\MeasureUnit;
 use App\Models\ProductCategory;
-use App\Models\ProductType;
 use App\Models\ProductList;
+use App\Models\ProductType;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -78,8 +78,7 @@ class Product extends Model
     }
 
 
-    public function productLists(): HasMany
-
+    public function productList(): HasMany
     {
         return $this->hasMany(ProductList::class);
     }

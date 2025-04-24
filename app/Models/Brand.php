@@ -3,18 +3,16 @@
 namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Support\Facades\Validator;
-
-
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Validator;
 
 class Brand extends Model
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'is_active',
@@ -32,24 +30,24 @@ class Brand extends Model
     //Below code for testing
 
     public function isValid()
-{
-    $validator = Validator::make($this->attributes, [
-        'name' => 'required|string|max:255',
-        'company_id' => 'required|exists:companies,id', // Assuming company_id exists in the companies table
-        'is_active' => 'boolean', // Assuming is_active is a boolean
-    ]);
+    {
+        $validator = Validator::make($this->attributes, [
+            'name' => 'required|string|max:255',
+            'company_id' => 'required|exists:companies,id', // Assuming company_id exists in the companies table
+            'is_active' => 'boolean', // Assuming is_active is a boolean
+        ]);
 
-    if ($validator->fails()) {
-        // Debugging: Show the validation error messages
-        dd($validator->errors());
+        if ($validator->fails()) {
+            // Debugging: Show the validation error messages
+            dd($validator->errors());
+        }
+
+        return !$validator->fails();  // Returns true if validation passes, false if it fails
     }
-
-    return !$validator->fails();  // Returns true if validation passes, false if it fails
-}
-public function isActive()
-{
-    return $this->is_active;
-}
+    public function isActive()
+    {
+        return $this->is_active;
+    }
 
 
 }

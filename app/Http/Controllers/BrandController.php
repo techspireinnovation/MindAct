@@ -9,9 +9,13 @@ use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Brand::paginate(50));
+        $query = Brand::query();
+        if ($request->has('keywords')) {
+            $query = $query->where('name', 'LIKE', "%" . $request->input('keywords') . "%");
+        }
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

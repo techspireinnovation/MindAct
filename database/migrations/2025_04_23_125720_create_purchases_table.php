@@ -29,6 +29,7 @@ return new class extends Migration {
             $table->double('roundoff_amount')->nullable();
             $table->enum('payment_type', ['cash', 'bank', 'credit'])->default('credit');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

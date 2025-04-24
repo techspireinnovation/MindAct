@@ -15,8 +15,6 @@ return new class extends Migration {
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID(column: 'purchase_id')->constrained('purchases');
             $table->foreignID(column: 'product_id')->constrained('products');
-
-
             $table->double('quantity')->nullable();
             $table->double('free_quantity')->nullable();
             $table->double('price')->nullable();
@@ -24,6 +22,7 @@ return new class extends Migration {
             $table->double('discount_amount')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

@@ -2,12 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Purchase;
 use Illuminate\Http\Request;
 
 class AutoNumberController extends Controller
 {
     function getAutoNumbers()
     {
-        return response()->json(['error' => 'Main Group not found!!'], 404);
+        $lastPurchase = Purchase::latest('id')->first();
+        //$salePurchase = Purchase::latest('id')->first();
+        return response()->json([
+            'purchase' => "P-" . $lastPurchase->id + 1,
+            //'sale' => "S-" . $salePurchase->id+1
+        ], 200);
     }
 }

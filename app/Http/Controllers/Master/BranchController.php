@@ -11,9 +11,15 @@ use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Branch::paginate(50));
+        $query = Branch::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

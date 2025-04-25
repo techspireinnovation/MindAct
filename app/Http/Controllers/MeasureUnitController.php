@@ -10,9 +10,15 @@ use Illuminate\Http\Request;
 
 class MeasureUnitController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(MeasureUnit::paginate(50));
+        $query = MeasureUnit::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

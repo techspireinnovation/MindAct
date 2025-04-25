@@ -1,8 +1,9 @@
 <?php
 
 namespace App\Models;
-
+use App\Models\SaleProduct;
 use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
@@ -15,27 +16,27 @@ class Sale extends Model
         'is_active' => 'boolean'
     ];
 
-
     protected $fillable = [
-        'company_id',
-        'store_id',
-        'customer_id',
-        'entry_type',
-        'note',
-        'invoice_quotation_number',
-        'customer_name',
-        'customer_phone',
-        'bill_number',
-        'tpin_number',
-        'billing_date',
-        'location',
-        'sale_rate_type',
-        'discount',
-        'discount_vat',
-        'paid_amount',
-        'round_of_amount',
-        'payment_type',
-        'is_active'
+            'company_id',
+            'customer_id',
+            'balance',
+            'invoice_number',
+            'invoice_date' ,
+            'batch_no', 
+            
+            'document_number',
+            'store_id',
+            'location_id',
+            'salesman_id',
+            'discount',
+            'excise_duty',
+            'health_insurance',
+            'freight_charge',
+            'discount_after_vat',
+            'round_off_amount',
+            'payment_type',
+            'is_mail_notify',
+            'is_whatsapp_notify',
     ];
 
 
@@ -45,6 +46,10 @@ class Sale extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+    public function saleProducts(): HasMany
+    {
+        return $this->hasMany(SaleProduct::class);
     }
 
 }

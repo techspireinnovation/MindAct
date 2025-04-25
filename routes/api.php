@@ -8,8 +8,10 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
-
+use App\Http\Controllers\SaleAdditionalController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\MeasureUnitController;
+use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleProductController;
@@ -17,6 +19,7 @@ use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\SubGroupController;
+use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductListController;
@@ -28,7 +31,7 @@ use App\Http\Controllers\PurchaseReturnController;
 
 use App\Http\Controllers\StoreController;
 
-use App\Http\Controllers\SubGroupController;
+
 use App\Http\Controllers\SupplierController;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -56,6 +59,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('logout', [CompanyAdminController::class, 'logout']);
     Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
     Route::put('update', [CompanyController::class, 'update']);
+    Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
+    Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
+    Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
     Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
@@ -82,6 +88,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-fields', ProductFieldController::class);
     Route::apiResource('product-field-values', ProductFieldValueController::class);
     Route::apiResource('product-lists', ProductListController::class);
+    Route::apiResource('sale-additionals', SaleAdditionalController::class);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

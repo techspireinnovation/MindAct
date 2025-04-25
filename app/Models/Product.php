@@ -40,6 +40,7 @@ class Product extends Model
         'wholesales_price',
         'wholesales_price_vat',
         'wholesales_price_profit_percent',
+        'stock_alert',
         'is_vatable',
         'product_type_id',
         'location_id',
@@ -88,6 +89,10 @@ class Product extends Model
     public function productList(): HasMany
     {
         return $this->hasMany(ProductList::class);
+    }
+
+    public function saleProduct(){
+        return $this->hasMany(SaleProduct::class);
     }
 
 

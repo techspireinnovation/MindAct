@@ -9,8 +9,13 @@ use Illuminate\Http\Request;
 
 class StoreController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $query = Store::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
         return response()->json(Store::paginate(10));
     }
 

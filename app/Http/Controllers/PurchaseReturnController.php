@@ -16,9 +16,15 @@ use Illuminate\Http\Request;
 
 class PurchaseReturnController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(PurchaseReturn::paginate(50));
+        $query = PurchaseReturn::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -30,6 +36,8 @@ class PurchaseReturnController extends Controller
                 'purchase_bill_number' => 'string|max:255',
                 'remarks' => 'string|max:255',
                 'invoice_date' => 'string|max:255',
+                'expiry_date' => 'string|max:255',
+                'batch_no' => 'string|max:255|unique:purchase_returns,batch_no,' . $id,
                 'discount_percent' => 'numeric',
                 'freight_amount' => 'numeric',
                 'health_insurance' => 'numeric',
@@ -46,6 +54,7 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'purchase_return_products.*.quantity' => 'nullable|integer',
                 'purchase_return_products.*.product_id' => 'required|integer|exists:products,id',
+                'purchase_return_products.*.expiry_date' => 'nullable|date',
                 'purchase_return_products.*.free_quantity' => 'nullable|numeric',
                 'purchase_return_products.*.price' => 'nullable|numeric',
                 'purchase_return_products.*.discount' => 'nullable|numeric',
@@ -96,11 +105,13 @@ class PurchaseReturnController extends Controller
     {
         $validated = $request->validate([
             'ref_bill_number' => 'required|string|max:255',
+            'customer_id' => 'required|exists:customers,id',
             'purchase_bill_number' => 'string|max:255',
             'remarks' => 'string|max:255',
             'invoice_date' => 'string|max:255',
             'discount_percent' => 'numeric',
             'freight_amount' => 'numeric',
+            'batch_no' => 'string|max:255|unique:purchase_returns,batch_no',
             'health_insurance' => 'numeric',
             'balance' => 'numeric',
             'excise_duty' => 'numeric',
@@ -116,6 +127,7 @@ class PurchaseReturnController extends Controller
             'purchase_return_products.*.quantity' => 'nullable|integer',
             'purchase_return_products.*.product_id' => 'required|integer|exists:products,id',
             'purchase_return_products.*.free_quantity' => 'nullable|numeric',
+            'purchase_return_products.*.expiry_date' => 'nullable|date',
             'purchase_return_products.*.price' => 'nullable|numeric',
             'purchase_return_products.*.discount' => 'nullable|numeric',
             'purchase_return_products.*.discount_percent' => 'nullable|numeric',
@@ -135,7 +147,7 @@ class PurchaseReturnController extends Controller
     {
         try {
             $item = PurchaseReturn::with(['purchaseReturnProducts'])->findOrFail($id);
-            return response()->json($item);
+            return response()->json($item->load('purchaseReturnProducts'));
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {

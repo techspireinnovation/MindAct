@@ -11,9 +11,15 @@ use Illuminate\Http\Request;
 class AccountHeadController extends Controller
 {
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(AccountHead::paginate(50));
+        $query = AccountHead::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
 

@@ -16,6 +16,7 @@ class PurchaseProductReturn extends Model
         'purchase_id',
         'product_id',
         'quantity',
+        'expiry_date',
         'deleted_at',
         'free_quantity',
         'price',

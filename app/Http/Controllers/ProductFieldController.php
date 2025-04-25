@@ -10,9 +10,15 @@ use Illuminate\Http\Request;
 
 class ProductFieldController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(ProductField::paginate(50));
+        $query = ProductField::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function store(Request $request): JsonResponse

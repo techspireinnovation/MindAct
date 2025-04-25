@@ -7,10 +7,13 @@ use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Purchase extends Model
 {
+    use SoftDeletes, HasFactory;
+   
     protected $fillable = [
         'customer_id',
         'company_id',
@@ -20,6 +23,8 @@ class Purchase extends Model
         'deleted_at',
         'balance',
         'invoice_date',
+        'batch_no',
+       
         'remarks',
         'store_id',
         'location_id',

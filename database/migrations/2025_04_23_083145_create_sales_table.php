@@ -14,23 +14,27 @@ return new class extends Migration
         Schema::create('sales', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
+            $table->foreignID('customer_id')->constrained('customers');
+            $table->double('balance')->nullable();
+            $table->string('invoice_number');
+            $table->string('batch_no')->nullable();
+            $table->date('invoice_date')->nullable();
+            $table->string('document_number')->nullable();
             $table->unsignedBigInteger('store_id');
+            $table->foreignID('location_id')->constrained('locations')->nullable();
+            $table->unsignedBigInteger('salesman_id');
+            $table->double('discount')->nullable();
+            $table->double('excise_duty')->nullable();
+            $table->double('health_insurance')->nullable();
+            $table->double('freight_charge')->nullable();
+            $table->double('discount_after_vat')->nullable();
+            $table->double('round_off_amount')->nullable();
+            $table->enum('payment_type',['cash','credit','bank']);
             $table->enum('entry_type',['invoice','quotation']);
             $table->string('note')->nullable();
-            $table->string('invoice_quotation_number');
-            $table->foreignID('customer_id')->constrained('customers');
-          
-            $table->string('bill_number')->nullable();
-            $table->string('tpin_number')->nullable();
-            $table->date('billing_date');
-            $table->foreignID('location')->constrained('locations')->nullable();
-            $table->enum('sale_rate_type',['retail','wholesale']);
-            $table->double('discount')->nullable();
-            $table->double('discount_vat')->nullable();
-            $table->double('paid_amount')->nullable();
-            $table->double('round_of_amount')->nullable();
-            $table->enum('payment_type',['cash','credit','bank']);
-            $table->boolean('is_active')->default(true);
+            $table->boolean('is_mail_notify')->default(false);
+            $table->boolean('is_whatsapp_notify')->default(false);
+        
             $table->softDeletes();
 
             $table->timestamps();

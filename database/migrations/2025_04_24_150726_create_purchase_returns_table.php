@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('customer_id')->constrained('customers');
             $table->double('balance')->nullable();
+            $table->string('batch_no')->nullable();
             $table->string('ref_bill_number')->nullable();
             $table->date('invoice_date')->nullable();
             $table->string('purchase_bill_number')->nullable();

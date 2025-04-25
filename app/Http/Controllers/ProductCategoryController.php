@@ -13,12 +13,26 @@ class ProductCategoryController extends Controller
 
     // Display a listing
 
-    public function index(): JsonResponse
-    {
-        $companyId = request()->input('company_id');
-        $categories = ProductCategory::where('company_id', $companyId)->paginate(50);
-        return response()->json($categories);
+    public function index(Request $request): JsonResponse
+{
+    $query = ProductCategory::query();
+
+    // Check for 'keywords' and apply the filter if present
+    if ($request->has('keywords')) {
+        $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
     }
+
+    // Check for 'company_id' and apply the filter if present
+    if ($request->has('company_id')) {
+        $query->where('company_id', $request->input('company_id'));
+    }
+
+    // Paginate the result, you can set the pagination size as needed
+    $categories = $query->paginate(50);
+
+    return response()->json($categories);
+}
+
 
     // Store a new resource
     public function store(Request $request): JsonResponse

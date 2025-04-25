@@ -10,10 +10,16 @@ use Illuminate\Http\Request;
 
 class ProductSubCategoryController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $query = ProductSubCategory::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
 
-        return response()->json(ProductSubCategory::paginate(50));
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

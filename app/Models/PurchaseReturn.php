@@ -17,6 +17,8 @@ class PurchaseReturn extends Model
         'ref_bill_number',
         'discount_after_vat',
         'purchase_bill_number',
+        'expiry_date',
+        'batch_no',
         'deleted_at',
         'balance',
         'invoice_date',

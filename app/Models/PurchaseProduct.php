@@ -15,6 +15,7 @@ class PurchaseProduct extends Model
         'company_id',
         'purchase_id',
         'product_id',
+        'expiry_date',
         'quantity',
         'deleted_at',
         'free_quantity',

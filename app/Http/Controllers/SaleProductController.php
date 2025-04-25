@@ -14,43 +14,51 @@ class SaleProductController extends Controller
     
     public function index(): JsonResponse
     {
+        
         return response()->json(SaleProduct::paginate(10));
     }
 
     
 
     public function store(Request $request): JsonResponse
-{
-    try {
-        $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
-            'sale_id' => 'required|exists:sales,id',
-            'information' => 'required|string|max:255',
-            'available_quantity' => 'nullable|numeric',
-            'quantity' => 'required|numeric',
-            'uom' => 'nullable|exists:measure_units,id',
-            'rate' => 'required|numeric',
-            'total_items' => 'nullable|integer',
-            'discount' => 'nullable|numeric',
-            'is_active' => 'required|boolean',
-        ]);
+    {
+        try {
+            $validator =Validator::make($request->all(),[
+                'company_id' => 'required|exists:companies,id',
+                'sale_id' => 'required|exists:sales,id',
+                'code' => 'nullable|string|max:255',
+                'name' => 'required|string|max:255|unique:sale_products,name',
+                'measure_unit_id' => 'nullable|exists:measure_units,id',
+                'quantity' => 'nullable|numeric',
+                'free_quantity' => 'nullable|numeric',
+                'price' => 'nullable|numeric',
+                'discount_percent' => 'nullable|numeric',
+                'discount_amount' => 'nullable|numeric',
+                'is_vatable' => 'boolean'
+            ]);
 
-        $saleProduct = SaleProduct::create($validated);
+            if($validator->fails()){
+                return response()->json($validator->errors(), 422);
+            }
 
-        return response()->json([
-            'message' => 'Sale Product created successfully',
-            'data' => $saleProduct
-        ], 201);
-
-    } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Item not found'], 404);
-    } catch (QueryException $e) {
-        return response()->json(['error' => 'Database error occurred.'], 500);
-    } catch (\Exception $e) {
-        dd($e->getMessage());
-        return response()->json(['error' => 'Unexpected error occurred.'], 500);
+            $validated = $validator->validated();
+    
+            $saleProduct = SaleProduct::create($validated);
+    
+            return response()->json([
+                'message' => 'Sale product created successfully',
+                'data' => $saleProduct
+            ], 201);
+    
+        }catch(ModelNotFoundException $e){
+            return response()->json(['error' => 'Item Not Found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred.'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error occurred.'], 500);
+        }
     }
-}
+    
 
 public function show($id):JsonResponse
 {
@@ -72,35 +80,41 @@ public function show($id):JsonResponse
 public function update(Request $request, $id): JsonResponse
 {
     try {
-        $validated = $request->validate([
+        $validator =Validator::make($request->all(),[
             'company_id' => 'required|exists:companies,id',
             'sale_id' => 'required|exists:sales,id',
-            'information' => 'required|string|max:255',
-            'available_quantity' => 'nullable|numeric',
-            'quantity' => 'required|numeric',
-            'uom' => 'nullable|exists:measure_units,id',
-            'rate' => 'required|numeric',
-            'total_items' => 'nullable|integer',
-            'discount' => 'nullable|numeric',
-            'is_active' => 'required|boolean',
+            'code' => 'nullable|string|max:255',
+            'name' => 'required|string|max:255|unique:sale_products,name,' .$id,
+            'measure_unit_id' => 'nullable|exists:measure_units,id',
+            'quantity' => 'nullable|numeric',
+            'free_quantity' => 'nullable|numeric',
+            'price' => 'nullable|numeric',
+            'discount_percent' => 'nullable|numeric',
+            'discount_amount' => 'nullable|numeric',
+            'is_vatable' => 'boolean'
         ]);
+        if($validator->fails()){
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
         $saleProduct = SaleProduct::findOrFail($id);
+        $validated = $validator->validated();
         $saleProduct->update($validated);
 
         return response()->json([
-            'message' => 'Sale Product updated successfully',
+            'message' => 'Sale product updated successfully',
             'data' => $saleProduct
         ]);
 
     } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Sale Product not found'], 404);
+        return response()->json(['error' => 'Sale product not found'], 404);
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
         return response()->json(['error' => 'Unexpected error occurred.'], 500);
     }
 }
+
 
 
 public function destroy($id): JsonResponse

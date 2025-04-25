@@ -12,10 +12,18 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
-    // Display a listing
-    public function index(): JsonResponse
+  
+class CompanyController extends Controller{
+
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Company::paginate(50));
+        $query = Company::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     // Store a new resource

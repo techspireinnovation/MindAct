@@ -14,9 +14,15 @@ use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Purchase::paginate(50));
+        $query = Purchase::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -30,6 +36,7 @@ class PurchaseController extends Controller
                 'invoice_date' => 'string|max:255',
                 'discount_percent' => 'numeric',
                 'freight_amount' => 'numeric',
+                'batch_no' => 'string|max:255|unique:purchases,batch_no,' . $id,
                 'health_insurance' => 'numeric',
                 'balance' => 'numeric',
                 'excise_duty' => 'numeric',
@@ -45,6 +52,7 @@ class PurchaseController extends Controller
                 'purchase_products.*.quantity' => 'nullable|integer',
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.free_quantity' => 'nullable|numeric',
+                'purchase_products.*.expiry_date' => 'nullable|date',
                 'purchase_products.*.price' => 'nullable|numeric',
                 'purchase_products.*.discount' => 'nullable|numeric',
                 'purchase_products.*.discount_percent' => 'nullable|numeric',
@@ -77,7 +85,8 @@ class PurchaseController extends Controller
                     }
                 }
             });
-            return response()->json(['message' => 'Purchase Updated']);
+            return response()->json(['message' => 'Purchase Updated'
+               ],201);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -86,6 +95,7 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -94,9 +104,12 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'ref_bill_number' => 'required|string|max:255',
+            'customer_id' => 'required|exists:customers,id',
             'purchase_bill_number' => 'string|max:255',
             'remarks' => 'string|max:255',
             'invoice_date' => 'string|max:255',
+            'expiry_date' => 'string|max:255',
+            'batch_no' => 'string|max:255|unique:purchases,batch_no',
             'discount_percent' => 'numeric',
             'freight_amount' => 'numeric',
             'health_insurance' => 'numeric',
@@ -114,6 +127,7 @@ class PurchaseController extends Controller
             'purchase_products.*.quantity' => 'nullable|integer',
             'purchase_products.*.product_id' => 'required|integer|exists:products,id',
             'purchase_products.*.free_quantity' => 'nullable|numeric',
+            'purchase_products.*.expiry_date' => 'nullable|date',
             'purchase_products.*.price' => 'nullable|numeric',
             'purchase_products.*.discount' => 'nullable|numeric',
             'purchase_products.*.discount_percent' => 'nullable|numeric',
@@ -126,7 +140,8 @@ class PurchaseController extends Controller
         if (isset($validated['purchase_products'])) {
             $item->purchaseProducts()->createMany($validated['purchase_products']);
         }
-        return response()->json($item, 201);
+        return response()->json(['message' => 'Purchse Created Successfully!!',
+        'data' => $item->load('purchaseProducts'), 201]);
     }
 
     public function show($id): JsonResponse

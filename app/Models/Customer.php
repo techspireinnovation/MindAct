@@ -17,11 +17,20 @@ class Customer extends Model
     ];  
     protected $fillable = [
         'company_id',
-        'name',
+        'party_name',
+        'pan_number',
+        'ledger_type',
+        'address',
         'phone',
         'email',
-        'address',
-        'pan_vat_number',
+        'contact_person',
+        'contact_person_phone',
+        'country',
+        'state',
+        'city',
+        'area',
+        'bank_name',
+        'bank_account_number',                              
         'is_active'
     ];
 

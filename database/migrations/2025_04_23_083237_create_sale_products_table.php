@@ -15,15 +15,20 @@ return new class extends Migration
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignId('sale_id')->constrained('sales');
-            $table->string('information');
-            $table->double('available_quantity')->nullable();
-            $table->double('quantity');
-            $table->foreignID('uom')->constrained('measure_units')->nullable();
-            $table->double('rate');
-            $table->integer('total_items')->nullable();
-            $table->double('discount')->nullable();
+            $table->foreignId('product_id')->constrained('products');
+            $table->date('expiry_date')->nullable();
+            $table->string('code')->nullable();
+            $table->string('name');
+            $table->foreignID('measure_unit_id')->constrained('measure_units')->nullable();
+            $table->double('quantity')->nullable();
+            $table->double('free_quantity')->nullable();
+            $table->double('price')->nullable();
+            $table->double('discount_percent')->nullable();
+            $table->double('discount_amount')->nullable();
+            $table->boolean('is_vatable')->default(true);            
+            
             $table->SoftDeletes();
-            $table->boolean('is_active')->default(true);
+            
             $table->timestamps();
         });
     }

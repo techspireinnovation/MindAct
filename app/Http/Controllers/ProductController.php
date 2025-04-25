@@ -13,9 +13,15 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Product::paginate(50));
+        $query = Product::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -38,6 +44,7 @@ class ProductController extends Controller
                 'wholesales_price_vat' => 'numeric',
                 'wholesales_price_profit_percent' => 'numeric',
                 'is_vatable' => 'boolean',
+                'stock_alert' => 'nullable',
                 'product_type_id' => 'integer|exists:product_types,id',
                 'location_id' => 'integer|exists:locations,id',
                 'field_values' => 'required|array',
@@ -113,6 +120,7 @@ class ProductController extends Controller
             'wholesales_price_vat' => 'numeric',
             'wholesales_price_profit_percent' => 'numeric',
             'is_vatable' => 'boolean',
+            'stock_alert' => 'nullable',
             'product_type_id' => 'integer|exists:product_types,id',
             'location_id' => 'integer|exists:locations,id',
             'field_values' => 'required',

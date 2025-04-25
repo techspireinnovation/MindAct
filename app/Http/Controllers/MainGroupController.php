@@ -11,9 +11,15 @@ use Illuminate\Http\Request;
 class MainGroupController extends Controller
 {
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(MainGroup::paginate(50));
+        $query = MainGroup::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
 

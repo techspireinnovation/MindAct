@@ -40,8 +40,8 @@ class Brand extends Model
     ]);
 
     if ($validator->fails()) {
-        // Debugging: Show the validation error messages
-        dd($validator->errors());
+       return response()->json(['errors',$validator->errors()]);
+     
     }
 
     return !$validator->fails();  // Returns true if validation passes, false if it fails

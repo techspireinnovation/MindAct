@@ -25,7 +25,7 @@ class BrandController extends Controller
         try {
             $item = Brand::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:brands,name,' . $id,
                 'is_active' => 'sometimes|boolean|required',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
@@ -43,7 +43,7 @@ class BrandController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:brands,name',
             'is_active' => 'boolean|required',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',

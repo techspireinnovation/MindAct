@@ -14,17 +14,17 @@ return new class extends Migration
         Schema::create('sales_return_products', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
-            $table->foreignID('item_id')->constrined('products');
-            $table->string('information')->nullable();
+            $table->foreignID('sales_return_id')->constrained('sales_returns');
+            $table->foreignID('product_id')->constrained('products');
             $table->date('expiry_date')->nullable();
             $table->double('quantity')->nullable();
-            $table->foreignID('meaure_unit_id')->constrained('measure_units');
-            $table->double('rate');
+            $table->double('free_quantity')->nullable();
+            $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->SoftDeletes();
-            
+            $table->boolean('is_vatable')->nullable();
+            $table->foreignID('measure_unit_id')->constrained('measure_units');
+            $table->softDeletes();
             $table->timestamps();
         });
     }

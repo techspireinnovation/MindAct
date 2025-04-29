@@ -26,7 +26,7 @@ class MeasureUnitController extends Controller
         try {
             $item = MeasureUnit::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:measure_units,name,' . $id,
                 'is_active' => 'boolean|required',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
@@ -44,7 +44,7 @@ class MeasureUnitController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:measure_units,name',
             'is_active' => 'boolean|required',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',

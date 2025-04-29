@@ -36,7 +36,7 @@ use App\Http\Controllers\StoreController;
 
 
 use App\Http\Controllers\SupplierController;
-
+use App\Http\Controllers\SalesReturnController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -66,12 +66,26 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
     Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
     Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
+    Route::get('get-all-sales-expiry-dates', [SaleController::class, 'getAllExpiryDates']);
+    Route::get('get-all-sales-by-expiry-dates', [SaleController::class, 'getSalesByExpiryDate']);
+
+    //Sales Returns
+
+    
+    Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
+    Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
+    Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
+    Route::get('get-all-sales-returns-expiry-dates', [SalesReturnController::class, 'getAllExpiryDates']);
+    Route::get('get-all-sales-returns-by-expiry-dates', [SalesReturnController::class, 'getSalesReturnByExpiryDate']);
+
+    Route::apiResource('sale-additionals', SaleController::class);
     Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);
+    Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);

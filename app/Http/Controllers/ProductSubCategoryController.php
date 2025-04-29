@@ -27,7 +27,7 @@ class ProductSubCategoryController extends Controller
         try {
             $item = ProductSubCategory::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:product_sub_categories,name' . $id,
                 'is_active' => 'boolean|required',
                 'category_id' => 'integer|exists:product_categories,id',
                 'company_id' => 'integer|exists:companies,id'
@@ -45,7 +45,7 @@ class ProductSubCategoryController extends Controller
     {
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:product_sub_categories,name',
             'is_active' => 'boolean|required',
             'category_id' => 'integer|exists:product_categories,id',
             'company_id' => 'integer|exists:companies,id'

@@ -28,7 +28,7 @@ class AccountHeadController extends Controller
         try {
             $account_head = AccountHead::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:account_heads,' . $id,
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'account_group_id' => 'integer|exists:account_groups,id',

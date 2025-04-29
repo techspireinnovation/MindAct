@@ -30,6 +30,7 @@ class Product extends Model
         'deleted_at',
         'company_id',
         'category_id',
+        'sub_category_id',
         'brand_id',
         'measure_unit_id',
         'purchase_rate',
@@ -58,6 +59,12 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+
+    public function subCategory()
+    {
+        return $this->belongsTo(ProductSubCategory::class, 'sub_category_id');
     }
 
     public function brand()

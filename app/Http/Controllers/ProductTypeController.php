@@ -26,7 +26,7 @@ class ProductTypeController extends Controller
         try {
             $item = ProductType::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:product_types,name,' . $id,
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
@@ -42,7 +42,7 @@ class ProductTypeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:product_types,name',
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);

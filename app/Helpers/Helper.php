@@ -4,6 +4,8 @@ namespace App\Helpers;
 
 use App\Models\Sale;
 use App\Models\SaleProduct;
+use App\Models\SalesReturn;
+use App\Models\SalesReturnProduct;
 use Illuminate\Database\Eloquent\Collection;
 
 class Helper
@@ -65,6 +67,128 @@ class Helper
             
                 
            
+
+        return $query->get();
+    }
+    public function getAllExpiryDates(): JsonResponse
+    {
+        $expiryDates = SaleProduct::select('expiry_date')
+            ->distinct()
+            ->orderBy('expiry_date', 'asc')
+            ->pluck('expiry_date');
+    
+        return response()->json([
+            'message' => 'Expiry dates retrieved successfully',
+            'data' => $expiryDates
+        ], 200);
+    }
+
+ 
+
+    public static function getSalesByExpiryDate($expiryDate, ?int $companyId = null): Collection
+    {
+        $query = Sale::query()
+            ->whereHas('saleProducts', function ($query) use ($expiryDate, $companyId) {
+                $query->where('expiry_date', $expiryDate);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            })
+            ->with(['saleProducts' => function ($query) use ($expiryDate, $companyId) {
+                $query->where('expiry_date', $expiryDate);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            }]);
+
+        return $query->get();
+    }
+
+
+    public static function getSalesReturnByProductId(int $productId, ?int $companyId = null): Collection
+    {
+        $query = SalesReturn::query()
+            ->whereHas('salesReturnProducts', function ($query) use ($productId, $companyId) {
+                $query->where('product_id', $productId);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            })
+            ->with(['salesReturnProducts' => function ($query) use ($productId, $companyId) {
+                $query->where('product_id', $productId);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            }]);
+
+        return $query->get();
+    }
+
+    public static function getSalesReturnByBatch(string $batchNo, ?int $companyId = null): Collection
+    {
+        // dd('here');
+        $query = SalesReturn::query()
+            ->where(function ($query) use ($batchNo, $companyId) {
+                $query->where('batch_no', $batchNo);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            })
+            ->with('salesReturnProducts');
+            
+                
+           
+
+        return $query->get();
+    }
+
+
+    public static function getSalesReturnByCustomer(int $customerID, ?int $companyId = null): Collection
+    {
+        $query = SalesReturn::query()
+            ->where(function ($query) use ($customerID, $companyId) {
+                $query->where('customer_id', $customerID);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            })
+            ->with('salesReturnProducts');
+            
+                
+           
+
+        return $query->get();
+    }
+    public function getAllsalesReturnExpiryDates(): JsonResponse
+    {
+        $expiryDates = SalesReturnProduct::select('expiry_date')
+            ->distinct()
+            ->orderBy('expiry_date', 'asc')
+            ->pluck('expiry_date');
+    
+        return response()->json([
+            'message' => 'Expiry dates retrieved successfully',
+            'data' => $expiryDates
+        ], 200);
+    }
+
+ 
+
+    public static function getSalesReturnByExpiryDate($expiryDate, ?int $companyId = null): Collection
+    {
+        $query = SalesReturn::query()
+            ->whereHas('salesReturnProducts', function ($query) use ($expiryDate, $companyId) {
+                $query->where('expiry_date', $expiryDate);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            })
+            ->with(['salesReturnProducts' => function ($query) use ($expiryDate, $companyId) {
+                $query->where('expiry_date', $expiryDate);
+                if ($companyId) {
+                    $query->where('company_id', $companyId);
+                }
+            }]);
 
         return $query->get();
     }

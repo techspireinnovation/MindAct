@@ -367,12 +367,25 @@ public function getSalesByBatch(Request $request): JsonResponse
     }
 }
 
+public function getAllExpiryDates(): JsonResponse
+{
+    $expiryDates = SaleProduct::select('expiry_date')
+        ->distinct()
+        ->orderBy('expiry_date', 'asc')
+        ->pluck('expiry_date');
+
+    return response()->json([
+        'message' => 'Expiry dates retrieved successfully',
+        'data' => $expiryDates
+    ], 200);
+}
+
 
 public function getSalesByExpiryDate(Request $request): JsonResponse
 {
     try {
         $validator = Validator::make($request->all(), [
-            'expiry_date' => 'required|exists:sales,batch_no',
+            'expiry_date' => 'required|exists:sale_products,expiry_date',
             'company_id' => 'nullable|integer|exists:companies,id',
         ]);
 
@@ -380,13 +393,13 @@ public function getSalesByExpiryDate(Request $request): JsonResponse
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $batchNo = $request->input('batch_no');
+        $expiryDate = $request->input('expiry_date');
         $companyId = $request->input('company_id');
 
-        $sales = Helper::getSalesByBatch($batchNo, $companyId);
+        $sales = Helper::getSalesByExpiryDate($expiryDate, $companyId);
 
         if ($sales->isEmpty()) {
-            return response()->json(['message' => 'No sales found for the specified batch'], 404);
+            return response()->json(['message' => 'No sales found for the specified Expiry Date'], 404);
         }
 
         return response()->json([

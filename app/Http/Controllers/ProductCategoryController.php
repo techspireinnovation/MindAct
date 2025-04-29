@@ -38,7 +38,7 @@ class ProductCategoryController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:product_categories,name',
             'company_id' => 'required|integer|exists:companies,id',
             'is_active' => ''
         ]);
@@ -65,7 +65,7 @@ class ProductCategoryController extends Controller
         try {
             $product_category = ProductCategory::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255',
+                'name' => 'sometimes|required|string|max:255|unique:product_categories,name,' . $id,
                 'company_id' => 'sometimes|required|integer|exists:companies,id',
                 'is_active' => 'sometimes|boolean',
             ]);

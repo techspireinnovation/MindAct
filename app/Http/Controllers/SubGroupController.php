@@ -27,7 +27,7 @@ class SubGroupController extends Controller
         try {
             $group = SubGroup::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:sub_groups,name,' . $id,
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
@@ -46,7 +46,7 @@ class SubGroupController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:sub_groups,name',
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'main_group_id' => 'integer|exists:main_groups,id',

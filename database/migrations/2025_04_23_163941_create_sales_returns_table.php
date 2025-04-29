@@ -14,23 +14,26 @@ return new class extends Migration
         Schema::create('sales_returns', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
-            $table->enum('sale_rate_type',['retail','wholesale']);
-            $table->string('return_invoice_number');
             $table->foreignID('customer_id')->constrained('customers');
+            $table->unsignedBigInteger('salesman_id');           
+            $table->string('invoice_number');
+            $table->string('document_number')->nullable();
             $table->string('batch_no')->nullable();
-            $table->string('tpin_number')->nullable()->nullable();
-            $table->foreignID('sales_id')->constrained('sales');
+            $table->string('balance')->nullable();
+            $table->date('invoice_date')->nullable();
+            $table->string('remarks')->nullable();
             $table->foreignID('store_id')->constrained('stores');
             $table->foreignID('location_id')->constrained('locations');
             $table->double('discount_amount')->nullable();
+            $table->double('excise_duty')->nullable();
+            $table->double('health_insurance')->nullable();
+            $table->double('freight_amount')->nullable();                    
             $table->double('discount_vat')->nullable();
+            $table->double('discount_after_vat')->nullable();
             $table->double('paid_amount')->nullable();
             $table->double('round_of_amount')->nullable();
-            $table->enum('payment_type',['cash','credit','bank']);
-            $table->text('sales_details')->nullable();
-            $table->text('terms')->nullable();
-            $table->SoftDeletes();
-            $table->boolean('is_active')->default(true);
+            $table->enum('payment_type', ['cash', 'bank', 'credit'])->default('credit');                      
+            $table->SoftDeletes();          
             $table->timestamps();
         });
     }

@@ -24,7 +24,7 @@ class StoreController extends Controller
         try {
             $item = Store::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:stores,name,' . $id,
                 'is_active' => 'sometimes|boolean|required',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
@@ -42,7 +42,7 @@ class StoreController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:stores,name',
             'is_active' => 'boolean|required',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',

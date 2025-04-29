@@ -24,7 +24,7 @@ class ProductFieldController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:product_fields,name',
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'type' => 'required|string|in:text,dropdown',
@@ -55,7 +55,7 @@ class ProductFieldController extends Controller
         try {
             $product_field = ProductField::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:product_fields,name,' . $id,
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'type' => 'required|string|in:text,dropdown',

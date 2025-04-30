@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+
+use App\Events\ProductUpdated;
 use App\Models\Product;
 use App\Models\ProductFieldValue;
 use App\Models\ProductList;
@@ -149,6 +151,7 @@ public function index(Request $request): JsonResponse
         // Pagination
         $perPage = $request->input('per_page', 50);
         $products = $query->paginate($perPage);
+        broadcast(new ProductUpdated($products, 'listed'));
 
         return response()->json($products);
 
@@ -521,6 +524,7 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
                 $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
                 ProductList::whereIn('id', $productListToDelete)->delete();
             });
+            broadcast(new ProductUpdated($product, 'updated'));
     
             return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productList'])]);
     
@@ -578,8 +582,26 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
         if (isset($validated['product_list'])) {
             $item->productList()->createMany($validated['product_list']);
         }
+        $broadcast_status = 'initiated';
+    try {
+        $data = broadcast(new ProductUpdated($item, 'created'));
+        \Log::info('ProductUpdated event broadcast initiated', ['product_id' => $item->id]);
+    } catch (\Exception $e) {
+        $broadcast_status = 'failed';
+        \Log::error('ProductUpdated event broadcast failed', [
+            'error' => $e->getMessage(),
+            'product_id' => $item->id
+        ]);
+    }
 
-        return response()->json($item->load('productList'), 201);
+     
+      
+
+        return response()->json([
+            'item' => $item->load('productList'),
+            'action' => 'created',
+            'broadcast_status' => $broadcast_status
+        ], 201);
     }
 
     public function show($id): JsonResponse
@@ -603,6 +625,7 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
         try {
             $item = Product::findOrFail($id);
             $item->delete();
+            broadcast(new ProductUpdated($product, 'deleted'));
             return response()->json(['message' => 'Product deleted!!']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

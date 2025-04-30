@@ -41,7 +41,7 @@ class CompanyController extends Controller{
         try {
           
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:companies,name',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'reg_number' => 'nullable|string|max:255',
@@ -162,7 +162,7 @@ class CompanyController extends Controller{
 
            
             $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255',
+                'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id,
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'reg_number' => 'nullable|string|max:255',

@@ -68,7 +68,7 @@ class PurchaseController extends Controller
                 $existingProductIds = $product->purchaseProducts()->pluck('id')->toArray();
                 $incomingProductIds = collect($validated['purchase_products'] ?? [])->pluck('id')->filter()->toArray();
 
-                // 🧼 Delete key values not in request
+               
                 $fieldsValuesToDelete = array_diff($existingProductIds, $incomingProductIds);
                 PurchaseProduct::forceDestroy($fieldsValuesToDelete);
 

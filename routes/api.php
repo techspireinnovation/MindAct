@@ -1,5 +1,7 @@
 <?php
 
+use App\Events\MessageSent;
+use Illuminate\Http\Request;
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -12,27 +14,32 @@ use App\Http\Controllers\SaleAdditionalController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\SaleController;
-use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\Master\BranchController;
+
+
+use App\Http\Controllers\NotificationController;
+
+
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
-
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseReturnController;
-
+use App\Http\Controllers\SaleController;
+use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\StoreController;
 
 
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SalesReturnController;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -62,12 +69,26 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
     Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
     Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
+    Route::get('get-all-sales-expiry-dates', [SaleController::class, 'getAllExpiryDates']);
+    Route::get('get-all-sales-by-expiry-dates', [SaleController::class, 'getSalesByExpiryDate']);
+
+    //Sales Returns
+
+    
+    Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
+    Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
+    Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
+    Route::get('get-all-sales-returns-expiry-dates', [SalesReturnController::class, 'getAllExpiryDates']);
+    Route::get('get-all-sales-returns-by-expiry-dates', [SalesReturnController::class, 'getSalesReturnByExpiryDate']);
+
+    Route::apiResource('sale-additionals', SaleController::class);
     Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);
+    Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);
@@ -89,6 +110,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-field-values', ProductFieldValueController::class);
     Route::apiResource('product-lists', ProductListController::class);
     Route::apiResource('sale-additionals', SaleAdditionalController::class);
+    Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(
@@ -98,7 +120,11 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
 });
 
-
+Route::post('/send-message', function (Request $request) {
+    $message = $request->input('message');
+    event(new MessageSent($message));
+    return response()->json(['status' => 'Message sent']);
+});
 // forget password
 Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);

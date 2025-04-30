@@ -30,7 +30,7 @@ class CustomerController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'party_name' => 'required|string|max:255',
+                'party_name' => 'required|string|max:255|unique:customers,party_name',
                 'pan_number' => 'nullable|string|unique:customers,pan_number',
                 'ledger_type' => 'required|in:customer,vendor,both',
                 'address' => 'nullable|string',
@@ -86,7 +86,7 @@ public function update(Request $request, $id): JsonResponse
     try {
         $validator = Validator::make($request->all(), [
             'company_id' => 'required|exists:companies,id',
-            'party_name' => 'required|string|max:255',
+            'party_name' => 'required|string|max:255|unique:customers,party_name,' . $id,
             'pan_number' => 'nullable|string|unique:customers,pan_number,' . $id,
             'ledger_type' => 'required|in:customer,vendor,both',
             'address' => 'nullable|string',

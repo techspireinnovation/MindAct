@@ -28,7 +28,7 @@ class AccountGroupController extends Controller
         try {
             $group = AccountGroup::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:account_groups,name,' . $id,
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
@@ -48,7 +48,7 @@ class AccountGroupController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:account_groups,name',
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'main_group_id' => 'integer|exists:main_groups,id',

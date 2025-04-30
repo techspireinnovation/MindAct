@@ -6,4 +6,8 @@ ERP stands for Enterprise Resource Planning, and it's a type of software that he
 
 -   git pull origin main
 -   php artisan migrate
+<<<<<<< HEAD
 -   composer run dev
+=======
+-   composer run dev
+>>>>>>> 0053a2b161c3fb291b3f7f8e9939c3557dcdab93

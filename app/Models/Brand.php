@@ -14,9 +14,15 @@ class Brand extends Model
 {
     use softDeletes, HasFactory;
 
+    protected $casts = [
+        'is_primary' => 'boolean',
+        'is_active' => 'boolean'
+    ];
+ 
     protected $fillable=[
         'name',
         'company_id',
+        'is_primary',
         'is_active',
     ];
 
@@ -40,8 +46,8 @@ class Brand extends Model
     ]);
 
     if ($validator->fails()) {
-        // Debugging: Show the validation error messages
-        dd($validator->errors());
+       return response()->json(['errors',$validator->errors()]);
+     
     }
 
     return !$validator->fails();  // Returns true if validation passes, false if it fails

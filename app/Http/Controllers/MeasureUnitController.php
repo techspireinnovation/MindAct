@@ -26,13 +26,32 @@ class MeasureUnitController extends Controller
         try {
             $item = MeasureUnit::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:255|unique:measure_units,name,' . $id,
                 'is_active' => 'boolean|required',
+                'is_primary' =>'boolean',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
                 'company_id' => 'integer|exists:companies,id'
             ]);
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                MeasureUnit::where('company_id', $item->company_id)
+                    ->where('id', '!=', $id) 
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+    
+            // Explicit boolean handling (optional, since validation ensures boolean)
+            if ($request->has('is_active')) {
+                $validated['is_active'] = (bool) $request->input('is_active');
+            }
+            if ($request->has('is_primary')) {
+                $validated['is_primary'] = (bool) $request->input('is_primary');
+            }
+    
             $item->update($validated);
+            $item->refresh();
+    
+
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
@@ -44,12 +63,22 @@ class MeasureUnitController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:measure_units,name',
             'is_active' => 'boolean|required',
+            'is_primary' =>'boolean',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',
             'company_id' => 'integer|exists:companies,id'
         ]);
+        if (!empty($validated['is_primary'])) {
+            MeasureUnit::where('company_id', $validated['company_id'])
+            ->where('is_primary', true)
+            ->update(['is_primary' => false]);
+        }
+            
+        $validated['is_primary'] = $validated['is_primary'] ?? false;
+        $validated['is_active'] = $validated['is_active'] ?? true;
+
 
         $item = MeasureUnit::create($validated);
         return response()->json($item, 201);

@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers;
 use App\Models\ProductCategory;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Auth;
-
 use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProductCategoryController extends Controller
 {
@@ -38,12 +37,27 @@ class ProductCategoryController extends Controller
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
+       
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:product_categories,name',
             'company_id' => 'required|integer|exists:companies,id',
-            'is_active' => ''
+            'is_primary' =>'boolean',
+            'is_active' => 'boolean'
         ]);
+           // If is_primary is true, set all other categories for this company to not primary
+        if (!empty($validated['is_primary'])) {
+            ProductCategory::where('company_id', $validated['company_id'])
+            ->where('is_primary', true)
+            ->update(['is_primary' => false]);
+        }
+        
+            // Set default values if not provided
+        $validated['is_primary'] = $validated['is_primary'] ?? false;
+        $validated['is_active'] = $validated['is_active'] ?? true;
+        
+        
         $post = ProductCategory::create($validated);
+        
         return response()->json($post, 201);
     }
 
@@ -62,31 +76,42 @@ class ProductCategoryController extends Controller
 
     // Update a resource
     public function update(Request $request, $id): JsonResponse
-    {
-        try {
-            $product_category = ProductCategory::findOrFail($id);
+{
+    try {
+        $product_category = ProductCategory::findOrFail($id);
+        $validated = $request->validate([
+            'name' => 'sometimes|required|string|max:255|unique:product_categories,name,' . $id,
+            'company_id' => 'sometimes|required|integer|exists:companies,id',
+            'is_active' => 'sometimes|boolean',
+            'is_primary' => 'sometimes|boolean',
+        ]);
 
-            $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255',
-                'company_id' => 'sometimes|required|integer|exists:companies,id',
-                'is_active' => 'sometimes|boolean',
-            ]);
-
-            // Explicit boolean handling
-            if ($request->has('is_active')) {
-                $validated['is_active'] = (bool) $request->input('is_active');
-            }
-
-            $product_category->update($validated);
-            $product_category->refresh(); // Refresh to get updated values
-
-            return response()->json($product_category);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Product Category not found!!'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'Update failed'], 500);
+        // If is_primary is being set to true, ensure no other category remains primary
+        if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+            ProductCategory::where('company_id', $product_category->company_id)
+                ->where('id', '!=', $id) // Exclude the current category
+                ->where('is_primary', true)
+                ->update(['is_primary' => false]);
         }
+
+        // Explicit boolean handling (optional, since validation ensures boolean)
+        if ($request->has('is_active')) {
+            $validated['is_active'] = (bool) $request->input('is_active');
+        }
+        if ($request->has('is_primary')) {
+            $validated['is_primary'] = (bool) $request->input('is_primary');
+        }
+
+        $product_category->update($validated);
+        $product_category->refresh(); // Refresh to get updated values
+
+        return response()->json($product_category);
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Product Category not found!!'], 404);
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'Update failed'], 500);
     }
+}
 
     // Delete a resource
     public function destroy($id): JsonResponse

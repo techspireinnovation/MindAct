@@ -28,7 +28,7 @@ class MainGroupController extends Controller
         try {
             $group = MainGroup::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => 'required|string|max:|unique:main_groups,name,' . $id,
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
@@ -44,7 +44,7 @@ class MainGroupController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => 'required|string|max:255|unique:main_groups,name',
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);

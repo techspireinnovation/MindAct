@@ -6,6 +6,7 @@ use App\Models\MainGroup;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 
 class MainGroupController extends Controller
@@ -27,30 +28,73 @@ class MainGroupController extends Controller
     {
         try {
             $group = MainGroup::findOrFail($id);
-            $validated = $request->validate([
-                'name' => 'required|string|max:|unique:main_groups,name,' . $id,
+            $validator = Validator::make($request->all(),[
+                'name' => 'required|string|max:255|unique:main_groups,name,' . $id,
                 'is_active' => 'boolean|required',
+                'is_primary' =>'boolean',
                 'company_id' => 'integer|exists:companies,id'
             ]);
+            if($validator->fails()){
+                return response()->json($validator->errors(), 422);
+            }
+
+            $validated = $validator->validated();
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                MainGroup::where('company_id', $group->company_id)
+                    ->where('id', '!=', $id) 
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+    
+            
+            if ($request->has('is_primary')) {
+                $validated['is_primary'] = (bool) $request->input('is_primary');
+            }
+
+            
+    
             $group->update($validated);
             return response()->json($group, 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }catch(\Exception $e){
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        try{
+
+        $validator = Validator::make($request->all(),[
             'name' => 'required|string|max:255|unique:main_groups,name',
             'is_active' => 'boolean|required',
+            'is_primary' =>'boolean',
             'company_id' => 'integer|exists:companies,id'
         ]);
+        if($validator->fails()){
+            return response()->json($validator->errors(),422);
+        }
+
+        $validated = $validator->validated();
+        if (!empty($validated['is_primary'])) {
+            MainGroup::where('company_id', $validated['company_id'])
+            ->where('is_primary', true)
+            ->update(['is_primary' => false]);
+        }
+        $validated['is_primary'] = $validated['is_primary'] ?? false;
 
         $group = MainGroup::create($validated);
         return response()->json($group, 201);
+    }catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Location not found!!'], 404);
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    }catch(\Exception $e){
+        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    }
     }
 
     public function show($id): JsonResponse

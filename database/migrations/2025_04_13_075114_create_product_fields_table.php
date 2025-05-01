@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->enum('type', ['text', 'dropdown']);
             $table->json('values')->nullable();
             $table->boolean('is_active')->default(true);
+           
             $table->softDeletes();
             $table->timestamps();
         });

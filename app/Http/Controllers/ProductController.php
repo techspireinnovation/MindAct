@@ -10,6 +10,7 @@ use App\Models\ProductList;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 
@@ -153,7 +154,7 @@ public function index(Request $request): JsonResponse
         $products = $query->paginate($perPage);
         broadcast(new ProductUpdated($products, 'listed'));
 
-        return response()->json($products);
+        return response()->json($products->load('productList'));
 
     } catch (\Exception $e) {
         Log::error('Product search error: ' . $e->getMessage(), [
@@ -269,6 +270,55 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
 }
 
 
+public function filterbyBarcode(Request $request): JsonResponse
+    {
+        try {
+            // Validate the request
+            $validator = Validator::make($request->all(), [
+                'barcode' => 'required|exists:product_lists,barcode',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $barcode = $request->input('barcode');
+
+            // Fetch ProductList entries with the given barcode and load the product with all relationships
+            $productLists = ProductList::with([
+                'product' => function ($query) {
+                    $query->with([
+                        'category',
+                        'subCategory',
+                        'brand',
+                        'measureUnit',
+                        'productType',
+                        'location',
+                        'productFieldValues',
+                        'productList'
+                    ]);
+                }
+            ])->where('barcode', $barcode)->get();
+
+            if ($productLists->isEmpty()) {
+                return response()->json(['error' => 'No products found for this barcode'], 404);
+            }
+
+            // Map to products, ensuring each product is only included once
+            $products = $productLists->pluck('product')->unique('id')->values();
+
+            return response()->json(['data'=> $products]);
+
+        } catch (QueryException $e) {
+            \Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
+            dd($e->getMessage());
+            return response()->json(['error' => 'Database error'], 500);
+        } catch (\Exception $e) {
+            dd($e->getMessage());
+            \Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
+            return response()->json(['error' => 'Server error'], 500);
+        }
+    }
 
 
 // public function index(Request $request): JsonResponse
@@ -431,16 +481,13 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
 //         ->orderBy('products.created_at');
 //     }
 // } 
-
-
-    
-
-    public function update(Request $request, $id): JsonResponse
+   
+public function update(Request $request, $id): JsonResponse
     {
         try {
-
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:products,name,' . $id,
+            // Define validation rules
+            $rules = [
+                'name' => ['required', 'string', 'max:255', 'unique:products,name,' . $id],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'category_id' => 'integer|exists:product_categories,id',
@@ -463,6 +510,7 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
                 'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
                 'field_values.*.value' => 'required|string|max:255',
                 'product_list' => 'required|array',
+                'product_list.*.id' => 'nullable|exists:product_lists,id',
                 'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'product_list.*.quantity' => 'nullable|integer',
                 'product_list.*.barcode' => 'nullable|string|max:255',
@@ -472,18 +520,63 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
                 'product_list.*.discount' => 'nullable|numeric',
                 'product_list.*.final_price' => 'nullable|numeric',
                 'product_list.*.primary_measure_unit_id' => 'required|integer|exists:measure_units,id',
+            ];
+
+            // Create a validator instance
+            $validator = Validator::make($request->all(), $rules, [
+                'product_list.*.barcode' => 'The barcode has already been taken.',
             ]);
+
+            // Add custom validation for barcode uniqueness
+            $validator->after(function ($validator) use ($request) {
+                $productLists = $request->input('product_list', []);
+
+                foreach ($productLists as $index => $listItem) {
+                    $barcode = data_get($listItem, 'barcode');
+                    $productListId = data_get($listItem, 'id');
+
+                    if ($barcode && $productListId) {
+                        // Skip validation if barcode is unchanged for the existing ProductList
+                        $existingProductList = ProductList::find($productListId);
+                        if ($existingProductList && $existingProductList->barcode === $barcode) {
+                            continue;
+                        }
+                    }
+
+                    if ($barcode) {
+                        // Check if the barcode is taken by another ProductList
+                        $existing = ProductList::where('barcode', $barcode)
+                            ->when($productListId, fn ($query) => $query->where('id', '!=', $productListId))
+                            ->first();
+
+                        if ($existing) {
+                            $validator->errors()->add(
+                                "product_list.{$index}.barcode",
+                                'The barcode has already been taken.'
+                            );
+                        }
+                    }
+                }
+            });
+
+            // Check if validation fails
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            // Get validated data
+            $validated = $validator->validated();
 
             $product = null;
 
             DB::transaction(function () use ($validated, $id, &$product) {
                 $product = Product::findOrFail($id);
                 $product->update($validated);
-    
-                // Handle field values (your existing code)
+
+                // Handle field values
                 $existingFieldValueIds = $product->productFieldValues()->pluck('id')->toArray();
                 $incomingFieldValueIds = collect($validated['field_values'] ?? [])->pluck('id')->filter()->toArray();
-    
+
                 foreach ($validated['field_values'] ?? [] as $data) {
                     if (isset($data['id'])) {
                         $fieldValue = ProductFieldValue::find($data['id']);
@@ -495,46 +588,51 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
                         $product->productFieldValues()->create($data);
                     }
                 }
-    
+
                 // Delete field values not in request
                 $fieldsValuesToDelete = array_diff($existingFieldValueIds, $incomingFieldValueIds);
                 ProductFieldValue::whereIn('id', $fieldsValuesToDelete)->delete();
-    
+
                 // Handle product list updates
                 $existingProductListIds = $product->productList()->pluck('id')->toArray();
                 $incomingProductListIds = collect($validated['product_list'] ?? [])->pluck('id')->filter()->toArray();
-    
+
                 foreach ($validated['product_list'] ?? [] as $listItem) {
                     if (isset($listItem['id'])) {
                         $productListItem = ProductList::find($listItem['id']);
-                        $productListItem->update($listItem);
-                        
-                        // Handle is_primary logic if needed
-                        if ($listItem['is_primary'] ?? false) {
-                            $product->productList()
-                                ->where('id', '!=', $listItem['id'])
-                                ->update(['is_primary' => false]);
+                        if ($productListItem) {
+                            $productListItem->update($listItem);
+
+                            // Handle is_primary logic
+                            if ($listItem['is_primary'] ?? false) {
+                                $product->productList()
+                                    ->where('id', '!=', $listItem['id'])
+                                    ->update(['is_primary' => false]);
+                            }
                         }
                     } else {
                         $product->productList()->create($listItem);
                     }
                 }
-    
+
                 // Delete product list items not in request
                 $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
                 ProductList::whereIn('id', $productListToDelete)->delete();
             });
+
             broadcast(new ProductUpdated($product, 'updated'));
-    
+
             return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productList'])]);
-    
+
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
+
+    
 
     public function store(Request $request): JsonResponse
     {
@@ -561,9 +659,10 @@ protected function applyPartialMatchFallback($query, $searchTerms, $availableFil
             'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
             'field_values.*.value' => 'required|string|max:255',
             'product_list' => 'required|array',
+            'product_list.*.id' => 'nullable|exists:product_lists,id',
             'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'product_list.*.quantity' => 'nullable|integer',
-            'product_list.*.barcode' => 'nullable|string|max:255',
+            'product_list.*.barcode' => 'nullable|string|max:255|unique:product_lists,barcode',
             'product_list.*.is_primary' => 'boolean',
             'product_list.*.hs_code' => 'nullable|string|max:255',
             'product_list.*.price' => 'nullable|numeric',

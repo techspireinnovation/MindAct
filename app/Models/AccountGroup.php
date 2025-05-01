@@ -16,6 +16,7 @@ class AccountGroup extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_primary' => 'boolean'
     ];
 
 
@@ -26,6 +27,7 @@ class AccountGroup extends Model
         'sub_group_id',
         'code',
         'is_active',
+        'is_primary',
         'deleted_at'
     ];
 

@@ -109,8 +109,10 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('product-fields', ProductFieldController::class);
     Route::apiResource('product-field-values', ProductFieldValueController::class);
     Route::apiResource('product-lists', ProductListController::class);
+    
     Route::apiResource('sale-additionals', SaleAdditionalController::class);
     Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
+    Route::get('filter-barcode', [ProductController::class,'filterbyBarcode']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

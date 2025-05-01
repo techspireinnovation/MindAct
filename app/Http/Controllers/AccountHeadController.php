@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use App\Models\AccountHead;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 
 class AccountHeadController extends Controller
@@ -27,36 +28,84 @@ class AccountHeadController extends Controller
     {
         try {
             $account_head = AccountHead::findOrFail($id);
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:account_heads,' . $id,
+            $validator = Validator::make($request->all(),[
+                'name' => 'required|string|max:255|unique:account_heads,name,' . $id,
                 'is_active' => 'boolean|required',
+                'is_primary' =>'boolean',
                 'company_id' => 'integer|exists:companies,id',
                 'account_group_id' => 'integer|exists:account_groups,id',
                 'code' => 'string|max:255',
 
             ]);
+            if($validator->fails()){
+                return response()->json($validator->errors(),422);
+            }
+
+            $validated = $validator->validated();
+
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                AccountHead::where('company_id', $account_head->company_id)
+                    ->where('id', '!=', $id) 
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+    
+            
+            if ($request->has('is_primary')) {
+                $validated['is_primary'] = (bool) $request->input('is_primary');
+            }
+    
             $account_head->update($validated);
             return response()->json($account_head);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Account Head not found!!'], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }catch(\Exception $e){
+            dd($e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+
         }
     }
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        try{
+        $validator = Validator::make($request->all(),[
             'name' => 'required|string|max:255',
             'is_active' => 'boolean|required',
+            'is_primary' =>'boolean',
             'company_id' => 'integer|exists:companies,id',
             'account_group_id' => 'integer|exists:account_groups,id',
             'code' => 'string|max:255'
         ]);
 
+        if($validator->fails()){
+            return response()->json($validator->errors(),422);
+        }
+
+        $validated = $validator->validated();
+
+        if (!empty($validated['is_primary'])) {
+            AccountHead::where('company_id', $validated['company_id'])
+            ->where('is_primary', true)
+            ->update(['is_primary' => false]);
+        }
+            
+        $validated['is_primary'] = $validated['is_primary'] ?? false;
+       
+
         $account_head = AccountHead::create($validated);
         return response()->json($account_head, 201);
+    }catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Account Head  not found!!'], 404);
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    }catch(\Exception $e){
+        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
+}
 
     public function show($id): JsonResponse
     {

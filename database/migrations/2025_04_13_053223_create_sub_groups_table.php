@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('code')->nullable();
             $table->string('ranking_for_trial')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_primary')->default(false);
             $table->softDeletes();
             $table->timestamps();
         });

@@ -113,6 +113,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('sale-additionals', SaleAdditionalController::class);
     Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
     Route::get('filter-barcode', [ProductController::class,'filterbyBarcode']);
+    Route::put('purchase-masters-update', [CompanyController::class,'updatePurchaseMasterKey']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

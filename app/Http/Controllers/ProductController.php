@@ -154,7 +154,7 @@ public function index(Request $request): JsonResponse
         $products = $query->paginate($perPage);
         broadcast(new ProductUpdated($products, 'listed'));
 
-        return response()->json($products->load('productList'));
+        return response()->json($products->load('productList','productFieldValues'));
 
     } catch (\Exception $e) {
         Log::error('Product search error: ' . $e->getMessage(), [

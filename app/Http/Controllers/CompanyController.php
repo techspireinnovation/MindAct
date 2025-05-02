@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Company;
 use App\Models\CompanyUser;
+use App\Models\PurchaseMasterKey;
 use App\Models\User;
 use Hash;
+use DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
+
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
   
@@ -29,7 +33,7 @@ class CompanyController extends Controller{
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
-      
+        // Check if the user is a super_admin
         $user = Auth::user();
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
@@ -39,12 +43,14 @@ class CompanyController extends Controller{
         }
 
         try {
-          
+            // Define validation rules
             $validated = $request->validate([
+                // Company fields
                 'name' => 'required|string|max:255|unique:companies,name',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'reg_number' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
                 'email_address' => 'nullable|string|email|max:255',
                 'website' => 'nullable|string|max:255',
@@ -63,50 +69,93 @@ class CompanyController extends Controller{
                 'license_number' => 'nullable|string|max:255',
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
+                // Admin fields
                 'admin_email' => 'required|string|email|max:255|unique:users,email',
                 'admin_name' => 'required|string|max:255',
                 'password' => 'required|string|min:6|confirmed',
             ]);
 
-    
+            // Start a database transaction
             DB::beginTransaction();
 
-    
-            $company = Company::create($validated);
+            // Create the Company
+            $company = Company::create([
+                'name' => $validated['name'],
+                'licence_issue_date' => $validated['licence_issue_date'],
+                'working_date' => $validated['working_date'],
+                'reg_number' => $validated['reg_number'],
+                'pan_number' => $validated['pan_number'],
+                'full_address' => $validated['full_address'],
+                'email_address' => $validated['email_address'],
+                'website' => $validated['website'],
+                'fax' => $validated['fax'],
+                'logo' => $validated['logo'],
+                'province' => $validated['province'],
+                'district' => $validated['district'],
+                'palika_name' => $validated['palika_name'],
+                'ward_number' => $validated['ward_number'],
+                'contact_number' => $validated['contact_number'],
+                'contact_person' => $validated['contact_person'],
+                'contact_person_position' => $validated['contact_person_position'],
+                'agreement_holder_name' => $validated['agreement_holder_name'],
+                'phone' => $validated['phone'],
+                'position' => $validated['position'],
+                'license_number' => $validated['license_number'],
+                'activation_key' => $validated['activation_key'],
+                'url_link' => $validated['url_link'],
+            ]);
 
-     
+            // Create the PurchaseMasterKey with default values
+            $purchaseMaster = $company->purchaseMasterKey()->withoutGlobalScopes()->create([
+                'company_id' => $company->id,
+                'product_code' => false,
+                'free' => false,
+                'discount_percent' => false,
+                'discount_amount' => false,
+                'discount' => false,
+                'excise_duty' => false,
+                'health_insurance' => false,
+                'freight_charge' => false,
+                'batch_no' => false,
+                'discount_after_vat' => false,
+                'expiry_date' => false,
+            ]);
+
+            // Create the Company Admin
             $companyAdmin = User::create([
                 'email' => $validated['admin_email'],
                 'name' => $validated['admin_name'],
                 'password' => Hash::make($validated['password']),
             ]);
 
-     
+            // Assign the company_admin role
             $role = Role::firstOrCreate([
                 'name' => 'company_admin',
                 'guard_name' => 'api'
             ]);
-
-      
             $companyAdmin->assignRole($role);
 
-           
+            // Link the admin to the company
             CompanyUser::create([
                 'company_id' => $company->id,
                 'user_id' => $companyAdmin->id
             ]);
 
-         
+            // Commit the transaction
             DB::commit();
+
+            // Eager-load the purchaseMasterKey relationship without global scopes
+            $company->load(['purchaseMasterKey' => function ($query) {
+                $query->withoutGlobalScopes();
+            }]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company and admin created successfully',
+                'message' => 'Company, admin, and purchase master key created successfully',
                 'data' => [
-                  
                     'company' => $company,
                     'admin' => $companyAdmin,
-                    
+                    // 'purchase_master_key' => $purchaseMaster,
                 ]
             ], 201);
 
@@ -118,15 +167,113 @@ class CompanyController extends Controller{
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Company creation failed: ' . $e->getMessage());
+            Log::error('Company creation failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create company and admin',
+                'message' => 'Failed to create company, admin, or purchase master key',
                 'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
 
+
+    public function updatePurchaseMasterKey(Request $request): JsonResponse
+    {
+        try {
+            // Get the authenticated user
+            $user = $request->user();
+            if (!$user || !$user->hasRole('company_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Not a company admin',
+                ], 403);
+            }
+
+            // Validate request data
+            $validator = Validator::make($request->all(), [
+                'product_code' => 'nullable|boolean',
+                'free' => 'nullable|boolean',
+                'discount_percent' => 'nullable|boolean',
+                'discount_amount' => 'nullable|boolean',
+                'discount' => 'nullable|boolean',
+                'excise_duty' => 'nullable|boolean',
+                'health_insurance' => 'nullable|boolean',
+                'freight_charge' => 'nullable|boolean',
+                'discount_after_vat' => 'nullable|boolean',
+                'expiry_date' => 'nullable|boolean',
+                'batch_no' => 'nullable|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+
+            
+            return DB::transaction(function () use ($user, $validated) {
+                
+                $company = $user->company()->first();
+                if (!$company) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No company associated with this user',
+                    ], 404);
+                }
+
+                // Find the PurchaseMasterKey for the user's company
+                $purchaseMaster = PurchaseMasterKey::where('company_id', $company->id)->first();
+
+                if (!$purchaseMaster) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Purchase master key not found for this company',
+                    ], 404);
+                }
+
+                // Update only provided fields
+                $updateData = array_filter($validated, function ($value) {
+                    return !is_null($value);
+                });
+
+                $purchaseMaster->update($updateData);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Purchase master key updated successfully',
+                    'data' => $purchaseMaster,
+                ], 200);
+            });
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Purchase master key not found',
+            ], 404);
+        } catch (QueryException $e) {
+            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
     /**
  * Update the specified company and its admin user in storage.
  */

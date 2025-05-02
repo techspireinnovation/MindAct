@@ -1,15 +1,10 @@
 <?php
 
 namespace App\Models;
-<<<<<<< HEAD
-use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\SoftDeletes;
-=======
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
->>>>>>> 0053a2b161c3fb291b3f7f8e9939c3557dcdab93
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 use Illuminate\Database\Eloquent\Model;
@@ -24,26 +19,6 @@ class SalesReturn extends Model
     
     protected $fillable = [
         'company_id',
-<<<<<<< HEAD
-        'sale_rate_type',
-        'return_invoice_number',
-        'customer_id',
-        'batch_no',
-       
-        'tpin_number',
-        'sales_id',
-        'store_id',
-        'location_id',
-        'discount_amount',
-        'discount_vat',
-        'paid_amount',
-        'round_of_amount',
-        'payment_type',
-        'sales_details',
-        'terms',
-        'is_active'
-    ];
-=======
         'customer_id', 
         'salesman_id', 
         'document_number', 
@@ -66,7 +41,6 @@ class SalesReturn extends Model
         
     ];
     
->>>>>>> 0053a2b161c3fb291b3f7f8e9939c3557dcdab93
 
     protected $dates = ['deleted_at'];
 
@@ -79,8 +53,6 @@ class SalesReturn extends Model
     {
         return $this->belongsTo(Sale::class);
     }
-<<<<<<< HEAD
-=======
 
 
     public function location()
@@ -92,5 +64,4 @@ class SalesReturn extends Model
     {
         return $this->hasMany(SalesReturnProduct::class);
     }
->>>>>>> 0053a2b161c3fb291b3f7f8e9939c3557dcdab93
 }

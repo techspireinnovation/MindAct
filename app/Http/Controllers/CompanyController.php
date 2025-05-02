@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\PurchaseMasterKey;
+use App\Models\SalesMasterKey;
 use App\Models\User;
 use Hash;
 use DB;
@@ -121,6 +122,22 @@ class CompanyController extends Controller{
                 'expiry_date' => false,
             ]);
 
+            $saleMaster = $company->salesMasterKey()->withoutGlobalScopes()->create([
+                'company_id' => $company->id,
+                'salesman' => false,
+                'product_code' => false,
+                'free' => false,
+                'discount_percent' => false,
+                'discount_amount' => false,
+                
+                'excise_duty' => false,
+                'health_insurance' => false,
+                'freight_charge' => false,
+                'batch_no' => false,
+                'discount_after_vat' => false,
+                'expiry_date' => false,
+            ]);
+
             // Create the Company Admin
             $companyAdmin = User::create([
                 'email' => $validated['admin_email'],
@@ -145,7 +162,7 @@ class CompanyController extends Controller{
             DB::commit();
 
             // Eager-load the purchaseMasterKey relationship without global scopes
-            $company->load(['purchaseMasterKey' => function ($query) {
+            $company->load(['purchaseMasterKey','salesMasterKey' => function ($query) {
                 $query->withoutGlobalScopes();
             }]);
 
@@ -268,6 +285,258 @@ class CompanyController extends Controller{
             ], 500);
         } catch (\Exception $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+
+    public function getPurchaseMasterKey(Request $request): JsonResponse
+    {
+        try {
+            // Get the authenticated user
+            $user = $request->user();
+            if (!$user || !$user->hasRole('company_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Not a company admin',
+                ], 403);
+            }
+
+        
+            
+        
+                
+                $company = $user->company()->first();
+                
+                if (!$company) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No company associated with this user',
+                    ], 404);
+                }
+
+                // Find the PurchaseMasterKey for the user's company
+                $purchaseMaster = PurchaseMasterKey::where('company_id', $company->company_id)->first();
+
+                if (!$purchaseMaster) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Purchase master key not found for this company',
+                    ], 404);
+                }
+
+               
+
+            
+
+                return response()->json([
+                    'success' => true,
+                 
+                    'data' => $purchaseMaster,
+                ], 200);
+         
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Purchase master key not found',
+            ], 404);
+        } catch (QueryException $e) {
+            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            dd($e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            dd($e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+
+    public function updateSaleMasterKey(Request $request): JsonResponse
+    {
+        try {
+            // Get the authenticated user
+            $user = $request->user();
+           
+            if (!$user || !$user->hasRole('company_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Not a company admin',
+                ], 403);
+            }
+
+            // Validate request data
+            $validator = Validator::make($request->all(), [
+                'product_code' => 'nullable|boolean',
+                'salesman' => 'nullable|boolean',
+                'free' => 'nullable|boolean',
+                'discount_percent' => 'nullable|boolean',
+                'discount_amount' => 'nullable|boolean',
+                
+                'excise_duty' => 'nullable|boolean',
+                'health_insurance' => 'nullable|boolean',
+                'freight_charge' => 'nullable|boolean',
+                'discount_after_vat' => 'nullable|boolean',
+                'expiry_date' => 'nullable|boolean',
+                'batch_no' => 'nullable|boolean',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+
+            
+            return DB::transaction(function () use ($user, $validated) {
+                
+                $company = $user->company()->first();
+                // dd($company);
+                if (!$company) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No company associated with this user',
+                    ], 404);
+                }
+                // dd($company->id);
+
+                // Find the PurchaseMasterKey for the user's company
+                $saleMaster = SalesMasterKey::where('company_id', $company->company_id)->first();
+                
+
+                if (!$saleMaster) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Sale master key not found for this company',
+                    ], 404);
+                }
+
+                // Update only provided fields
+                $updateData = array_filter($validated, function ($value) {
+                    return !is_null($value);
+                });
+
+                $saleMaster->update($updateData);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Sales master key updated successfully',
+                    'data' => $saleMaster,
+                ], 200);
+            });
+
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Sale master key not found',
+            ], 404);
+        } catch (QueryException $e) {
+            Log::error('Sale master key update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('sale master key update failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+
+    public function getSalesMasterKey(Request $request): JsonResponse
+    {
+        try {
+            // Get the authenticated user
+            $user = $request->user();
+            if (!$user || !$user->hasRole('company_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Not a company admin',
+                ], 403);
+            }
+
+        
+            
+        
+                
+                $company = $user->company()->first();
+                
+                if (!$company) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No company associated with this user',
+                    ], 404);
+                }
+
+                // Find the PurchaseMasterKey for the user's company
+                $saleMaster = SalesMasterKey::where('company_id', $company->company_id)->first();
+
+                if (!$saleMaster) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Sale master key not found for this company',
+                    ], 404);
+                }
+
+               
+
+            
+
+                return response()->json([
+                    'success' => true,
+                 
+                    'data' => $saleMaster,
+                ], 200);
+         
+        } catch (ValidationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Purchase master key not found',
+            ], 404);
+        } catch (QueryException $e) {
+            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            dd($e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            dd($e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',

@@ -43,5 +43,9 @@ class Company extends Model
     {
         return $this->hasOne(PurchaseMasterKey::class);
     }
+    public function salesMasterKey(): HasOne
+    {
+        return $this->hasOne(SalesMasterKey::class);
+    }
 
 }

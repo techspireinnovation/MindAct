@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ProductType;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,10 +27,19 @@ class ProductTypeController extends Controller
         try {
             $item = ProductType::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:product_types,name,' . $id,
-                'is_active' => 'boolean|required',
-                'is_primary' =>'boolean',
-                'company_id' => 'integer|exists:companies,id'
+                'name' => ['required',
+                            'string',
+                            'max:255',
+                            Rule::unique('product_types')
+                                ->ignore($id)
+                                ->where(function ($query) use ($request, $item){
+                                    return $query->where('company_id',$request->input('company_id',$item->company_id));
+                                    
+                                }),
+                                  ],
+                            'is_active' => 'boolean|required',
+                            'is_primary' =>'boolean',
+                            'company_id' => 'integer|exists:companies,id'
             ]);
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 ProductType::where('company_id', $item->company_id)
@@ -60,7 +70,13 @@ class ProductTypeController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:product_types,name',
+            'name' => ['required',
+                        'string',
+                        'max:255',
+                        Rule::unique('product_types')->where(function ($query) use ($request){
+                            return $query->where('company_id',$request->company_id);
+                        }),
+                    ],
             'is_active' => 'boolean|required',
             'is_primary' =>'boolean',
             'company_id' => 'integer|exists:companies,id'

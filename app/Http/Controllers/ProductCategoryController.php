@@ -5,6 +5,8 @@ use App\Models\ProductCategory;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -37,9 +39,16 @@ class ProductCategoryController extends Controller
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
-       
+    //    dd($request->all());
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:product_categories,name',
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('product_categories')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id);
+                }),
+            ],
             'company_id' => 'required|integer|exists:companies,id',
             'is_primary' =>'boolean',
             'is_active' => 'boolean'
@@ -80,7 +89,17 @@ class ProductCategoryController extends Controller
     try {
         $product_category = ProductCategory::findOrFail($id);
         $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255|unique:product_categories,name,' . $id,
+            'name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('product_categories')
+                    ->ignore($id)
+                    ->where(function ($query) use ($request, $product_category) {
+                        return $query->where('company_id', $request->input('company_id', $product_category->company_id));
+                    }),
+            ],
             'company_id' => 'sometimes|required|integer|exists:companies,id',
             'is_active' => 'sometimes|boolean',
             'is_primary' => 'sometimes|boolean',

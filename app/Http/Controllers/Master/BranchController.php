@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -43,7 +44,14 @@ class BranchController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required',
+            'string',
+            'max:255',
+            Rule::unique('branches')->where(function ($query) use ($request){
+                return $query->where('company_id',$request->company_id);
+
+            }),
+        ],
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);

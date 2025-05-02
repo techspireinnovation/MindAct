@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Events\ProductUpdated;
 use App\Models\Product;
 use App\Models\ProductFieldValue;
+use App\Models\ProductField;
 use App\Models\ProductList;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -127,6 +128,8 @@ public function index(Request $request): JsonResponse
             'search_measure_unit' => 'nullable|string|max:100',
             'search_product_type' => 'nullable|string|max:100',
             'search_location' => 'nullable|string|max:100',
+            'search_product_field' => 'nullable|string|max:100',
+            'search_product_field_value' => 'nullable|string|max:100',
             'per_page' => 'nullable|integer|min:1|max:100',
         ]);
 
@@ -137,6 +140,7 @@ public function index(Request $request): JsonResponse
             ], 422);
         }
 
+        // Query products with relationships
         $query = Product::with([
             'category:id,name',
             'subCategory:id,name',
@@ -144,24 +148,62 @@ public function index(Request $request): JsonResponse
             'measureUnit:id,name',
             'productType:id,name',
             'location:id,name',
+            'productList',
+            'productFieldValues.productField'
         ]);
 
-        // Filter logic
+        // Apply filters
         $this->applyFilters($query, $request);
 
         // Pagination
         $perPage = $request->input('per_page', 50);
         $products = $query->paginate($perPage);
+
+        // Transform products to include product_fields and exclude product_field_values
+        $transformedProducts = $products->through(function ($product) {
+            // Group values by field ID
+            $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
+
+            // Get only product fields with values for this product
+            $productFields = ProductField::where('company_id', $product->company_id)
+                ->whereIn('id', $valuesByFieldId->keys())
+                ->get();
+
+            // Build response fields with values embedded
+            $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
+                $fieldArray = $field->toArray();
+                $fieldArray['product_field_value'] = $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at']);
+                return $fieldArray;
+            });
+
+            // Prepare product response without product_field_values
+            $productArray = $product->toArray();
+            unset($productArray['product_field_values']);
+
+            // Add product_fields to the product array
+            $productArray['product_fields'] = $product_fields;
+
+            return $productArray;
+        });
+
+        // Broadcast event
         broadcast(new ProductUpdated($products, 'listed'));
 
-        return response()->json($products->load('productList','productFieldValues'));
+        // Return paginated response with transformed data
+        return response()->json([
+            'data' => $transformedProducts->items(),
+            'current_page' => $products->currentPage(),
+            'last_page' => $products->lastPage(),
+            'per_page' => $products->perPage(),
+            'total' => $products->total()
+        ]);
 
     } catch (\Exception $e) {
         Log::error('Product search error: ' . $e->getMessage(), [
             'exception' => $e,
             'request' => $request->all()
         ]);
-        
+
         return response()->json([
             'error' => 'Server error occurred',
             'details' => config('app.debug') ? $e->getMessage() : null
@@ -212,6 +254,16 @@ protected function applyFilters($query, Request $request): void
             'query' => fn($q, $v) => $q->whereHas('location', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
             'match' => 'EXISTS (SELECT 1 FROM locations WHERE locations.id = products.location_id AND locations.name LIKE ?)'
         ],
+        'product_field' => [
+            'param' => 'search_product_field',
+            'query' => fn($q, $v) => $q->whereHas('productFieldValues.productField', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+            'match' => 'EXISTS (SELECT 1 FROM product_field_values INNER JOIN product_fields ON product_field_values.product_field_id = product_fields.id WHERE product_field_values.product_id = products.id AND product_fields.name LIKE ?)'
+        ],
+        'product_field_value' => [
+            'param' => 'search_product_field_value',
+            'query' => fn($q, $v) => $q->whereHas('productFieldValues', fn($q) => $q->where('value', 'LIKE', "%{$v}%")),
+            'match' => 'EXISTS (SELECT 1 FROM product_field_values WHERE product_field_values.product_id = products.id AND product_field_values.value LIKE ?)'
+        ],
     ];
 
     $activeFilters = empty($filterOptions) || in_array('all', $filterOptions)
@@ -228,18 +280,14 @@ protected function applyFilters($query, Request $request): void
         return;
     }
 
-    // First try exact matching
+    // Apply filters
     $query->where(function ($q) use ($searchTerms, $availableFilters) {
         foreach ($searchTerms as $field => $term) {
             $availableFilters[$field]['query']($q, $term);
         }
     });
-
-    // // Fallback to partial matches if no results
-    // if ($query->count() === 0) {
-    //     $this->applyPartialMatchFallback($query, $searchTerms, $availableFilters);
-    // }
 }
+
 
 protected function applyPartialMatchFallback($query, $searchTerms, $availableFilters): void
 {
@@ -705,18 +753,34 @@ public function update(Request $request, $id): JsonResponse
 
     public function show($id): JsonResponse
     {
-        try {
-            $item = Product::with(['productFieldValues', 'productList'])->findOrFail($id);
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
+        $product = Product::with([
+            'productList',
+            'productFieldValues.productField'
+        ])->findOrFail($id);
+
+        // Group values by field ID
+        $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
+
+        // Get only product fields with values for this product
+        $productFields = ProductField::where('company_id', $product->company_id)
+            ->whereIn('id', $valuesByFieldId->keys())
+            ->get();
+
+        // Build response fields with values embedded
+        $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
+            $fieldArray = $field->toArray();
+            $fieldArray['product_field_value'] = $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at']);
+            return $fieldArray;
+        });
+
+        // Prepare product response without product_field_values
+        $productArray = $product->toArray();
+        unset($productArray['product_field_values']);
+
+        return response()->json([
+            'product' => $productArray,
+            'product_fields' => $product_fields
+        ]);
     }
 
     public function destroy($id): JsonResponse

@@ -4,45 +4,53 @@ namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Request;
+use Illuminate\Http\Request;
 
-class PurchaseProduct extends Model
+class PurchaseProductFieldValue extends Model
 {
+    use SoftDeletes, HasFactory;
 
-    protected $fillable = [
-        'customer_id',
-        'company_id',
-        'purchase_id',
-        'product_id',
-        'expiry_date',
-        'quantity',
-        'deleted_at',
-        'free_quantity',
-        'price',
-        'discount_percent',
-        'discount_amount',
-        'is_vatable',
-        'measure_unit_id',
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
-    use SoftDeletes;
+    protected $fillable = [
+        'company_id',
+        'product_field_id',
+        'product_id',
+        'purchase_product_id',
+        'value',
+        'deleted_at',
+    ];
+
     protected $dates = ['deleted_at'];
+
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
         static::creating(function ($model) {
             // Only set if not already set
             if (empty($model->company_id)) {
-                // Get the header value, fallback to 'US'
                 $headerValue = Request::input('company_id');
                 $model->company_id = $headerValue;
             }
         });
     }
 
-    public function fieldValues()
+    public function productField()
     {
-        return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
+        return $this->belongsTo(ProductField::class, 'product_field_id');
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function purchaseProduct()
+    {
+        return $this->belongsTo(PurchaseProduct::class, 'purchase_product_id');
     }
 }

@@ -5,6 +5,8 @@ use App\Models\Brand;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class BrandController extends Controller
@@ -24,14 +26,27 @@ class BrandController extends Controller
     {
         try {
             $item = Brand::findOrFail($id);
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:brands,name,' . $id,
+            $validator = Validator::make($request->all(),[
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                           Rule::unique('brands')
+                                ->ignore($id)
+                                ->where(function ($query) use ($request, $item){
+                                    return $query->where('company_id', $request->input('company_id',$item->company_id));
+
+                                }),
+             ],
                 'is_active' => 'sometimes|boolean|required',
                 'is_primary' => 'sometimes|boolean',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
                 'company_id' => 'required|integer|exists:companies,id'
             ]);
+            if($validator->fails()){
+                return response()->json($validator->errors(),422);
+            }
+            $validated = $validator->validated();
              
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
             Brand::where('company_id', $item->company_id)
@@ -67,7 +82,14 @@ class BrandController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:brands,name',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                       Rule::unique('brands')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                       }),
+                    ],
             'is_active' => 'boolean|required',
             'is_primary' =>'boolean',
             'quantity' => 'integer',

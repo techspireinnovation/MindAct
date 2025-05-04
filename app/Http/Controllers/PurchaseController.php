@@ -9,6 +9,8 @@ use App\Models\PurchaseProduct;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
+
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -28,15 +30,30 @@ class PurchaseController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         try {
+            $item = Purchase::findOrFail($id);
 
             $validated = $request->validate([
                 'ref_bill_number' => 'required|string|max:255',
-                'purchase_bill_number' => 'string|max:255',
+                'purchase_bill_number' => ['string',
+                                          'max:255',
+                                          Rule::unique('purchases')
+                                            ->ignore($id) 
+                                            ->where(function ($query) use ($request, $item) {
+                                             return $query->where('company_id', $request->input('company_id', $item->company_id));
+                                    }),
+                                  ],
                 'remarks' => 'string|max:255',
                 'invoice_date' => 'string|max:255',
                 'discount_percent' => 'numeric',
                 'freight_amount' => 'numeric',
-                'batch_no' => 'string|max:255|unique:purchases,batch_no,' . $id,
+                'batch_no' => ['string',
+                              'max:255',
+                              Rule::unique('purchases')
+                                ->ignore($id) 
+                                ->where(function ($query) use ($request, $item) {
+                                return $query->where('company_id', $request->input('company_id', $item->company_id));
+                           }),
+                        ],
                 'health_insurance' => 'numeric',
                 'balance' => 'numeric',
                 'excise_duty' => 'numeric',
@@ -105,11 +122,23 @@ class PurchaseController extends Controller
         $validated = $request->validate([
             'ref_bill_number' => 'required|string|max:255',
             'customer_id' => 'required|exists:customers,id',
-            'purchase_bill_number' => 'string|max:255',
+            'purchase_bill_number' => ['string',
+                                       'max:255',
+                                       Rule::unique('purchases')->where(function ($query) use ($request){
+                                        return $query->where('company_id', $request->company_id);
+
+                                       }),
+                                    ],
             'remarks' => 'string|max:255',
             'invoice_date' => 'string|max:255',
             'expiry_date' => 'string|max:255',
-            'batch_no' => 'string|max:255|unique:purchases,batch_no',
+            'batch_no' => ['string',
+                           'max:255',
+                            Rule::unique('purchases')->where(function ($query) use ($request){
+                           return $query->where('company_id', $request->company_id);
+
+                }),
+             ],
             'discount_percent' => 'numeric',
             'freight_amount' => 'numeric',
             'health_insurance' => 'numeric',

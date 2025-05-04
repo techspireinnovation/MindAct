@@ -8,6 +8,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseReturn;
+
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -26,6 +27,48 @@ class PurchaseReturnController extends Controller
     
         return response()->json($query->paginate(50));
     }
+
+    public function getPurchaseBillNumber(Request $request)
+    {
+        $query = Purchase::query();
+    
+        if ($request->has('company_id')) {
+            $billNumbers = $query->where('company_id', $request->company_id)
+                                 ->pluck('purchase_bill_number');
+    
+            return response()->json($billNumbers);
+        }
+    
+        return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+    }
+    
+
+    public function getPurchaseByBillNumber(Request $request)
+    {
+        try {
+            if (!$request->has('purchase_bill_number') || !$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameters.'], 422);
+            }
+    
+            $purchase = Purchase::where('company_id', $request->company_id)
+                        ->where('purchase_bill_number', $request->purchase_bill_number)
+                        ->first();
+    
+            if (!$purchase) {
+                return response()->json(['error' => 'Purchase not found'], 404);
+            }
+    
+            return response()->json($purchase->load('purchaseProducts'));
+            
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+    
+    
+
 
     public function update(Request $request, $id): JsonResponse
     {

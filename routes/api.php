@@ -117,6 +117,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-purchase-masters', [CompanyController::class,'getPurchaseMasterKey']);
     Route::get('get-sales-masters', [CompanyController::class,'getSalesMasterKey']);
     Route::put('sales-masters-update', [CompanyController::class,'updateSaleMasterKey']);
+    Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
+    Route::get('get-purchase-by-bill-numbers',[PurchaseReturnController::class, 'getPurchaseByBillNumber']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

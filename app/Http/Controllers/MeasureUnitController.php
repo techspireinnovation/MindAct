@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\MeasureUnit;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -26,7 +27,16 @@ class MeasureUnitController extends Controller
         try {
             $item = MeasureUnit::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:measure_units,name,' . $id,
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                           Rule::unique('measure_units')
+                           ->ignore($id)
+                           ->where(function ($query) use ($request,$item){
+                            return $query->where('company_id', $request->input('company_id',$item->company_id));
+
+                           }),
+                        ],
                 'is_active' => 'boolean|required',
                 'is_primary' =>'boolean',
                 'quantity' => 'integer',
@@ -63,7 +73,13 @@ class MeasureUnitController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:measure_units,name',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                       Rule::unique('measure_units')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+                    }),
+                    ],
             'is_active' => 'boolean|required',
             'is_primary' =>'boolean',
             'quantity' => 'integer',

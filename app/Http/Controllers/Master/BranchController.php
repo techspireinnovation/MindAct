@@ -28,7 +28,16 @@ class BranchController extends Controller
         try {
             $item = Branch::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => ['required',
+                            'string',
+                            'max:255',
+                            Rule::unique('branches')
+                                ->ignore($id)
+                                ->where(function ($query) use ($request, $item){
+                                    return $query->where('company_id',$request->input('company_id',$item->company_id));
+
+                                }),
+                        ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);

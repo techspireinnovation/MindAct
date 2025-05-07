@@ -6,6 +6,7 @@ use App\Models\ProductField;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class ProductFieldController extends Controller
@@ -24,7 +25,14 @@ class ProductFieldController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:product_fields,name',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                       Rule::unique('product_fields')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                       }),
+                    ],
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id',
             'type' => 'required|string|in:text,dropdown',
@@ -55,7 +63,16 @@ class ProductFieldController extends Controller
         try {
             $product_field = ProductField::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:product_fields,name,' . $id,
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                           Rule::unique('product_fields')
+                           ->ignore($id)
+                           ->where(function ($query) use ($request,$product_field){
+                            return $query->where('company_id',$request->input('company_id',$product_field->company_id));
+
+                           }),
+                        ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'type' => 'required|string|in:text,dropdown',

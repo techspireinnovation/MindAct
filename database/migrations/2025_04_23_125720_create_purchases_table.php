@@ -22,13 +22,14 @@ return new class extends Migration {
             $table->string('remarks')->nullable();
             $table->foreignID('store_id')->constrained('stores');
             $table->foreignID('location_id')->constrained('locations');
-            $table->double('discount_amount')->nullable();
+            $table->enum('discount_type',['percent','amount'])->nullable();
+            $table->double('discount_value')->nullable();
             $table->double('excise_duty')->nullable();
             $table->double('health_insurance')->nullable();
             $table->double('freight_amount')->nullable();
             $table->double('discount_after_vat')->nullable();
             $table->double('roundoff_amount')->nullable();
-            $table->enum('payment_type', ['cash', 'bank', 'credit'])->default('credit');
+            $table->json('payment')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

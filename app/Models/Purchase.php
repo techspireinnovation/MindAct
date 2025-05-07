@@ -13,6 +13,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Purchase extends Model
 {
     use SoftDeletes, HasFactory;
+
+    protected $casts = [
+        'payment' => 'array',
+    ];
    
     protected $fillable = [
         'customer_id',
@@ -24,11 +28,12 @@ class Purchase extends Model
         'balance',
         'invoice_date',
         'batch_no',
-       
+       'payment',
         'remarks',
         'store_id',
         'location_id',
-        'discount_amount',
+        'discount_type',
+        'discount_value',
         'roundoff_amount',
         'excise_duty',
         'health_insurance',

@@ -2,6 +2,7 @@
 
 use App\Events\MessageSent;
 use Illuminate\Http\Request;
+use App\Helpers\Helper;
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -93,6 +94,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('measure-units', MeasureUnitController::class);
     Route::resource('products', ProductController::class);
     Route::resource('purchases', PurchaseController::class);
+    Route::get('product-names-purchases', [PurchaseController::class,'getProducts']);
+    Route::get('product-details-by-names-purchases', [PurchaseController::class,'getProductDetailsByName']);
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
@@ -118,7 +121,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-sales-masters', [CompanyController::class,'getSalesMasterKey']);
     Route::put('sales-masters-update', [CompanyController::class,'updateSaleMasterKey']);
     Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
-    Route::get('get-purchase-by-bill-numbers',[PurchaseReturnController::class, 'getPurchaseByBillNumber']);
+    Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
+    Route::get('get-purchase-product-names',[PurchaseReturnController::class, 'getProductNames']);
+    Route::get('get-purchase-product-details-by-names',[PurchaseReturnController::class, 'getPurchaseProductDetails']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

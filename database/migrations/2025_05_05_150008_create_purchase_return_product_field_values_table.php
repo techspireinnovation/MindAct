@@ -11,19 +11,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('purchase_product_field_values', function (Blueprint $table) {
+        Schema::create('purchase_return_product_field_values', function (Blueprint $table) {
             $table->id();
-            
-            $table->foreignId('company_id')->constrained('companies');
+            $table->foreignId('purchase_return_product_id');
             $table->foreignId('product_field_id')->constrained('product_fields');
-            $table->unsignedInteger('quantity_index')->nullable();
-            $table->foreignId('product_id')->constrained('products');
-            $table->foreignId('purchase_product_id')->constrained('purchase_products');
             $table->string('value');
-          
-            $table->softDeletes();
+            $table->integer('quantity_index');
+            $table->foreignId('product_id')->constrained('products');
+            $table->foreignId('company_id')->constrained('companies');
             $table->timestamps();
-            
+            $table->softDeletes();
         });
     }
 
@@ -32,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('purchase_product_field_values');
+        Schema::dropIfExists('purchase_return_product_field_values');
     }
 };

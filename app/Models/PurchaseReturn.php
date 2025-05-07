@@ -4,25 +4,36 @@ namespace App\Models;
 
 
 use App\Models\Location;
+use App\Models\PurchaseProductReturnFieldValue;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PurchaseReturn extends Model
 {
+    use SoftDeletes, HasFactory;
+
+    protected $casts = [
+        'payment' => 'array'
+    ];
     protected $fillable = [
+        'purchase_id',
         'customer_id',
         'company_id',
         'ref_bill_number',
         'discount_after_vat',
         'purchase_bill_number',
         'expiry_date',
+        'remarks',
+        'reasons',
         'batch_no',
         'deleted_at',
         'balance',
         'invoice_date',
         'remarks',
+        'payment',
         'store_id',
         'location_id',
         'discount_amount',
@@ -48,6 +59,52 @@ class PurchaseReturn extends Model
     public function purchaseReturnProducts(): HasMany
     {
         return $this->hasMany(PurchaseProductReturn::class);
+    }
+    public function purchaseReturn()
+    {
+        return $this->belongsTo(PurchaseReturn::class);
+    }
+
+    public function purchaseProduct()
+    {
+        return $this->belongsTo(PurchaseProduct::class);
+    }
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function measureUnit()
+    {
+        return $this->belongsTo(MeasureUnit::class);
+    }
+
+    public function fieldValues()
+    {
+        return $this->hasMany(PurchaseReturnProductFieldValue::class, 'purchase_return_product_id');
+    }
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
+    }
+
+  
+    public function store()
+    {
+        return $this->belongsTo(Store::class);
+    }
+
+    
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 
 

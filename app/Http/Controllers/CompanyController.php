@@ -126,10 +126,19 @@ class CompanyController extends Controller{
                 'company_id' => $company->id,
                 'salesman' => false,
                 'product_code' => false,
+                'credit_days' => false,
+                'balance' => false,
+                'store' => false,
+                'location' => false,
+                'direct_whatsapp_system' => false,
+                'direct_whatsapp_system' => false,
+                'bill_type' => false,
                 'free' => false,
+                'discount' => false,
                 'discount_percent' => false,
                 'discount_amount' => false,
-                
+                'additional' => false,
+                'mfd' => false,
                 'excise_duty' => false,
                 'health_insurance' => false,
                 'freight_charge' => false,
@@ -394,6 +403,18 @@ class CompanyController extends Controller{
                 'discount_after_vat' => 'nullable|boolean',
                 'expiry_date' => 'nullable|boolean',
                 'batch_no' => 'nullable|boolean',
+                'credit_days' => 'nullable|boolean',
+                'balance' => 'nullable|boolean',
+                'store' => 'nullable|boolean',
+                'location' => 'nullable|boolean',
+                'direct_mail_system' => 'nullable|boolean',
+                'direct_whatsapp_system' => 'nullable|boolean',
+                'bill_type' => 'nullable|boolean',
+                'discount' => 'nullable|boolean',
+                'additional' => 'nullable|boolean',
+                'mfd' => 'nullable|boolean',
+                
+
             ]);
 
             if ($validator->fails()) {

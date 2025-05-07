@@ -29,7 +29,7 @@ return new class extends Migration
             $table->double('freight_charge')->nullable();
             $table->double('discount_after_vat')->nullable();
             $table->double('round_off_amount')->nullable();
-            $table->enum('payment_type',['cash','credit','bank']);
+            $table->json('payment')->nullable();
             $table->enum('entry_type',['invoice','quotation']);
             $table->string('note')->nullable();
             $table->boolean('is_mail_notify')->default(false);

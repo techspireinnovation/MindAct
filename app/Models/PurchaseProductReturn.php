@@ -11,6 +11,8 @@ class PurchaseProductReturn extends Model
 {
 
     protected $fillable = [
+        'purchase_return_id',
+        'purchase_product_id',
         'customer_id',
         'company_id',
         'purchase_id',
@@ -40,4 +42,35 @@ class PurchaseProductReturn extends Model
             }
         });
     }
+    public function purchaseReturn()
+       {
+           return $this->belongsTo(PurchaseReturn::class);
+       }
+
+       public function purchaseProduct()
+       {
+           return $this->belongsTo(PurchaseProduct::class);
+       }
+
+       public function product()
+       {
+           return $this->belongsTo(Product::class);
+       }
+
+       public function customer()
+       {
+           return $this->belongsTo(Customer::class);
+       }
+
+       public function measureUnit()
+       {
+           return $this->belongsTo(MeasureUnit::class);
+       }
+
+       public function fieldValues()
+       {
+           return $this->hasMany(PurchaseReturnProductFieldValue::class, 'purchase_return_product_id');
+       }
+
+   
 }

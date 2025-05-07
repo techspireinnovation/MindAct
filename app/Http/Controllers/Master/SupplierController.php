@@ -6,6 +6,9 @@ use App\Models\Brand;
 use App\Models\Supplier;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -27,8 +30,24 @@ class SupplierController extends Controller
         try {
             $item = Supplier::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'string|max:255',
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                        Rule::unique('suppliers')
+                            ->ignore($id)
+                            ->where(function ($query) use ($request, $item){
+                                return $query->where('company_id',$request->input('company_id',$request->company_id));
+
+                        }),
+                        ],
+                'email' => ['string',
+                            'max:255',
+                            Rule::unique('suppliers')
+                            ->ignore($id)
+                            ->where(function ($query) use ($request, $item){
+                               return $query->where('company_id',$request->input('company_id',$item->company_id));
+                            }),
+                     ],
                 'pan_vat_number' => 'string|max:255',
                 'mobile' => 'required|string|max:255',
                 'address' => 'required|string|max:255',
@@ -46,8 +65,21 @@ class SupplierController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'string|max:255',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                       Rule::unique('suppliers')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                       }),
+                    ],
+            'email' => ['string',
+                        'max:255',
+                      Rule::unique('suppliers')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                      }),
+                    ],
             'pan_vat_number' => 'string|max:255',
             'mobile' => 'required|string|max:255',
             'address' => 'required|string|max:255',

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class AccountGroupController extends Controller
@@ -29,7 +30,16 @@ class AccountGroupController extends Controller
         try {
             $group = AccountGroup::findOrFail($id);
             $validator = Validator::make($request->all(),[
-                'name' => 'required|string|max:255|unique:account_groups,name,' . $id,
+                'name' => ['required',
+                           'string',
+                            'max:255',
+                           Rule::unique('account_groups')
+                            ->ignore($id)
+                            ->where(function ($query) use ($request, $group){
+                                return $query->where('company_id',$request->input('company_id',$request->company_id));
+
+                            }),
+                    ],
                 'is_active' => 'boolean|required',
                 'is_primary' =>'boolean',
                 'company_id' => 'integer|exists:companies,id',
@@ -70,7 +80,15 @@ class AccountGroupController extends Controller
         try{
 
         $validator = Validator::make($request->all(),[
-            'name' => 'required|string|max:255|unique:account_groups,name',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                    Rule::unique('account_groups')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                    }),
+
+                ],
             'is_active' => 'boolean|required',
             'is_primary' =>'boolean',
             'company_id' => 'integer|exists:companies,id',

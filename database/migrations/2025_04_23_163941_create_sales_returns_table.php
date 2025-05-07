@@ -32,7 +32,7 @@ return new class extends Migration
             $table->double('discount_after_vat')->nullable();
             $table->double('paid_amount')->nullable();
             $table->double('round_of_amount')->nullable();
-            $table->enum('payment_type', ['cash', 'bank', 'credit'])->default('credit');                      
+            $table->json('payment')->nullable();
             $table->SoftDeletes();          
             $table->timestamps();
         });

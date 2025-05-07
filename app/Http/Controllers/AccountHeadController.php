@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use App\Models\AccountHead;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 
@@ -29,7 +30,16 @@ class AccountHeadController extends Controller
         try {
             $account_head = AccountHead::findOrFail($id);
             $validator = Validator::make($request->all(),[
-                'name' => 'required|string|max:255|unique:account_heads,name,' . $id,
+                'name' => ['required',
+                            'string',
+                            'max:255',
+                        Rule::unique('account_heads')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $account_head){
+                            return $query->where('company_id',$request->input('company_id',$account_head->company_id));
+
+                        }),
+                    ],
                 'is_active' => 'boolean|required',
                 'is_primary' =>'boolean',
                 'company_id' => 'integer|exists:companies,id',
@@ -73,7 +83,15 @@ class AccountHeadController extends Controller
     {
         try{
         $validator = Validator::make($request->all(),[
-            'name' => 'required|string|max:255',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                       Rule::unique('account_heads')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                       }),
+
+                   ],
             'is_active' => 'boolean|required',
             'is_primary' =>'boolean',
             'company_id' => 'integer|exists:companies,id',

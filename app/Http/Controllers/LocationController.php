@@ -6,6 +6,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
+
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 class LocationController extends Controller
@@ -27,7 +29,16 @@ class LocationController extends Controller
         try {
             $item = Location::findOrFail($id);
             $validator = Validator::make($request->all(),[
-                'name' => 'required|string|max:255|unique:locations,name,' . $id,
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                           Rule::unique('locations')
+                           ->ignore($id)
+                           ->where(function ($query) use ($request, $item){
+                              return $query->where('company_id',$request->input('company_id',$item->company_id));
+
+                           }),
+            ],
                 'is_active' => 'boolean|required',
                 'is_primary' =>'boolean',
                 'company_id' => 'integer|exists:companies,id'
@@ -36,6 +47,8 @@ class LocationController extends Controller
             if($validator->fails()){
                 return response()->json($validator->errors(), 422);
             }
+
+            $validated = $validator->validated();
             // Explicit boolean handling (optional, since validation ensures boolean)
             if ($request->has('is_active')) {
                 $validated['is_active'] = (bool) $request->input('is_active');
@@ -68,7 +81,17 @@ class LocationController extends Controller
         try{
 
             $validator = Validator::make($request->all(),[
-                'name' => 'required|string|max:255|unique:locations,name',
+                'name' => ['required',
+                            'string',
+                            'max:255',
+                            Rule::unique('locations')
+
+                            ->where(function ($query) use ($request){
+                                return $query->where('company_id',$request->company_id);
+
+                            }),
+                        
+                        ],
                 'is_active' => 'boolean|required',
                 'is_primary' =>'boolean',
                 'company_id' => 'integer|exists:companies,id'
@@ -94,8 +117,10 @@ class LocationController extends Controller
         }catch(ModelNotFoundException $e){
             return response()->json(['error' => 'Item not found'], 404);
         }catch(QueryException $e){
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }catch(\Exception $e){
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }

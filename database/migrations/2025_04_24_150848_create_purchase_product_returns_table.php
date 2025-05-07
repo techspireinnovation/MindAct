@@ -13,8 +13,10 @@ return new class extends Migration {
         Schema::create('purchase_product_returns', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
-            $table->foreignID(column: 'purchase_return_id')->constrained('purchase_returns');
+            $table->foreignID(column: 'purchase_return_id')->constrained('purchase_returns')->onDelete('cascade');
             $table->foreignID(column: 'product_id')->constrained('products');
+            $table->foreignID(column: 'customer_id')->nullable();         
+            $table->foreignID(column: 'purchase_product_id')->constrained('purchase_products');
             $table->date('expiry_date')->nullable();
             $table->double('quantity')->nullable();
             $table->double('free_quantity')->nullable();

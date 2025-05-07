@@ -14,7 +14,8 @@ class SalesReturn extends Model
     use SoftDeletes, HasFactory;
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'payment' => 'array'
     ];
     
     protected $fillable = [
@@ -24,7 +25,8 @@ class SalesReturn extends Model
         'document_number', 
         'invoice_number',  
         'batch_no',  
-        'balance',  
+        'balance',
+        'payment',  
         'invoice_date',  
         'remarks', 
         'store_id',

@@ -533,9 +533,18 @@ public function filterbyBarcode(Request $request): JsonResponse
 public function update(Request $request, $id): JsonResponse
     {
         try {
-            // Define validation rules
+            $item = Product::findOrFail($id);
             $rules = [
-                'name' => ['required', 'string', 'max:255', 'unique:products,name,' . $id],
+                'name' => ['required', 
+                           'string', 
+                           'max:255',
+                        Rule::unique('products')
+                          ->ignore($id)
+                          ->where(function ($query) use ($request,$item){
+                            return $query->where('company_id',$request->input('company_id',$request->company_id));
+
+                          }),
+                    ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'category_id' => 'integer|exists:product_categories,id',
@@ -685,7 +694,14 @@ public function update(Request $request, $id): JsonResponse
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:products,name',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                       Rule::unique('products')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                       }),
+                       ],
             'is_active' => 'boolean|required',
             'category_id' => 'integer|exists:product_categories,id',
             'sub_category_id' => 'integer|exists:product_sub_categories,id',

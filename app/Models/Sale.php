@@ -13,7 +13,8 @@ class Sale extends Model
     use SoftDeletes, HasFactory;
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'payment' => 'array'
     ];
 
     protected $fillable = [
@@ -23,7 +24,7 @@ class Sale extends Model
             'invoice_number',
             'invoice_date' ,
             'batch_no', 
-            
+            'payment',
             'document_number',
             'store_id',
             'location_id',

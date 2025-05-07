@@ -6,6 +6,8 @@ use App\Models\SubGroup;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 
@@ -27,14 +29,33 @@ class SubGroupController extends Controller
     {
         try {
             $group = SubGroup::findOrFail($id);
-            $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:sub_groups,name,' . $id,
+            $validator = Validator::make($request->all(),[
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                        Rule::unique('sub_groups')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $group){
+                            return $query->where('company_id',$request->input('company_id',$request->company_id));
+
+                        }),
+                    ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
-                'main_group_id' => 'integer|exists:main_groups,id',
+                'main_group_id' => ['integer',
+                                   Rule::exists('main_groups','id')->where(function ($query) use ($request){
+                                    return $query->where('company_id',$request->company_id);
+
+                                   }),
+                                   ],
                 'code' => 'string|max:255',
                 'ranking_for_trial' => 'integer|max:255'
             ]);
+            if($validator->fails()){
+                return response()->json($validator->errors(),422);
+            }
+
+            $validated = $validator->validated();
             $group->update($validated);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
@@ -48,11 +69,25 @@ class SubGroupController extends Controller
     {
         try{
         $validator = Validator::make($request->all(),[
-            'name' => 'required|string|max:255|unique:sub_groups,name',
+            'name' => ['required',
+                       'string',
+                       'max:255',
+                    Rule::unique('sub_groups')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                    }),
+                    
+                ],
             'is_active' => 'boolean|required',
             'is_primary' =>'boolean',
             'company_id' => 'integer|exists:companies,id',
-            'main_group_id' => 'integer|exists:main_groups,id',
+            'main_group_id' => [
+                'required',
+                'integer',
+                Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->input('company_id'));
+                }),
+            ],
             'code' => 'string|max:255',
             'ranking_for_trial' => 'string|max:255'
         ]);

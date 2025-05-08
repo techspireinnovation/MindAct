@@ -25,6 +25,7 @@ return new class extends Migration
             $table->boolean('health_insurance')->default(false);
             $table->boolean('freight_charge')->default(false);
             $table->boolean('discount_after_vat')->default(false);
+            $table->boolean('mfd')->default(false);
             $table->softDeletes();
             $table->timestamps();
         });

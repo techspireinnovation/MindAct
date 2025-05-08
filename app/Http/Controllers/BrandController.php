@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\Brand;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Sagautam5\LocalStateNepal\Entities\Province;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -20,6 +21,13 @@ class BrandController extends Controller
         }
     
         return response()->json($query->paginate(50));
+    }
+
+    public function getListProvice(){
+        $province = new Province('np');
+        $provincesData = $province->allProvinces();
+        return response()->json($provincesData);
+
     }
 
     public function update(Request $request, $id): JsonResponse

@@ -4,6 +4,7 @@ use App\Events\MessageSent;
 use Illuminate\Http\Request;
 use App\Helpers\Helper;
 use App\Http\Controllers\AccountGroupController;
+use App\Http\Controllers\NepalLocationPackageController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
@@ -123,6 +124,10 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
     Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
     Route::get('get-purchase-product-names',[PurchaseReturnController::class, 'getProductNames']);
+    Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
+    Route::get('get-provinces-with-districts', [NepalLocationPackageController::class, 'ProvinceWithDistrict']);
+    Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
+    Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
     Route::get('get-purchase-product-details-by-names',[PurchaseReturnController::class, 'getPurchaseProductDetails']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

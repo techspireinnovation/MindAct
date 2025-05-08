@@ -14,6 +14,7 @@
         "laravel/reverb": "*",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
+        "sagautam5/local-states-nepal": "^2.0",
         "spatie/laravel-permission": "^6.16"
     },
     "require-dev": {
@@ -33,7 +34,8 @@
             "Database\\Seeders\\": "database/seeders/"
         },
         "files": [
-        "app/Helpers/Helper.php"
+        "app/Helpers/Helper.php",
+        "app/Helpers/NepalLocationHelper.php"
     ]
     },
     "autoload-dev": {

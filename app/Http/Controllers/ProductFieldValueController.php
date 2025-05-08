@@ -67,7 +67,6 @@ class ProductFieldValueController extends Controller
                 'product_field_id' => 'integer|exists:product_fields,id',
                 'value' => 'string|max:255'
 
-
             ]);
 
             $field_value->update($validated);
@@ -78,8 +77,6 @@ class ProductFieldValueController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
-
-
 
 
 

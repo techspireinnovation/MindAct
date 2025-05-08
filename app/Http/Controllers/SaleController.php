@@ -58,8 +58,7 @@ class SaleController extends Controller
                 'customer_id' => 'required|exists:customers,id',
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|date',
-                'batch_no' => 'string|max:255|unique:sales,batch_no',
-             
+                'batch_no' => 'string|max:255|unique:sales,batch_no',             
                 'document_number' => 'nullable|string|max:255',
                 'store_id' => 'required|integer',
                 'location_id' => 'nullable|exists:locations,id',

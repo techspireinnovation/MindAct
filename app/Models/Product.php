@@ -26,6 +26,7 @@ class Product extends Model
         'name',
         'debit_note',
         'credit_note',
+        'product_unique_id',
         'is_active',
         'deleted_at',
         'company_id',

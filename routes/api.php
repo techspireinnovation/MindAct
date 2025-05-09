@@ -8,6 +8,7 @@ use App\Http\Controllers\NepalLocationPackageController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
@@ -129,6 +130,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
     Route::get('get-purchase-product-details-by-names',[PurchaseReturnController::class, 'getPurchaseProductDetails']);
+    Route::resource('stock-entries',StockEntryController::class);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

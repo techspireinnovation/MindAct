@@ -224,12 +224,12 @@ class Helper
     public static function getProdutDetailsByName($productName,$company)
     {
         
-        $productDetail = Product::where('name',$productName)
+        $productDetail = Product::with('productList','productFieldValues')->where('name',$productName)
                         ->where('company_id',$company)
                         ->firstOrFail();                          
         return [
             'message' => 'Sucessfull!!',
-            'data' => $productDetail->load('productList')
+            'data' => $productDetail
         ];
     }
 

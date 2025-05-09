@@ -20,6 +20,28 @@ use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
+    private function generateUniquePurchaseBillNumber(int $companyId): string
+    {
+        $prefix = 'PB';
+        $date = now()->format('Ymd');
+    
+        $latestBill = Purchase::where('company_id', $companyId)
+            ->where('purchase_bill_number', 'like', "{$prefix}-%")
+            ->orderByDesc('created_at')
+            ->first();
+    
+        if ($latestBill && preg_match('/^PB-\d{8}-(\d+)$/', $latestBill->purchase_bill_number, $matches)) {
+            $lastSequence = (int)$matches[1];
+            $nextSequence = str_pad($lastSequence + 1, 6, '0', STR_PAD_LEFT);
+        } else {
+            $nextSequence = '000001'; // First ever bill for this company
+        }
+    
+        return "{$prefix}-{$date}-{$nextSequence}";
+    }
+    
+
+
     public function index(Request $request): JsonResponse
     {
         $query = Purchase::query();
@@ -46,10 +68,10 @@ class PurchaseController extends Controller
     {
         try{
         
-       $productName = $request->input('name');
+       $name = $request->input('name');
        $company = $request->company_id;
        
-       $productDetails = Helper::getProdutDetailsByName($productName,$company);
+       $productDetails = Helper::getPurchaseProductDetails($name,$company);
        
     
         return response()->json($productDetails);
@@ -71,15 +93,15 @@ class PurchaseController extends Controller
             $validated = $request->validate([
                 'ref_bill_number' => 'required|string|max:255',
                 'customer_id' => 'required|exists:customers,id',
-                'purchase_bill_number' => [
-                    'string',
-                    'max:255',
-                    Rule::unique('purchases')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $item->company_id));
-                        }),
-                ],
+                // 'purchase_bill_number' => [
+                //     'string',
+                //     'max:255',
+                //     Rule::unique('purchases')
+                //         ->ignore($id)
+                //         ->where(function ($query) use ($request, $item) {
+                //             return $query->where('company_id', $request->input('company_id', $item->company_id));
+                //         }),
+                // ],
                 'remarks' => 'string|max:255',
                 'invoice_date' => 'string|max:255',
                 'expiry_date' => 'string|max:255',
@@ -141,7 +163,7 @@ class PurchaseController extends Controller
             ]);
 
             $item = DB::transaction(function () use ($validated, $item) {
-                // Update the Purchase
+                
                 $item->update($validated);
 
                 
@@ -321,13 +343,13 @@ class PurchaseController extends Controller
     $validated = $request->validate([
         'ref_bill_number' => 'required|string|max:255',
         'customer_id' => 'required|exists:customers,id',
-        'purchase_bill_number' => [
-            'string',
-            'max:255',
-            Rule::unique('purchases')->where(function ($query) use ($request) {
-                return $query->where('company_id', $request->company_id);
-            }),
-        ],
+        // 'purchase_bill_number' => [
+        //     'string',
+        //     'max:255',
+        //     Rule::unique('purchases')->where(function ($query) use ($request) {
+        //         return $query->where('company_id', $request->company_id);
+        //     }),
+        // ],
         'remarks' => 'string|max:255',
         'invoice_date' => 'string|max:255',
         'expiry_date' => 'string|max:255',
@@ -376,7 +398,9 @@ class PurchaseController extends Controller
 
     try {
         $item = DB::transaction(function () use ($validated) {
-            
+            $purchaseBillNumber = $this->generateUniquePurchaseBillNumber($validated['company_id']);
+            $validated['purchase_bill_number'] = $purchaseBillNumber;
+
             $item = Purchase::create($validated);
 
           
@@ -421,21 +445,21 @@ class PurchaseController extends Controller
     }
 }
 
-    public function show($id): JsonResponse
-    {
-        try {
-            $item = Purchase::with(['purchaseProducts.fieldValues'])->findOrFail($id);
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
+public function show($id): JsonResponse
+{
+    try {
+        $item = Purchase::with(['purchaseProducts.fieldValues'])->findOrFail($id);
+        return response()->json($item);
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
 
     public function destroy($id): JsonResponse
     {

@@ -2,16 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
-use App\Models\Sale;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\QueryException;
-use Illuminate\Http\JsonResponse;
-
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 
-class CustomerController extends Controller
+class SalesmanController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
@@ -145,4 +138,5 @@ public function update(Request $request, $id): JsonResponse
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
 }

@@ -221,17 +221,40 @@ class Helper
     }
 
 
-    public static function getProdutDetailsByName($name,$company)
+    public static function getProdutDetailsByName($name, $company)
     {
-        
-        $productDetail = Product::with('productList','productFieldValues')->where('name',$name)
-                        ->where('company_id',$company)
-                        ->firstOrFail();                          
+        $productDetail = Product::with([
+            'productList',
+            'productFieldValues' => function ($query) {
+                $query->with('productField'); 
+            }
+        ])
+        ->where('name', $name)
+        ->where('company_id', $company)
+        ->firstOrFail();
+
+        // Transform the product detail to include type in product_field_values
+        $productData = $productDetail->toArray();
+        $productData['product_field_values'] = $productDetail->productFieldValues->map(function ($fieldValue) {
+            return [
+                'id' => $fieldValue->id,
+                'company_id' => $fieldValue->company_id,
+                'product_field_id' => $fieldValue->product_field_id,
+                'product_id' => $fieldValue->product_id,
+                'value' => $fieldValue->value,
+                'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
+                'deleted_at' => $fieldValue->deleted_at,
+                'created_at' => $fieldValue->created_at,
+                'updated_at' => $fieldValue->updated_at,
+            ];
+        })->toArray();
+
         return [
-            'message' => 'Sucessfull!!',
-            'data' => $productDetail
+            'message' => 'Successful!!', // Fixed typo: "Sucessfull" to "Successful"
+            'data' => $productData
         ];
     }
+
 
     public static function getPurchaseProductNames($company)
     {

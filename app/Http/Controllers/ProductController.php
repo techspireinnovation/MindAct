@@ -505,11 +505,11 @@ public function update(Request $request, $id): JsonResponse
                     }
                 }
 
-                // Delete field values not in request
+               
                 $fieldsValuesToDelete = array_diff($existingFieldValueIds, $incomingFieldValueIds);
                 ProductFieldValue::whereIn('id', $fieldsValuesToDelete)->delete();
 
-                // Handle product list updates
+                
                 $existingProductListIds = $product->productList()->pluck('id')->toArray();
                 $incomingProductListIds = collect($validated['product_list'] ?? [])->pluck('id')->filter()->toArray();
 
@@ -531,7 +531,7 @@ public function update(Request $request, $id): JsonResponse
                     }
                 }
 
-                // Delete product list items not in request
+                
                 $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
                 ProductList::whereIn('id', $productListToDelete)->delete();
             });

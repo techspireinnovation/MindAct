@@ -15,6 +15,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
             $table->string('party_name');
+            $table->string('billing_address')->nullable();
+            $table->string('opening_balance')->nullable();
+            $table->string('district')->nullable();
             $table->text('pan_number')->nullable();
             $table->enum('ledger_type',['customer','vendor','both']);
             $table->text('address')->nullable();

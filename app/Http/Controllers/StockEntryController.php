@@ -84,7 +84,7 @@ public function update(Request $request, $id): JsonResponse
         $validator = Validator::make($request->all(), [
             'company_id' => 'required|exists:companies,id',
             'product_code' => 'required|string|max:255',
-            'product_id' => 'nullable|string', 
+            'product_id' => 'nullable|exists:products,id', 
             'address' => 'nullable|string',
             'uom' => 'required|numeric|exists:measure_units,id',
             'batch_no' => 'nullable|string|max:255',
@@ -122,10 +122,10 @@ public function update(Request $request, $id): JsonResponse
         ], 200);
 
     } catch (QueryException $e) {
-        \Log::error('Database error in StockEntry update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+        \Log::error('Database error in Stock Entry update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error('Unexpected error in StockEntry update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+        \Log::error('Unexpected error in Stock Entry update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
@@ -139,9 +139,9 @@ public function update(Request $request, $id): JsonResponse
         try {
             $item = StockEntry::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'StockEntry deleted']);
+            return response()->json(['message' => 'Stock Entry deleted']);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'StockEntry not found'], 404);
+            return response()->json(['error' => 'Stock Entry not found'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

@@ -13,6 +13,8 @@ class PurchaseProductReturn extends Model
     protected $fillable = [
         'purchase_return_id',
         'purchase_product_id',
+        'purchase_product_code',
+        'product_name',
         'customer_id',
         'company_id',
         'purchase_id',
@@ -24,6 +26,7 @@ class PurchaseProductReturn extends Model
         'price',
         'discount_percent',
         'discount_amount',
+        'amount',
         'is_vatable',
         'measure_unit_id',
     ];

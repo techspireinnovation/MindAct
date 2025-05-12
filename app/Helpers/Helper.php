@@ -243,6 +243,7 @@ class Helper
                 'product_id' => $fieldValue->product_id,
                 'value' => $fieldValue->value,
                 'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
+                'values' => $fieldValue->productField->values ?? null,
                 'deleted_at' => $fieldValue->deleted_at,
                 'created_at' => $fieldValue->created_at,
                 'updated_at' => $fieldValue->updated_at,
@@ -290,7 +291,7 @@ class Helper
     // Get purchase product details for the matching product IDs
     $purchaseProducts = PurchaseProduct::whereIn('product_id', $products)
                                       ->where('company_id', $company)
-                                      ->with(['fieldValues']) // Include related field values
+                                      ->with(['fieldValues.productField']) // Include related field values
                                       ->get();
     
     if ($purchaseProducts->isEmpty()) {

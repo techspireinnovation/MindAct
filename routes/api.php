@@ -11,6 +11,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\SaleAdditionalController;
@@ -63,6 +64,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
 
 Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
+    // 
+
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('profile', [CompanyAdminController::class, 'profile']);
@@ -123,13 +126,14 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-sales-masters', [CompanyController::class,'getSalesMasterKey']);
     Route::put('sales-masters-update', [CompanyController::class,'updateSaleMasterKey']);
     Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
-    Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
+    Route::get('get-purchase-by-bill-numbers',[PurchaseReturnController::class, 'getPurchaseByBillNumber']);
     Route::get('get-purchase-product-names',[PurchaseReturnController::class, 'getProductNames']);
     Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
     Route::get('get-provinces-with-districts', [NepalLocationPackageController::class, 'ProvinceWithDistrict']);
     Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
     Route::get('get-purchase-product-details-by-names',[PurchaseReturnController::class, 'getPurchaseProductDetails']);
+    Route::resource('salesman',SalesmanController::class);
     Route::resource('stock-entries',StockEntryController::class);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

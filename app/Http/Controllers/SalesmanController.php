@@ -1,17 +1,24 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Models\Salesman;
 
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+
 
 class SalesmanController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Customer::query();
+        $query = Salesman::query();
     
         if ($request->has('keywords')) {
-            $query->where('party_name', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
     
         return response()->json($query->paginate(10));
@@ -23,37 +30,33 @@ class SalesmanController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'party_name' => 'required|string|max:255|unique:customers,party_name',
-                'pan_number' => 'nullable|string|unique:customers,pan_number',
-                'billing_address' => 'nullable|numeric',
-                'opening_balance' => 'nullable|string|max:255',
-                'district' => 'nullable|string|max:255',
-                'ledger_type' => 'required|in:customer,vendor,both',
+                'salesman_id' => 'required|string|max:255|unique:salesmen,salesman_id',
+                'pan_number' => 'required|string|max:255|unique:salesmen,pan_number',
+                'name' => 'required|string|max:255',
                 'address' => 'nullable|string',
-                'phone' => 'required|string|max:20',
-                'email' => 'nullable|email|unique:customers,email|max:255',
-                'contact_person' => 'nullable|string|max:255',
-                'contact_person_phone' => 'nullable|string|max:20',
-                'country' => 'nullable|string|max:100',
-                'state' => 'nullable|string|max:100',
-                'city' => 'nullable|string|max:100',
-                'area' => 'nullable|string|max:100',
-                'bank_name' => 'nullable|string|max:255',
-                'bank_account_number' => 'nullable|string|max:255',
-                'is_active' => 'required|boolean',
+                'mobile' => 'nullable|string|max:20',
+                'email' => 'nullable|email|unique:salesmen,email|max:255',
+                'working_office' => 'nullable|string|max:255',
+                'joining_date' => 'nullable|date',
+                'designation' => 'nullable|string|max:255',
+                'dob' => 'nullable|date',
+                'citizenship_number' => 'nullable|string|max:255',
+                'nationality' => 'nullable|string|max:100',
+                'zone' => 'nullable|string|max:100',
+                'district' => 'nullable|string|max:100',
+                'vdc_municipality' => 'nullable|string|max:255', // Renamed to match schema
             ]);
-    
+
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
             }
-    
-            $customer = Customer::create($validator->validated());
-    
+
+            $salesman = Salesman::create($validator->validated());
+
             return response()->json([
-                'message' => 'Customer created successfully',
-                'data' => $customer
+                'message' => 'Salesman created successfully',
+                'data' => $salesman
             ], 201);
-    
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json(['error' => 'Database error occurred.'], 500);
@@ -68,7 +71,7 @@ class SalesmanController extends Controller
 public function show($id):JsonResponse
 {
     try {
-        $item = Customer::findOrFail($id);
+        $item = Salesman::findOrFail($id);
         return response()->json($item);
     } catch (ModelNotFoundException $e) {
         return response()->json(['error' => 'Item not found'], 404);
@@ -78,50 +81,50 @@ public function show($id):JsonResponse
 }
 
 public function update(Request $request, $id): JsonResponse
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'company_id' => 'required|exists:companies,id',
-            'party_name' => 'required|string|max:255|unique:customers,party_name,' . $id,
-            'pan_number' => 'nullable|string|unique:customers,pan_number,' . $id,
-            'ledger_type' => 'required|in:customer,vendor,both',
-            'address' => 'nullable|string',
-            'phone' => 'required|string|max:20',
-            'email' => 'nullable|email|unique:customers,email,' . $id,
-            'contact_person' => 'nullable|string|max:255',
-            'contact_person_phone' => 'nullable|string|max:20',
-            'country' => 'nullable|string|max:100',
-            'state' => 'nullable|string|max:100',
-            'city' => 'nullable|string|max:100',
-            'area' => 'nullable|string|max:100',
-            'bank_name' => 'nullable|string|max:255',
-            'bank_account_number' => 'nullable|string|max:255',
-            'is_active' => 'required|boolean',
-        ]);
+    {
+        try {
+            $salesman = Salesman::findOrFail($id);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            $validator = Validator::make($request->all(), [
+                'company_id' => 'required|exists:companies,id',
+                'salesman_id' => 'sometimes|required|string|max:255|unique:salesmen,salesman_id,' . $salesman->id,
+                'pan_number' => 'sometimes|required|string|max:255|unique:salesmen,pan_number,' . $salesman->id,
+                'name' => 'sometimes|required|string|max:255',
+                'address' => 'nullable|string',
+                'mobile' => 'nullable|string|max:20',
+                'email' => 'nullable|email|unique:salesmen,email,' . $salesman->id . '|max:255',
+                'working_office' => 'nullable|string|max:255',
+                'joining_date' => 'nullable|date',
+                'designation' => 'nullable|string|max:255',
+                'dob' => 'nullable|date',
+                'citizenship_number' => 'nullable|string|max:255',
+                'nationality' => 'nullable|string|max:100',
+                'zone' => 'nullable|string|max:100',
+                'district' => 'nullable|string|max:100',
+                'vdc_municipality' => 'nullable|string|max:255',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
+            }
+
+            $salesman->update($validator->validated());
+
+            return response()->json([
+                'message' => 'Salesman updated successfully',
+                'data' => $salesman->fresh() // Reload the model to get the updated data
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json(['error' => 'Salesman not found.'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Database error occurred.'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
-
-        $customer = Customer::findOrFail($id);
-        $customer->update($validator->validated());
-
-        return response()->json([
-            'message' => 'Customer updated successfully',
-            'data' => $customer
-        ], 200);
-
-    } catch (ModelNotFoundException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Customer not found.'], 404);
-    } catch (QueryException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Database error occurred.'], 500);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Unexpected error occurred.'], 500);
     }
-}
 
 
 
@@ -129,11 +132,11 @@ public function update(Request $request, $id): JsonResponse
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Customer::findOrFail($id);
+            $item = Salesman::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'Customer deleted']);
+            return response()->json(['message' => 'Salesman deleted']);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Customer not found'], 404);
+            return response()->json(['error' => 'Salesman not found'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

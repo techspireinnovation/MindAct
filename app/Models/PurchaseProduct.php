@@ -15,6 +15,8 @@ class PurchaseProduct extends Model
         'company_id',
         'purchase_id',
         'product_id',
+        'product_name',
+        'product_code',
         'expiry_date',
         'quantity',
         'deleted_at',
@@ -22,6 +24,8 @@ class PurchaseProduct extends Model
         'price',
         'discount_percent',
         'discount_amount',
+        'amount',
+        
         'is_vatable',
         'measure_unit_id',
     ];

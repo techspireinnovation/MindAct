@@ -53,4 +53,12 @@ class Sale extends Model
         return $this->hasMany(SaleProduct::class);
     }
 
+    // in App\Models\Sale.php
+
+public function saleAdditionals()
+{
+    return $this->hasMany(SaleAdditional::class,'sale_id'); // adjust class name if needed
+}
+
+
 }

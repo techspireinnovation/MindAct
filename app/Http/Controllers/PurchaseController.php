@@ -89,13 +89,14 @@ class PurchaseController extends Controller
 {
     try {
         $item = Purchase::findOrFail($id);
+        
 
         $validated = $request->validate([
             'ref_bill_number' => 'required|string|max:255',
             'customer_id' => 'required|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
-            'company_id' => 'required|integer|exists:companies,id',
+            'company_id' => 'exists:companies,id',
             'address' => 'nullable|string|max:255',
             'customer_contact' => 'nullable|string|max:255',
             'document_number' => 'nullable|string|max:255',
@@ -149,7 +150,7 @@ class PurchaseController extends Controller
                 }),
             ],
             'purchase_products.*.customer_id' => 'required|integer|exists:customers,id',
-            'purchase_products.*.company_id' => 'required|integer|exists:companies,id',
+            
             'purchase_products.*.product_id' => 'required|integer|exists:products,id',
             'purchase_products.*.product_name' => 'nullable|string|max:255',
             'purchase_products.*.product_code' => 'nullable|string|max:255',

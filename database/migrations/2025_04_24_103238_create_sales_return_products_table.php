@@ -15,13 +15,18 @@ return new class extends Migration
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('sales_return_id')->constrained('sales_returns');
+            $table->foreignID('sale_product_id')->constrained('sale_products');
             $table->foreignID('product_id')->constrained('products');
+            $table->string('product_code')->nullable();
+            $table->string('product_name')->nullable();
             $table->date('expiry_date')->nullable();
+            $table->date('mfd')->nullable();
             $table->double('quantity')->nullable();
             $table->double('free_quantity')->nullable();
             $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();
+            $table->text('batch_no')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID('measure_unit_id')->constrained('measure_units');
             $table->softDeletes();

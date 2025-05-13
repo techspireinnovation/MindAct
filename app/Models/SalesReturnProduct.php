@@ -17,6 +17,7 @@ class SalesReturnProduct extends Model
     protected $fillable = [
         'company_id',
         'product_id',  
+        'sale_product_id',
         'expiry_date',
         'quantity',
         'free_quantity',  

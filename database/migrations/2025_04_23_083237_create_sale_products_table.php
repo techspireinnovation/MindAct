@@ -16,8 +16,12 @@ return new class extends Migration
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignId('sale_id')->constrained('sales');
             $table->foreignId('product_id')->constrained('products');
+            $table->string('product_code')->nullable();
+            $table->string('product_name')->nullable();
+            $table->string('batch_no')->nullable();
+            $table->date('mfd')->nullable();
             $table->date('expiry_date')->nullable();
-            $table->string('code')->nullable();
+          
             $table->string('name');
             $table->foreignID('measure_unit_id')->constrained('measure_units')->nullable();
             $table->double('quantity')->nullable();
@@ -26,7 +30,7 @@ return new class extends Migration
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();
             $table->boolean('is_vatable')->default(true);            
-            
+            $table->double('amount')->nullable();
             $table->SoftDeletes();
             
             $table->timestamps();

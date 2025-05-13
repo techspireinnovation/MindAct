@@ -66,4 +66,9 @@ class SalesReturn extends Model
     {
         return $this->hasMany(SalesReturnProduct::class);
     }
+
+    public function salesReturnAdditional()
+{
+    return $this->hasMany(SaleReturnAdditional::class,'sales_return_id'); // adjust class name if needed
+}
 }

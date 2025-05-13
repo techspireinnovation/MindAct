@@ -11,19 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sale_additionals', function (Blueprint $table) {
+        Schema::create('sale_return_additionals', function (Blueprint $table) {
             $table->id();
-            $table->foreignID('company_id')->constrained('companies');
-            $table->foreignID('sale_id')->constrained('sales');
+            $table->foreignId('company_id')->constrained('companies');
+            $table->foreignId('sales_return_id')->constrained('sales_returns');
             $table->string('place')->nullable();
             $table->string('transport')->nullable();
             $table->string('vehicle_number')->nullable();
             $table->string('vehicle_name')->nullable();
             $table->string('driver_name')->nullable();
-            $table->string('dispatch_code');
+            $table->string('return_code');
             $table->string('driver_contact_number')->nullable();
-            $table->date('delivery_date')->nullable();
-            $table->time('delivery_time')->nullable();                  
+            $table->date('return_date')->nullable();
+            $table->time('return_time')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
@@ -34,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sale_additionals');
+        Schema::dropIfExists('sale_return_additionals');
     }
 };

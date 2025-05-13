@@ -44,5 +44,10 @@ class SaleProduct extends Model
     public function product() {
         return $this->belongsTo(Product::class);
     }
+
+    public function fieldValues()
+    {
+        return $this->hasMany(SalesProductFieldValue::class, 'sale_product_id');
+    }
     
 }

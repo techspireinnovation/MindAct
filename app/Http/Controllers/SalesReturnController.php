@@ -7,6 +7,7 @@ use App\Models\SalesReturn;
 use App\Models\Sale;
 use App\Models\SalesReturnProduct;
 use App\Models\SaleReturnAdditional;
+use App\Models\SaleReturnProductFieldValue;
 use App\Models\SaleProduct;
 use DB;
 use Carbon\Carbon;
@@ -70,7 +71,7 @@ class SalesReturnController extends Controller
     /**
      * Store a new sales return.
      */
-public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
@@ -83,6 +84,7 @@ public function store(Request $request): JsonResponse
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|date',
                 'remarks' => 'nullable|string|max:255',
+                'reason' => 'required|string|in:damaged,defective,incorrect,expired,other',
                 'store_id' => 'required|exists:stores,id',
                 'location_id' => 'required|exists:locations,id',
                 'excise_duty' => 'nullable|numeric|min:0',
@@ -98,12 +100,21 @@ public function store(Request $request): JsonResponse
                 'payment.bank' => 'nullable|numeric|min:0',
                 'payment_type' => 'nullable|string|in:cash,credit,bank',
                 'return_entire_sale' => 'nullable|boolean',
-                'sale_id' => 'required|integer|exists:sales,id',
+                'return_entire_batch' => 'nullable|boolean',
+                'sale_id' => 'nullable|integer|exists:sales,id',
+                'invoice_number_sale' => 'nullable|string|max:255',
+                'batch_no_sale' => 'nullable|string|max:255',
+                'purchase_id' => 'nullable|integer|exists:purchases,id',
+                'purchase_bill_number' => 'nullable|string|max:255',
                 'sale_product_ids' => 'nullable|array',
                 'sale_product_ids.*' => 'integer|exists:sale_products,id',
-                'sales_return_products' => 'required_without:return_entire_sale,sale_product_ids|array|min:1',
-                'sales_return_products.*.product_id' => 'required|exists:products,id',
+                'sales_return_products' => [
+                    'required_unless:return_entire_sale,return_entire_batch',
+                    'array',
+                    'min:1',
+                ],
                 'sales_return_products.*.sale_product_id' => 'required|integer|exists:sale_products,id',
+                'sales_return_products.*.product_id' => 'required|exists:products,id',
                 'sales_return_products.*.expiry_date' => 'nullable|date',
                 'sales_return_products.*.quantity' => 'required|numeric|min:0',
                 'sales_return_products.*.free_quantity' => 'nullable|numeric|min:0',
@@ -112,6 +123,10 @@ public function store(Request $request): JsonResponse
                 'sales_return_products.*.discount_amount' => 'nullable|numeric|min:0',
                 'sales_return_products.*.is_vatable' => 'nullable|boolean',
                 'sales_return_products.*.measure_unit_id' => 'required|exists:measure_units,id',
+                'sales_return_products.*.field_values' => 'nullable|array',
+                'sales_return_products.*.field_values.*' => 'array|min:1',
+                'sales_return_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
+                'sales_return_products.*.field_values.*.*.value' => 'required|string|max:255',
                 'sales_return_additionals' => 'nullable|array',
                 'sales_return_additionals.place' => 'nullable|string|max:255',
                 'sales_return_additionals.transport' => 'nullable|string|max:255',
@@ -130,8 +145,118 @@ public function store(Request $request): JsonResponse
 
             $validated = $validator->validated();
 
-            // Fetch sale with saleAdditional
-            $sale = Sale::with(['saleProducts', 'saleAdditionals'])->findOrFail($validated['sale_id']);
+            // Ensure sale_id or invoice_number_sale is provided unless batch identifiers are used
+            $hasBatchIdentifier = isset($validated['batch_no_sale']) || isset($validated['purchase_id']) || isset($validated['purchase_bill_number']);
+            if (!$hasBatchIdentifier && !isset($validated['sale_id']) && !isset($validated['invoice_number_sale'])) {
+                return response()->json(['error' => 'Either sale_id or invoice_number_sale is required unless batch_no_sale, purchase_id, or purchase_bill_number is provided'], 422);
+            }
+
+            // Handle batch identifiers for return_entire_batch
+            $sale = null;
+            if ($hasBatchIdentifier) {
+                $sales = collect();
+                if (isset($validated['purchase_id'])) {
+                    $saleProducts = SaleProduct::whereIn('id', function ($query) use ($validated) {
+                        $query->select('id')
+                            ->from('sale_products')
+                            ->whereIn('purchase_product_id', function ($subQuery) use ($validated) {
+                                $subQuery->select('id')
+                                    ->from('purchase_products')
+                                    ->where('purchase_id', $validated['purchase_id'])
+                                    ->where('company_id', $validated['company_id']);
+                            });
+                    })->with(['sale', 'fieldValues'])->get();
+                    $sales = $saleProducts->pluck('sale')->unique('id');
+                } elseif (isset($validated['purchase_bill_number'])) {
+                    $purchase = Purchase::where('purchase_bill_number', $validated['purchase_bill_number'])
+                        ->where('company_id', $validated['company_id'])
+                        ->first();
+                    if (!$purchase) {
+                        return response()->json(['error' => 'Purchase with specified bill number not found'], 422);
+                    }
+                    $saleProducts = SaleProduct::whereIn('id', function ($query) use ($purchase) {
+                        $query->select('id')
+                            ->from('sale_products')
+                            ->whereIn('purchase_product_id', function ($subQuery) use ($purchase) {
+                                $subQuery->select('id')
+                                    ->from('purchase_products')
+                                    ->where('purchase_id', $purchase->id);
+                            });
+                    })->with(['sale', 'fieldValues'])->get();
+                    $sales = $saleProducts->pluck('sale')->unique('id');
+                } elseif (isset($validated['batch_no_sale'])) {
+                    $sales = Sale::where('batch_no', $validated['batch_no_sale'])
+                        ->where('company_id', $validated['company_id'])
+                        ->with(['saleProducts', 'saleAdditionals'])
+                        ->get();
+                }
+
+                if ($sales->isEmpty()) {
+                    return response()->json(['error' => 'No sales found for the specified batch or purchase'], 422);
+                }
+
+                $sale = $sales->first();
+                $validated['sale_id'] = $sale->id;
+
+                if ($validated['return_entire_batch'] ?? false) {
+                    $validated['sales_return_products'] = $sale->saleProducts->map(function ($product) {
+                        $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                            return $group->map(function ($field) {
+                                return [
+                                    'product_field_id' => $field->product_field_id,
+                                    'value' => $field->value,
+                                ];
+                            })->toArray();
+                        })->values()->toArray();
+
+                        return [
+                            'sale_product_id' => $product->id,
+                            'product_id' => $product->product_id,
+                            'quantity' => $product->quantity,
+                            'free_quantity' => $product->free_quantity ?? 0,
+                            'price' => $product->price,
+                            'discount_percent' => $product->discount_percent ?? 0,
+                            'discount_amount' => $product->discount_amount ?? 0,
+                            'is_vatable' => $product->is_vatable,
+                            'measure_unit_id' => $product->measure_unit_id,
+                            'expiry_date' => $product->expiry_date,
+                            'field_values' => $fieldValues,
+                        ];
+                    })->toArray();
+                } elseif (isset($validated['sales_return_products']) && !empty($validated['sales_return_products'])) {
+                    $saleProductIds = $sale->saleProducts->pluck('id')->toArray();
+                    foreach ($validated['sales_return_products'] as $index => $product) {
+                        if (!in_array($product['sale_product_id'], $saleProductIds)) {
+                            return response()->json([
+                                'error' => "Sale product ID {$product['sale_product_id']} at index {$index} does not belong to the specified sale or batch"
+                            ], 422);
+                        }
+                    }
+                } else {
+                    return response()->json(['error' => 'sales_return_products is required when return_entire_batch is false and a batch identifier is provided'], 422);
+                }
+            }
+
+            // Fetch sale if not already set
+            if (!$sale) {
+                if (isset($validated['sale_id'])) {
+                    $sale = Sale::with(['saleProducts', 'saleAdditionals'])->findOrFail($validated['sale_id']);
+                } elseif (isset($validated['invoice_number_sale'])) {
+                    $sale = Sale::with('saleAdditionals')->where('invoice_number', $validated['invoice_number_sale'])
+                        ->where('company_id', $validated['company_id'])
+                      
+                        ->first();
+                    if (!$sale) {
+                        return response()->json(['error' => 'Sale not found for the provided invoice_number_sale'], 422);
+                    }
+                    $validated['sale_id'] = $sale->id;
+                } else {
+                    return response()->json(['error' => 'Sale not found'], 422);
+                }
+                
+            }
+                
+
             if ($sale->company_id != $validated['company_id']) {
                 return response()->json(['error' => 'Sale does not belong to the provided company'], 422);
             }
@@ -139,6 +264,15 @@ public function store(Request $request): JsonResponse
             // Handle return_entire_sale
             if ($validated['return_entire_sale'] ?? false) {
                 $validated['sales_return_products'] = $sale->saleProducts->map(function ($product) {
+                    $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                        return $group->map(function ($field) {
+                            return [
+                                'product_field_id' => $field->product_field_id,
+                                'value' => $field->value,
+                            ];
+                        })->toArray();
+                    })->values()->toArray();
+               
                     return [
                         'sale_product_id' => $product->id,
                         'product_id' => $product->product_id,
@@ -150,30 +284,32 @@ public function store(Request $request): JsonResponse
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'expiry_date' => $product->expiry_date,
+                        'field_values' => $fieldValues,
                     ];
                 })->toArray();
-            }
-            // Handle specific sale_product_ids
-            elseif (isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids'])) {
+            } elseif (isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids'])) {
                 $saleProducts = SaleProduct::whereIn('id', $validated['sale_product_ids'])
-                    ->with(['sale' => function ($query) {
-                        $query->select('id', 'batch_no', 'company_id', 'customer_id', 'salesman_id', 'store_id', 'location_id');
-                    }])
+                    ->with(['sale', 'fieldValues'])
                     ->get();
 
                 if ($saleProducts->isEmpty()) {
                     return response()->json(['error' => 'No valid sale products found for provided IDs'], 422);
                 }
 
-                $saleId = $saleProducts->first()->sale_id;
                 if ($saleProducts->pluck('sale_id')->unique()->count() > 1) {
                     return response()->json(['error' => 'All sale products must belong to the same sale'], 422);
                 }
-                if ($saleProducts->pluck('company_id')->unique()->count() > 1 || !$saleProducts->every(fn($p) => $p->company_id == $validated['company_id'])) {
-                    return response()->json(['error' => 'All sale products must belong to the same company'], 422);
-                }
 
                 $validated['sales_return_products'] = $saleProducts->map(function ($product) {
+                    $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                        return $group->map(function ($field) {
+                            return [
+                                'product_field_id' => $field->product_field_id,
+                                'value' => $field->value,
+                            ];
+                        })->toArray();
+                    })->values()->toArray();
+
                     return [
                         'sale_product_id' => $product->id,
                         'product_id' => $product->product_id,
@@ -185,12 +321,13 @@ public function store(Request $request): JsonResponse
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'expiry_date' => $product->expiry_date,
+                        'field_values' => $fieldValues,
                     ];
                 })->toArray();
             }
 
             // Set sale-related fields
-            $validated['batch_no'] = $validated['batch_no'] ?? $sale->batch_no;
+            $validated['batch_no'] = $validated['batch_no'] ?? ($sale->batch_no ? $sale->batch_no . '-RETURN' : null);
             $validated['customer_id'] = $validated['customer_id'] ?? $sale->customer_id;
             $validated['salesman_id'] = $validated['salesman_id'] ?? $sale->salesman_id;
             $validated['store_id'] = $validated['store_id'] ?? $sale->store_id;
@@ -203,18 +340,17 @@ public function store(Request $request): JsonResponse
                 ? ($date->year - 1) . '-' . substr($date->year, 2, 2)
                 : $date->year . '-' . substr($date->year + 1, 2, 2);
 
-            // Generate unique invoice number if not provided
+            // Generate unique invoice number
             $validated['invoice_number'] = $request->input('invoice_number') ?? $this->generateUniqueInvoiceNumber($fiscalYear);
 
-            // Validate return quantities
+            // Validate return quantities and field values
+            $returnEntireBatch = $validated['return_entire_batch'] ?? false;
             foreach ($validated['sales_return_products'] as $index => $product) {
                 $saleProductId = $product['sale_product_id'];
                 $productId = $product['product_id'];
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
 
-                $saleProduct = SaleProduct::where('id', $saleProductId)
-                    ->where('sale_id', $validated['sale_id'])
-                    ->firstOrFail();
+                $saleProduct = SaleProduct::where('id', $saleProductId)->where('sale_id', $validated['sale_id'])->firstOrFail();
                 $availableToReturn = $saleProduct->quantity + ($saleProduct->free_quantity ?? 0);
 
                 $returnedQuantity = SalesReturnProduct::where('sale_product_id', $saleProductId)
@@ -229,24 +365,42 @@ public function store(Request $request): JsonResponse
                         'error' => "Cannot return more than sold for sale product ID {$saleProductId} at index {$index}. Available: {$availableToReturn}, Requested: {$requestedQuantity}"
                     ], 422);
                 }
+
+                // Validate field_values, skip for return_entire_batch or return_entire_sale
+                $hasFieldValues = SaleProduct::where('id', $saleProductId)->whereHas('fieldValues')->exists();
+                if ($hasFieldValues && !($returnEntireBatch || ($validated['return_entire_sale'] ?? false)) && (!isset($product['field_values']) || count($product['field_values']) !== $product['quantity'])) {
+                    return response()->json([
+                        'error' => "Field values count (" . (isset($product['field_values']) ? count($product['field_values']) : 0) . ") must match quantity ({$product['quantity']}) for product ID {$productId} at index {$index}"
+                    ], 422);
+                }
+
+                if (isset($product['field_values'])) {
+                    foreach ($product['field_values'] as $setIndex => $fieldValueSet) {
+                        $fieldIds = array_column($fieldValueSet, 'product_field_id');
+                        if (count($fieldIds) !== count(array_unique($fieldIds))) {
+                            return response()->json([
+                                'error' => "Duplicate product_field_id found in field_values set {$setIndex} for product ID {$productId} at index {$index}"
+                            ], 422);
+                        }
+                    }
+                }
             }
 
-            // Prepare sales return additionals data
+            // Prepare sales return additionals
             $salesReturnAdditionalsData = $validated['sales_return_additionals'] ?? null;
-            if (!$salesReturnAdditionalsData && $sale->saleAdditional) {
+            if (!$salesReturnAdditionalsData && $sale->saleAdditionals) {
                 $salesReturnAdditionalsData = [
-                    'place' => $sale->saleAdditional->place,
-                    'transport' => $sale->saleAdditional->transport,
-                    'vehicle_number' => $sale->saleAdditional->vehicle_number,
-                    'vehicle_name' => $sale->saleAdditional->vehicle_name,
-                    'driver_name' => $sale->saleAdditional->driver_name,
+                    'place' => $sale->saleAdditionals->place,
+                    'transport' => $sale->saleAdditionals->transport,
+                    'vehicle_number' => $sale->saleAdditionals->vehicle_number,
+                    'vehicle_name' => $sale->saleAdditionals->vehicle_name,
+                    'driver_name' => $sale->saleAdditionals->driver_name,
                     'return_code' => 'RETURN' . now()->format('YmdHis'),
-                    'driver_contact_number' => $sale->saleAdditional->driver_contact_number,
+                    'driver_contact_number' => $sale->saleAdditionals->driver_contact_number,
                     'return_date' => now()->toDateString(),
                     'return_time' => now()->toTimeString(),
                 ];
             } elseif (!$salesReturnAdditionalsData) {
-                // If no sale additionals exist, set minimal defaults
                 $salesReturnAdditionalsData = [
                     'return_code' => 'RETURN' . now()->format('YmdHis'),
                     'return_date' => now()->toDateString(),
@@ -254,10 +408,9 @@ public function store(Request $request): JsonResponse
                 ];
             }
 
-            // Filter validated data to match sales_returns table columns
             $salesReturnData = array_intersect_key($validated, array_flip([
                 'company_id', 'customer_id', 'salesman_id', 'invoice_number', 'document_number', 'batch_no',
-                'balance', 'invoice_date', 'remarks', 'store_id', 'location_id', 'excise_duty',
+                'balance', 'invoice_date', 'remarks', 'reason', 'store_id', 'location_id', 'excise_duty',
                 'health_insurance', 'freight_amount', 'discount', 'discount_after_vat', 'total_amount',
                 'round_of_amount', 'payment'
             ]));
@@ -265,15 +418,31 @@ public function store(Request $request): JsonResponse
             $salesReturn = DB::transaction(function () use ($salesReturnData, $validated, $salesReturnAdditionalsData) {
                 $salesReturn = SalesReturn::create($salesReturnData);
 
-                if (isset($validated['sales_return_products'])) {
-                    foreach ($validated['sales_return_products'] as $product) {
-                        $product['company_id'] = $validated['company_id'];
-                        $product['sale_id'] = $validated['sale_id'];
-                        $salesReturn->salesReturnProducts()->create($product);
+                foreach ($validated['sales_return_products'] as $product) {
+                    $product['company_id'] = $validated['company_id'];
+                    $product['sale_id'] = $validated['sale_id'];
+                    $salesReturnProduct = $salesReturn->salesReturnProducts()->create($product);
+
+                    if (isset($product['field_values'])) {
+                        $fieldValues = [];
+                        foreach ($product['field_values'] as $quantityIndex => $fieldValueSet) {
+                            foreach ($fieldValueSet as $fieldValue) {
+                                $fieldValues[] = [
+                                    'company_id' => $validated['company_id'],
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'product_id' => $salesReturnProduct->product_id,
+                                    'sale_return_product_id' => $salesReturnProduct->id,
+                                    'quantity_index' => $quantityIndex,
+                                    'value' => $fieldValue['value'],
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ];
+                            }
+                        }
+                        SaleReturnProductFieldValue::insert($fieldValues);
                     }
                 }
 
-                // Create sales return additionals
                 SaleReturnAdditional::create([
                     'company_id' => $validated['company_id'],
                     'sales_return_id' => $salesReturn->id,
@@ -293,10 +462,11 @@ public function store(Request $request): JsonResponse
 
             return response()->json([
                 'message' => 'Sales Return created successfully',
-                'data' => $salesReturn->load(['salesReturnProducts', 'salesReturnAdditional'])
+                'data' => $salesReturn->load(['salesReturnProducts.fieldValues', 'salesReturnAdditional'])
             ], 201);
         } catch (ModelNotFoundException $e) {
             Log::error($e);
+            
             return response()->json(['error' => 'Resource not found'], 404);
         } catch (QueryException $e) {
             Log::error($e);
@@ -307,9 +477,6 @@ public function store(Request $request): JsonResponse
         }
     }
 
-    /**
-     * Update an existing sales return.
-     */
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -323,6 +490,7 @@ public function store(Request $request): JsonResponse
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|date',
                 'remarks' => 'nullable|string|max:255',
+                'reason' => 'required|string|in:damaged,defective,incorrect,expired,other',
                 'store_id' => 'required|exists:stores,id',
                 'location_id' => 'required|exists:locations,id',
                 'excise_duty' => 'nullable|numeric|min:0',
@@ -338,10 +506,19 @@ public function store(Request $request): JsonResponse
                 'payment.bank' => 'nullable|numeric|min:0',
                 'payment_type' => 'nullable|string|in:cash,credit,bank',
                 'return_entire_sale' => 'nullable|boolean',
-                'sale_id' => 'required|integer|exists:sales,id',
+                'return_entire_batch' => 'nullable|boolean',
+                'sale_id' => 'nullable|integer|exists:sales,id',
+                'invoice_number' => 'nullable|string|max:255',
+                'batch_no_sale' => 'nullable|string|max:255',
+                'purchase_id' => 'nullable|integer|exists:purchases,id',
+                'purchase_bill_number' => 'nullable|string|max:255',
                 'sale_product_ids' => 'nullable|array',
                 'sale_product_ids.*' => 'integer|exists:sale_products,id',
-                'sales_return_products' => 'required_without:return_entire_sale,sale_product_ids|array|min:1',
+                'sales_return_products' => [
+                    'required_unless:return_entire_sale,return_entire_batch,batch_no_sale,purchase_id,purchase_bill_number',
+                    'array',
+                    'min:1',
+                ],
                 'sales_return_products.*.id' => 'nullable|integer|exists:sales_return_products,id',
                 'sales_return_products.*.sale_product_id' => 'required|integer|exists:sale_products,id',
                 'sales_return_products.*.product_id' => 'required|exists:products,id',
@@ -353,6 +530,11 @@ public function store(Request $request): JsonResponse
                 'sales_return_products.*.discount_amount' => 'nullable|numeric|min:0',
                 'sales_return_products.*.is_vatable' => 'nullable|boolean',
                 'sales_return_products.*.measure_unit_id' => 'required|exists:measure_units,id',
+                'sales_return_products.*.field_values' => 'nullable|array',
+                'sales_return_products.*.field_values.*' => 'array|min:1',
+                'sales_return_products.*.field_values.*.*.id' => 'nullable|integer|exists:sales_return_product_field_values,id',
+                'sales_return_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
+                'sales_return_products.*.field_values.*.*.value' => 'required|string|max:255',
                 'sales_return_additionals' => 'nullable|array',
                 'sales_return_additionals.place' => 'nullable|string|max:255',
                 'sales_return_additionals.transport' => 'nullable|string|max:255',
@@ -370,10 +552,111 @@ public function store(Request $request): JsonResponse
             }
 
             $validated = $validator->validated();
-
-            // Fetch sale and sales return
-            $sale = Sale::with(['saleProducts', 'saleAdditional'])->findOrFail($validated['sale_id']);
             $salesReturn = SalesReturn::findOrFail($id);
+
+            // Ensure sale_id or invoice_number is provided unless batch identifiers are used
+            $hasBatchIdentifier = isset($validated['batch_no_sale']) || isset($validated['purchase_id']) || isset($validated['purchase_bill_number']);
+            if (!$hasBatchIdentifier && !isset($validated['sale_id']) && !isset($validated['invoice_number'])) {
+                return response()->json(['error' => 'Either sale_id or invoice_number is required unless batch_no_sale, purchase_id, or purchase_bill_number is provided'], 422);
+            }
+
+            // Handle batch identifiers
+            if ($hasBatchIdentifier) {
+                $sales = collect();
+                if (isset($validated['purchase_id'])) {
+                    $saleProducts = SaleProduct::whereIn('id', function ($query) use ($validated) {
+                        $query->select('id')
+                            ->from('sale_products')
+                            ->whereIn('purchase_product_id', function ($subQuery) use ($validated) {
+                                $subQuery->select('id')
+                                    ->from('purchase_products')
+                                    ->where('purchase_id', $validated['purchase_id'])
+                                    ->where('company_id', $validated['company_id']);
+                            });
+                    })->with(['sale', 'fieldValues'])->get();
+                    $sales = $saleProducts->pluck('sale')->unique('id');
+                } elseif (isset($validated['purchase_bill_number'])) {
+                    $purchase = Purchase::where('purchase_bill_number', $validated['purchase_bill_number'])
+                        ->where('company_id', $validated['company_id'])
+                        ->first();
+                    if (!$purchase) {
+                        return response()->json(['error' => 'Purchase with specified bill number not found'], 422);
+                    }
+                    $saleProducts = SaleProduct::whereIn('id', function ($query) use ($purchase, $validated) {
+                        $query->select('id')
+                            ->from('sale_products')
+                            ->whereIn('purchase_product_id', function ($subQuery) use ($purchase, $validated) {
+                                $subQuery->select('id')
+                                    ->from('purchase_products')
+                                    ->where('purchase_id', $purchase->id)
+                                    ->where('company_id', $validated['company_id']);
+                            });
+                    })->with(['sale', 'fieldValues'])->get();
+                    $sales = $saleProducts->pluck('sale')->unique('id');
+                } elseif (isset($validated['batch_no_sale'])) {
+                    $sales = Sale::where('batch_no', $validated['batch_no_sale'])
+                        ->where('company_id', $validated['company_id'])
+                        ->with(['saleProducts'])
+                        ->get();
+                }
+
+                if ($sales->isEmpty()) {
+                    return response()->json(['error' => 'No sales found for the specified batch or purchase'], 422);
+                }
+
+                $sale = $sales->first();
+                $validated['sale_id'] = $sale->id;
+                if ($validated['return_entire_batch'] ?? false) {
+                    $validated['sales_return_products'] = $sale->saleProducts->map(function ($product) {
+                        $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                            return $group->map(function ($field) {
+                                return [
+                                    'product_field_id' => $field->product_field_id,
+                                    'value' => $field->value,
+                                ];
+                            })->toArray();
+                        })->values()->toArray();
+
+                        return [
+                            'sale_product_id' => $product->id,
+                            'product_id' => $product->product_id,
+                            'quantity' => $product->quantity,
+                            'free_quantity' => $product->free_quantity ?? 0,
+                            'price' => $product->price,
+                            'discount_percent' => $product->discount_percent ?? 0,
+                            'discount_amount' => $product->discount_amount ?? 0,
+                            'is_vatable' => $product->is_vatable,
+                            'measure_unit_id' => $product->measure_unit_id,
+                            'expiry_date' => $product->expiry_date,
+                            'field_values' => $fieldValues,
+                        ];
+                    })->toArray();
+                } elseif (isset($validated['sales_return_products']) && !empty($validated['sales_return_products'])) {
+                    $saleProductIds = $sale->saleProducts->pluck('id')->toArray();
+                    foreach ($validated['sales_return_products'] as $index => $product) {
+                        if (!in_array($product['sale_product_id'], $saleProductIds)) {
+                            return response()->json([
+                                'error' => "Sale product ID {$product['sale_product_id']} at index {$index} does not belong to the specified sale or batch"
+                            ], 422);
+                        }
+                    }
+                } else {
+                    return response()->json(['error' => 'sales_return_products is required when return_entire_batch is false and a batch identifier is provided'], 422);
+                }
+            }
+
+            // Fetch sale
+            $sale = null;
+            if (isset($validated['sale_id'])) {
+                $sale = Sale::with(['saleProducts', 'saleAdditionals'])->findOrFail($validated['sale_id']);
+            } elseif (isset($validated['invoice_number'])) {
+                $sale = Sale::where('invoice_number', $validated['invoice_number'])
+                    ->where('company_id', $validated['company_id'])
+                    ->with(['saleProducts', 'saleAdditionals'])
+                    ->firstOrFail();
+                $validated['sale_id'] = $sale->id;
+            }
+
             if ($sale->company_id != $validated['company_id'] || $salesReturn->company_id != $validated['company_id']) {
                 return response()->json(['error' => 'Sale or Sales Return does not belong to the provided company'], 422);
             }
@@ -381,6 +664,15 @@ public function store(Request $request): JsonResponse
             // Handle return_entire_sale
             if ($validated['return_entire_sale'] ?? false) {
                 $validated['sales_return_products'] = $sale->saleProducts->map(function ($product) {
+                    $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                        return $group->map(function ($field) {
+                            return [
+                                'product_field_id' => $field->product_field_id,
+                                'value' => $field->value,
+                            ];
+                        })->toArray();
+                    })->values()->toArray();
+
                     return [
                         'sale_product_id' => $product->id,
                         'product_id' => $product->product_id,
@@ -392,30 +684,32 @@ public function store(Request $request): JsonResponse
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'expiry_date' => $product->expiry_date,
+                        'field_values' => $fieldValues,
                     ];
                 })->toArray();
-            }
-            // Handle specific sale_product_ids
-            elseif (isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids'])) {
+            } elseif (isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids'])) {
                 $saleProducts = SaleProduct::whereIn('id', $validated['sale_product_ids'])
-                    ->with(['sale' => function ($query) {
-                        $query->select('id', 'batch_no', 'company_id', 'customer_id', 'salesman_id', 'store_id', 'location_id');
-                    }])
+                    ->with(['sale', 'fieldValues'])
                     ->get();
 
                 if ($saleProducts->isEmpty()) {
                     return response()->json(['error' => 'No valid sale products found for provided IDs'], 422);
                 }
 
-                $saleId = $saleProducts->first()->sale_id;
                 if ($saleProducts->pluck('sale_id')->unique()->count() > 1) {
                     return response()->json(['error' => 'All sale products must belong to the same sale'], 422);
                 }
-                if ($saleProducts->pluck('company_id')->unique()->count() > 1 || !$saleProducts->every(fn($p) => $p->company_id == $validated['company_id'])) {
-                    return response()->json(['error' => 'All sale products must belong to the same company'], 422);
-                }
 
                 $validated['sales_return_products'] = $saleProducts->map(function ($product) {
+                    $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                        return $group->map(function ($field) {
+                            return [
+                                'product_field_id' => $field->product_field_id,
+                                'value' => $field->value,
+                            ];
+                        })->toArray();
+                    })->values()->toArray();
+
                     return [
                         'sale_product_id' => $product->id,
                         'product_id' => $product->product_id,
@@ -427,12 +721,13 @@ public function store(Request $request): JsonResponse
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'expiry_date' => $product->expiry_date,
+                        'field_values' => $fieldValues,
                     ];
                 })->toArray();
             }
 
             // Set sale-related fields
-            $validated['batch_no'] = $validated['batch_no'] ?? $sale->batch_no;
+            $validated['batch_no'] = $validated['batch_no'] ?? $sale->batch_no . '-RETURN';
             $validated['customer_id'] = $validated['customer_id'] ?? $sale->customer_id;
             $validated['salesman_id'] = $validated['salesman_id'] ?? $sale->salesman_id;
             $validated['store_id'] = $validated['store_id'] ?? $sale->store_id;
@@ -440,69 +735,75 @@ public function store(Request $request): JsonResponse
 
             // Calculate fiscal year
             $newInvoiceDate = $validated['invoice_date'] ? Carbon::parse($validated['invoice_date']) : now();
-            $currentInvoiceDate = $salesReturn->invoice_date ? Carbon::parse($salesReturn->invoice_date) : now();
-            $fiscal_year_start_new = Carbon::create($newInvoiceDate->year, 7, 16);
-            $fiscalYearNew = $newInvoiceDate->lessThan($fiscal_year_start_new)
+            $fiscal_year_start = Carbon::create($newInvoiceDate->year, 7, 16);
+            $fiscalYearNew = $newInvoiceDate->lessThan($fiscal_year_start)
                 ? ($newInvoiceDate->year - 1) . '-' . substr($newInvoiceDate->year, 2, 2)
                 : $newInvoiceDate->year . '-' . substr($newInvoiceDate->year + 1, 2, 2);
-            $fiscal_year_start_current = Carbon::create($currentInvoiceDate->year, 7, 16);
-            $fiscalYearCurrent = $currentInvoiceDate->lessThan($fiscal_year_start_current)
-                ? ($currentInvoiceDate->year - 1) . '-' . substr($currentInvoiceDate->year, 2, 2)
-                : $currentInvoiceDate->year . '-' . substr($currentInvoiceDate->year + 1, 2, 2);
 
-            // Handle invoice_number
-            if ($fiscalYearNew !== $fiscalYearCurrent || !isset($validated['invoice_number'])) {
+            // Generate unique invoice number
+            if (!isset($validated['invoice_number'])) {
                 $validated['invoice_number'] = $this->generateUniqueInvoiceNumber($fiscalYearNew);
             }
 
-            // Validate return quantities
+            // Validate return quantities and field values
+            $returnEntireBatch = $validated['return_entire_batch'] ?? false;
             foreach ($validated['sales_return_products'] as $index => $product) {
-                $saleProductId = $product['sale_product_id'] ?? null;
+                $saleProductId = $product['sale_product_id'];
                 $productId = $product['product_id'];
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
 
-                if ($saleProductId) {
-                    $saleProduct = SaleProduct::where('id', $saleProductId)
-                        ->where('sale_id', $validated['sale_id'])
-                        ->firstOrFail();
-                    $availableToReturn = $saleProduct->quantity + ($saleProduct->free_quantity ?? 0);
+                $saleProduct = SaleProduct::where('id', $saleProductId)->where('sale_id', $validated['sale_id'])->firstOrFail();
+                $availableToReturn = $saleProduct->quantity + ($saleProduct->free_quantity ?? 0);
 
-                    $returnedQuantity = SalesReturnProduct::where('sale_product_id', $saleProductId)
-                        ->where('company_id', $validated['company_id'])
-                        ->where('sales_return_id', '!=', $id)
-                        ->whereNull('deleted_at')
-                        ->sum('quantity');
+                $returnedQuantity = SalesReturnProduct::where('sale_product_id', $saleProductId)
+                    ->where('company_id', $validated['company_id'])
+                    ->where('sales_return_id', '!=', $id)
+                    ->whereNull('deleted_at')
+                    ->sum('quantity');
 
-                    $availableToReturn -= $returnedQuantity;
+                $availableToReturn -= $returnedQuantity;
 
-                    if ($requestedQuantity > $availableToReturn) {
-                        return response()->json([
-                            'error' => "Cannot return more than sold for sale product ID {$saleProductId} at index {$index}. Available: {$availableToReturn}, Requested: {$requestedQuantity}"
-                        ], 422);
-                    }
-                } else {
+                if ($requestedQuantity > $availableToReturn) {
                     return response()->json([
-                        'error' => "sale_product_id is required for product ID {$productId} at index {$index}"
+                        'error' => "Cannot return more than sold for sale product ID {$saleProductId} at index {$index}. Available: {$availableToReturn}, Requested: {$requestedQuantity}"
                     ], 422);
+                }
+
+                // Validate field_values, skip for return_entire_batch
+                $hasFieldValues = SaleProduct::where('id', $saleProductId)->whereHas('fieldValues')->exists();
+                if ($hasFieldValues && !$returnEntireBatch && (!isset($product['field_values']) || count($product['field_values']) !== $product['quantity'])) {
+                    return response()->json([
+                        'error' => "Field values count (" . (isset($product['field_values']) ? count($product['field_values']) : 0) . ") must match quantity ({$product['quantity']}) for product ID {$productId} at index {$index}"
+                    ], 422);
+                }
+
+                if (isset($product['field_values'])) {
+                    foreach ($product['field_values'] as $setIndex => $fieldValueSet) {
+                        $fieldIds = array_column($fieldValueSet, 'product_field_id');
+                        if (count($fieldIds) !== count(array_unique($fieldIds))) {
+                            return response()->json([
+                                'error' => "Duplicate product_field_id found in field_values set {$setIndex} for product ID {$productId} at index {$index}"
+                            ], 422);
+                        }
+                    }
                 }
             }
 
-            // Prepare sales return additionals data
+            // Prepare sales return additionals
             $salesReturnAdditionalsData = $validated['sales_return_additionals'] ?? null;
-            if (!$salesReturnAdditionalsData && $sale->saleAdditional) {
+            if (!$salesReturnAdditionalsData && $sale->saleAdditionals) {
                 $salesReturnAdditionalsData = [
-                    'place' => $sale->saleAdditional->place,
-                    'transport' => $sale->saleAdditional->transport,
-                    'vehicle_number' => $sale->saleAdditional->vehicle_number,
-                    'vehicle_name' => $sale->saleAdditional->vehicle_name,
-                    'driver_name' => $sale->saleAdditional->driver_name,
+                    'place' => $sale->saleAdditionals->place,
+                    'transport' => $sale->saleAdditionals->transport,
+                    'vehicle_number' => $sale->saleAdditionals->vehicle_number,
+                    'vehicle_name' => $sale->saleAdditionals->vehicle_name,
+                    'driver_name' => $sale->saleAdditionals->driver_name,
                     'return_code' => 'RETURN' . now()->format('YmdHis'),
-                    'driver_contact_number' => $sale->saleAdditional->driver_contact_number,
+                    'driver_contact_number' => $sale->saleAdditionals->driver_contact_number,
                     'return_date' => now()->toDateString(),
                     'return_time' => now()->toTimeString(),
                 ];
             } elseif (!$salesReturnAdditionalsData) {
-                // If no sale additionals exist, set minimal defaults
                 $salesReturnAdditionalsData = [
                     'return_code' => 'RETURN' . now()->format('YmdHis'),
                     'return_date' => now()->toDateString(),
@@ -510,10 +811,9 @@ public function store(Request $request): JsonResponse
                 ];
             }
 
-            // Filter validated data to match sales_returns table columns
             $salesReturnData = array_intersect_key($validated, array_flip([
                 'company_id', 'customer_id', 'salesman_id', 'invoice_number', 'document_number', 'batch_no',
-                'balance', 'invoice_date', 'remarks', 'store_id', 'location_id', 'excise_duty',
+                'balance', 'invoice_date', 'remarks', 'reason', 'store_id', 'location_id', 'excise_duty',
                 'health_insurance', 'freight_amount', 'discount', 'discount_after_vat', 'total_amount',
                 'round_of_amount', 'payment'
             ]));
@@ -521,28 +821,73 @@ public function store(Request $request): JsonResponse
             $salesReturn = DB::transaction(function () use ($salesReturn, $salesReturnData, $validated, $salesReturnAdditionalsData) {
                 $salesReturn->update($salesReturnData);
 
-                if (isset($validated['sales_return_products'])) {
-                    $existingProductIds = [];
-                    foreach ($validated['sales_return_products'] as $product) {
-                        $product['company_id'] = $validated['company_id'];
-                        $product['sale_id'] = $validated['sale_id'];
-                        if (isset($product['id']) && SalesReturnProduct::where('id', $product['id'])->exists()) {
-                            SalesReturnProduct::find($product['id'])->update($product);
-                            $existingProductIds[] = $product['id'];
-                        } else {
-                            $newProduct = $salesReturn->salesReturnProducts()->create($product);
-                            $existingProductIds[] = $newProduct->id;
-                        }
+                $existingProductIds = [];
+                foreach ($validated['sales_return_products'] as $product) {
+                    $product['company_id'] = $validated['company_id'];
+                    $product['sale_id'] = $validated['sale_id'];
+
+                    if (isset($product['id']) && SalesReturnProduct::where('id', $product['id'])->exists()) {
+                        $salesReturnProduct = SalesReturnProduct::find($product['id']);
+                        $salesReturnProduct->update($product);
+                        $existingProductIds[] = $product['id'];
+                    } else {
+                        $salesReturnProduct = $salesReturn->salesReturnProducts()->create($product);
+                        $existingProductIds[] = $salesReturnProduct->id;
                     }
 
-                    $salesReturn->salesReturnProducts()
-                        ->whereNotIn('id', $existingProductIds)
-                        ->delete();
-                } else {
-                    $salesReturn->salesReturnProducts()->delete();
+                    if (isset($product['field_values'])) {
+                        $processedFieldIds = [];
+                        $existingFieldIds = SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)
+                            ->withTrashed()
+                            ->pluck('id')
+                            ->toArray();
+
+                        foreach ($product['field_values'] as $quantityIndex => $fieldValueSet) {
+                            foreach ($fieldValueSet as $fieldValue) {
+                                if (isset($fieldValue['id']) && !empty($fieldValue['id'])) {
+                                    $existingValue = SaleReturnProductFieldValue::where('id', $fieldValue['id'])
+                                        ->where('sale_return_product_id', $salesReturnProduct->id)
+                                        ->withTrashed()
+                                        ->first();
+                                    if ($existingValue) {
+                                        if ($existingValue->trashed()) {
+                                            $existingValue->restore();
+                                        }
+                                        $existingValue->update([
+                                            'product_field_id' => $fieldValue['product_field_id'],
+                                            'value' => $fieldValue['value'],
+                                            'quantity_index' => $quantityIndex,
+                                            'updated_at' => now(),
+                                        ]);
+                                        $processedFieldIds[] = $existingValue->id;
+                                    }
+                                } else {
+                                    $newFieldValue = SaleReturnProductFieldValue::create([
+                                        'company_id' => $validated['company_id'],
+                                        'product_field_id' => $fieldValue['product_field_id'],
+                                        'product_id' => $salesReturnProduct->product_id,
+                                        'sale_return_product_id' => $salesReturnProduct->id,
+                                        'quantity_index' => $quantityIndex,
+                                        'value' => $fieldValue['value'],
+                                    ]);
+                                    $processedFieldIds[] = $newFieldValue->id;
+                                }
+                            }
+                        }
+
+                        $unprocessedFieldIds = array_diff($existingFieldIds, $processedFieldIds);
+                        if (!empty($unprocessedFieldIds)) {
+                            SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)
+                                ->whereIn('id', $unprocessedFieldIds)
+                                ->delete();
+                        }
+                    } else {
+                        SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)->delete();
+                    }
                 }
 
-                // Update or create sales return additionals
+                $salesReturn->salesReturnProducts()->whereNotIn('id', $existingProductIds)->delete();
+
                 $salesReturn->salesReturnAdditional()->updateOrCreate(
                     ['sales_return_id' => $salesReturn->id],
                     [
@@ -564,7 +909,7 @@ public function store(Request $request): JsonResponse
 
             return response()->json([
                 'message' => 'Sales Return updated successfully',
-                'data' => $salesReturn->load(['salesReturnProducts', 'salesReturnAdditional'])
+                'data' => $salesReturn->load(['salesReturnProducts.fieldValues', 'salesReturnAdditional'])
             ], 200);
         } catch (ModelNotFoundException $e) {
             Log::error($e);
@@ -577,6 +922,9 @@ public function store(Request $request): JsonResponse
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
+
+    
+
 
     /**
      * Generate a unique invoice number for the fiscal year.

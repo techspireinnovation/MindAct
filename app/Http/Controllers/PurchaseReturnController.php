@@ -56,7 +56,7 @@ class PurchaseReturnController extends Controller
         if ($request->has('company_id')) {
             $billNumbers = $query->where('company_id', $request->company_id)
                                  ->pluck('purchase_bill_number');
-    
+           
             return response()->json($billNumbers);
         }
     
@@ -65,28 +65,33 @@ class PurchaseReturnController extends Controller
     
 
     public function getPurchaseByBillNumber(Request $request)
-    {
-        try {
-            if (!$request->has('purchase_bill_number') || !$request->has('company_id')) {
-                return response()->json(['error' => 'Missing required parameters.'], 422);
-            }
-    
-            $purchase = Purchase::where('company_id', $request->company_id)
-                        ->where('purchase_bill_number', $request->purchase_bill_number)
-                        ->first();
-    
-            if (!$purchase) {
-                return response()->json(['error' => 'Purchase not found'], 404);
-            }
-    
-            return response()->json($purchase->load('purchaseProducts'));
-            
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'A database error occurred'], 500);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+{
+    try {
+        if (!$request->has('purchase_bill_number') || !$request->has('company_id')) {
+            return response()->json(['error' => 'Missing required parameters.'], 422);
         }
+
+        $purchase = Purchase::where('company_id', $request->company_id)
+            ->where('purchase_bill_number', $request->purchase_bill_number)
+            ->with([
+                'purchaseProducts.fieldValues.productField'
+               
+            ])
+            ->first();
+
+        if (!$purchase) {
+            return response()->json(['error' => 'Purchase not found'], 404);
+        }
+
+        return response()->json(['data' => $purchase]);
+
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
+
 
 
     public function getProductNames(Request $request)

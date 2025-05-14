@@ -37,6 +37,36 @@ class SalesReturnProduct extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+     public function saleReturn()
+       {
+           return $this->belongsTo(SalesReturn::class);
+       }
+
+       public function saleProduct()
+       {
+           return $this->belongsTo(SaleProduct::class);
+       }
+
+       public function product()
+       {
+           return $this->belongsTo(Product::class);
+       }
+
+       public function customer()
+       {
+           return $this->belongsTo(Customer::class);
+       }
+
+       public function measureUnit()
+       {
+           return $this->belongsTo(MeasureUnit::class);
+       }
+
+       public function fieldValues()
+       {
+           return $this->hasMany(SaleReturnProductFieldValue::class, 'sale_return_product_id');
+       }
+
 
 
 

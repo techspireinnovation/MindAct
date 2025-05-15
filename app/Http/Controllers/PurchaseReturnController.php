@@ -64,7 +64,34 @@ class PurchaseReturnController extends Controller
     }
     
 
-    public function getPurchaseByBillNumber(Request $request)
+//     public function getPurchaseByBillNumber(Request $request)
+// {
+//     try {
+//         if (!$request->has('purchase_bill_number') || !$request->has('company_id')) {
+//             return response()->json(['error' => 'Missing required parameters.'], 422);
+//         }
+
+//         $purchase = Purchase::where('company_id', $request->company_id)
+//             ->where('purchase_bill_number', $request->purchase_bill_number)
+//             ->with([
+//                 'purchaseProducts.fieldValues.productField'
+               
+//             ])
+//             ->first();
+
+//         if (!$purchase) {
+//             return response()->json(['error' => 'Purchase not found'], 404);
+//         }
+
+//         return response()->json(['data' => $purchase]);
+
+//     } catch (QueryException $e) {
+//         return response()->json(['error' => 'A database error occurred'], 500);
+//     } catch (\Exception $e) {
+//         return response()->json(['error' => 'An unexpected error occurred'], 500);
+//     }
+// }
+public function getPurchaseByBillNumber(Request $request)
 {
     try {
         if (!$request->has('purchase_bill_number') || !$request->has('company_id')) {
@@ -75,7 +102,6 @@ class PurchaseReturnController extends Controller
             ->where('purchase_bill_number', $request->purchase_bill_number)
             ->with([
                 'purchaseProducts.fieldValues.productField'
-               
             ])
             ->first();
 
@@ -83,11 +109,31 @@ class PurchaseReturnController extends Controller
             return response()->json(['error' => 'Purchase not found'], 404);
         }
 
-        return response()->json(['data' => $purchase]);
+        // Transform the field_values into nested array format
+        $purchaseData = $purchase->toArray();
+        foreach ($purchaseData['purchase_products'] as &$product) {
+            $groupedFieldValues = [];
+            foreach ($product['field_values'] as $fieldValue) {
+                $quantityIndex = $fieldValue['quantity_index'];
+                if (!isset($groupedFieldValues[$quantityIndex])) {
+                    $groupedFieldValues[$quantityIndex] = [];
+                }
+                $groupedFieldValues[$quantityIndex][] = [
+                    'product_field_id' => $fieldValue['product_field_id'],
+                    'name' => $fieldValue['product_field']['name'] ?? null,
+                    'value' => $fieldValue['value']
+                ];
+            }
+            $product['field_values'] = array_values($groupedFieldValues);
+        }
+
+        return response()->json(['data' => $purchaseData]);
 
     } catch (QueryException $e) {
+        \Log::error('Database error in getPurchaseByBillNumber: ' . $e->getMessage());
         return response()->json(['error' => 'A database error occurred'], 500);
     } catch (\Exception $e) {
+        \Log::error('Unexpected error in getPurchaseByBillNumber: ' . $e->getMessage());
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }

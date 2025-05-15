@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StockEntry extends Model
@@ -12,6 +13,7 @@ class StockEntry extends Model
 
     protected $fillable = [
         'product_code',
+        'product_name',
         'company_id',
         'product_id',
         'uom',
@@ -22,5 +24,13 @@ class StockEntry extends Model
         'amount',
         'location_id'
     ];
+
+    protected $dates = ['deleted_at'];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new CompanyIdScope());
+    }
+
 
 }

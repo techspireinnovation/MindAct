@@ -29,8 +29,9 @@ class StockEntryController extends Controller
         $validator = Validator::make($request->all(), [
             'company_id' => 'required|exists:companies,id',
             'product_code' => 'required|string|max:255',
+            'product_name' => 'nullable|string|max:255',
             'product_id' => 'nullable|string|exists:products,id', 
-            'address' => 'nullable|string',
+           
             'uom' => 'required|numeric|exists:measure_units,id', 
             'batch_no' => 'nullable|string|max:255', 
             'expiry_date' => 'nullable|string|max:255',
@@ -84,8 +85,9 @@ public function update(Request $request, $id): JsonResponse
         $validator = Validator::make($request->all(), [
             'company_id' => 'required|exists:companies,id',
             'product_code' => 'required|string|max:255',
+            'product_name' => 'nullable|string|max:255',
             'product_id' => 'nullable|exists:products,id', 
-            'address' => 'nullable|string',
+            
             'uom' => 'required|numeric|exists:measure_units,id',
             'batch_no' => 'nullable|string|max:255',
             'expiry_date' => 'nullable|string|max:255',
@@ -114,6 +116,7 @@ public function update(Request $request, $id): JsonResponse
         }
 
         $stockEntry = StockEntry::findOrFail($id);
+        
         $stockEntry->update($data);
 
         return response()->json([
@@ -129,8 +132,6 @@ public function update(Request $request, $id): JsonResponse
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
-
-
 
 
 

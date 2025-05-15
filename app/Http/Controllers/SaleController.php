@@ -80,6 +80,7 @@ class SaleController extends Controller
        public function store(Request $request): JsonResponse
     {
         try {
+            
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'required|exists:customers,id',

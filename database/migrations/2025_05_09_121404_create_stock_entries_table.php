@@ -13,9 +13,11 @@ return new class extends Migration
     {
         Schema::create('stock_entries', function (Blueprint $table) {
             $table->id();
-            $table->text('product_code')->constrained('products');
-            $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('product_id')->constrained('products');
+            $table->text('product_code')->nullable();
+            $table->string('product_name')->nullable();
+            $table->foreignID('company_id')->constrained('companies');
+            
             $table->foreignID('uom')->constrained('measure_units');
             $table->longText('batch_no')->nullable();
             $table->date('expiry_date')->nullable();

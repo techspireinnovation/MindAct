@@ -35,19 +35,19 @@ class PurchaseReturnController extends Controller
         return response()->json($query->paginate(50));
     }
 
-    public function getBills(){
-    try{
-        $company = $request->company_id;
-        $bills = Helper::getPurchaseBills($company);
-        return response()->json($bills);
-    }catch(ModelNotFoundException $e){
-            return response()->json(['error','Item Not Found!!'],422);
-    }catch(QueryException $e){
-            return response()->json(['error','Database error occurred!!'],500);
-        }catch(ModelNotFoundException $e){
-            return response()->json(['error','An unexpected error occurred!!'],500);
-        }
-    }
+// public function getBills(){
+//     try{
+//         $company = $request->company_id;
+//         $bills = Helper::getPurchaseBills($company);
+//         return response()->json($bills);
+//     }catch(ModelNotFoundException $e){
+//             return response()->json(['error','Item Not Found!!'],422);
+//     }catch(QueryException $e){
+//             return response()->json(['error','Database error occurred!!'],500);
+//         }catch(ModelNotFoundException $e){
+//             return response()->json(['error','An unexpected error occurred!!'],500);
+//         }
+//     }
 
     public function getPurchaseBillNumber(Request $request)
     {
@@ -56,6 +56,20 @@ class PurchaseReturnController extends Controller
         if ($request->has('company_id')) {
             $billNumbers = $query->where('company_id', $request->company_id)
                                  ->pluck('purchase_bill_number');
+           
+            return response()->json($billNumbers);
+        }
+    
+        return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+    }
+
+    public function getRefBillNumber(Request $request)
+    {
+        $query = Purchase::query();
+    
+        if ($request->has('company_id')) {
+            $billNumbers = $query->where('company_id', $request->company_id)
+                                 ->pluck('ref_bill_number');
            
             return response()->json($billNumbers);
         }
@@ -134,6 +148,54 @@ public function getPurchaseByBillNumber(Request $request)
         return response()->json(['error' => 'A database error occurred'], 500);
     } catch (\Exception $e) {
         \Log::error('Unexpected error in getPurchaseByBillNumber: ' . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
+
+public function getPurchaseByRefBillNumber(Request $request)
+{
+    try {
+        if (!$request->has('ref_bill_number') || !$request->has('company_id')) {
+            return response()->json(['error' => 'Missing required parameters.'], 422);
+        }
+
+        $purchase = Purchase::where('company_id', $request->company_id)
+            ->where('ref_bill_number', $request->ref_bill_number)
+            ->with([
+                'purchaseProducts.fieldValues.productField'
+            ])
+            ->first();
+
+        if (!$purchase) {
+            return response()->json(['error' => 'Purchase not found'], 404);
+        }
+
+        // Transform the field_values into nested array format
+        $purchaseData = $purchase->toArray();
+        foreach ($purchaseData['purchase_products'] as &$product) {
+            $groupedFieldValues = [];
+            foreach ($product['field_values'] as $fieldValue) {
+                $quantityIndex = $fieldValue['quantity_index'];
+                if (!isset($groupedFieldValues[$quantityIndex])) {
+                    $groupedFieldValues[$quantityIndex] = [];
+                }
+                $groupedFieldValues[$quantityIndex][] = [
+                    'product_field_id' => $fieldValue['product_field_id'],
+                    'name' => $fieldValue['product_field']['name'] ?? null,
+                    'value' => $fieldValue['value']
+                ];
+            }
+            $product['field_values'] = array_values($groupedFieldValues);
+        }
+
+        return response()->json(['data' => $purchaseData]);
+
+    } catch (QueryException $e) {
+        \Log::error('Database error: ' . $e->getMessage());
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error('Unexpected error: ' . $e->getMessage());
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }

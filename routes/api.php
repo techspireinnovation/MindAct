@@ -127,6 +127,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::put('sales-masters-update', [CompanyController::class,'updateSaleMasterKey']);
     Route::get('get-purchase-bill-numbers',[PurchaseReturnController::class, 'getPurchaseBillNumber']);
     Route::get('get-purchase-by-bill-numbers',[PurchaseReturnController::class, 'getPurchaseByBillNumber']);
+    Route::get('get-ref-bill-numbers',[PurchaseReturnController::class, 'getRefBillNumber']);
+    Route::get('get-purchase-by-ref-bill-numbers',[PurchaseReturnController::class, 'getPurchaseByRefBillNumber']);
     Route::get('get-purchase-product-names',[PurchaseReturnController::class, 'getProductNames']);
     Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
     Route::get('get-provinces-with-districts', [NepalLocationPackageController::class, 'ProvinceWithDistrict']);

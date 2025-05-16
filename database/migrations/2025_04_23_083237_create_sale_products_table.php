@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignId('sale_id')->constrained('sales');
             $table->foreignId('product_id')->constrained('products');
-            $table->string('product_code')->nullable();
+            $table->unsignedBigInteger('purchase_product_id')->nullable(); 
             $table->string('product_name')->nullable();
             $table->string('batch_no')->nullable();
             $table->date('mfd')->nullable();

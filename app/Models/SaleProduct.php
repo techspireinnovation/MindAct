@@ -19,6 +19,7 @@ class SaleProduct extends Model
         'company_id',
         'sale_id',
         'product_id',
+        'purchase_product_id',
         'expiry_date',
         'code',
         'name',

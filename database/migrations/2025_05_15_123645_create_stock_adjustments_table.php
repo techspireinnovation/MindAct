@@ -18,9 +18,10 @@ return new class extends Migration
             $table->date('invoice_date_bs')->nullable();
             $table->text('document_number')->nullable();
             $table->foreignID('location_id')->constrained('locations');
-            $table->string('remarks')->nullable();
-            $table->string('reasons')->nullable();
-            $table->forignID('company_id')->constrained('companies');
+            $table->text('remarks')->nullable();
+            $table->text('reasons')->nullable();
+            $table->string('product_details')->nullable();
+            $table->foreignID('company_id')->constrained('companies');
             $table->softDeletes();
             $table->timestamps();
         });

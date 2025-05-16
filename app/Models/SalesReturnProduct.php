@@ -18,6 +18,7 @@ class SalesReturnProduct extends Model
         'company_id',
         'product_id',  
         'sale_product_id',
+        'purchase_product_id',
         'expiry_date',
         'quantity',
         'free_quantity',  

@@ -8,18 +8,25 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockAdjustment extends Model
+class StockTransfer extends Model
 {
     use softDeletes,HasFactory;
 
+    protected $casts = [
+        'is_active' => 'boolean'
+       
+    ];
+
     protected $fillable = [
+        'transfer_to',
         'reference_no',
-        'invoice_date',
-        'invoice_date_bs',
-        'location_id',
+        'document_no',
+        'current_location',
+        'transaction_date_bs',
+        'date_ad',
         'remarks',
-        'reasons',
-        'company_id',
+        'reason_for',
+        'is_active',
         'product_details',
         
     ];
@@ -30,5 +37,4 @@ class StockAdjustment extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
-
 }

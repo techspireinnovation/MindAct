@@ -3,32 +3,34 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockTransfer extends Model
+class StockReceive extends Model
 {
     use softDeletes,HasFactory;
 
-    protected $casts = [
-        'is_active' => 'boolean'
-       
-    ];
+   
 
     protected $fillable = [
         'company_id',
-        'transfer_to',
+        'transfer_ref_no',
         'reference_no',
-        'document_no',
+        'receive_from',
         'current_location',
-        'transaction_date_bs',
-        'date_ad',
-        'remarks',
-        'reason_for',
-        'is_active',
+        'address',
+        'document_no',
+        'current_date',
+        'current_date_bs',
+        'stock_transfer_date',
+        'stock_transfer_date_bs',
         'product_details',
+        'reasons',
+        'remarks'
+        
         
     ];
 

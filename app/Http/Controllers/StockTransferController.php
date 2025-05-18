@@ -15,6 +15,7 @@ class StockTransferController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+      
         $query = StockTransfer::query();
  
     

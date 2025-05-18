@@ -88,11 +88,12 @@ class PurchaseController extends Controller
     public function update(Request $request, $id): JsonResponse
 {
     try {
+        
         $item = Purchase::findOrFail($id);
         
 
         $validated = $request->validate([
-            'ref_bill_number' => 'required|string|max:255',
+            'ref_bill_number' => 'required|string|max:255|unique:purchases,ref_bill_number,' . $id,
             'customer_id' => 'required|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
@@ -381,7 +382,7 @@ class PurchaseController extends Controller
  public function store(Request $request): JsonResponse
 {
     $validated = $request->validate([
-        'ref_bill_number' => 'required|string|max:255',
+        'ref_bill_number' => 'required|string|max:255|unique:purchases,ref_bill_number',
         'customer_id' => 'required|exists:customers,id',
         'customer_name' => 'nullable|string|max:255',
         'pan_number' => 'nullable|string|max:255',

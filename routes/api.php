@@ -9,6 +9,7 @@ use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\StockEntryController;
+use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BrandController;
@@ -142,6 +143,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('salesman',SalesmanController::class);
     Route::resource('stock-entries',StockEntryController::class);
     Route::resource('stock-adjustments',StockAdjustmentController::class);
+    Route::resource('stock-transfers',StockTransferController::class);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

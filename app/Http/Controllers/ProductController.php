@@ -487,7 +487,7 @@ class ProductController extends Controller
             'field_values' => 'array',
             'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
             'field_values.*.value' => 'required|string|max:255',
-            'product_list' => 'required|array',
+            'product_list' => 'nullable|array',
             'product_list.*.id' => 'nullable|exists:product_lists,id',
             'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'product_list.*.quantity' => 'nullable|integer',

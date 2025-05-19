@@ -20,113 +20,19 @@ use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    
 
 
-//     public function index(Request $request): JsonResponse
-// {
-//     try {
-//         $query = Product::query()->with([
-//             'category',
-//             'subCategory',
-//             'brand',
-//             'measureUnit',
-//             'productType',
-//             'location',
-          
-          
-//         ]);
-
-//         $search = $request->input('search');
-//         $filterBy = $request->input('filter_by', 'all'); 
-
-//         if ($search) {
-//             $filterOptions = explode(',', $filterBy); // Split comma-separated filter_by values
-
-//             $query->where(function ($q) use ($search, $filterOptions) {
-               
-//                 if (in_array('all', $filterOptions)) {
-//                     $q->where('name', 'LIKE', '%' . $search . '%')
-//                         ->orWhereHas('category', function ($q) use ($search) {
-//                             $q->where('name', 'LIKE', '%' . $search . '%');
-//                         })
-//                         ->orWhereHas('subCategory', function ($q) use ($search) {
-//                             $q->where('name', 'LIKE', '%' . $search . '%');
-//                         })
-//                         ->orWhereHas('brand', function ($q) use ($search) {
-//                             $q->where('name', 'LIKE', '%' . $search . '%');
-//                         })
-//                         ->orWhereHas('measureUnit', function ($q) use ($search) {
-//                             $q->where('name', 'LIKE', '%' . $search . '%');
-//                         })
-//                         ->orWhereHas('productType', function ($q) use ($search) {
-//                             $q->where('name', 'LIKE', '%' . $search . '%');
-//                         })
-//                         ->orWhereHas('location', function ($q) use ($search) {
-//                             $q->where('name', 'LIKE', '%' . $search . '%');
-//                         });
-//                 } else {
-                    
-//                     foreach ($filterOptions as $filter) {
-//                         switch (trim($filter)) {
-//                             case 'category':
-//                                 $q->orWhereHas('category', function ($q) use ($search) {
-//                                     $q->where('name', 'LIKE', '%' . $search . '%');
-//                                 });
-//                                 break;
-//                             case 'sub_category':
-//                                 $q->orWhereHas('subCategory', function ($q) use ($search) {
-//                                     $q->where('name', 'LIKE', '%' . $search . '%');
-//                                 });
-//                                 break;
-//                             case 'brand':
-//                                 $q->orWhereHas('brand', function ($q) use ($search) {
-//                                     $q->where('name', 'LIKE', '%' . $search . '%');
-//                                 });
-//                                 break;
-//                             case 'measure_unit':
-//                                 $q->orWhereHas('measureUnit', function ($q) use ($search) {
-//                                     $q->where('name', 'LIKE', '%' . $search . '%');
-//                                 });
-//                                 break;
-//                             case 'product_type':
-//                                 $q->orWhereHas('productType', function ($q) use ($search) {
-//                                     $q->where('name', 'LIKE', '%' . $search . '%');
-//                                 });
-//                                 break;
-//                             case 'location':
-//                                 $q->orWhereHas('location', function ($q) use ($search) {
-//                                     $q->where('name', 'LIKE', '%' . $search . '%');
-//                                 });
-//                                 break;
-//                         }
-//                     }
-//                 }
-//             });
-//         }
-
-       
-//         $products = $query->paginate(50);
-
-//         return response()->json($products);
-//     } catch (\Exception $e) {
-//         \Log::error('Error fetching products: ' . $e->getMessage());
-//         return response()->json(['error' => 'Failed to fetch products'], 500);
-//     }
-// }
-
-
-public function generateProductID()
+    public function generateProductID()
     {
       
         $latestProduct = Product::orderBy('id', 'desc')->first();
         $nextNumber = $latestProduct ? $latestProduct->id + 1 : 1;
-        $productID = 'PD-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT); 
+        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT); 
 
        
         while (Product::where('product_unique_id', $productID)->exists()) {
             $nextNumber++;
-            $productID = 'PD-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+            $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
         }
 
      
@@ -379,17 +285,17 @@ public function filterbyBarcode(Request $request): JsonResponse
 
         } catch (QueryException $e) {
             \Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'Database error'], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            
             \Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
 
    
-public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
             $item = Product::findOrFail($id);
@@ -400,7 +306,8 @@ public function update(Request $request, $id): JsonResponse
                         Rule::unique('products')
                           ->ignore($id)
                           ->where(function ($query) use ($request,$item){
-                            return $query->where('company_id',$request->input('company_id',$request->company_id));
+                            return $query->where('company_id',$request->input('company_id',$request->company_id))
+                            ->whereNull('deleted_at');
 
                           }),
                     ],
@@ -557,7 +464,8 @@ public function update(Request $request, $id): JsonResponse
                        'string',
                        'max:255',
                        Rule::unique('products')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                        }),
                        ],
@@ -626,12 +534,15 @@ public function update(Request $request, $id): JsonResponse
         ], 201);
     }
 
-    public function show($id): JsonResponse
-    {
-        $product = Product::with([
-            'productList',
-            'productFieldValues.productField'
-        ])->findOrFail($id);
+        public function show(Request $request, $id): JsonResponse
+{
+    try {
+        $product = Product::where('company_id', $request->company_id)
+            ->with([
+                'productList',
+                'productFieldValues.productField'
+            ])
+            ->findOrFail($id);
 
         // Group values by field ID
         $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
@@ -651,12 +562,20 @@ public function update(Request $request, $id): JsonResponse
         // Prepare product response without product_field_values
         $productArray = $product->toArray();
         unset($productArray['product_field_values']);
+        $productArray['product_fields'] = $product_fields;
 
         return response()->json([
-            'product' => $productArray,
-            'product_fields' => $product_fields
+            'product' => $productArray
         ]);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Product not found!'], 404);
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'Database query error occurred!'], 500);
+    } catch (\Exception $e) {
+        return response()->json(['error' => 'Unexpected error occurred!'], 500);
     }
+}
 
     public function destroy($id): JsonResponse
     {
@@ -669,11 +588,11 @@ public function update(Request $request, $id): JsonResponse
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

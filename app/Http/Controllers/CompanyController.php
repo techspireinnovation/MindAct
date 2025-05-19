@@ -360,14 +360,14 @@ class CompanyController extends Controller{
             ], 404);
         } catch (QueryException $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-            dd($e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-            dd($e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -550,14 +550,14 @@ class CompanyController extends Controller{
             ], 404);
         } catch (QueryException $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-            dd($e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-            dd($e->getMessage());
+            
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',

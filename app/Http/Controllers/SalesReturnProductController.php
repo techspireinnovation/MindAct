@@ -101,7 +101,7 @@ class SalesReturnProductController extends Controller
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database error'], 500);
         }catch (\Exception $e){
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred!!']);
 
         }

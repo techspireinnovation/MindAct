@@ -29,7 +29,8 @@ class ProductFieldController extends Controller
                        'string',
                        'max:255',
                        Rule::unique('product_fields')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                        }),
                     ],
@@ -69,7 +70,8 @@ class ProductFieldController extends Controller
                            Rule::unique('product_fields')
                            ->ignore($id)
                            ->where(function ($query) use ($request,$product_field){
-                            return $query->where('company_id',$request->input('company_id',$product_field->company_id));
+                            return $query->where('company_id',$request->input('company_id',$product_field->company_id))
+                            ->whereNull('deleted_at');
 
                            }),
                         ],

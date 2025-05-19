@@ -32,7 +32,8 @@ class StoreController extends Controller
                         Rule::unique('stores')
                         ->ignore($id)
                         ->where(function ($query) use ($request ,$item){
-                            return $query->where('company_id', $request->input('company_id',$item->company_id));
+                            return $query->where('company_id', $request->input('company_id',$item->company_id))
+                            ->whereNull('deleted_at');
 
                         }),
                     ],                
@@ -57,7 +58,8 @@ class StoreController extends Controller
                        'string',
                        'max:255',
                        Rule::unique('stores')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                        }),
                     ],

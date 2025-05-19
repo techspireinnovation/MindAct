@@ -39,14 +39,15 @@ class ProductCategoryController extends Controller
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
-    //    dd($request->all());
+    
         $validated = $request->validate([
             'name' => [
                 'required',
                 'string',
                 'max:255',
                 Rule::unique('product_categories')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id);
+                    return $query->where('company_id', $request->company_id)
+                     ->whereNull('deleted_at');
                 }),
             ],
             'company_id' => 'required|integer|exists:companies,id',
@@ -83,7 +84,7 @@ class ProductCategoryController extends Controller
         }
     }
 
-    // Update a resource
+    
     public function update(Request $request, $id): JsonResponse
 {
     try {
@@ -97,7 +98,9 @@ class ProductCategoryController extends Controller
                 Rule::unique('product_categories')
                     ->ignore($id)
                     ->where(function ($query) use ($request, $product_category) {
-                        return $query->where('company_id', $request->input('company_id', $product_category->company_id));
+                        return $query->where('company_id', $request->input('company_id', $product_category->company_id))
+                        ->whereNull('deleted_at');
+                            
                     }),
             ],
             'company_id' => 'sometimes|required|integer|exists:companies,id',

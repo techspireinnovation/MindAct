@@ -36,7 +36,8 @@ class SubGroupController extends Controller
                         Rule::unique('sub_groups')
                         ->ignore($id)
                         ->where(function ($query) use ($request, $group){
-                            return $query->where('company_id',$request->input('company_id',$request->company_id));
+                            return $query->where('company_id',$request->input('company_id',$request->company_id))
+                            ->whereNull('deleted_at');
 
                         }),
                     ],
@@ -73,7 +74,8 @@ class SubGroupController extends Controller
                        'string',
                        'max:255',
                     Rule::unique('sub_groups')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                     }),
                     

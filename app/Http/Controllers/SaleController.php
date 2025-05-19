@@ -1203,7 +1203,7 @@ private function getSalesByCustomer(Request $request): JsonResponse
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
     } catch (\Exception $e) {
-        dd($e->getMessage());
+        
         return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
     }
 }
@@ -1238,7 +1238,7 @@ public function getSalesByBatch(Request $request): JsonResponse
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
     } catch (\Exception $e) {
-        dd($e->getMessage());
+        
         return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
     }
 }
@@ -1286,7 +1286,7 @@ public function getSalesByExpiryDate(Request $request): JsonResponse
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
     } catch (\Exception $e) {
-        dd($e->getMessage());
+        
         return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
     }
 }

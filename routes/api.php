@@ -24,6 +24,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
+use App\Http\Controllers\ProductionSettingController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
 use App\Http\Controllers\ProductTypeController;
@@ -36,6 +37,7 @@ use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
+use App\Http\Controllers\StockReconciliationController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
@@ -140,6 +142,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('stock-entries', StockEntryController::class);
     Route::resource('stock-adjustments', StockAdjustmentController::class);
     Route::resource('stock-transfers', StockTransferController::class);
+    Route::resource('stock-reconciliation', StockReconciliationController::class);
+    Route::resource('production-settings', ProductionSettingController::class);
+    Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

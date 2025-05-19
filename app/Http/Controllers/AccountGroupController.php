@@ -36,7 +36,8 @@ class AccountGroupController extends Controller
                            Rule::unique('account_groups')
                             ->ignore($id)
                             ->where(function ($query) use ($request, $group){
-                                return $query->where('company_id',$request->input('company_id',$request->company_id));
+                                return $query->where('company_id',$request->input('company_id',$request->company_id))
+                                ->whereNull('deleted_at');
 
                             }),
                     ],
@@ -84,7 +85,8 @@ class AccountGroupController extends Controller
                        'string',
                        'max:255',
                     Rule::unique('account_groups')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                     }),
 
@@ -96,6 +98,7 @@ class AccountGroupController extends Controller
             'sub_group_id' => 'integer|exists:sub_groups,id',
             'code' => 'string|max:255'
         ]);
+
         if($validator->fails()){
             return response()->json($validator->errors(),422);
         }
@@ -118,7 +121,7 @@ class AccountGroupController extends Controller
     }catch(\Exception $e){
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
-    }
+}
 
     public function show($id): JsonResponse
     {

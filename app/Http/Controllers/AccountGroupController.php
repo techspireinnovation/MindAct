@@ -50,7 +50,10 @@ class AccountGroupController extends Controller
 
             ]);
             if($validator->fails()){
-                return response()->json($validator->errors(),422);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
             $validated = $validator->validated();
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
@@ -100,7 +103,10 @@ class AccountGroupController extends Controller
         ]);
 
         if($validator->fails()){
-            return response()->json($validator->errors(),422);
+            return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
         }
 
         $validated = $validator->validated();

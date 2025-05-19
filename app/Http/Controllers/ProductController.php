@@ -22,23 +22,20 @@ class ProductController extends Controller
 {
 
 
-    public function generateProductID()
+    public function generateProductID(): JsonResponse
     {
-      
-        $latestProduct = Product::orderBy('id', 'desc')->first();
+        // Include soft-deleted records to get the highest ID
+        $latestProduct = Product::withTrashed()->orderBy('id', 'desc')->first();
         $nextNumber = $latestProduct ? $latestProduct->id + 1 : 1;
-        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT); 
+        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
 
-       
-        while (Product::where('product_unique_id', $productID)->exists()) {
+        // Check for uniqueness, including soft-deleted records
+        while (Product::withTrashed()->where('product_unique_id', $productID)->exists()) {
             $nextNumber++;
             $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
         }
 
-     
         return response()->json(['product_id' => $productID]);
-
-       
     }
 
 public function index(Request $request): JsonResponse
@@ -582,7 +579,7 @@ public function filterbyBarcode(Request $request): JsonResponse
         try {
             $item = Product::findOrFail($id);
             $item->delete();
-            broadcast(new ProductUpdated($product, 'deleted'));
+            broadcast(new ProductUpdated($item, 'deleted'));
             return response()->json(['message' => 'Product deleted!!']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

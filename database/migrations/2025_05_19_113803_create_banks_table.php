@@ -18,6 +18,8 @@ return new class extends Migration {
             $table->string('class')->nullable();
             $table->string('number')->nullable();
             $table->string('swift')->nullable();
+            $table->boolean('is_primary')->default(false);
+            $table->boolean('is_active')->default(true);
             $table->timestamps();
 
         });

@@ -26,10 +26,12 @@ class Product extends Model
         'name',
         'debit_note',
         'credit_note',
+        'product_unique_id',
         'is_active',
         'deleted_at',
         'company_id',
         'category_id',
+        'sub_category_id',
         'brand_id',
         'measure_unit_id',
         'purchase_rate',
@@ -40,6 +42,7 @@ class Product extends Model
         'wholesales_price',
         'wholesales_price_vat',
         'wholesales_price_profit_percent',
+        'stock_alert',
         'is_vatable',
         'product_type_id',
         'location_id',
@@ -57,6 +60,12 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
+    }
+
+
+    public function subCategory()
+    {
+        return $this->belongsTo(ProductSubCategory::class, 'sub_category_id');
     }
 
     public function brand()
@@ -88,6 +97,10 @@ class Product extends Model
     public function productList(): HasMany
     {
         return $this->hasMany(ProductList::class);
+    }
+
+    public function saleProduct(){
+        return $this->hasMany(SaleProduct::class);
     }
 
 

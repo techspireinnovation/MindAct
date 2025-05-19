@@ -16,6 +16,7 @@ class AccountHead extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_primary' => 'boolean'
     ];
 
     protected $fillable=[
@@ -24,6 +25,7 @@ class AccountHead extends Model
         'account_group_id',
         'code',
         'is_active',
+        'is_primary',
         'deleted_at'
     ];
     protected $dates = ['deleted_at'];

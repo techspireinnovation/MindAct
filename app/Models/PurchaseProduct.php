@@ -15,12 +15,17 @@ class PurchaseProduct extends Model
         'company_id',
         'purchase_id',
         'product_id',
+        'product_name',
+        'product_code',
+        'expiry_date',
         'quantity',
         'deleted_at',
         'free_quantity',
         'price',
         'discount_percent',
         'discount_amount',
+        'amount',
+        
         'is_vatable',
         'measure_unit_id',
     ];
@@ -39,4 +44,20 @@ class PurchaseProduct extends Model
             }
         });
     }
+
+    public function fieldValues()
+    {
+        return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
+    }
+
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class, 'purchase_id');
+    }
+
+    public function purchaseProductReturns()
+    {
+        return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
+    }
+   
 }

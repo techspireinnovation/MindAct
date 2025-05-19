@@ -11,11 +11,13 @@ class ProductType extends Model
     use HasFactory, SoftDeletes;
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'is_primary' => 'boolean'
     ];
     protected $fillable = [
         'name',
         'is_active',
+        'is_primary',
         'deleted_at',
         'company_id',
     ];

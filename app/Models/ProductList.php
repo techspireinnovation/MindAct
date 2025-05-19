@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\softDeletes;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\softDeletes;
+
 use Request;
 
 class ProductList extends Model
@@ -19,6 +19,7 @@ class ProductList extends Model
 
   protected $casts = [
     'is_active' => 'boolean',
+    'is_primary' => 'boolean'
   ];
 
   protected $fillable = [
@@ -32,6 +33,7 @@ class ProductList extends Model
     'discount',
     'final_price',
     'primary_measure_unit_id',
+    'is_primary',
     'deleted_at',
 
   ];

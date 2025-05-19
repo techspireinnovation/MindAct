@@ -14,6 +14,7 @@ return new class extends Migration {
             $table->id();
             $table->bigInteger('company_id');
             $table->string('name');
+            $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes(); // Adds the 'deleted_at' column

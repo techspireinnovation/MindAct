@@ -1,0 +1,34 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class StockAdjustment extends Model
+{
+    use softDeletes,HasFactory;
+
+    protected $fillable = [
+        'reference_no',
+        'invoice_date',
+        'invoice_date_bs',
+        'location_id',
+        'remarks',
+        'reasons',
+        'company_id',
+        'product_details',
+        
+    ];
+
+    protected $dates = ['deleted_at'];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new CompanyIdScope());
+    }
+
+}

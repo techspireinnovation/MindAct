@@ -45,7 +45,7 @@ class ProjectController extends Controller
                 'contact_details' => 'string|max:255',
                 'starting_date' => 'string|max:255',
                 'ending_date' => 'string|max:255',
-                'budget' => 'string|max:255',
+                'budget' => 'numeric',
                 'manager_name' => 'string|max:255',
                 'contact_number' => 'string|max:255',
                 'company_id' => 'required|integer|exists:companies,id'
@@ -104,7 +104,7 @@ class ProjectController extends Controller
             'contact_details' => 'string|max:255',
             'starting_date' => 'string|max:255',
             'ending_date' => 'string|max:255',
-            'budget' => 'string|max:255',
+            'budget' => 'numeric',
             'manager_name' => 'string|max:255',
             'contact_number' => 'string|max:255',
             'company_id' => 'required|integer|exists:companies,id'

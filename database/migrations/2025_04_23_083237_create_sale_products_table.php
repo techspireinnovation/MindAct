@@ -33,6 +33,7 @@ return new class extends Migration
             $table->double('amount')->nullable();
             $table->SoftDeletes();
             
+            
             $table->timestamps();
         });
     }

@@ -53,7 +53,10 @@ class SubGroupController extends Controller
                 'ranking_for_trial' => 'integer|max:255'
             ]);
             if($validator->fails()){
-                return response()->json($validator->errors(),422);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
             $validated = $validator->validated();
@@ -94,7 +97,10 @@ class SubGroupController extends Controller
             'ranking_for_trial' => 'string|max:255'
         ]);
         if($validator->fails()){
-            return response()->json($validator->errors(),422);
+            return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
         }
 
         $validated = $validator->validated();

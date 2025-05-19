@@ -36,11 +36,16 @@ class ProductSubCategoryController extends Controller
                                  ->ignore($id)
                                  ->where(function ($query) use ($request, $item){
                                    return $query->where('company_id',$request->input('company_id',$item->company_id))
+                                   ->where('category_id', $request->input('category_id', $item->category_id))
                                    ->whereNull('deleted_at');
                                 }),
                 ],
                 'is_active' => 'boolean|required',
-                'category_id' => 'integer|exists:product_categories,id',
+                'category_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('product_categories', 'id')->whereNull('deleted_at')
+                ],
                 'company_id' => 'integer|exists:companies,id'
             ]);
             if($validator->fails()){
@@ -66,12 +71,17 @@ class ProductSubCategoryController extends Controller
                        'string','max:255',
                        Rule::unique('product_sub_categories')->where(function ($query) use ($request){
                         return $query->where('company_id',$request->company_id)
+                        ->where('category_id', $request->category_id)
                         ->whereNull('deleted_at');
 
                        }),
                     ],
             'is_active' => 'boolean|required',
-            'category_id' => 'integer|exists:product_categories,id',
+            'category_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('product_categories', 'id')->whereNull('deleted_at')
+                ],
             'company_id' => 'integer|exists:companies,id'
         ]);
 

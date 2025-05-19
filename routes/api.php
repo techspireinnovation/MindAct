@@ -121,6 +121,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('account-heads', AccountHeadController::class);
     Route::apiResource('product-fields', ProductFieldController::class);
     Route::apiResource('product-field-values', ProductFieldValueController::class);
+    Route::apiResource('sales-returns', SalesReturnController::class);
     Route::apiResource('product-lists', ProductListController::class);
 
     Route::apiResource('sale-additionals', SaleAdditionalController::class);

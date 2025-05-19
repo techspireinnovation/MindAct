@@ -48,7 +48,10 @@ class SalesmanController extends Controller
             ]);
 
             if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
             $salesman = Salesman::create($validator->validated());
@@ -80,7 +83,7 @@ public function show($id):JsonResponse
     }
 }
 
-public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
             $salesman = Salesman::findOrFail($id);
@@ -105,7 +108,10 @@ public function update(Request $request, $id): JsonResponse
             ]);
 
             if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
             $salesman->update($validator->validated());

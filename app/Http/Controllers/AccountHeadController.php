@@ -36,7 +36,8 @@ class AccountHeadController extends Controller
                         Rule::unique('account_heads')
                         ->ignore($id)
                         ->where(function ($query) use ($request, $account_head){
-                            return $query->where('company_id',$request->input('company_id',$account_head->company_id));
+                            return $query->where('company_id',$request->input('company_id',$account_head->company_id))
+                            ->whereNull('deleted_at');
 
                         }),
                     ],
@@ -87,7 +88,8 @@ class AccountHeadController extends Controller
                        'string',
                        'max:255',
                        Rule::unique('account_heads')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                        }),
 

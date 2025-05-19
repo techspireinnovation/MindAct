@@ -35,7 +35,8 @@ class LocationController extends Controller
                            Rule::unique('locations')
                            ->ignore($id)
                            ->where(function ($query) use ($request, $item){
-                              return $query->where('company_id',$request->input('company_id',$item->company_id));
+                              return $query->where('company_id',$request->input('company_id',$item->company_id))
+                              ->whereNull('deleted_at');
 
                            }),
             ],
@@ -87,7 +88,8 @@ class LocationController extends Controller
                             Rule::unique('locations')
 
                             ->where(function ($query) use ($request){
-                                return $query->where('company_id',$request->company_id);
+                                return $query->where('company_id',$request->company_id)
+                                ->whereNull('deleted_at');
 
                             }),
                         

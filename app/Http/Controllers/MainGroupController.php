@@ -37,7 +37,8 @@ class MainGroupController extends Controller
                              Rule::unique('main_groups')
                              ->ignore($id)
                              ->where(function ($query) use ($request, $group){
-                                return $query->where('company_id',$request->input('company_id',$request->company_id));
+                                return $query->where('company_id',$request->input('company_id',$request->company_id))
+                                ->whereNull('deleted_at');
 
                              }),
 
@@ -86,7 +87,8 @@ class MainGroupController extends Controller
                         'max:255',
                         Rule::unique('main_groups')
                         ->where(function ($query) use ($request){
-                            return $query->where('company_id',$request->company_id);
+                            return $query->where('company_id',$request->company_id)
+                            ->whereNull('deleted_at');
 
                         }),
                     ],

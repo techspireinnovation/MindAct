@@ -33,7 +33,8 @@ class ProductTypeController extends Controller
                             Rule::unique('product_types')
                                 ->ignore($id)
                                 ->where(function ($query) use ($request, $item){
-                                    return $query->where('company_id',$request->input('company_id',$item->company_id));
+                                    return $query->where('company_id',$request->input('company_id',$item->company_id))
+                                    ->whereNull('deleted_at');
                                     
                                 }),
                                   ],
@@ -74,7 +75,8 @@ class ProductTypeController extends Controller
                         'string',
                         'max:255',
                         Rule::unique('product_types')->where(function ($query) use ($request){
-                            return $query->where('company_id',$request->company_id);
+                            return $query->where('company_id',$request->company_id)
+                            ->whereNull('deleted_at');
                         }),
                     ],
             'is_active' => 'boolean|required',

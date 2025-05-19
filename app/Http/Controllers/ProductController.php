@@ -389,7 +389,7 @@ public function filterbyBarcode(Request $request): JsonResponse
     }
 
    
-public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
             $item = Product::findOrFail($id);
@@ -400,7 +400,8 @@ public function update(Request $request, $id): JsonResponse
                         Rule::unique('products')
                           ->ignore($id)
                           ->where(function ($query) use ($request,$item){
-                            return $query->where('company_id',$request->input('company_id',$request->company_id));
+                            return $query->where('company_id',$request->input('company_id',$request->company_id))
+                            ->whereNull('deleted_at');
 
                           }),
                     ],
@@ -557,7 +558,8 @@ public function update(Request $request, $id): JsonResponse
                        'string',
                        'max:255',
                        Rule::unique('products')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                        }),
                        ],
@@ -626,9 +628,9 @@ public function update(Request $request, $id): JsonResponse
         ], 201);
     }
 
-    public function show($id): JsonResponse
-    {
-        $product = Product::with([
+    public function show(Request $request, $id): JsonResponse
+     {
+        $product = Product::where('company_id',$request->company_id)->with([
             'productList',
             'productFieldValues.productField'
         ])->findOrFail($id);
@@ -651,10 +653,11 @@ public function update(Request $request, $id): JsonResponse
         // Prepare product response without product_field_values
         $productArray = $product->toArray();
         unset($productArray['product_field_values']);
+        $productArray['product_fields'] = $product_fields;
 
         return response()->json([
-            'product' => $productArray,
-            'product_fields' => $product_fields
+            'product' => $productArray
+            
         ]);
     }
 

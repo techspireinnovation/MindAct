@@ -35,7 +35,8 @@ class ProductSubCategoryController extends Controller
                            Rule::unique('product_sub_categories')
                                  ->ignore($id)
                                  ->where(function ($query) use ($request, $item){
-                                   return $query->where('company_id',$request->input('company_id',$item->company_id));
+                                   return $query->where('company_id',$request->input('company_id',$item->company_id))
+                                   ->whereNull('deleted_at');
                                 }),
                 ],
                 'is_active' => 'boolean|required',
@@ -64,7 +65,8 @@ class ProductSubCategoryController extends Controller
             'name' => ['required',
                        'string','max:255',
                        Rule::unique('product_sub_categories')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id);
+                        return $query->where('company_id',$request->company_id)
+                        ->whereNull('deleted_at');
 
                        }),
                     ],

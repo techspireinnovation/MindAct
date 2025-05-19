@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->string('contact_details')->nullable();
             $table->date('starting_date')->nullable();
             $table->date('ending_date')->nullable();
-            $table->string('budget')->nullable();
+            $table->double('budget')->nullable();
             $table->string('manager_name')->nullable();
             $table->string('contact_number')->nullable();
             $table->boolean('is_primary')->default(false);

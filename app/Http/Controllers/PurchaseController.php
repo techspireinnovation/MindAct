@@ -80,7 +80,7 @@ class PurchaseController extends Controller
         }catch(QueryNotFoundException $e){
             return response()->json(['errors' => 'Database error occurred!!'],500);
         }catch(\EXception $e){
-            dd($e->getMessage());
+            
             return response()->json(['errors' => 'An unexpected error occurred!!'],500);
         }
     }

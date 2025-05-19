@@ -57,7 +57,7 @@ class StockEntryController extends Controller
 
     } catch (QueryException $e) {
         \Log::error('Database error in StockEntry store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
-        dd($e->getMessage());
+        
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
         \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);

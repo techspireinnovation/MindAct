@@ -307,10 +307,10 @@ public function getPurchaseByRefBillNumber(Request $request)
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }
@@ -328,10 +328,10 @@ public function getPurchaseByRefBillNumber(Request $request)
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }

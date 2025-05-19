@@ -148,6 +148,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('stock-transfers',StockTransferController::class);
     Route::resource('stock-reconciliation',StockReconciliationController::class);
     Route::resource('production-settings',ProductionSettingController::class);
+    Route::post('generate-product-id',[ProductController::class,'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

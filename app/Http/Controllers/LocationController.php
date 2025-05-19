@@ -119,10 +119,10 @@ class LocationController extends Controller
         }catch(ModelNotFoundException $e){
             return response()->json(['error' => 'Item not found'], 404);
         }catch(QueryException $e){
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }catch(\Exception $e){
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }

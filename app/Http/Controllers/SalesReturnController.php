@@ -957,7 +957,7 @@ class SalesReturnController extends Controller
             ], 200);
         } catch (ModelNotFoundException $e) {
             Log::error($e);
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'Sales Return or related resource not found'], 404);
         } catch (QueryException $e) {
             Log::error($e);

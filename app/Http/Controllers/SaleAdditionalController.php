@@ -37,7 +37,10 @@ class SaleAdditionalController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
         }
 
         try {
@@ -90,7 +93,10 @@ public function update(Request $request, $id): JsonResponse
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
         }
 
         $saleAdditional = SaleAdditional::findOrFail($id);

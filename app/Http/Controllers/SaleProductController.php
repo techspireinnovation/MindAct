@@ -38,7 +38,10 @@ class SaleProductController extends Controller
             ]);
 
             if($validator->fails()){
-                return response()->json($validator->errors(), 422);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
             $validated = $validator->validated();
@@ -94,7 +97,10 @@ public function update(Request $request, $id): JsonResponse
             'is_vatable' => 'boolean'
         ]);
         if($validator->fails()){
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
         }
 
         $saleProduct = SaleProduct::findOrFail($id);
@@ -103,10 +109,12 @@ public function update(Request $request, $id): JsonResponse
 
         return response()->json([
             'message' => 'Sale product updated successfully',
+          
             'data' => $saleProduct
         ]);
 
     } catch (ModelNotFoundException $e) {
+      
         return response()->json(['error' => 'Sale product not found'], 404);
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database error occurred.'], 500);

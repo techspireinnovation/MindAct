@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
@@ -34,6 +35,17 @@ class Company extends Model
         'activation_key',
         'url_link',
         'deleted_at'
-        ];
+
+    ];
+    
+        
+        public function purchaseMasterKey(): HasOne
+    {
+        return $this->hasOne(PurchaseMasterKey::class);
+    }
+    public function salesMasterKey(): HasOne
+    {
+        return $this->hasOne(SalesMasterKey::class);
+    }
 
 }

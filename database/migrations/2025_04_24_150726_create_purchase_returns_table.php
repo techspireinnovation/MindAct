@@ -14,20 +14,33 @@ return new class extends Migration {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('customer_id')->constrained('customers');
+            $table->string('customer_name')->nullable();
+            $table->foreignId('purchase_id')->constrained('purchases');
+            $table->text('pan_number')->nullable();
+            $table->string('address')->nullable();
+            $table->string('customer_contact')->nullable();
             $table->double('balance')->nullable();
-            $table->string('ref_bill_number')->nullable();
+            $table->string('batch_no')->nullable();
+            $table->text('purchase_number')->nullable();
             $table->date('invoice_date')->nullable();
             $table->string('purchase_bill_number')->nullable();
             $table->string('remarks')->nullable();
+          
+            $table->enum('reason', ['damaged', 'defective', 'incorrect', 'expired', 'other']);
             $table->foreignID('store_id')->constrained('stores');
             $table->foreignID('location_id')->constrained('locations');
-            $table->double('discount_amount')->nullable();
+            $table->enum('discount_type',['percent','amount'])->nullable();
+            $table->double('discount_value')->nullable();
+            $table->double('sub_total_before_discount')->nullable();
+            $table->double('non_taxable_amount')->nullable();
+            $table->double('taxable_amount')->nullable();
             $table->double('excise_duty')->nullable();
             $table->double('health_insurance')->nullable();
             $table->double('freight_amount')->nullable();
             $table->double('discount_after_vat')->nullable();
             $table->double('roundoff_amount')->nullable();
-            $table->enum('payment_type', ['cash', 'bank', 'credit'])->default('credit');
+            $table->double('total_amount')->nullable();
+            $table->json('payment')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
@@ -38,6 +51,13 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('purchase_returns');
+       // Disable foreign key constraints
+    Schema::disableForeignKeyConstraints();
+    
+    // Drop the table
+    Schema::dropIfExists('purchase_returns');
+    
+    // Re-enable foreign key constraints
+    Schema::enableForeignKeyConstraints();
     }
 };

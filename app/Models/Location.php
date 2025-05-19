@@ -12,12 +12,14 @@ class Location extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_primary' => 'boolean',
     ];  
 
     protected $fillable=[
         'name',
         'company_id',
         'is_active',
+        'is_primary',
         'deleted_at'
     ];
 

@@ -12,11 +12,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class Brand extends Model
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
+    protected $casts = [
+        'is_primary' => 'boolean',
+        'is_active' => 'boolean'
+    ];
+ 
     protected $fillable=[
         'name',
         'company_id',
+        'is_primary',
         'is_active',
     ];
 
@@ -35,13 +41,13 @@ class Brand extends Model
 {
     $validator = Validator::make($this->attributes, [
         'name' => 'required|string|max:255',
-        'company_id' => 'required|exists:companies,id', // Assuming company_id exists in the companies table
-        'is_active' => 'boolean', // Assuming is_active is a boolean
+        'company_id' => 'required|exists:companies,id', 
+        'is_active' => 'boolean', 
     ]);
 
     if ($validator->fails()) {
-        // Debugging: Show the validation error messages
-        dd($validator->errors());
+       return response()->json(['errors',$validator->errors()]);
+     
     }
 
     return !$validator->fails();  // Returns true if validation passes, false if it fails

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->foreignID('account_group_id')->constrained('account_groups');
             $table->string('code')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_primary')->default(false);
             $table->softDeletes();
             $table->timestamps();
         });

@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->text('product_unique_id')->nullable();
             $table->text('debit_note')->nullable();
             $table->text('credit_note')->nullable();
             $table->foreignId('company_id');
@@ -32,7 +33,8 @@ return new class extends Migration {
             $table->foreignId('product_type_id')->nullable();
             $table->foreignId('location_id')->nullable();
             $table->timestamps();
-            $table->softDeletes(); // Adds the 'deleted_at' column
+            $table->softDeletes(); 
+            $table->text('stock_alert')->nullable();
             $table->boolean('is_active')->default(true);
         });
     }

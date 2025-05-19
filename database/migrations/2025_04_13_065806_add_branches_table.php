@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->string('name');
             $table->foreignID('company_id')->constrained();
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_primary')->default(false);
             $table->softDeletes();
             $table->timestamps();
         });

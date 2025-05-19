@@ -5,32 +5,54 @@ use App\Models\ProductSubCategory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 use Illuminate\Http\Request;
 
 class ProductSubCategoryController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $query = ProductSubCategory::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
 
-        return response()->json(ProductSubCategory::paginate(50));
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
     {
         try {
             $item = ProductSubCategory::findOrFail($id);
-            $validated = $request->validate([
-                'name' => 'required|string|max:255',
+            $validator = Validator::make($request->all(),[
+                'name' => ['required',
+                           'string',
+                           'max:255',
+                           Rule::unique('product_sub_categories')
+                                 ->ignore($id)
+                                 ->where(function ($query) use ($request, $item){
+                                   return $query->where('company_id',$request->input('company_id',$item->company_id));
+                                }),
+                ],
                 'is_active' => 'boolean|required',
                 'category_id' => 'integer|exists:product_categories,id',
                 'company_id' => 'integer|exists:companies,id'
             ]);
+            if($validator->fails()){
+                return response()->json($validator->errors(),422);
+            }
+            $validated = $validator->validated();
+            
             $item->update($validated);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
+            
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -39,7 +61,13 @@ class ProductSubCategoryController extends Controller
     {
 
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required',
+                       'string','max:255',
+                       Rule::unique('product_sub_categories')->where(function ($query) use ($request){
+                        return $query->where('company_id',$request->company_id);
+
+                       }),
+                    ],
             'is_active' => 'boolean|required',
             'category_id' => 'integer|exists:product_categories,id',
             'company_id' => 'integer|exists:companies,id'

@@ -13,6 +13,7 @@ class ProductField extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'values' => 'array',
     ];
 
     protected $fillable = [
@@ -24,9 +25,7 @@ class ProductField extends Model
         'deleted_at'
     ];
 
-    protected $casts = [
-        'values' => 'array',
-    ];
+  
 
     protected $dates = ['deleted_at'];
 

@@ -6,14 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        return response()->json(Branch::paginate(50));
+        $query = Branch::query();
+    
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+    
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -21,7 +28,16 @@ class BranchController extends Controller
         try {
             $item = Branch::findOrFail($id);
             $validated = $request->validate([
-                'name' => 'required|string|max:255',
+                'name' => ['required',
+                            'string',
+                            'max:255',
+                            Rule::unique('branches')
+                                ->ignore($id)
+                                ->where(function ($query) use ($request, $item){
+                                    return $query->where('company_id',$request->input('company_id',$item->company_id));
+
+                                }),
+                        ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
@@ -37,7 +53,14 @@ class BranchController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
+            'name' => ['required',
+            'string',
+            'max:255',
+            Rule::unique('branches')->where(function ($query) use ($request){
+                return $query->where('company_id',$request->company_id);
+
+            }),
+        ],
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);

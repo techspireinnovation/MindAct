@@ -13,7 +13,8 @@ class SubGroup extends Model
 {
     use softDeletes, HasFactory;
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'is_primary' => 'boolean'
     ];
 
     protected $fillable=[
@@ -23,6 +24,7 @@ class SubGroup extends Model
         'code',
         'ranking_for_trial',
         'is_active',
+        'is_primary',
         'deleted_at'
     ];
 

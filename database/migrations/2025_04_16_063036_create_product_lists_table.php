@@ -21,6 +21,7 @@ return new class extends Migration {
             $table->double('price')->nullable();
             $table->double('discount')->nullable();
             $table->double('final_price')->nullable();
+            $table->boolean('is_primary')->default(false);
             $table->foreignID('primary_measure_unit_id')->constrained('measure_units');
             $table->softDeletes();
             $table->timestamps();

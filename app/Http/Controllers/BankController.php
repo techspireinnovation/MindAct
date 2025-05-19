@@ -91,7 +91,8 @@ class BankController extends Controller
                 'string',
                 'max:255',
                 Rule::unique('banks')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id);
+                    return $query->where('company_id', $request->input('company_id', $request->company_id))
+                        ->whereNull('deleted_at');
 
                 }),
             ],

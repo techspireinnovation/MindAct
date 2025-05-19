@@ -21,6 +21,7 @@ return new class extends Migration {
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+            $table->SoftDeletes();
 
         });
     }

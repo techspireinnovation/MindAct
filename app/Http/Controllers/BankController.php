@@ -35,8 +35,8 @@ class BankController extends Controller
                     Rule::unique('banks')
                         ->ignore($id)
                         ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $item->company_id));
-
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
                         }),
                 ],
                 'is_active' => 'boolean|required',

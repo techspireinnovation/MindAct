@@ -10,20 +10,20 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('banks', function (Blueprint $table) {
+        Schema::create('projects', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
             $table->text('name');
-            $table->string('address')->nullable();
-            $table->string('class')->nullable();
-            $table->string('number')->nullable();
-            $table->string('swift')->nullable();
+            $table->string('contact_details')->nullable();
+            $table->date('starting_date')->nullable();
+            $table->date('ending_date')->nullable();
+            $table->double('budget')->nullable();
+            $table->string('manager_name')->nullable();
+            $table->string('contact_number')->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->SoftDeletes();
-
-
         });
     }
 
@@ -32,6 +32,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('banks');
+        Schema::dropIfExists('projects');
     }
 };

@@ -507,7 +507,7 @@ public function filterbyBarcode(Request $request): JsonResponse
         }
 
         if (isset($validated['product_list'])) {
-            $item->productList()->createMany($validated['product_list']);
+            $item->productLists()->createMany($validated['product_list']);
         }
         $broadcast_status = 'initiated';
     try {

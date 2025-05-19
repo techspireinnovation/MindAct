@@ -21,6 +21,7 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'values' => 'array',
     ];
     protected $fillable = [
         'name',

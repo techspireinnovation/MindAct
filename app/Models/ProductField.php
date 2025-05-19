@@ -14,6 +14,7 @@ class ProductField extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'values' => 'array',
+        'values' => 'array',
     ];
 
     protected $fillable = [

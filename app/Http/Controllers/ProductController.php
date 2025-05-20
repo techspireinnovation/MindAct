@@ -434,8 +434,6 @@ class ProductController extends Controller
                         $product->productList()->create($listItem);
                     }
                 }
-
-
                 $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
                 ProductList::whereIn('id', $productListToDelete)->delete();
             });
@@ -521,10 +519,6 @@ class ProductController extends Controller
                 'product_id' => $item->id
             ]);
         }
-
-
-
-
         return response()->json([
             'item' => $item->load('productList'),
             'action' => 'created',
@@ -586,11 +580,9 @@ class ProductController extends Controller
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
-
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

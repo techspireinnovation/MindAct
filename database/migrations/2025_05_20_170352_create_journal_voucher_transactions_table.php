@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::create('journal_voucher_transactions', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
-            $table->foreignID('jounal_voucher_id')->constrained('journal_vouchers')->nullable();
+            $table->foreignID('journal_voucher_id')->constrained('journal_vouchers')->nullable();
             $table->foreignID('main_group_id')->constrained('main_groups')->nullable();
             $table->foreignID('account_group_id')->constrained('account_groups')->nullable();
             $table->foreignID('account_head_id')->constrained('account_heads')->nullable();

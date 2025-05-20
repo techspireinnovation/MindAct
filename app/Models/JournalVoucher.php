@@ -12,7 +12,6 @@ class JournalVoucher extends Model
     use SoftDeletes, HasFactory;
 
     protected $fillable = [
-        'name',
         'company_id',
         'project_id',
         'salesman_id',
@@ -27,5 +26,10 @@ class JournalVoucher extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(JournalVoucherTransaction::class, 'journal_voucher_id', 'id');
     }
 }

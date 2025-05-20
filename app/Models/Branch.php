@@ -19,6 +19,7 @@ class Branch extends Model
     protected $fillable = [
         'name',
         'is_active',
+        'is_primary',
         'deleted_at',
         'company_id',
     ];

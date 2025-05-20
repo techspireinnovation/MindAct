@@ -71,7 +71,7 @@ public function index(Request $request): JsonResponse
             'measureUnit:id,name',
             'productType:id,name',
             'location:id,name',
-            'productList',
+            'productLists',
             'productFieldValues.productField'
         ]);
 
@@ -266,7 +266,7 @@ public function filterbyBarcode(Request $request): JsonResponse
                         'productType',
                         'location',
                         'productFieldValues',
-                        'productList'
+                        'productLists'
                     ]);
                 }
             ])->where('barcode', $barcode)->get();
@@ -525,7 +525,7 @@ public function filterbyBarcode(Request $request): JsonResponse
       
 
         return response()->json([
-            'item' => $item->load('productList'),
+            'item' => $item->load('productLists'),
             'action' => 'created',
             'broadcast_status' => $broadcast_status
         ], 201);
@@ -536,7 +536,7 @@ public function filterbyBarcode(Request $request): JsonResponse
     try {
         $product = Product::where('company_id', $request->company_id)
             ->with([
-                'productList',
+                'productLists',
                 'productFieldValues.productField'
             ])
             ->findOrFail($id);

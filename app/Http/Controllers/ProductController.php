@@ -559,23 +559,23 @@ public function filterbyBarcode(Request $request): JsonResponse
             return $fieldArray;
         });
 
-        // Prepare product response without product_field_values
-        $productArray = $product->toArray();
-        unset($productArray['product_field_values']);
-        $productArray['product_fields'] = $product_fields;
+            // Prepare product response without product_field_values
+            $productArray = $product->toArray();
+            unset($productArray['product_field_values']);
+            $productArray['product_fields'] = $product_fields;
 
-        return response()->json([
-            'product' => $productArray
-        ]);
+            return response()->json([
+                'product' => $productArray
+            ]);
 
-    } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Product not found!'], 404);
-    } catch (QueryException $e) {
-        return response()->json(['error' => 'Database query error occurred!'], 500);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Unexpected error occurred!'], 500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product not found!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database query error occurred!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error occurred!'], 500);
+        }
     }
-}
 
     public function destroy($id): JsonResponse
     {

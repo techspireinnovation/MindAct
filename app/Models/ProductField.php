@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\softDeletes;
 
 class ProductField extends Model
@@ -13,7 +13,6 @@ class ProductField extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'values' => 'array',
         'values' => 'array',
     ];
 
@@ -26,7 +25,7 @@ class ProductField extends Model
         'deleted_at'
     ];
 
-  
+
 
     protected $dates = ['deleted_at'];
 

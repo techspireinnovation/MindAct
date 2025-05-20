@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->text('debit_note')->nullable();
             $table->text('credit_note')->nullable();
             $table->foreignId('company_id');
-            $table->foreignId('category_id');
+            $table->foreignId('category_id')->nullable();
             $table->foreignId('sub_category_id')->nullable();
             $table->foreignId('brand_id')->nullable();
             $table->foreignId('measure_unit_id')->nullable();
@@ -33,7 +33,7 @@ return new class extends Migration {
             $table->foreignId('product_type_id')->nullable();
             $table->foreignId('location_id')->nullable();
             $table->timestamps();
-            $table->softDeletes(); 
+            $table->softDeletes();
             $table->text('stock_alert')->nullable();
             $table->boolean('is_active')->default(true);
         });

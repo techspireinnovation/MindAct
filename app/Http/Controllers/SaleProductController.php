@@ -109,12 +109,12 @@ public function update(Request $request, $id): JsonResponse
 
         return response()->json([
             'message' => 'Sale product updated successfully',
-            'message' => 'Sale product updated successfully',
+          
             'data' => $saleProduct
         ]);
 
     } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Sale product not found'], 404);
+      
         return response()->json(['error' => 'Sale product not found'], 404);
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database error occurred.'], 500);

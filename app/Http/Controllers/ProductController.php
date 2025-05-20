@@ -5,18 +5,17 @@ namespace App\Http\Controllers;
 
 use App\Events\ProductUpdated;
 use App\Models\Product;
-use App\Models\ProductFieldValue;
 use App\Models\ProductField;
+use App\Models\ProductFieldValue;
 use App\Models\ProductList;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
@@ -38,30 +37,31 @@ class ProductController extends Controller
         return response()->json(['product_id' => $productID]);
     }
 
-public function index(Request $request): JsonResponse
-{
-    try {
-        // Validate input
-        $validator = Validator::make($request->all(), [
-            'filter_by' => 'nullable|string',
-            'search_name' => 'nullable|string|max:100',
-            'search_category' => 'nullable|string|max:100',
-            'search_sub_category' => 'nullable|string|max:100',
-            'search_brand' => 'nullable|string|max:100',
-            'search_measure_unit' => 'nullable|string|max:100',
-            'search_product_type' => 'nullable|string|max:100',
-            'search_location' => 'nullable|string|max:100',
-            'search_product_field' => 'nullable|string|max:100',
-            'search_product_field_value' => 'nullable|string|max:100',
-            'per_page' => 'nullable|integer|min:1|max:100',
-        ]);
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            // Validate input
+            $validator = Validator::make($request->all(), [
+                'filter_by' => 'nullable|string',
+                'search_name' => 'nullable|string|max:100',
+                'search_category' => 'nullable|string|max:100',
+                'search_sub_category' => 'nullable|string|max:100',
+                'search_brand' => 'nullable|string|max:100',
+                'search_measure_unit' => 'nullable|string|max:100',
+                'search_product_type' => 'nullable|string|max:100',
+                'search_location' => 'nullable|string|max:100',
+                'search_product_field' => 'nullable|string|max:100',
+                'search_product_field_value' => 'nullable|string|max:100',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'error' => 'Validation failed',
-                'messages' => $validator->errors()
-            ], 422);
-        }
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => 'Validation failed',
+                    'messages' => $validator->errors()
+                ], 422);
+            }
+
 
         // Query products with relationships
         $query = Product::with([
@@ -75,173 +75,174 @@ public function index(Request $request): JsonResponse
             'productFieldValues.productField'
         ]);
 
+
+            // Apply filters
+            $this->applyFilters($query, $request);
+
+            // Pagination
+            $perPage = $request->input('per_page', 50);
+            $products = $query->paginate($perPage);
+
+            // Transform products to include product_fields and exclude product_field_values
+            $transformedProducts = $products->through(function ($product) {
+                // Group values by field ID
+                $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
+
+                // Get only product fields with values for this product
+                $productFields = ProductField::where('company_id', $product->company_id)
+                    ->whereIn('id', $valuesByFieldId->keys())
+                    ->get();
+
+                // Build response fields with values embedded
+                $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
+                    $fieldArray = $field->toArray();
+                    $fieldArray['product_field_value'] = $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at']);
+                    return $fieldArray;
+                });
+
+                // Prepare product response without product_field_values
+                $productArray = $product->toArray();
+                unset($productArray['product_field_values']);
+
+                // Add product_fields to the product array
+                $productArray['product_fields'] = $product_fields;
+
+                return $productArray;
+            });
+
+            // Broadcast event
+            broadcast(new ProductUpdated($products, 'listed'));
+
+            // Return paginated response with transformed data
+            return response()->json([
+                'data' => $transformedProducts->items(),
+                'current_page' => $products->currentPage(),
+                'last_page' => $products->lastPage(),
+                'per_page' => $products->perPage(),
+                'total' => $products->total()
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Product search error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'error' => 'Server error occurred',
+                'details' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+    protected function applyFilters($query, Request $request): void
+    {
+        $filterBy = $request->input('filter_by', 'all');
+        $filterOptions = array_filter(
+            array_map('trim', explode(',', $filterBy))
+        );
+
+        $availableFilters = [
+            'name' => [
+                'param' => 'search_name',
+                'query' => fn($q, $v) => $q->where('products.name', 'LIKE', "%{$v}%"),
+                'match' => 'products.name LIKE ?'
+            ],
+            'category' => [
+                'param' => 'search_category',
+                'query' => fn($q, $v) => $q->whereHas('category', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM product_categories WHERE product_categories.id = products.category_id AND product_categories.name LIKE ?)'
+            ],
+            'sub_category' => [
+                'param' => 'search_sub_category',
+                'query' => fn($q, $v) => $q->whereHas('subCategory', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM product_sub_categories WHERE product_sub_categories.id = products.sub_category_id AND product_sub_categories.name LIKE ?)'
+            ],
+            'brand' => [
+                'param' => 'search_brand',
+                'query' => fn($q, $v) => $q->whereHas('brand', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM brands WHERE brands.id = products.brand_id AND brands.name LIKE ?)'
+            ],
+            'measure_unit' => [
+                'param' => 'search_measure_unit',
+                'query' => fn($q, $v) => $q->whereHas('measureUnit', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM measure_units WHERE measure_units.id = products.measure_unit_id AND measure_units.name LIKE ?)'
+            ],
+            'product_type' => [
+                'param' => 'search_product_type',
+                'query' => fn($q, $v) => $q->whereHas('productType', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM product_types WHERE product_types.id = products.product_type_id AND product_types.name LIKE ?)'
+            ],
+            'location' => [
+                'param' => 'search_location',
+                'query' => fn($q, $v) => $q->whereHas('location', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM locations WHERE locations.id = products.location_id AND locations.name LIKE ?)'
+            ],
+            'product_field' => [
+                'param' => 'search_product_field',
+                'query' => fn($q, $v) => $q->whereHas('productFieldValues.productField', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM product_field_values INNER JOIN product_fields ON product_field_values.product_field_id = product_fields.id WHERE product_field_values.product_id = products.id AND product_fields.name LIKE ?)'
+            ],
+            'product_field_value' => [
+                'param' => 'search_product_field_value',
+                'query' => fn($q, $v) => $q->whereHas('productFieldValues', fn($q) => $q->where('value', 'LIKE', "%{$v}%")),
+                'match' => 'EXISTS (SELECT 1 FROM product_field_values WHERE product_field_values.product_id = products.id AND product_field_values.value LIKE ?)'
+            ],
+        ];
+
+        $activeFilters = empty($filterOptions) || in_array('all', $filterOptions)
+            ? array_keys($availableFilters)
+            : array_intersect($filterOptions, array_keys($availableFilters));
+
+        $searchTerms = collect($activeFilters)
+            ->filter(fn($field) => $request->filled($availableFilters[$field]['param']))
+            ->mapWithKeys(fn($field) => [
+                $field => $request->input($availableFilters[$field]['param'])
+            ]);
+
+        if ($searchTerms->isEmpty()) {
+            return;
+        }
+
         // Apply filters
-        $this->applyFilters($query, $request);
-
-        // Pagination
-        $perPage = $request->input('per_page', 50);
-        $products = $query->paginate($perPage);
-
-        // Transform products to include product_fields and exclude product_field_values
-        $transformedProducts = $products->through(function ($product) {
-            // Group values by field ID
-            $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
-
-            // Get only product fields with values for this product
-            $productFields = ProductField::where('company_id', $product->company_id)
-                ->whereIn('id', $valuesByFieldId->keys())
-                ->get();
-
-            // Build response fields with values embedded
-            $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
-                $fieldArray = $field->toArray();
-                $fieldArray['product_field_value'] = $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at']);
-                return $fieldArray;
-            });
-
-            // Prepare product response without product_field_values
-            $productArray = $product->toArray();
-            unset($productArray['product_field_values']);
-
-            // Add product_fields to the product array
-            $productArray['product_fields'] = $product_fields;
-
-            return $productArray;
-        });
-
-        // Broadcast event
-        broadcast(new ProductUpdated($products, 'listed'));
-
-        // Return paginated response with transformed data
-        return response()->json([
-            'data' => $transformedProducts->items(),
-            'current_page' => $products->currentPage(),
-            'last_page' => $products->lastPage(),
-            'per_page' => $products->perPage(),
-            'total' => $products->total()
-        ]);
-
-    } catch (\Exception $e) {
-        Log::error('Product search error: ' . $e->getMessage(), [
-            'exception' => $e,
-            'request' => $request->all()
-        ]);
-
-        return response()->json([
-            'error' => 'Server error occurred',
-            'details' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
-    }
-}
-
-protected function applyFilters($query, Request $request): void
-{
-    $filterBy = $request->input('filter_by', 'all');
-    $filterOptions = array_filter(
-        array_map('trim', explode(',', $filterBy))
-    );
-
-    $availableFilters = [
-        'name' => [
-            'param' => 'search_name',
-            'query' => fn($q, $v) => $q->where('products.name', 'LIKE', "%{$v}%"),
-            'match' => 'products.name LIKE ?'
-        ],
-        'category' => [
-            'param' => 'search_category',
-            'query' => fn($q, $v) => $q->whereHas('category', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM product_categories WHERE product_categories.id = products.category_id AND product_categories.name LIKE ?)'
-        ],
-        'sub_category' => [
-            'param' => 'search_sub_category',
-            'query' => fn($q, $v) => $q->whereHas('subCategory', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM product_sub_categories WHERE product_sub_categories.id = products.sub_category_id AND product_sub_categories.name LIKE ?)'
-        ],
-        'brand' => [
-            'param' => 'search_brand',
-            'query' => fn($q, $v) => $q->whereHas('brand', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM brands WHERE brands.id = products.brand_id AND brands.name LIKE ?)'
-        ],
-        'measure_unit' => [
-            'param' => 'search_measure_unit',
-            'query' => fn($q, $v) => $q->whereHas('measureUnit', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM measure_units WHERE measure_units.id = products.measure_unit_id AND measure_units.name LIKE ?)'
-        ],
-        'product_type' => [
-            'param' => 'search_product_type',
-            'query' => fn($q, $v) => $q->whereHas('productType', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM product_types WHERE product_types.id = products.product_type_id AND product_types.name LIKE ?)'
-        ],
-        'location' => [
-            'param' => 'search_location',
-            'query' => fn($q, $v) => $q->whereHas('location', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM locations WHERE locations.id = products.location_id AND locations.name LIKE ?)'
-        ],
-        'product_field' => [
-            'param' => 'search_product_field',
-            'query' => fn($q, $v) => $q->whereHas('productFieldValues.productField', fn($q) => $q->where('name', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM product_field_values INNER JOIN product_fields ON product_field_values.product_field_id = product_fields.id WHERE product_field_values.product_id = products.id AND product_fields.name LIKE ?)'
-        ],
-        'product_field_value' => [
-            'param' => 'search_product_field_value',
-            'query' => fn($q, $v) => $q->whereHas('productFieldValues', fn($q) => $q->where('value', 'LIKE', "%{$v}%")),
-            'match' => 'EXISTS (SELECT 1 FROM product_field_values WHERE product_field_values.product_id = products.id AND product_field_values.value LIKE ?)'
-        ],
-    ];
-
-    $activeFilters = empty($filterOptions) || in_array('all', $filterOptions)
-        ? array_keys($availableFilters)
-        : array_intersect($filterOptions, array_keys($availableFilters));
-
-    $searchTerms = collect($activeFilters)
-        ->filter(fn($field) => $request->filled($availableFilters[$field]['param']))
-        ->mapWithKeys(fn($field) => [
-            $field => $request->input($availableFilters[$field]['param'])
-        ]);
-
-    if ($searchTerms->isEmpty()) {
-        return;
-    }
-
-    // Apply filters
-    $query->where(function ($q) use ($searchTerms, $availableFilters) {
-        foreach ($searchTerms as $field => $term) {
-            $availableFilters[$field]['query']($q, $term);
-        }
-    });
-}
-
-
-protected function applyPartialMatchFallback($query, $searchTerms, $availableFilters): void
-{
-    $matchExpressions = [];
-    $bindings = [];
-
-    foreach ($searchTerms as $field => $term) {
-        $matchExpressions[] = $availableFilters[$field]['match'];
-        $bindings[] = "%{$term}%";
-    }
-
-    $query->selectRaw(
-        'products.*, (' . implode(' + ', $matchExpressions) . ') as relevance_score',
-        $bindings
-    )
-    ->where(function ($q) use ($searchTerms, $availableFilters) {
-        foreach ($searchTerms as $field => $term) {
-            $q->orWhere(function ($q) use ($availableFilters, $field, $term) {
+        $query->where(function ($q) use ($searchTerms, $availableFilters) {
+            foreach ($searchTerms as $field => $term) {
                 $availableFilters[$field]['query']($q, $term);
-            });
+            }
+        });
+    }
+
+
+    protected function applyPartialMatchFallback($query, $searchTerms, $availableFilters): void
+    {
+        $matchExpressions = [];
+        $bindings = [];
+
+        foreach ($searchTerms as $field => $term) {
+            $matchExpressions[] = $availableFilters[$field]['match'];
+            $bindings[] = "%{$term}%";
         }
-    })
-    
-    ->orderByDesc('relevance_score')
-    // Add secondary sorting criteria for consistent results
-    ->orderBy('products.name') // or another unique field like ID
-    ->orderBy('products.created_at'); // tertiary sort if needed
-}
+
+        $query->selectRaw(
+            'products.*, (' . implode(' + ', $matchExpressions) . ') as relevance_score',
+            $bindings
+        )
+            ->where(function ($q) use ($searchTerms, $availableFilters) {
+                foreach ($searchTerms as $field => $term) {
+                    $q->orWhere(function ($q) use ($availableFilters, $field, $term) {
+                        $availableFilters[$field]['query']($q, $term);
+                    });
+                }
+            })
+
+            ->orderByDesc('relevance_score')
+            // Add secondary sorting criteria for consistent results
+            ->orderBy('products.name') // or another unique field like ID
+            ->orderBy('products.created_at'); // tertiary sort if needed
+    }
 
 
-public function filterbyBarcode(Request $request): JsonResponse
+    public function filterbyBarcode(Request $request): JsonResponse
     {
         try {
             // Validate the request
@@ -278,36 +279,37 @@ public function filterbyBarcode(Request $request): JsonResponse
             // Map to products, ensuring each product is only included once
             $products = $productLists->pluck('product')->unique('id')->values();
 
-            return response()->json(['data'=> $products]);
+            return response()->json(['data' => $products]);
 
         } catch (QueryException $e) {
             \Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
-            
+
             return response()->json(['error' => 'Database error'], 500);
         } catch (\Exception $e) {
-            
+
             \Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
 
-   
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
             $item = Product::findOrFail($id);
             $rules = [
-                'name' => ['required', 
-                           'string', 
-                           'max:255',
-                        Rule::unique('products')
-                          ->ignore($id)
-                          ->where(function ($query) use ($request,$item){
-                            return $query->where('company_id',$request->input('company_id',$request->company_id))
-                            ->whereNull('deleted_at');
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('products')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $item) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
 
-                          }),
-                    ],
+                        }),
+                ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
                 'category_id' => 'integer|exists:product_categories,id',
@@ -342,7 +344,7 @@ public function filterbyBarcode(Request $request): JsonResponse
                 'product_list.*.primary_measure_unit_id' => 'required|integer|exists:measure_units,id',
             ];
 
-            
+
             $validator = Validator::make($request->all(), $rules, [
                 'product_list.*.barcode' => 'The barcode has already been taken.',
             ]);
@@ -366,7 +368,7 @@ public function filterbyBarcode(Request $request): JsonResponse
                     if ($barcode) {
                         // Check if the barcode is taken by another ProductList
                         $existing = ProductList::where('barcode', $barcode)
-                            ->when($productListId, fn ($query) => $query->where('id', '!=', $productListId))
+                            ->when($productListId, fn($query) => $query->where('id', '!=', $productListId))
                             ->first();
 
                         if ($existing) {
@@ -409,11 +411,11 @@ public function filterbyBarcode(Request $request): JsonResponse
                     }
                 }
 
-               
+
                 $fieldsValuesToDelete = array_diff($existingFieldValueIds, $incomingFieldValueIds);
                 ProductFieldValue::whereIn('id', $fieldsValuesToDelete)->delete();
 
-                
+
                 $existingProductListIds = $product->productList()->pluck('id')->toArray();
                 $incomingProductListIds = collect($validated['product_list'] ?? [])->pluck('id')->filter()->toArray();
 
@@ -435,7 +437,7 @@ public function filterbyBarcode(Request $request): JsonResponse
                     }
                 }
 
-                
+
                 $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
                 ProductList::whereIn('id', $productListToDelete)->delete();
             });
@@ -452,20 +454,21 @@ public function filterbyBarcode(Request $request): JsonResponse
         }
     }
 
-    
+
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => ['required',
-                       'string',
-                       'max:255',
-                       Rule::unique('products')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id)
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('products')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
 
-                       }),
-                       ],
+                }),
+            ],
             'is_active' => 'boolean|required',
             'category_id' => 'integer|exists:product_categories,id',
             'sub_category_id' => 'integer|exists:product_sub_categories,id',
@@ -486,7 +489,7 @@ public function filterbyBarcode(Request $request): JsonResponse
             'field_values' => 'array',
             'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
             'field_values.*.value' => 'required|string|max:255',
-            'product_list' => 'required|array',
+            'product_list' => 'nullable|array',
             'product_list.*.id' => 'nullable|exists:product_lists,id',
             'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'product_list.*.quantity' => 'nullable|integer',
@@ -507,22 +510,22 @@ public function filterbyBarcode(Request $request): JsonResponse
         }
 
         if (isset($validated['product_list'])) {
-            $item->productLists()->createMany($validated['product_list']);
+            $item->productList()->createMany($validated['product_list']);
         }
         $broadcast_status = 'initiated';
-    try {
-        $data = broadcast(new ProductUpdated($item, 'created'));
-        \Log::info('ProductUpdated event broadcast initiated', ['product_id' => $item->id]);
-    } catch (\Exception $e) {
-        $broadcast_status = 'failed';
-        \Log::error('ProductUpdated event broadcast failed', [
-            'error' => $e->getMessage(),
-            'product_id' => $item->id
-        ]);
-    }
+        try {
+            $data = broadcast(new ProductUpdated($item, 'created'));
+            \Log::info('ProductUpdated event broadcast initiated', ['product_id' => $item->id]);
+        } catch (\Exception $e) {
+            $broadcast_status = 'failed';
+            \Log::error('ProductUpdated event broadcast failed', [
+                'error' => $e->getMessage(),
+                'product_id' => $item->id
+            ]);
+        }
 
-     
-      
+
+
 
         return response()->json([
             'item' => $item->load('productLists'),
@@ -530,6 +533,7 @@ public function filterbyBarcode(Request $request): JsonResponse
             'broadcast_status' => $broadcast_status
         ], 201);
     }
+
 
         public function show(Request $request, $id): JsonResponse
 {
@@ -556,23 +560,23 @@ public function filterbyBarcode(Request $request): JsonResponse
             return $fieldArray;
         });
 
-        // Prepare product response without product_field_values
-        $productArray = $product->toArray();
-        unset($productArray['product_field_values']);
-        $productArray['product_fields'] = $product_fields;
+            // Prepare product response without product_field_values
+            $productArray = $product->toArray();
+            unset($productArray['product_field_values']);
+            $productArray['product_fields'] = $product_fields;
 
-        return response()->json([
-            'product' => $productArray
-        ]);
+            return response()->json([
+                'product' => $productArray
+            ]);
 
-    } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Product not found!'], 404);
-    } catch (QueryException $e) {
-        return response()->json(['error' => 'Database query error occurred!'], 500);
-    } catch (\Exception $e) {
-        return response()->json(['error' => 'Unexpected error occurred!'], 500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product not found!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database query error occurred!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error occurred!'], 500);
+        }
     }
-}
 
     public function destroy($id): JsonResponse
     {
@@ -585,16 +589,17 @@ public function filterbyBarcode(Request $request): JsonResponse
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
-            
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
 
-    public function search(){
+    public function search()
+    {
 
     }
 }

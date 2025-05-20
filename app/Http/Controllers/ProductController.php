@@ -293,164 +293,157 @@ public function filterbyBarcode(Request $request): JsonResponse
 
    
     public function update(Request $request, $id): JsonResponse
-    {
-        try {
-            $item = Product::findOrFail($id);
-            $rules = [
-                'name' => ['required', 
-                           'string', 
-                           'max:255',
-                        Rule::unique('products')
-                          ->ignore($id)
-                          ->where(function ($query) use ($request,$item){
-                            return $query->where('company_id',$request->input('company_id',$request->company_id))
-                            ->whereNull('deleted_at');
+{
+    try {
+        $item = Product::findOrFail($id);
+        $rules = [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('products')
+                    ->ignore($id)
+                    ->where(function ($query) use ($request, $item) {
+                        return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                    ->whereNull('deleted_at');
+                    }),
+            ],
+            'is_active' => 'boolean|required',
+            'company_id' => 'integer|exists:companies,id',
+            'category_id' => 'integer|exists:product_categories,id',
+            'sub_category_id' => 'integer|exists:product_sub_categories,id',
+            'brand_id' => 'integer|exists:brands,id',
+            'measure_unit_id' => 'integer|exists:measure_units,id',
+            'purchase_rate' => 'numeric',
+            'purchase_rate_vat' => 'numeric',
+            'retail_sales_price' => 'numeric',
+            'retail_sales_price_vat' => 'numeric',
+            'retail_sales_price_profit_percent' => 'numeric',
+            'wholesales_price' => 'numeric',
+            'wholesales_price_vat' => 'numeric',
+            'wholesales_price_profit_percent' => 'numeric',
+            'is_vatable' => 'boolean',
+            'stock_alert' => 'nullable',
+            'product_type_id' => 'integer|exists:product_types,id',
+            'location_id' => 'integer|exists:locations,id',
+            'field_values' => 'array',
+            'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
+            'field_values.*.value' => 'required|string|max:255',
+            'product_list' => 'required|array',
+            'product_list.*.id' => 'nullable|exists:product_lists,id',
+            'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
+            'product_list.*.quantity' => 'nullable|integer',
+            'product_list.*.barcode' => 'nullable|string|max:255', // Removed unique rule
+            'product_list.*.is_primary' => 'boolean',
+            'product_list.*.hs_code' => 'nullable|string|max:255',
+            'product_list.*.price' => 'nullable|numeric',
+            'product_list.*.discount' => 'nullable|numeric',
+            'product_list.*.final_price' => 'nullable|numeric',
+            'product_list.*.primary_measure_unit_id' => 'required|integer|exists:measure_units,id',
+        ];
 
-                          }),
-                    ],
-                'is_active' => 'boolean|required',
-                'company_id' => 'integer|exists:companies,id',
-                'category_id' => 'integer|exists:product_categories,id',
-                'sub_category_id' => 'integer|exists:product_sub_categories,id',
-                'brand_id' => 'integer|exists:brands,id',
-                'measure_unit_id' => 'integer|exists:measure_units,id',
-                'purchase_rate' => 'numeric',
-                'purchase_rate_vat' => 'numeric',
-                'retail_sales_price' => 'numeric',
-                'retail_sales_price_vat' => 'numeric',
-                'retail_sales_price_profit_percent' => 'numeric',
-                'wholesales_price' => 'numeric',
-                'wholesales_price_vat' => 'numeric',
-                'wholesales_price_profit_percent' => 'numeric',
-                'is_vatable' => 'boolean',
-                'stock_alert' => 'nullable',
-                'product_type_id' => 'integer|exists:product_types,id',
-                'location_id' => 'integer|exists:locations,id',
-                'field_values' => 'array',
-                'field_values.*.product_field_id' => 'integer|exists:product_fields,id',
-                'field_values.*.value' => 'required|string|max:255',
-                'product_list' => 'required|array',
-                'product_list.*.id' => 'nullable|exists:product_lists,id',
-                'product_list.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-                'product_list.*.quantity' => 'nullable|integer',
-                'product_list.*.barcode' => 'nullable|string|max:255',
-                'product_list.*.is_primary' => 'boolean',
-                'product_list.*.hs_code' => 'nullable|string|max:255',
-                'product_list.*.price' => 'nullable|numeric',
-                'product_list.*.discount' => 'nullable|numeric',
-                'product_list.*.final_price' => 'nullable|numeric',
-                'product_list.*.primary_measure_unit_id' => 'required|integer|exists:measure_units,id',
-            ];
+        $validator = Validator::make($request->all(), $rules, [
+            'product_list.*.barcode' => 'The barcode has already been taken.',
+        ]);
 
-            
-            $validator = Validator::make($request->all(), $rules, [
-                'product_list.*.barcode' => 'The barcode has already been taken.',
-            ]);
+        // Custom barcode validation
+        $validator->after(function ($validator) use ($request) {
+            $productLists = $request->input('product_list', []);
 
-            // Add custom validation for barcode uniqueness
-            $validator->after(function ($validator) use ($request) {
-                $productLists = $request->input('product_list', []);
+            foreach ($productLists as $index => $listItem) {
+                $barcode = data_get($listItem, 'barcode');
+                $productListId = data_get($listItem, 'id');
 
-                foreach ($productLists as $index => $listItem) {
-                    $barcode = data_get($listItem, 'barcode');
-                    $productListId = data_get($listItem, 'id');
-
-                    if ($barcode && $productListId) {
-                        // Skip validation if barcode is unchanged for the existing ProductList
-                        $existingProductList = ProductList::find($productListId);
-                        if ($existingProductList && $existingProductList->barcode === $barcode) {
-                            continue;
-                        }
-                    }
-
-                    if ($barcode) {
-                        // Check if the barcode is taken by another ProductList
-                        $existing = ProductList::where('barcode', $barcode)
-                            ->when($productListId, fn ($query) => $query->where('id', '!=', $productListId))
-                            ->first();
-
-                        if ($existing) {
-                            $validator->errors()->add(
-                                "product_list.{$index}.barcode",
-                                'The barcode has already been taken.'
-                            );
-                        }
+                if ($barcode && $productListId) {
+                    $existingProductList = ProductList::find($productListId);
+                    if ($existingProductList && $existingProductList->barcode === $barcode) {
+                        continue;
                     }
                 }
-            });
 
-            // Check if validation fails
-            if ($validator->fails()) {
-                return response()->json(['errors' => $validator->errors()], 422);
+                if ($barcode) {
+                    $existing = ProductList::where('barcode', $barcode)
+                        ->when($productListId, fn ($query) => $query->where('id', '!=', $productListId))
+                        ->first();
+
+                    if ($existing) {
+                        $validator->errors()->add(
+                            "product_list.{$index}.barcode",
+                            'The barcode has already been taken.'
+                        );
+                    }
+                }
             }
+        });
 
-            // Get validated data
-            $validated = $validator->validated();
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-            $product = null;
+        $validated = $validator->validated();
 
-            DB::transaction(function () use ($validated, $id, &$product) {
-                $product = Product::findOrFail($id);
-                $product->update($validated);
+        $product = null;
 
-                // Handle field values
-                $existingFieldValueIds = $product->productFieldValues()->pluck('id')->toArray();
-                $incomingFieldValueIds = collect($validated['field_values'] ?? [])->pluck('id')->filter()->toArray();
+        DB::transaction(function () use ($validated, $id, &$product) {
+            $product = Product::findOrFail($id);
+            $product->update($validated);
 
-                foreach ($validated['field_values'] ?? [] as $data) {
-                    if (isset($data['id'])) {
-                        $fieldValue = ProductFieldValue::find($data['id']);
+            // Handle field values
+            $existingFieldValueIds = $product->productFieldValues()->pluck('id')->toArray();
+            $incomingFieldValueIds = collect($validated['field_values'] ?? [])->pluck('id')->filter()->toArray();
+
+            foreach ($validated['field_values'] ?? [] as $data) {
+                if (isset($data['id'])) {
+                    $fieldValue = ProductFieldValue::find($data['id']);
+                    if ($fieldValue) {
                         $fieldValue->update([
                             'product_field_id' => $data['product_field_id'],
                             'value' => $data['value'],
                         ]);
-                    } else {
-                        $product->productFieldValues()->create($data);
                     }
+                } else {
+                    $product->productFieldValues()->create($data);
                 }
+            }
 
-               
-                $fieldsValuesToDelete = array_diff($existingFieldValueIds, $incomingFieldValueIds);
-                ProductFieldValue::whereIn('id', $fieldsValuesToDelete)->delete();
+            $fieldsValuesToDelete = array_diff($existingFieldValueIds, $incomingFieldValueIds);
+            ProductFieldValue::whereIn('id', $fieldsValuesToDelete)->delete();
 
-                
-                $existingProductListIds = $product->productList()->pluck('id')->toArray();
-                $incomingProductListIds = collect($validated['product_list'] ?? [])->pluck('id')->filter()->toArray();
+            // Handle product list
+            $existingProductListIds = $product->productLists()->pluck('id')->toArray();
+            $incomingProductListIds = collect($validated['product_list'] ?? [])->pluck('id')->filter()->toArray();
 
-                foreach ($validated['product_list'] ?? [] as $listItem) {
-                    if (isset($listItem['id'])) {
-                        $productListItem = ProductList::find($listItem['id']);
-                        if ($productListItem) {
-                            $productListItem->update($listItem);
+            foreach ($validated['product_list'] ?? [] as $listItem) {
+                if (isset($listItem['id'])) {
+                    $productListItem = ProductList::find($listItem['id']);
+                    if ($productListItem) {
+                        $productListItem->update($listItem);
 
-                            // Handle is_primary logic
-                            if ($listItem['is_primary'] ?? false) {
-                                $product->productList()
-                                    ->where('id', '!=', $listItem['id'])
-                                    ->update(['is_primary' => false]);
-                            }
+                        if ($listItem['is_primary'] ?? false) {
+                            $product->productLists()
+                                ->where('id', '!=', $listItem['id'])
+                                ->update(['is_primary' => false]);
                         }
-                    } else {
-                        $product->productList()->create($listItem);
                     }
+                } else {
+                    $product->productLists()->create($listItem);
                 }
+            }
 
-                
-                $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
-                ProductList::whereIn('id', $productListToDelete)->delete();
-            });
+            $productListToDelete = array_diff($existingProductListIds, $incomingProductListIds);
+            ProductList::whereIn('id', $productListToDelete)->delete();
+        });
 
-            broadcast(new ProductUpdated($product, 'updated'));
+        broadcast(new ProductUpdated($product, 'updated'));
 
-            return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productList'])]);
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (\Exception $e) {
-            Log::error($e);
-            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
-        }
+        return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productLists'])]);
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (\Exception $e) {
+        Log::error($e);
+        return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
     }
+}
 
     
 
@@ -550,9 +543,19 @@ public function filterbyBarcode(Request $request): JsonResponse
             ->get();
 
         // Build response fields with values embedded
-        $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
-            $fieldArray = $field->toArray();
-            $fieldArray['product_field_value'] = $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at']);
+     $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
+            $fieldArray = [
+                'product_field_id' => $field->id, // Rename id to product_field_id
+                'company_id' => $field->company_id,
+                'name' => $field->name,
+                'type' => $field->type,
+                'values' => $field->values,
+                'is_active' => $field->is_active,
+                'deleted_at' => $field->deleted_at,
+                'created_at' => $field->created_at,
+                'updated_at' => $field->updated_at,
+                'product_field_value' => $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at'])
+            ];
             return $fieldArray;
         });
 

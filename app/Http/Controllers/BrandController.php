@@ -42,6 +42,7 @@ class BrandController extends Controller
                                 ->ignore($id)
                                 ->where(function ($query) use ($request, $item){
                                     return $query->where('company_id', $request->input('company_id',$item->company_id))
+                                    ->where('category_id', $request->category_id)
                                     ->whereNull('deleted_at');
 
                                 }),
@@ -96,6 +97,7 @@ class BrandController extends Controller
                        'max:255',
                        Rule::unique('brands')->where(function ($query) use ($request){
                         return $query->where('company_id',$request->company_id)
+                        ->where('category_id', $request->category_id)
                         ->whereNull('deleted_at');
 
                        }),

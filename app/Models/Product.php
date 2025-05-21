@@ -95,7 +95,7 @@ class Product extends Model
     }
 
 
-    public function productList(): HasMany
+    public function productLists(): HasMany
     {
         return $this->hasMany(ProductList::class);
     }

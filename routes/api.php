@@ -9,6 +9,8 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ProductionAssembleController;
+use App\Http\Controllers\ShrinkingWorkingLossController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
@@ -149,6 +151,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('stock-transfers', StockTransferController::class);
     Route::resource('stock-reconciliation', StockReconciliationController::class);
     Route::resource('production-settings', ProductionSettingController::class);
+    Route::resource('production-assembles', ProductionAssembleController::class);
+    Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

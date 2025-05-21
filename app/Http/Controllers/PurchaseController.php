@@ -368,6 +368,7 @@ class PurchaseController extends Controller
         Log::error('Purchase not found: ' . $e->getMessage());
         return response()->json(['error' => 'Purchase not found'], 404);
     } catch (QueryException $e) {
+        dd($e->getMessage());
         Log::error('Database error during purchase update: ' . $e->getMessage());
         return response()->json(['error' => 'A database error occurred'], 500);
     } catch (\Exception $e) {

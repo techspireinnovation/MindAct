@@ -593,8 +593,8 @@ public function show(Request $request, $id): JsonResponse
         $item = Product::findOrFail($id);
 
       
-        $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->exists();
-        $hasSales = DB::table('sale_products')->where('product_id', $id)->exists();
+        $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
+        $hasSales = DB::table('sale_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
 
         if ($hasPurchases || $hasSales) {
             return response()->json([

@@ -24,7 +24,7 @@ class ProductListController extends Controller
                 'product_id' => 'required|integer|exists:products,id',
                 'measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'company_id' => 'required|integer|exists:companies,id',
-              
+
                 'quantity' => 'nullable|integer',
                 'barcode' => 'nullable|string|max:255',
                 'hs_code' => 'nullable|string|max:255',
@@ -58,7 +58,7 @@ class ProductListController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
-            return resposne()->json(['error' => 'Database error occurred!!'], 500);
+            return response()->json(['error' => 'Database error occurred!!'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
@@ -74,7 +74,7 @@ class ProductListController extends Controller
                 'product_id' => 'required|integer|exists:products,id',
                 'measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'company_id' => 'required|integer|exists:companies,id',
-              
+
                 'quantity' => 'nullable|integer',
                 'barcode' => 'nullable|string|max:255',
                 'hs_code' => 'nullable|string|max:255',
@@ -117,10 +117,4 @@ class ProductListController extends Controller
         }
 
     }
-
-
-
-
-
-
 }

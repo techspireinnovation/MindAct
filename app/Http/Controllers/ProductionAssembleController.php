@@ -81,7 +81,7 @@ class ProductionAssembleController extends Controller
 
     } catch (QueryException $e) {
         \Log::error('Database error in Production Assemble store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
-       dd($e->getMEssage());
+       
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
         \Log::error('Unexpected error in Production Assemble store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
@@ -167,7 +167,7 @@ public function update(Request $request, $id): JsonResponse
         ], 200);
 
     } catch (QueryException $e) {
-         dd($e->getMessage());
+         
         \Log::error('Database error in Production Assemble update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {

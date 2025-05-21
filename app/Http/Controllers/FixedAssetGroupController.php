@@ -115,9 +115,9 @@ class FixedAssetGroupController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = JournalVoucher::findOrFail($id);
+            $item = FixedAssetGroup::findOrFail($id);
             $item->delete();
-            return response()->json(['message' => 'Journal Voucher deleted!!']);
+            return response()->json(['message' => 'Fixed Asset Group deleted!']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {

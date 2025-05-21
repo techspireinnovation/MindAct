@@ -9,11 +9,14 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ProductionAssembleController;
+use App\Http\Controllers\ShrinkingWorkingLossController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\JournalVoucherController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\Master\BranchController;
@@ -97,6 +100,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('branches', BranchController::class);
     Route::apiResource('banks', BankController::class);
     Route::apiResource('projects', ProjectController::class);
+    Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);
     Route::resource('sales-returns', SalesReturnController::class);
@@ -147,6 +151,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('stock-transfers', StockTransferController::class);
     Route::resource('stock-reconciliation', StockReconciliationController::class);
     Route::resource('production-settings', ProductionSettingController::class);
+    Route::resource('production-assembles', ProductionAssembleController::class);
+    Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

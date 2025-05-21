@@ -39,9 +39,19 @@ class BranchController extends Controller
 
                                 }),
                         ],
+                'is_primary' => 'sometimes|boolean',
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id'
             ]);
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+            Branch::where('company_id', $item->company_id)
+                ->where('id', '!=', $id) 
+                ->where('is_primary', true)
+                ->update(['is_primary' => false]);
+        }
+        if ($request->has('is_primary')) {
+            $validated['is_primary'] = (bool) $request->input('is_primary');
+        }
             $item->update($validated);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
@@ -63,9 +73,18 @@ class BranchController extends Controller
 
             }),
         ],
+            'is_primary' => 'boolean',
+           
             'is_active' => 'boolean|required',
             'company_id' => 'integer|exists:companies,id'
         ]);
+        if (!empty($validated['is_primary'])) {
+            Branch::where('company_id', $validated['company_id'])
+            ->where('is_primary', true)
+            ->update(['is_primary' => false]);
+        }
+            
+        $validated['is_primary'] = $validated['is_primary'] ?? false;
 
         $item = Branch::create($validated);
         return response()->json($item, 201);

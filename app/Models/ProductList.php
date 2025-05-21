@@ -24,6 +24,7 @@ class ProductList extends Model
 
   protected $fillable = [
     'product_id',
+    'product_unique_id',
     'measure_unit_id',
     'company_id',
     'quantity',

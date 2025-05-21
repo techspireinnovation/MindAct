@@ -309,6 +309,7 @@ public function filterbyBarcode(Request $request): JsonResponse
                     }),
             ],
             'is_active' => 'boolean|required',
+            'product_unique_id' => 'string|max:255|unique:products,product_unique_id,' . $id,
             'company_id' => 'integer|exists:companies,id',
             'category_id' => 'integer|nullable|',
             'sub_category_id' => 'integer|nullable|',
@@ -331,6 +332,7 @@ public function filterbyBarcode(Request $request): JsonResponse
             'field_values.*.value' => 'nullable|string|max:255',
             'product_list' => 'nullable|array',
             'product_list.*.id' => 'nullable|nullable',
+            'product_list.*.product_unique_id' => 'nullable',
             'product_list.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
             'product_list.*.quantity' => 'nullable|integer',
             'product_list.*.barcode' => 'nullable|string|max:255', // Removed unique rule
@@ -461,6 +463,7 @@ public function filterbyBarcode(Request $request): JsonResponse
                        ],
             'is_active' => 'boolean|required',
             'category_id' => 'integer|nullable',
+            'product_unique_id' => 'string|max:255|unique:products',
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',
@@ -481,6 +484,7 @@ public function filterbyBarcode(Request $request): JsonResponse
             'field_values.*.value' => 'nullable||string|max:255',
             'product_list' => 'nullable||array',
             'product_list.*.id' => 'nullable',
+            'product_list.*.product_unique_id' => 'nullable',
             'product_list.*.measure_unit_id' => 'nullable||integer|exists:measure_units,id',
             'product_list.*.quantity' => 'nullable|integer',
             'product_list.*.barcode' => 'nullable|string|max:255|unique:product_lists,barcode',
@@ -524,7 +528,7 @@ public function filterbyBarcode(Request $request): JsonResponse
         ], 201);
     }
 
-        public function show(Request $request, $id): JsonResponse
+public function show(Request $request, $id): JsonResponse
 {
     try {
         $product = Product::where('company_id', $request->company_id)
@@ -564,6 +568,12 @@ public function filterbyBarcode(Request $request): JsonResponse
             unset($productArray['product_field_values']);
             $productArray['product_fields'] = $product_fields;
 
+            // Rename 'product_lists' to 'product_list' in the response
+          if (isset($productArray['product_lists'])) {
+            $productArray['product_list'] = $productArray['product_lists'];
+            unset($productArray['product_lists']);
+          }
+
             return response()->json([
                 'product' => $productArray
             ]);
@@ -578,26 +588,36 @@ public function filterbyBarcode(Request $request): JsonResponse
     }
 
     public function destroy($id): JsonResponse
-    {
-        try {
-            $item = Product::findOrFail($id);
-            $item->delete();
-            broadcast(new ProductUpdated($item, 'deleted'));
-            return response()->json(['message' => 'Product deleted!!']);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+{
+    try {
+        $item = Product::findOrFail($id);
+
+      
+        $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->exists();
+        $hasSales = DB::table('sale_products')->where('product_id', $id)->exists();
+
+        if ($hasPurchases || $hasSales) {
+            return response()->json([
+                'error' => 'Cannot delete product because it is associated with purchases or sales.'
+            ], 422);
         }
-    }
 
-    public function search(){
+        $item->delete();
+        broadcast(new ProductUpdated($item, 'deleted'));
+        return response()->json(['message' => 'Product deleted!!']);
 
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
+
+    
 }

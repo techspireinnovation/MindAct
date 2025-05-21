@@ -25,20 +25,19 @@ class StockEntryController extends Controller
     public function store(Request $request): JsonResponse
 {
     try {
-        
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|exists:companies,id',
-            'product_code' => 'required|string|max:255',
-            'product_name' => 'nullable|string|max:255',
-            'product_id' => 'nullable|string|exists:products,id', 
-           
-            'uom' => 'required|numeric|exists:measure_units,id', 
-            'batch_no' => 'nullable|string|max:255', 
-            'expiry_date' => 'nullable|string|max:255',
-            'quantity' => 'nullable|numeric', 
-            'rate' => 'nullable|numeric', 
-            'amount' => 'nullable|numeric', 
-            'location_id' => 'nullable|exists:locations,id', 
+            'stock_entries' => 'required|array',
+            'stock_entries.*.company_id' => 'required|exists:companies,id',
+            'stock_entries.*.product_code' => 'required|string|max:255',
+            'stock_entries.*.product_name' => 'nullable|string|max:255',
+            'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
+            'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
+            'stock_entries.*.batch_no' => 'nullable|string|max:255',
+            'stock_entries.*.expiry_date' => 'nullable|string|max:255',
+            'stock_entries.*.quantity' => 'nullable|numeric',
+            'stock_entries.*.rate' => 'nullable|numeric',
+            'stock_entries.*.amount' => 'nullable|numeric',
+            'stock_entries.*.location_id' => 'nullable|exists:locations,id',
         ]);
 
         if ($validator->fails()) {
@@ -48,22 +47,26 @@ class StockEntryController extends Controller
             ], 422);
         }
 
-        $stockEntry = StockEntry::create($validator->validated());
+        $createdEntries = [];
+
+        foreach ($request->stock_entries as $entry) {
+            $createdEntries[] = StockEntry::create($entry);
+        }
 
         return response()->json([
-            'message' => 'Stock Entry created successfully',
-            'data' => $stockEntry,
+            'message' => 'Stock entries created successfully',
+            'data' => $createdEntries,
         ], 201);
 
     } catch (QueryException $e) {
-        \Log::error('Database error in StockEntry store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
-        
+        \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+        \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
+
     
     
 
@@ -79,22 +82,23 @@ public function show($id):JsonResponse
     }
 }
 
-public function update(Request $request, $id): JsonResponse
+public function update(Request $request): JsonResponse
 {
     try {
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|exists:companies,id',
-            'product_code' => 'required|string|max:255',
-            'product_name' => 'nullable|string|max:255',
-            'product_id' => 'nullable|exists:products,id', 
-            
-            'uom' => 'required|numeric|exists:measure_units,id',
-            'batch_no' => 'nullable|string|max:255',
-            'expiry_date' => 'nullable|string|max:255',
-            'quantity' => 'nullable|numeric',
-            'rate' => 'nullable|numeric',
-            'amount' => 'nullable|numeric',
-            'location_id' => 'nullable|exists:locations,id',
+            'stock_entries' => 'required|array',
+            'stock_entries.*.id' => 'required|exists:stock_entries,id',
+            'stock_entries.*.company_id' => 'required|exists:companies,id',
+            'stock_entries.*.product_code' => 'required|string|max:255',
+            'stock_entries.*.product_name' => 'nullable|string|max:255',
+            'stock_entries.*.product_id' => 'nullable|exists:products,id',
+            'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
+            'stock_entries.*.batch_no' => 'nullable|string|max:255',
+            'stock_entries.*.expiry_date' => 'nullable|string|max:255',
+            'stock_entries.*.quantity' => 'nullable|numeric',
+            'stock_entries.*.rate' => 'nullable|numeric',
+            'stock_entries.*.amount' => 'nullable|numeric',
+            'stock_entries.*.location_id' => 'nullable|exists:locations,id',
         ]);
 
         if ($validator->fails()) {
@@ -104,34 +108,39 @@ public function update(Request $request, $id): JsonResponse
             ], 422);
         }
 
-        $data = $validator->validated();
+        $updatedEntries = [];
 
-        
-        if (empty($data['product_id']) && !empty($data['product_code'])) {
-            $product = Product::where('product_code', $data['product_code'])->first();
-            if (!$product) {
-                return response()->json(['message' => 'Invalid product code. Product not found.'], 404);
+        foreach ($request->stock_entries as $entry) {
+            // Resolve product_id from product_code if not provided
+            if (empty($entry['product_id']) && !empty($entry['product_code'])) {
+                $product = Product::where('product_code', $entry['product_code'])->first();
+                if (!$product) {
+                    return response()->json([
+                        'message' => "Invalid product code `{$entry['product_code']}`. Product not found."
+                    ], 404);
+                }
+                $entry['product_id'] = $product->id;
             }
-            $data['product_id'] = $product->id;
+
+            $stockEntry = StockEntry::findOrFail($entry['id']);
+            $stockEntry->update($entry);
+            $updatedEntries[] = $stockEntry;
         }
 
-        $stockEntry = StockEntry::findOrFail($id);
-        
-        $stockEntry->update($data);
-
         return response()->json([
-            'message' => 'Stock Entry updated successfully',
-            'data' => $stockEntry,
+            'message' => 'Stock entries updated successfully',
+            'data' => $updatedEntries,
         ], 200);
 
     } catch (QueryException $e) {
-        \Log::error('Database error in Stock Entry update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+        \Log::error('Database error in StockEntry update', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error('Unexpected error in Stock Entry update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+        \Log::error('Unexpected error in StockEntry update', ['error' => $e->getMessage()]);
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
+
 
 
 

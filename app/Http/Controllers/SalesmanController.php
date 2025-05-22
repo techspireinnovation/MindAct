@@ -30,15 +30,15 @@ class SalesmanController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'salesman_id' => 'required|string|max:255|unique:salesmen,salesman_id',
-                'pan_number' => 'required|string|max:255|unique:salesmen,pan_number',
+                'salesman_id' => 'nullable|string|max:255|unique:salesmen,salesman_id',
+                'pan_number' => 'nullable|string|max:255|unique:salesmen,pan_number',
                 'name' => 'required|string|max:255',
                 'address' => 'nullable|string',
                 'country' => 'nullable|string',
                 'state' => 'nullable|string',
                 'ward_no' => 'nullable|integer',
                 'area' => 'nullable|string',
-                'mobile' => 'nullable|string|max:20',
+                'mobile' => 'required|string|max:20',
                 'email' => 'nullable|email|unique:salesmen,email|max:255',
                 'working_office' => 'nullable|string|max:255',
                 'joining_date' => 'nullable|date',
@@ -66,7 +66,7 @@ class SalesmanController extends Controller
             ], 201);
         } catch (QueryException $e) {
             \Log::error($e);
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
@@ -95,15 +95,15 @@ public function show($id):JsonResponse
 
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'salesman_id' => 'sometimes|required|string|max:255|unique:salesmen,salesman_id,' . $salesman->id,
-                'pan_number' => 'sometimes|required|string|max:255|unique:salesmen,pan_number,' . $salesman->id,
+                'salesman_id' => 'nullable|string|max:255|unique:salesmen,salesman_id,' . $salesman->id,
+                'pan_number' => 'nullable|string|max:255|unique:salesmen,pan_number,' . $salesman->id,
                 'name' => 'sometimes|required|string|max:255',
                 'address' => 'nullable|string',
                 'country' => 'nullable|string',
                 'state' => 'nullable|string',
                 'ward_no' => 'nullable|integer',
                 'area' => 'nullable|string',
-                'mobile' => 'nullable|string|max:20',
+                'mobile' => 'required|string|max:20',
                 'email' => 'nullable|email|unique:salesmen,email,' . $salesman->id . '|max:255',
                 'working_office' => 'nullable|string|max:255',
                 'joining_date' => 'nullable|date',

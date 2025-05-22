@@ -35,7 +35,7 @@ class CustomerController extends Controller
                 'billing_address' => 'nullable|string',
                 'opening_balance' => 'nullable|string|max:255',
                 'district' => 'nullable|string|max:255',
-                'ledger_type' => 'required|in:customer,vendor,both',
+                'ledger_type' => 'nullable|in:customer,vendor,both',
                 'address' => 'nullable|string',
                 'phone' => 'required|string|max:20',
                 'email' => 'nullable|email|unique:customers,email|max:255',
@@ -49,7 +49,7 @@ class CustomerController extends Controller
                 'area' => 'nullable|string|max:100',
                 'bank_name' => 'nullable|string|max:255',
                 'bank_account_number' => 'nullable|string|max:255',
-                'is_active' => 'required|boolean',
+                'is_active' => 'nullable|boolean',
             ]);
     
             if ($validator->fails()) {
@@ -98,7 +98,7 @@ public function update(Request $request, $id): JsonResponse
             'party_name' => 'required|string|max:255|unique:customers,party_name,' . $id,
             'pan_number' => 'nullable|string|unique:customers,pan_number,' . $id,
             'billing_address' => 'nullable|string',
-            'ledger_type' => 'required|in:customer,vendor,both',
+            'ledger_type' => 'nullable|in:customer,vendor,both',
             'address' => 'nullable|string',
             'phone' => 'required|string|max:20',
             'email' => 'nullable|email|unique:customers,email,' . $id,
@@ -112,7 +112,7 @@ public function update(Request $request, $id): JsonResponse
             'area' => 'nullable|string|max:100',
             'bank_name' => 'nullable|string|max:255',
             'bank_account_number' => 'nullable|string|max:255',
-            'is_active' => 'required|boolean',
+            'is_active' => 'nullable|boolean',
         ]);
 
         if ($validator->fails()) {

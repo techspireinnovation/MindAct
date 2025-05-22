@@ -44,6 +44,8 @@ class CustomerController extends Controller
                 'country' => 'nullable|string|max:100',
                 'state' => 'nullable|string|max:100',
                 'city' => 'nullable|string|max:100',
+                'vdc/municipality' => 'nullable|string|max:255',
+                'ward_no' => 'nullable|string|max:255',
                 'area' => 'nullable|string|max:100',
                 'bank_name' => 'nullable|string|max:255',
                 'bank_account_number' => 'nullable|string|max:255',
@@ -66,6 +68,7 @@ class CustomerController extends Controller
     
         } catch (QueryException $e) {
             \Log::error($e);
+            
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
@@ -104,6 +107,8 @@ public function update(Request $request, $id): JsonResponse
             'country' => 'nullable|string|max:100',
             'state' => 'nullable|string|max:100',
             'city' => 'nullable|string|max:100',
+            'vdc/municipality' => 'nullable|string|max:255',
+            'ward_no' => 'nullable|string|max:255',
             'area' => 'nullable|string|max:100',
             'bank_name' => 'nullable|string|max:255',
             'bank_account_number' => 'nullable|string|max:255',

@@ -34,6 +34,10 @@ class SalesmanController extends Controller
                 'pan_number' => 'required|string|max:255|unique:salesmen,pan_number',
                 'name' => 'required|string|max:255',
                 'address' => 'nullable|string',
+                'country' => 'nullable|string',
+                'state' => 'nullable|string',
+                'ward_no' => 'nullable|integer',
+                'area' => 'nullable|string',
                 'mobile' => 'nullable|string|max:20',
                 'email' => 'nullable|email|unique:salesmen,email|max:255',
                 'working_office' => 'nullable|string|max:255',
@@ -44,7 +48,7 @@ class SalesmanController extends Controller
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',
-                'vdc_municipality' => 'nullable|string|max:255', // Renamed to match schema
+                'vdc/municipality' => 'nullable|string|max:255', // Renamed to match schema
             ]);
 
             if ($validator->fails()) {
@@ -62,6 +66,7 @@ class SalesmanController extends Controller
             ], 201);
         } catch (QueryException $e) {
             \Log::error($e);
+            dd($e->getMessage());
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
@@ -94,6 +99,10 @@ public function show($id):JsonResponse
                 'pan_number' => 'sometimes|required|string|max:255|unique:salesmen,pan_number,' . $salesman->id,
                 'name' => 'sometimes|required|string|max:255',
                 'address' => 'nullable|string',
+                'country' => 'nullable|string',
+                'state' => 'nullable|string',
+                'ward_no' => 'nullable|integer',
+                'area' => 'nullable|string',
                 'mobile' => 'nullable|string|max:20',
                 'email' => 'nullable|email|unique:salesmen,email,' . $salesman->id . '|max:255',
                 'working_office' => 'nullable|string|max:255',
@@ -104,7 +113,7 @@ public function show($id):JsonResponse
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',
-                'vdc_municipality' => 'nullable|string|max:255',
+                'vdc/municipality' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {

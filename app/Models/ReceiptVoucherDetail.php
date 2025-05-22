@@ -2,43 +2,33 @@
 
 namespace App\Models;
 
-use App\Models\Sale;
+use App\Models\ReceiptVoucher;
 use App\Models\Scopes\CompanyIdScope;
+
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 
-class Customer extends Model
+
+class ReceiptVoucherDetail extends Model
 {
     use SoftDeletes, HasFactory;
-    
+
     protected $casts = [
         'is_active' => 'boolean'
-    ];  
+    ];
     protected $fillable = [
         'company_id',
+        'customer_id',
+        'receipt_voucher_id',
         'party_name',
-        'pan_number',
-        'billing_address',
-        'opening_balance',
-       
-        'ledger_type',
-        'address',
-        'phone',
-        'email',
-        'contact_person',
-        'contact_person_phone',
-        'country',
-        'state',
-        'district',
-        'vdc/municipality',
-        'ward_no',
-        'area',
-        'city',
+        'amount',
+        'contra_acount',
+        'remarks',
+        'cheque_slip',
+        'remaining_balance'
         
-        'bank_name',
-        'bank_account_number',                              
-        'is_active'
     ];
 
     protected $dates = ['deleted_at'];
@@ -46,5 +36,15 @@ class Customer extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function receiptVoucher()
+    {
+        return $this->belongsTo(ReceiptVoucher::class,'receipt_voucher_id');
+    }
+    
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
     }
 }

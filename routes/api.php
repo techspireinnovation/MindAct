@@ -8,7 +8,9 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
+use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\ReceiptVoucherController;
 use App\Http\Controllers\ProductionAssembleController;
 use App\Http\Controllers\ShrinkingWorkingLossController;
 use App\Http\Controllers\CompanyAdminController;
@@ -153,6 +155,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('production-settings', ProductionSettingController::class);
     Route::resource('production-assembles', ProductionAssembleController::class);
     Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
+    Route::resource('receipt-vouchers', ReceiptVoucherController::class);
+    Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

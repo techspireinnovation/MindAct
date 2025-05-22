@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Models\ReceiptVoucher;
+use App\Models\PaymentVoucher;
 use App\Models\Scopes\CompanyIdScope;
 
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 
-class ReceiptVoucherDetail extends Model
+class PaymentVoucherDetail extends Model
 {
     use HasFactory;
 
@@ -21,10 +21,10 @@ class ReceiptVoucherDetail extends Model
     protected $fillable = [
         'company_id',
         'customer_id',
-        'receipt_voucher_id',
+        'payment_voucher_id',
         'party_name',
         'amount',
-        'contra_acount',
+        'contra_account',
         'remarks',
         'cheque_slip',
         'remaining_balance'
@@ -40,7 +40,7 @@ class ReceiptVoucherDetail extends Model
 
     public function receiptVoucher()
     {
-        return $this->belongsTo(ReceiptVoucher::class,'receipt_voucher_id');
+        return $this->belongsTo(PaymentVoucher::class,'receipt_voucher_id');
     }
     
     public function company()

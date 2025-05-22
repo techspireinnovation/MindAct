@@ -104,7 +104,7 @@ class FixedAssetGroupController extends Controller
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Journal Voucher not found!'], 404);
+            return response()->json(['error' => 'Fixed Asset Group not found!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {

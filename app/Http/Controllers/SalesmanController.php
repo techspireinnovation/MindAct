@@ -48,7 +48,7 @@ class SalesmanController extends Controller
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',
-                'vdc/municipality' => 'nullable|string|max:255', // Renamed to match schema
+                'vdc_municipality' => 'nullable|string|max:255', // Renamed to match schema
             ]);
 
             if ($validator->fails()) {
@@ -113,7 +113,7 @@ public function show($id):JsonResponse
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',
-                'vdc/municipality' => 'nullable|string|max:255',
+                'vdc_municipality' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {

@@ -31,7 +31,7 @@ class Customer extends Model
         'country',
         'state',
         'district',
-        'vdc/municipality',
+        'vdc_municipality',
         'ward_no',
         'area',
         'city',

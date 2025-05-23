@@ -6,6 +6,7 @@ use App\Helpers\Helper;
 use App\Models\ProductFieldValue;
 use App\Models\ProductList;
 use App\Models\Purchase;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
 
 use App\Models\PurchaseProduct;
@@ -20,27 +21,53 @@ use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
-    private function generateUniquePurchaseBillNumber(int $companyId): string
+     public function generateUniquePurchaseBillNumber(Request $request)
     {
-        $prefix = 'PB';
-        $date = now()->format('Ymd');
-    
-        $latestBill = Purchase::where('company_id', $companyId)
-            ->where('purchase_bill_number', 'like', "{$prefix}-%")
-            ->orderByDesc('created_at')
-            ->first();
-    
-        if ($latestBill && preg_match('/^PB-\d{8}-(\d+)$/', $latestBill->purchase_bill_number, $matches)) {
-            $lastSequence = (int)$matches[1];
-            $nextSequence = str_pad($lastSequence + 1, 6, '0', STR_PAD_LEFT);
-        } else {
-            $nextSequence = '000001'; // First ever bill for this company
-        }
-    
-        return "{$prefix}-{$date}-{$nextSequence}";
-    }
-    
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'company_id' => 'required|integer|exists:companies,id'
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid company_id',
+                'errors' => $validator->errors()
+            ], 400);
+        }
+
+        try {
+            $prefix = 'PB';
+            $date = now()->format('Ymd'); // e.g., 20250523
+            $currentYear = now()->format('Y'); // e.g., 2025
+            $companyId = $request->input('company_id');
+
+            // Fetch the latest bill for the company with the given prefix and current year
+            $latestBill = Purchase::where('company_id', $companyId)
+                ->where('purchase_bill_number', 'like', "{$prefix}-{$currentYear}%")
+                ->orderByDesc('created_at')
+                ->first();
+
+            if ($latestBill && preg_match("/^PB-\d{8}-(\d{6})$/", $latestBill->purchase_bill_number, $matches)) {
+                $lastSequence = (int)$matches[1];
+                $nextSequence = str_pad($lastSequence + 1, 6, '0', STR_PAD_LEFT);
+            } else {
+                $nextSequence = '000001'; // First bill for this company in this year
+            }
+
+            $billNumber = "{$prefix}-{$date}-{$nextSequence}";
+
+            return response()->json([
+                'status' => 'success',
+                'purchase_bill_number' => $billNumber
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to generate bill number: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
     public function index(Request $request): JsonResponse
     {
@@ -102,16 +129,16 @@ class PurchaseController extends Controller
             'customer_contact' => 'nullable|string|max:255',
             'document_number' => 'nullable|string|max:255',
             'discount_after_vat' => 'nullable|numeric',
-            // 'purchase_bill_number' => [
-            //     'required',
-            //     'string',
-            //     'max:255',
-            //     Rule::unique('purchases')
-            //         ->ignore($id)
-            //         ->where(function ($query) use ($request, $item) {
-            //             return $query->where('company_id', $request->input('company_id', $item->company_id));
-            //         }),
-            // ],
+            'purchase_bill_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('purchases')
+                    ->ignore($id)
+                    ->where(function ($query) use ($request, $item) {
+                        return $query->where('company_id', $request->input('company_id', $item->company_id));
+                    }),
+            ],
             'balance' => 'nullable|numeric',
             'invoice_date' => 'nullable|string|max:255',
             'batch_no' => [

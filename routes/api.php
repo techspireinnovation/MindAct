@@ -8,7 +8,13 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
+use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\BrandController;
+
+use App\Http\Controllers\ReceiptVoucherController;
+use App\Http\Controllers\ProductionAssembleController;
+use App\Http\Controllers\ShrinkingWorkingLossController;
+
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
@@ -26,7 +32,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
-use App\Http\Controllers\ProductionAssembleController;
+
 use App\Http\Controllers\ProductionSettingController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
@@ -39,7 +45,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SalesReturnController;
-use App\Http\Controllers\ShrinkingWorkingLossController;
+
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\StockReconciliationController;
@@ -111,6 +117,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('products', ProductController::class);
     Route::resource('purchases', PurchaseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
+    Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
@@ -155,6 +162,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('production-settings', ProductionSettingController::class);
     Route::resource('production-assembles', ProductionAssembleController::class);
     Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
+    Route::resource('receipt-vouchers', ReceiptVoucherController::class);
+    Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

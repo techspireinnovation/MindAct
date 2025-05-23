@@ -21,7 +21,7 @@ class Customer extends Model
         'pan_number',
         'billing_address',
         'opening_balance',
-        'district',
+       
         'ledger_type',
         'address',
         'phone',
@@ -30,8 +30,12 @@ class Customer extends Model
         'contact_person_phone',
         'country',
         'state',
-        'city',
+        'district',
+        'vdc/municipality',
+        'ward_no',
         'area',
+        'city',
+        
         'bank_name',
         'bank_account_number',                              
         'is_active'

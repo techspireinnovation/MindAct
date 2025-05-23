@@ -32,7 +32,7 @@ use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
-use App\Http\Controllers\ProductionAssembleController;
+
 use App\Http\Controllers\ProductionSettingController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
@@ -45,7 +45,7 @@ use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SalesReturnController;
-use App\Http\Controllers\ShrinkingWorkingLossController;
+
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\StockReconciliationController;

@@ -427,6 +427,16 @@ class PurchaseController extends Controller
                 return $query->where('company_id', $request->company_id);
             }),
         ],
+        'purchase_bill_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('purchases')
+                    
+                    ->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->input('company_id', $request->company_id));
+                    }),
+            ],
         'discount_type' => 'nullable|in:percent,amount',
         'discount_value' => 'nullable|numeric',
         'discount_after_vat' => 'nullable|numeric',
@@ -467,8 +477,7 @@ class PurchaseController extends Controller
 
     try {
         $item = DB::transaction(function () use ($validated) {
-            $purchaseBillNumber = $this->generateUniquePurchaseBillNumber($validated['company_id']);
-            $validated['purchase_bill_number'] = $purchaseBillNumber;
+           
 
             // Create Purchase
             $item = Purchase::create([

@@ -22,10 +22,10 @@ class SuperAdminSeeder extends Seeder
 
         $user = User::firstOrCreate([
             'name' => "Matra Admin",
-            'email' => "superadmin@matraerp.com",
-            'password' => Hash::make("password890"),
+            'email' => "superadmin@mantraerp.com",
+            'password' => Hash::make("password@890"),
         ]);
-        $user = User::whereEmail('superadmin@matraerp.com')->first();
+        $user = User::whereEmail('superadmin@mantraerp.com')->first();
         $user->assignRole($role);
 
         // Create Company Admin

@@ -113,7 +113,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
-    
+    Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);

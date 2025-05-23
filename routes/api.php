@@ -12,6 +12,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\FixedAssetAccountController;
@@ -65,6 +66,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::apiResource('companies', CompanyController::class);
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
+    Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
 });
 
 
@@ -108,6 +110,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
+    Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);

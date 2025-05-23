@@ -105,8 +105,10 @@
     </header>
     <section class="hero">
         <h2>Streamline Your Business Operations</h2>
+        <br /> <br />
+        <br />
         <p>Manage your resources, inventory, and finances all in one place.</p>
-
+        <p></p>
     </section>
     <section class="features" id="features">
         <div class="feature">

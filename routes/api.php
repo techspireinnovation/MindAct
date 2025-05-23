@@ -8,18 +8,13 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
-use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\BrandController;
-
-use App\Http\Controllers\ReceiptVoucherController;
-use App\Http\Controllers\ProductionAssembleController;
-use App\Http\Controllers\ShrinkingWorkingLossController;
-
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
+use App\Http\Controllers\FixedAssetAccountController;
 use App\Http\Controllers\FixedAssetGroupController;
 use App\Http\Controllers\JournalVoucherController;
 use App\Http\Controllers\LocationController;
@@ -28,11 +23,12 @@ use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\NepalLocationPackageController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
-
+use App\Http\Controllers\ProductionAssembleController;
 use App\Http\Controllers\ProductionSettingController;
 use App\Http\Controllers\ProductListController;
 use App\Http\Controllers\ProductSubCategoryController;
@@ -40,12 +36,13 @@ use App\Http\Controllers\ProductTypeController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\ReceiptVoucherController;
 use App\Http\Controllers\SaleAdditionalController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SalesReturnController;
-
+use App\Http\Controllers\ShrinkingWorkingLossController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\StockReconciliationController;
@@ -99,7 +96,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
     Route::get('get-all-sales-returns-expiry-dates', [SalesReturnController::class, 'getAllExpiryDates']);
     Route::get('get-all-sales-returns-by-expiry-dates', [SalesReturnController::class, 'getSalesReturnByExpiryDate']);
-
+    Route::resource('fixed-asset-accounts', FixedAssetAccountController::class);
     Route::apiResource('sale-additionals', SaleController::class);
     Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
     Route::apiResource('product-categories', ProductCategoryController::class);

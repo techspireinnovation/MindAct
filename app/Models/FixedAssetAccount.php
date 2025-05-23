@@ -20,7 +20,7 @@ class FixedAssetAccount extends Model
         'name',
         'company_id',
         'code',
-        'account_group_id',
+        'fixed_asset_group_id',
         'status',
         'company_id',
         'is_active',

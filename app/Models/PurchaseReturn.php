@@ -49,6 +49,7 @@ class PurchaseReturn extends Model
         'discount_amount',
         'roundoff_amount',
         'total_amount',
+        'vat_percent',
         'excise_duty',
         'health_insurance',
         'freight_amount',

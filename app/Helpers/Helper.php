@@ -224,7 +224,7 @@ class Helper
     public static function getProdutDetailsByName($name, $company)
     {
         $productDetail = Product::with([
-            'productList',
+            'productLists',
             'productFieldValues' => function ($query) {
                 $query->with('productField'); 
             }
@@ -264,7 +264,7 @@ class Helper
                                      ->unique();
         
         $productNames = Product::whereIn('id', $productIds)
-                               ->pluck('id','name')
+                               ->pluck('name')
                                ->unique();
                                 
     

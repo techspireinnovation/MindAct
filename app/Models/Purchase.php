@@ -45,6 +45,7 @@ class Purchase extends Model
         'roundoff_amount',
         'total_amount',
         'excise_duty',
+        'vat_percent',
         'health_insurance',
         'freight_amount',
     ];

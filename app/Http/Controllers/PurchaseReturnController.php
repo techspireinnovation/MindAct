@@ -331,7 +331,7 @@ public function getPurchaseByRefBillNumber(Request $request)
             
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-            
+           
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }
@@ -363,6 +363,7 @@ public function store(Request $request): JsonResponse
             'non_taxable_amount' => 'nullable|numeric|min:0',
             'taxable_amount' => 'nullable|numeric|min:0',
             'excise_duty' => 'nullable|numeric|min:0',
+            'vat_percent' => 'nullable|numeric',
             'health_insurance' => 'nullable|numeric|min:0',
             'freight_amount' => 'nullable|numeric|min:0',
             'discount_after_vat' => 'nullable|numeric|min:0',
@@ -658,6 +659,7 @@ public function store(Request $request): JsonResponse
             'non_taxable_amount' => 'nullable|numeric|min:0',
             'taxable_amount' => 'nullable|numeric|min:0',
             'excise_duty' => 'nullable|numeric|min:0',
+            'vat_percent' => 'nullable|numeric',
             'health_insurance' => 'nullable|numeric|min:0',
             'freight_amount' => 'nullable|numeric|min:0',
             'discount_after_vat' => 'nullable|numeric|min:0',

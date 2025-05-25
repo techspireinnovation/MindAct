@@ -166,6 +166,7 @@ class PurchaseController extends Controller
             'roundoff_amount' => 'nullable|numeric',
             'total_amount' => 'nullable|numeric',
             'excise_duty' => 'nullable|numeric',
+            'vat_percent' => 'nullable|numeric',
             'health_insurance' => 'nullable|numeric',
             'freight_amount' => 'nullable|numeric',
 
@@ -231,6 +232,7 @@ class PurchaseController extends Controller
                 'roundoff_amount' => $validated['roundoff_amount'] ?? null,
                 'total_amount' => $validated['total_amount'] ?? null,
                 'excise_duty' => $validated['excise_duty'] ?? null,
+                'vat_percent' => $validated['vat_percent'] ?? null,
                 'health_insurance' => $validated['health_insurance'] ?? null,
                 'freight_amount' => $validated['freight_amount'] ?? null,
             ]);
@@ -409,6 +411,7 @@ class PurchaseController extends Controller
 
  public function store(Request $request): JsonResponse
 {
+    
     $validated = $request->validate([
         'ref_bill_number' => 'required|string|max:255|unique:purchases,ref_bill_number',
         'customer_id' => 'required|exists:customers,id',
@@ -446,6 +449,7 @@ class PurchaseController extends Controller
         'non_taxable_amount' => 'nullable|numeric',
         'total_amount' => 'nullable|numeric',
         'excise_duty' => 'nullable|numeric',
+        'vat_percent' => 'nullable|numeric',
         'health_insurance' => 'nullable|numeric',
         'freight_amount' => 'nullable|numeric',
         'balance' => 'nullable|numeric',
@@ -505,6 +509,7 @@ class PurchaseController extends Controller
                 'roundoff_amount' => $validated['roundoff_amount'] ?? null,
                 'total_amount' => $validated['total_amount'] ?? null,
                 'excise_duty' => $validated['excise_duty'] ?? null,
+                'vat_percent' => $validated['vat_percent'] ?? null,
                 'health_insurance' => $validated['health_insurance'] ?? null,
                 'freight_amount' => $validated['freight_amount'] ?? null,
                 'discount_after_vat' => $validated['discount_after_vat'] ?? null,
@@ -571,8 +576,26 @@ class PurchaseController extends Controller
 public function show($id): JsonResponse
 {
     try {
-        $item = Purchase::with(['purchaseProducts.fieldValues'])->findOrFail($id);
-        return response()->json($item);
+        $item = Purchase::with(['purchaseProducts.fieldValues.productField'])->findOrFail($id);
+
+        // Convert the model to an array for manipulation
+        $itemArray = $item->toArray();
+
+        // Transform field_values to include product_field attributes directly
+        foreach ($itemArray['purchase_products'] as &$purchaseProduct) {
+            foreach ($purchaseProduct['field_values'] as &$fieldValue) {
+                if (isset($fieldValue['product_field'])) {
+                    // Merge product_field attributes into field_values
+                    $fieldValue['name'] = $fieldValue['product_field']['name'];
+                    $fieldValue['type'] = $fieldValue['product_field']['type'];
+                    $fieldValue['values'] = $fieldValue['product_field']['values'];
+                    // Remove the nested product_field
+                    unset($fieldValue['product_field']);
+                }
+            }
+        }
+
+        return response()->json($itemArray);
     } catch (ModelNotFoundException $e) {
         return response()->json(['error' => 'Item not found'], 404);
     } catch (QueryException $e) {

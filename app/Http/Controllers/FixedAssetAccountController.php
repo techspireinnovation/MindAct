@@ -60,8 +60,10 @@ class FixedAssetAccountController extends Controller
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Fixed Asset Account Group not found!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
             Log::error('Fixed Asset Account show exception ' . $e->getMessage());
@@ -100,6 +102,7 @@ class FixedAssetAccountController extends Controller
             });
             return response()->json(['message' => 'Fixed Asset Group Updated']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
             Log::error('Fixed Asset Account update exception ' . $e->getMessage());
@@ -114,8 +117,10 @@ class FixedAssetAccountController extends Controller
             $item->delete();
             return response()->json(['message' => 'Fixed Asset Account deleted!']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             Log::error('Fixed Asset Account destroy exception ' . $e->getMessage());

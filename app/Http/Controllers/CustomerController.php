@@ -84,8 +84,10 @@ public function show($id):JsonResponse
         $item = Customer::findOrFail($id);
         return response()->json($item);
     } catch (ModelNotFoundException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'Item not found'], 404);
     } catch (QueryException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
@@ -152,8 +154,10 @@ public function update(Request $request, $id): JsonResponse
             $item->delete();
             return response()->json(['message' => 'Customer deleted']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Customer not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

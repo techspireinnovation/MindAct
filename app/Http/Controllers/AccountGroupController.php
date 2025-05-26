@@ -71,10 +71,13 @@ class AccountGroupController extends Controller
             $group->update($validated);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Account Group not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }catch(\Exception $e){
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -121,10 +124,13 @@ class AccountGroupController extends Controller
         $group = AccountGroup::create($validated);
         return response()->json($group, 201);
     }catch(ModelFoundNotException $e){
+        \Log::error($e);
         return response()->json(['error' => 'Main Group not found!!'], 404);
     }catch(QueryExeption $e){
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }catch(\Exception $e){
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
 }
@@ -135,8 +141,10 @@ class AccountGroupController extends Controller
             $group = AccountGroup::findOrFail($id);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Account Group not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -148,8 +156,10 @@ class AccountGroupController extends Controller
             $group->delete();
             return response()->json(['message' => 'Account Group deleted!!']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Account Group not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

@@ -33,7 +33,7 @@ class PaymentVoucherController extends Controller
             'company_id' => 'integer|exists:companies,id',
             'date_ad' => 'nullable|date',
             'date_bs' => 'nullable|date',
-           'reference_number' => [
+            'reference_number' => [
                 'string',
                 Rule::unique('payment_vouchers')->ignore($id),
             ],
@@ -91,8 +91,10 @@ class PaymentVoucherController extends Controller
             'item' => $PaymentVoucher->load('paymentVoucherDetails'),
         ], 200);
     } catch (ModelNotFoundException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'Payment Voucher not found'], 404);
     }catch(QueryException $e){
+        \Log::error($e);
         return response()->json(['error' => 'Database query error occurred!'], 500);
     } catch (\Exception $e) {
         Log::error($e);
@@ -100,8 +102,6 @@ class PaymentVoucherController extends Controller
     }
 }
     
-        
-
 
 
     public function store(Request $request): JsonResponse

@@ -72,11 +72,13 @@ class AccountHeadController extends Controller
             $account_head->update($validated);
             return response()->json($account_head);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Account Head not found!!'], 404);
         } catch (QueryException $e) {
             
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }catch(\Exception $e){
+            \Log::error($e);
             
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
 
@@ -125,10 +127,13 @@ class AccountHeadController extends Controller
         $account_head = AccountHead::create($validated);
         return response()->json($account_head, 201);
     }catch (ModelNotFoundException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'Account Head  not found!!'], 404);
     } catch (QueryException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }catch(\Exception $e){
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
 }
@@ -139,8 +144,10 @@ class AccountHeadController extends Controller
             $account_head = AccountHead::findOrFail($id);
             return response()->json($account_head);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Account Head not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -152,8 +159,10 @@ class AccountHeadController extends Controller
             $account_head->delete();
             return response()->json(['message' => 'Account Head deleted!!']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Account Head not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

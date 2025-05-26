@@ -71,7 +71,12 @@ return [
             'throw' => false,
             'report' => false,
         ],
+        'dropbox' => [
+            'driver' => 'dropbox',
+            'token_url' => env('DROPBOX_TOKEN_URL'),
+            'refresh_token' => env('DROPBOX_REFRESH_TOKEN')
 
+        ]
     ],
 
     /*

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "60343984e972ed3bace2fb3c8acdbf4f",
+    "content-hash": "31a96dec4fdcd3596f98a1f0e652497e",
     "packages": [
         {
             "name": "brick/math",
@@ -757,6 +757,71 @@
                 }
             ],
             "time": "2023-10-12T05:21:21+00:00"
+        },
+        {
+            "name": "graham-campbell/guzzle-factory",
+            "version": "v7.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/GrahamCampbell/Guzzle-Factory.git",
+                "reference": "b0a273dabe1f90004e76ca4ab8671b10caaa1dd3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/GrahamCampbell/Guzzle-Factory/zipball/b0a273dabe1f90004e76ca4ab8671b10caaa1dd3",
+                "reference": "b0a273dabe1f90004e76ca4ab8671b10caaa1dd3",
+                "shasum": ""
+            },
+            "require": {
+                "guzzlehttp/guzzle": "^7.9.2",
+                "guzzlehttp/psr7": "^2.7.0",
+                "php": "^7.4.15 || ^8.0.2"
+            },
+            "require-dev": {
+                "graham-campbell/analyzer": "^4.2.1",
+                "phpunit/phpunit": "^9.6.14 || ^10.5.1"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "GrahamCampbell\\GuzzleFactory\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Graham Campbell",
+                    "email": "hello@gjcampbell.co.uk",
+                    "homepage": "https://github.com/GrahamCampbell"
+                }
+            ],
+            "description": "Provides A Simple Guzzle Factory With Good Defaults",
+            "keywords": [
+                "Graham Campbell",
+                "GrahamCampbell",
+                "Guzzle",
+                "Guzzle Factory",
+                "Guzzle-Factory",
+                "http"
+            ],
+            "support": {
+                "issues": "https://github.com/GrahamCampbell/Guzzle-Factory/issues",
+                "source": "https://github.com/GrahamCampbell/Guzzle-Factory/tree/v7.0.2"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/GrahamCampbell",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/graham-campbell/guzzle-factory",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2025-01-12T01:44:21+00:00"
         },
         {
             "name": "graham-campbell/result-type",
@@ -4396,6 +4461,372 @@
             "time": "2025-02-01T05:52:11+00:00"
         },
         {
+            "name": "spatie/db-dumper",
+            "version": "3.8.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/db-dumper.git",
+                "reference": "91e1fd4dc000aefc9753cda2da37069fc996baee"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/db-dumper/zipball/91e1fd4dc000aefc9753cda2da37069fc996baee",
+                "reference": "91e1fd4dc000aefc9753cda2da37069fc996baee",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.0",
+                "symfony/process": "^5.0|^6.0|^7.0"
+            },
+            "require-dev": {
+                "pestphp/pest": "^1.22"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\DbDumper\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Dump databases",
+            "homepage": "https://github.com/spatie/db-dumper",
+            "keywords": [
+                "database",
+                "db-dumper",
+                "dump",
+                "mysqldump",
+                "spatie"
+            ],
+            "support": {
+                "source": "https://github.com/spatie/db-dumper/tree/3.8.0"
+            },
+            "funding": [
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-02-14T15:04:22+00:00"
+        },
+        {
+            "name": "spatie/dropbox-api",
+            "version": "1.23.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/dropbox-api.git",
+                "reference": "120ff475d7b03d3700a884c295b3b9503c4ddf8d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/dropbox-api/zipball/120ff475d7b03d3700a884c295b3b9503c4ddf8d",
+                "reference": "120ff475d7b03d3700a884c295b3b9503c4ddf8d",
+                "shasum": ""
+            },
+            "require": {
+                "ext-json": "*",
+                "graham-campbell/guzzle-factory": "^4.0.2|^5.0|^6.0|^7.0",
+                "guzzlehttp/guzzle": "^6.2|^7.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "laravel/pint": "^1.10.1",
+                "pestphp/pest": "^2.6.3",
+                "phpstan/phpstan": "^1.10.16"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\Dropbox\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alex Vanderbist",
+                    "email": "alex.vanderbist@gmail.com",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                },
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A minimal implementation of Dropbox API v2",
+            "homepage": "https://github.com/spatie/dropbox-api",
+            "keywords": [
+                "Dropbox-API",
+                "api",
+                "dropbox",
+                "spatie",
+                "v2"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/dropbox-api/issues",
+                "source": "https://github.com/spatie/dropbox-api/tree/1.23.0"
+            },
+            "funding": [
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-01-06T09:31:59+00:00"
+        },
+        {
+            "name": "spatie/flysystem-dropbox",
+            "version": "3.0.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/flysystem-dropbox.git",
+                "reference": "e6bf18e4dcfe5b21945bdc8b633f7e4c3ae4b9eb"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/flysystem-dropbox/zipball/e6bf18e4dcfe5b21945bdc8b633f7e4c3ae4b9eb",
+                "reference": "e6bf18e4dcfe5b21945bdc8b633f7e4c3ae4b9eb",
+                "shasum": ""
+            },
+            "require": {
+                "league/flysystem": "^3.7.0",
+                "php": "^8.0",
+                "spatie/dropbox-api": "^1.17.1"
+            },
+            "require-dev": {
+                "pestphp/pest": "^1.22",
+                "phpspec/prophecy-phpunit": "^2.0.1",
+                "phpunit/phpunit": "^9.5.4"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\FlysystemDropbox\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alex Vanderbist",
+                    "email": "alex.vanderbist@gmail.com",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Flysystem Adapter for the Dropbox v2 API",
+            "homepage": "https://github.com/spatie/flysystem-dropbox",
+            "keywords": [
+                "Flysystem",
+                "api",
+                "dropbox",
+                "flysystem-dropbox",
+                "spatie",
+                "v2"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/flysystem-dropbox/issues",
+                "source": "https://github.com/spatie/flysystem-dropbox/tree/3.0.2"
+            },
+            "funding": [
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-01-06T14:05:49+00:00"
+        },
+        {
+            "name": "spatie/laravel-backup",
+            "version": "9.3.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/laravel-backup.git",
+                "reference": "5820c1b50a8991c0c824c322c1c81f5724f4d41c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/laravel-backup/zipball/5820c1b50a8991c0c824c322c1c81f5724f4d41c",
+                "reference": "5820c1b50a8991c0c824c322c1c81f5724f4d41c",
+                "shasum": ""
+            },
+            "require": {
+                "ext-zip": "^1.14.0",
+                "illuminate/console": "^10.10.0|^11.0|^12.0",
+                "illuminate/contracts": "^10.10.0|^11.0|^12.0",
+                "illuminate/events": "^10.10.0|^11.0|^12.0",
+                "illuminate/filesystem": "^10.10.0|^11.0|^12.0",
+                "illuminate/notifications": "^10.10.0|^11.0|^12.0",
+                "illuminate/support": "^10.10.0|^11.0|^12.0",
+                "league/flysystem": "^3.0",
+                "php": "^8.2",
+                "spatie/db-dumper": "^3.8",
+                "spatie/laravel-package-tools": "^1.6.2",
+                "spatie/laravel-signal-aware-command": "^1.2|^2.0",
+                "spatie/temporary-directory": "^2.0",
+                "symfony/console": "^6.0|^7.0",
+                "symfony/finder": "^6.0|^7.0"
+            },
+            "require-dev": {
+                "composer-runtime-api": "^2.0",
+                "ext-pcntl": "*",
+                "larastan/larastan": "^2.7.0|^3.0",
+                "laravel/slack-notification-channel": "^2.5|^3.0",
+                "league/flysystem-aws-s3-v3": "^2.0|^3.0",
+                "mockery/mockery": "^1.4",
+                "orchestra/testbench": "^8.0|^9.0|^10.0",
+                "pestphp/pest": "^1.20|^2.0|^3.0",
+                "phpstan/extension-installer": "^1.1",
+                "phpstan/phpstan-deprecation-rules": "^1.0",
+                "phpstan/phpstan-phpunit": "^1.1",
+                "rector/rector": "^1.1"
+            },
+            "suggest": {
+                "laravel/slack-notification-channel": "Required for sending notifications via Slack"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "Spatie\\Backup\\BackupServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "src/Helpers/functions.php"
+                ],
+                "psr-4": {
+                    "Spatie\\Backup\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "A Laravel package to backup your application",
+            "homepage": "https://github.com/spatie/laravel-backup",
+            "keywords": [
+                "backup",
+                "database",
+                "laravel-backup",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/laravel-backup/issues",
+                "source": "https://github.com/spatie/laravel-backup/tree/9.3.3"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/sponsors/spatie",
+                    "type": "github"
+                },
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "other"
+                }
+            ],
+            "time": "2025-05-20T15:01:22+00:00"
+        },
+        {
+            "name": "spatie/laravel-package-tools",
+            "version": "1.92.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/laravel-package-tools.git",
+                "reference": "d20b1969f836d210459b78683d85c9cd5c5f508c"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/laravel-package-tools/zipball/d20b1969f836d210459b78683d85c9cd5c5f508c",
+                "reference": "d20b1969f836d210459b78683d85c9cd5c5f508c",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^9.28|^10.0|^11.0|^12.0",
+                "php": "^8.0"
+            },
+            "require-dev": {
+                "mockery/mockery": "^1.5",
+                "orchestra/testbench": "^7.7|^8.0|^9.0|^10.0",
+                "pestphp/pest": "^1.23|^2.1|^3.1",
+                "phpunit/php-code-coverage": "^9.0|^10.0|^11.0",
+                "phpunit/phpunit": "^9.5.24|^10.5|^11.5",
+                "spatie/pest-plugin-test-time": "^1.1|^2.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\LaravelPackageTools\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Tools for creating Laravel packages",
+            "homepage": "https://github.com/spatie/laravel-package-tools",
+            "keywords": [
+                "laravel-package-tools",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/laravel-package-tools/issues",
+                "source": "https://github.com/spatie/laravel-package-tools/tree/1.92.4"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-04-11T15:27:14+00:00"
+        },
+        {
             "name": "spatie/laravel-permission",
             "version": "6.17.0",
             "source": {
@@ -4477,6 +4908,142 @@
                 }
             ],
             "time": "2025-04-08T15:06:14+00:00"
+        },
+        {
+            "name": "spatie/laravel-signal-aware-command",
+            "version": "2.1.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/laravel-signal-aware-command.git",
+                "reference": "8e8a226ed7fb45302294878ef339e75ffa9a878d"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/laravel-signal-aware-command/zipball/8e8a226ed7fb45302294878ef339e75ffa9a878d",
+                "reference": "8e8a226ed7fb45302294878ef339e75ffa9a878d",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0|^12.0",
+                "php": "^8.2",
+                "spatie/laravel-package-tools": "^1.4.3",
+                "symfony/console": "^7.0"
+            },
+            "require-dev": {
+                "brianium/paratest": "^6.2|^7.0",
+                "ext-pcntl": "*",
+                "nunomaduro/collision": "^5.3|^6.0|^7.0|^8.0",
+                "orchestra/testbench": "^9.0|^10.0",
+                "pestphp/pest-plugin-laravel": "^1.3|^2.0|^3.0",
+                "phpunit/phpunit": "^9.5|^10|^11",
+                "spatie/laravel-ray": "^1.17"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "aliases": {
+                        "Signal": "Spatie\\SignalAwareCommand\\Facades\\Signal"
+                    },
+                    "providers": [
+                        "Spatie\\SignalAwareCommand\\SignalAwareCommandServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\SignalAwareCommand\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Freek Van der Herten",
+                    "email": "freek@spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Handle signals in artisan commands",
+            "homepage": "https://github.com/spatie/laravel-signal-aware-command",
+            "keywords": [
+                "laravel",
+                "laravel-signal-aware-command",
+                "spatie"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/laravel-signal-aware-command/issues",
+                "source": "https://github.com/spatie/laravel-signal-aware-command/tree/2.1.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-02-14T09:55:51+00:00"
+        },
+        {
+            "name": "spatie/temporary-directory",
+            "version": "2.3.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/spatie/temporary-directory.git",
+                "reference": "580eddfe9a0a41a902cac6eeb8f066b42e65a32b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/spatie/temporary-directory/zipball/580eddfe9a0a41a902cac6eeb8f066b42e65a32b",
+                "reference": "580eddfe9a0a41a902cac6eeb8f066b42e65a32b",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^9.5"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Spatie\\TemporaryDirectory\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Alex Vanderbist",
+                    "email": "alex@spatie.be",
+                    "homepage": "https://spatie.be",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Easily create, use and destroy temporary directories",
+            "homepage": "https://github.com/spatie/temporary-directory",
+            "keywords": [
+                "php",
+                "spatie",
+                "temporary-directory"
+            ],
+            "support": {
+                "issues": "https://github.com/spatie/temporary-directory/issues",
+                "source": "https://github.com/spatie/temporary-directory/tree/2.3.0"
+            },
+            "funding": [
+                {
+                    "url": "https://spatie.be/open-source/support-us",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/spatie",
+                    "type": "github"
+                }
+            ],
+            "time": "2025-01-13T13:04:43+00:00"
         },
         {
             "name": "symfony/clock",
@@ -9267,12 +9834,12 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": [],
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"
     },
-    "platform-dev": [],
+    "platform-dev": {},
     "plugin-api-version": "2.6.0"
 }

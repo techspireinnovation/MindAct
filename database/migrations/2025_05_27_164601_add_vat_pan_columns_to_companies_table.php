@@ -12,6 +12,7 @@ return new class extends Migration {
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->boolean('is_vatable')->default(0)->nullable()->after('url_link');
+            $table->string('vat_number')->nullable()->after('url_link');
         });
     }
 
@@ -22,6 +23,7 @@ return new class extends Migration {
     {
         Schema::table('companies', function (Blueprint $table) {
             $table->dropColumn('is_vatable');
+            $table->dropColumn('vat_number');
         });
     }
 };

@@ -9,6 +9,8 @@ use App\Models\SalesMasterKey;
 use App\Models\User;
 use DB;
 use Hash;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -50,9 +52,11 @@ class CompanyController extends Controller
                 'name' => 'required|string|max:255|unique:companies,name',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
+                'is_vatable' => 'nullable|boolean',
                 'reg_number' => 'nullable|string|max:255',
-                'pan_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|string|max:255',
+                'vat_number' => 'nullable|string|max:255',
                 'email_address' => 'nullable|string|email|max:255',
                 'website' => 'nullable|string|max:255',
                 'fax' => 'nullable|string|max:255',
@@ -86,6 +90,8 @@ class CompanyController extends Controller
                 'working_date' => $validated['working_date'] ?? '',
                 'reg_number' => $validated['reg_number'] ?? '',
                 'pan_number' => $validated['pan_number'] ?? '',
+                'is_vatable' => $validated['is_vatable'] ?? '',
+                'vat_number' => $validated['vat_number'] ?? '',
                 'full_address' => $validated['full_address'] ?? '',
                 'email_address' => $validated['email_address'] ?? '',
                 'website' => $validated['website'] ?? '',
@@ -318,13 +324,7 @@ class CompanyController extends Controller
                     'message' => 'Unauthorized: Not a company admin',
                 ], 403);
             }
-
-
-
-
-
             $company = $user->company()->first();
-
             if (!$company) {
                 return response()->json([
                     'success' => false,
@@ -341,11 +341,6 @@ class CompanyController extends Controller
                     'message' => 'Purchase master key not found for this company',
                 ], 404);
             }
-
-
-
-
-
             return response()->json([
                 'success' => true,
 
@@ -367,14 +362,12 @@ class CompanyController extends Controller
             ], 404);
         } catch (QueryException $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -382,13 +375,11 @@ class CompanyController extends Controller
         }
     }
 
-
     public function updateSaleMasterKey(Request $request): JsonResponse
     {
         try {
             // Get the authenticated user
             $user = $request->user();
-
             if (!$user || !$user->hasRole('company_admin')) {
                 return response()->json([
                     'success' => false,
@@ -403,7 +394,6 @@ class CompanyController extends Controller
                 'free' => 'nullable|boolean',
                 'discount_percent' => 'nullable|boolean',
                 'discount_amount' => 'nullable|boolean',
-
                 'excise_duty' => 'nullable|boolean',
                 'health_insurance' => 'nullable|boolean',
                 'freight_charge' => 'nullable|boolean',
@@ -420,8 +410,6 @@ class CompanyController extends Controller
                 'discount' => 'nullable|boolean',
                 'additional' => 'nullable|boolean',
                 'mfd' => 'nullable|boolean',
-
-
             ]);
 
             if ($validator->fails()) {
@@ -433,23 +421,18 @@ class CompanyController extends Controller
             }
 
             $validated = $validator->validated();
-
-
             return DB::transaction(function () use ($user, $validated) {
 
                 $company = $user->company()->first();
-                // dd($company);
                 if (!$company) {
                     return response()->json([
                         'success' => false,
                         'message' => 'No company associated with this user',
                     ], 404);
                 }
-                // dd($company->id);
 
                 // Find the PurchaseMasterKey for the user's company
                 $saleMaster = SalesMasterKey::where('company_id', $company->company_id)->first();
-
 
                 if (!$saleMaster) {
                     return response()->json([
@@ -499,8 +482,6 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-
-
     public function getSalesMasterKey(Request $request): JsonResponse
     {
         try {
@@ -512,11 +493,6 @@ class CompanyController extends Controller
                     'message' => 'Unauthorized: Not a company admin',
                 ], 403);
             }
-
-
-
-
-
             $company = $user->company()->first();
 
             if (!$company) {
@@ -535,11 +511,6 @@ class CompanyController extends Controller
                     'message' => 'Sale master key not found for this company',
                 ], 404);
             }
-
-
-
-
-
             return response()->json([
                 'success' => true,
 
@@ -561,7 +532,6 @@ class CompanyController extends Controller
             ], 404);
         } catch (QueryException $e) {
             Log::error('Purchase master key update failed: ' . $e->getMessage());
-
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -578,25 +548,16 @@ class CompanyController extends Controller
     /**
      * Update the specified company and its admin user in storage.
      */
-    /**
-     * Update the specified company and its admin user in storage.
-     */
-
     public function update(Request $request): JsonResponse
     {
         try {
-
             $user = Auth::user();
-
-
             if (!$user->hasRole('company_admin') || !$user->tokenCan('company_admin')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
                 ], 403);
             }
-
-
             $companyUser = CompanyUser::where('user_id', $user->id)->first();
 
             if (!$companyUser || !$companyUser->company) {
@@ -607,13 +568,14 @@ class CompanyController extends Controller
             }
 
             $company = $companyUser->company;
-
-
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id,
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'reg_number' => 'nullable|string|max:255',
+                'is_vatable' => 'nullable|boolean',
+                'pan_number' => 'nullable|string|max:255',
+                'vat_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
                 'email_address' => 'nullable|string|email|max:255',
                 'website' => 'nullable|string|max:255',
@@ -638,7 +600,6 @@ class CompanyController extends Controller
 
 
             $company->update($validated);
-
 
             $userUpdates = [];
             if ($request->has('admin_name')) {
@@ -726,26 +687,18 @@ class CompanyController extends Controller
         }
 
     }
-
-
-
     public function updateCompany(Request $request, $id): JsonResponse
     {
         try {
 
             $user = Auth::user();
-
-
             if (!$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a super admin',
                 ], 403);
             }
-
-
             $company = Company::findOrFail($id);
-
 
             $companyUser = CompanyUser::where('company_id', $company->id)->first();
             if (!$companyUser) {
@@ -768,7 +721,10 @@ class CompanyController extends Controller
                 'name' => 'sometimes|required|string|max:255',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
+                'is_vatable' => 'nullable|boolean',
                 'reg_number' => 'nullable|string|max:255',
+                'vat_number' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
                 'email_address' => 'nullable|string|email|max:255',
                 'website' => 'nullable|string|max:255',
@@ -792,9 +748,7 @@ class CompanyController extends Controller
                 'password' => 'sometimes|required|string|min:6',
             ]);
 
-
             $company->update($validated);
-
 
             $userUpdates = [];
             $newToken = null;
@@ -841,21 +795,13 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-    // Show a single resource
-    // public function show(Company $post): JsonResponse
-    // {
-    //     return response()->json($post);
-    // }
 
     // Update a resource
     /**
      * Update the specified company in storage.
      */
-
-
     public function destroy($id): JsonResponse
     {
-
         $company = Company::find($id);
         if ($company) {
             $company->delete();
@@ -863,8 +809,5 @@ class CompanyController extends Controller
         } else {
             return response()->json(['message' => 'Company not found'], 404);
         }
-
-
-
     }
 }

@@ -578,18 +578,16 @@ public function show($id): JsonResponse
     try {
         $item = Purchase::with(['purchaseProducts.fieldValues.productField'])->findOrFail($id);
 
-        // Convert the model to an array for manipulation
+        
         $itemArray = $item->toArray();
 
-        // Transform field_values to include product_field attributes directly
-        foreach ($itemArray['purchase_products'] as &$purchaseProduct) {
+                foreach ($itemArray['purchase_products'] as &$purchaseProduct) {
             foreach ($purchaseProduct['field_values'] as &$fieldValue) {
                 if (isset($fieldValue['product_field'])) {
-                    // Merge product_field attributes into field_values
-                    $fieldValue['name'] = $fieldValue['product_field']['name'];
+                                        $fieldValue['name'] = $fieldValue['product_field']['name'];
                     $fieldValue['type'] = $fieldValue['product_field']['type'];
                     $fieldValue['values'] = $fieldValue['product_field']['values'];
-                    // Remove the nested product_field
+                  
                     unset($fieldValue['product_field']);
                 }
             }
@@ -597,6 +595,7 @@ public function show($id): JsonResponse
 
         return response()->json($itemArray);
     } catch (ModelNotFoundException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'Item not found'], 404);
     } catch (QueryException $e) {
         \Log::error($e);
@@ -614,6 +613,7 @@ public function show($id): JsonResponse
             $item->delete();
             return response()->json(['message' => 'Purchase deleted']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);

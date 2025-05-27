@@ -108,8 +108,10 @@ class MeasureUnitController extends Controller
             $item = MeasureUnit::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -121,8 +123,10 @@ class MeasureUnitController extends Controller
             $item->delete();
             return response()->json(['message' => 'Unit of Measurement deleted!!']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

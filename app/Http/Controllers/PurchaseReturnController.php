@@ -305,12 +305,13 @@ public function getPurchaseByRefBillNumber(Request $request)
     
             return response()->json($productNames);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            
+            \Log::error($e);
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-            
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }
@@ -326,12 +327,13 @@ public function getPurchaseByRefBillNumber(Request $request)
     
             return response()->json($productDetails);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            
+            \Log::error($e);
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-           
+           \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }
@@ -1070,6 +1072,7 @@ public function store(Request $request): JsonResponse
             $item = PurchaseReturn::with(['PurchaseProductReturn'])->findOrFail($id);
             return response()->json($item->load('PurchaseProductReturn'));
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
@@ -1087,6 +1090,7 @@ public function store(Request $request): JsonResponse
             $item->delete();
             return response()->json(['message' => 'Purchase Return deleted']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);

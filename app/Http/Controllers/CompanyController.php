@@ -188,6 +188,7 @@ class CompanyController extends Controller
             ], 201);
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
@@ -278,12 +279,14 @@ class CompanyController extends Controller
             });
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase master key not found',
@@ -350,12 +353,14 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase master key not found',
@@ -468,12 +473,14 @@ class CompanyController extends Controller
             });
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Sale master key not found',
@@ -540,12 +547,14 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Purchase master key not found',
@@ -652,12 +661,14 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -693,17 +704,20 @@ class CompanyController extends Controller
                 ]
             ], 200);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found',
             ], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
                 'error' => $e->getMessage(),
             ], 500);
         } catch (\Exception $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -812,12 +826,14 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ValidationException $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
+            \Log::error($e);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',

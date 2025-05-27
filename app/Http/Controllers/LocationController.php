@@ -74,8 +74,10 @@ class LocationController extends Controller
  
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -123,12 +125,13 @@ class LocationController extends Controller
             $item = Location::create($validated);
             return response()->json($item, 201);
         }catch(ModelNotFoundException $e){
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         }catch(QueryException $e){
-            
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }catch(\Exception $e){
-            
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -140,8 +143,10 @@ class LocationController extends Controller
             $item = Location::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -153,8 +158,10 @@ class LocationController extends Controller
             $item->delete();
             return response()->json(['message' => 'Location deleted!!']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

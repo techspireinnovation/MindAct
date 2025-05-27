@@ -74,10 +74,13 @@ class BankController extends Controller
 
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -124,8 +127,10 @@ class BankController extends Controller
             $item = Bank::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -137,8 +142,10 @@ class BankController extends Controller
             $item->delete();
             return response()->json(['message' => 'Bank deleted']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

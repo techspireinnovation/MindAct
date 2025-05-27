@@ -72,10 +72,13 @@ class MainGroupController extends Controller
             $group->update($validated);
             return response()->json($group, 200);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }catch(\Exception $e){
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -117,10 +120,13 @@ class MainGroupController extends Controller
         $group = MainGroup::create($validated);
         return response()->json($group, 201);
     }catch (ModelNotFoundException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'Location not found!!'], 404);
     } catch (QueryException $e) {
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }catch(\Exception $e){
+        \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
     }
@@ -131,8 +137,10 @@ class MainGroupController extends Controller
             $group = MainGroup::findOrFail($id);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -144,8 +152,10 @@ class MainGroupController extends Controller
             $group->delete();
             return response()->json(['message' => 'Main Group deleted!!']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

@@ -80,10 +80,13 @@ class BrandController extends Controller
            
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }catch(\Exception $e){
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -141,8 +144,10 @@ class BrandController extends Controller
             $item->delete();
             return response()->json(['message' => 'Brand deleted']);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

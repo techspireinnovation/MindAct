@@ -23,11 +23,13 @@ class DashboardController extends Controller
                 'company_count' => $company
             ]);
         } catch (QueryException $e) {
+            \Log::error($e);
             return response()->json([
                 'message' => 'Error fetching company count',
                 'error' => $e->getMessage()
             ], 500);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json([
                 'message' => 'Company not found',
                 'error' => $e->getMessage()

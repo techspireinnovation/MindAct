@@ -140,6 +140,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('sale-additionals', SaleAdditionalController::class);
     Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
     Route::get('filter-barcode', [ProductController::class, 'filterbyBarcode']);
+    Route::get('get-product-names', [ProductController::class, 'getProductNames']);
+    Route::get('get-product-detail-by-name', [ProductController::class, 'getProductDetailsByNames']);
     Route::put('purchase-masters-update', [CompanyController::class, 'updatePurchaseMasterKey']);
     Route::get('get-purchase-masters', [CompanyController::class, 'getPurchaseMasterKey']);
     Route::get('get-sales-masters', [CompanyController::class, 'getSalesMasterKey']);

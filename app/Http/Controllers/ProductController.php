@@ -22,13 +22,14 @@ class ProductController extends Controller
 
 
     public function generateProductID(): JsonResponse
+
     {
-        // Include soft-deleted records to get the highest ID
+        
         $latestProduct = Product::withTrashed()->orderBy('id', 'desc')->first();
         $nextNumber = $latestProduct ? $latestProduct->id + 1 : 1;
         $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
 
-        // Check for uniqueness, including soft-deleted records
+        
         while (Product::withTrashed()->where('product_unique_id', $productID)->exists()) {
             $nextNumber++;
             $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
@@ -37,10 +38,80 @@ class ProductController extends Controller
         return response()->json(['product_id' => $productID]);
     }
 
+    public function getProductNames(){
+
+        try{
+
+            $productNames = Product::where('is_active', true)
+                ->whereNull('deleted_at')
+                ->pluck('name');
+            return $productNames ;
+        } catch (\Exception $e) {
+            Log::error('Error fetching product names: ' . $e->getMessage(), [
+                'exception' => $e
+            ]);
+            return response()->json([
+                'error' => 'Server error occurred while fetching product names',
+                'details' => config('app.debug') ? $e->getMessage() : null
+            ], 500);    
+
+            }
+    }
+
+    public function getProductDetailsByNames(Request $request) : JsonResponse
+    {
+        try{
+            $name = $request->input('name');
+            if (!$name) {
+                return response()->json(['error' => 'Name parameter is required'], 422);
+            }
+            $productNames = Product::with(['productLists',
+                'productFieldValues.productField'])
+                ->where('name', $name)
+                ->whereNull('deleted_at')
+                ->firstorFail();
+
+            $valuesByFieldId = $productNames->productFieldValues->keyBy('product_field_id');
+            $productFields = ProductField::where('company_id', $productNames->company_id);
+            $productFields = $productFields->whereIn('id', $valuesByFieldId->keys())
+                                        ->get();
+            $productFields = $productFields->map(function ($field) use ($valuesByFieldId){
+                $fieldArray = [
+                'product_field_id' => $field->id, // Rename id to product_field_id
+                'company_id' => $field->company_id,
+                'name' => $field->name,
+                'type' => $field->type,
+                'values' => $field->values,
+                'is_active' => $field->is_active,
+                'deleted_at' => $field->deleted_at,
+                'created_at' => $field->created_at,
+                'updated_at' => $field->updated_at,
+                'product_field_value' => $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at'])
+                ];
+                return $fieldArray;
+            });
+            $productNames = $productNames->toArray();
+            unset($productNames['product_field_values']);
+            $productNames['product_fields'] = $productFields;
+
+            
+            return response()->json([
+                'product' => $productNames
+            ]);
+        }catch(ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product not found!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database query error occurred!'], 500);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error occurred!'], 500);
+            }
+    }
+
     public function index(Request $request): JsonResponse
     {
         try {
-            // Validate input
+            
             $validator = Validator::make($request->all(), [
                 'filter_by' => 'nullable|string',
                 'search_name' => 'nullable|string|max:100',
@@ -78,7 +149,7 @@ class ProductController extends Controller
             $this->applyFilters($query, $request);
 
             // Pagination
-            $perPage = $request->input('per_page', 50);
+            $perPage = $request->input('per_page', 2);
             $products = $query->paginate($perPage);
 
             // Transform products to include product_fields and exclude product_field_values
@@ -293,8 +364,10 @@ class ProductController extends Controller
 
     public function update(Request $request, $id): JsonResponse
 
-{
+   {
+
     try {
+
         $item = Product::findOrFail($id);
         $rules = [
             'name' => [
@@ -448,8 +521,9 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             Log::error($e);
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
-        }
     }
+
+   } 
 
 
 

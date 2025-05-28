@@ -143,7 +143,7 @@ class ProductController extends Controller
             $this->applyFilters($query, $request);
 
             // Pagination
-            $perPage = $request->input('per_page', 2);
+            $perPage = $request->input('per_page', 50);
             $products = $query->paginate($perPage);
 
             // Transform products to include product_fields and exclude product_field_values

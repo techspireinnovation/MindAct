@@ -12,6 +12,7 @@ use App\Models\PurchaseProductFieldValue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\Product;
+use App\Models\ProductField;
 use App\Models\Purchase;
 use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseProduct;
@@ -69,366 +70,526 @@ class SaleController extends Controller
     });
 }
 
-    private function getAvailableProductsForSale($companyId)
-{
-    Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
+     private function getAvailableProductsForSale($companyId)
+    {
+        Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
 
-    try {
-        DB::enableQueryLog();
+        try {
+            DB::enableQueryLog();
 
-        $query = PurchaseProduct::withoutGlobalScopes()
-            ->select([
-                'products.id',
-                'products.name',
-                DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
-                        COALESCE(SUM(purchase_product_returns.quantity), 0) - 
-                        COALESCE(SUM(sale_products.quantity), 0) + 
-                        COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as available_quantity')
-            ])
-            ->join('products', 'purchase_products.product_id', '=', 'products.id')
-            ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
-                $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
-                     ->whereNull('purchase_product_returns.deleted_at')
-                     ->where('purchase_product_returns.company_id', $companyId);
-            })
-            ->leftJoin('sale_products', function ($join) use ($companyId) {
-                $join->on('purchase_products.product_id', '=', 'sale_products.product_id')
-                     ->whereNull('sale_products.deleted_at')
-                     ->where('sale_products.company_id', $companyId);
-            })
-            ->leftJoin('sales_return_products', function ($join) use ($companyId) {
-                $join->on('purchase_products.product_id', '=', 'sales_return_products.product_id')
-                     ->whereNull('sales_return_products.deleted_at')
-                     ->where('sales_return_products.company_id', $companyId);
-            })
-            ->whereNull('purchase_products.deleted_at')
-            ->where('purchase_products.company_id', $companyId)
-            ->where('products.company_id', $companyId);
+            $query = PurchaseProduct::withoutGlobalScopes()
+                ->select([
+                    'products.id',
+                    'products.name',
+                    DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) as purchased_quantity'),
+                    DB::raw('COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) as return_quantity'),
+                    DB::raw('COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) as sale_quantity'),
+                    DB::raw('COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as sales_return_quantity'),
+                    DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                            COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) - 
+                            COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) + 
+                            COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as available_quantity')
+                ])
+                ->join('products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.product_id', '=', 'products.id')
+                         ->where('products.company_id', $companyId)
+                         ->whereNull('products.deleted_at');
+                })
+                ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
+                         ->whereNull('purchase_product_returns.deleted_at')
+                         ->where('purchase_product_returns.company_id', $companyId);
+                })
+                ->leftJoin('sale_products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
+                         ->whereNull('sale_products.deleted_at')
+                         ->where('sale_products.company_id', $companyId);
+                })
+                ->leftJoin('sales_return_products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'sales_return_products.purchase_product_id')
+                         ->whereNull('sales_return_products.deleted_at')
+                         ->where('sales_return_products.company_id', $companyId);
+                })
+                ->whereNull('purchase_products.deleted_at')
+                ->where('purchase_products.company_id', $companyId);
 
-        $products = $query->groupBy('products.id', 'products.name')
-                         ->having('available_quantity', '>', 0)
-                         ->get();
+            $products = $query->groupBy('products.id', 'products.name')
+                             ->having('available_quantity', '>', 0)
+                             ->get();
 
-        // Debug data counts
-        $productCounts = PurchaseProduct::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->groupBy('product_id')
-            ->pluck('product_id')
-            ->count();
-        $returnCounts = PurchaseProductReturn::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->count();
-        $saleCounts = SaleProduct::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->count();
-        $salesReturnCounts = SalesReturnProduct::withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->count();
+            // Debug data counts
+            $productCounts = PurchaseProduct::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->groupBy('product_id')
+                ->pluck('product_id')
+                ->count();
+            $returnCounts = PurchaseProductReturn::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->count();
+            $saleCounts = SaleProduct::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->count();
+            $salesReturnCounts = SalesReturnProduct::withoutGlobalScopes()
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->count();
 
-        Log::debug('Available products query', [
-            'sql' => DB::getQueryLog(),
-            'results_count' => $products->count(),
-            'product_counts' => $productCounts,
-            'return_counts' => $returnCounts,
-            'sale_counts' => $saleCounts,
-            'sales_return_counts' => $salesReturnCounts,
-            'products' => $products->toArray()
-        ]);
+            Log::debug('Available products query', [
+                'sql' => DB::getQueryLog(),
+                'results_count' => $products->count(),
+                'product_counts' => $productCounts,
+                'return_counts' => $returnCounts,
+                'sale_counts' => $saleCounts,
+                'sales_return_counts' => $salesReturnCounts,
+                'products' => $products->toArray()
+            ]);
 
-        return $products;
+            return $products;
 
-    } catch (\Exception $e) {
-        Log::error('Error fetching available products for sale', [
-            'company_id' => $companyId,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        throw $e;
-    } finally {
-        DB::disableQueryLog();
+        } catch (\Exception $e) {
+            Log::error('Error fetching available products for sale', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        } finally {
+            DB::disableQueryLog();
+        }
     }
-}
+
+    
+    private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null): array
+    {
+        Log::debug('Fetching detailed available products with field values', [
+            'product_id' => $productId,
+            'product_name' => $productName,
+            'company_id' => $companyId
+        ]);
+
+        try {
+            DB::enableQueryLog();
+
+            // Check unmatched PurchaseProduct records
+            $unmatchedPurchases = PurchaseProduct::withoutGlobalScopes()
+                ->select(
+                    'purchase_products.id',
+                    'purchase_products.product_id',
+                    'purchase_products.quantity',
+                    'purchase_products.free_quantity',
+                    'purchase_products.expiry_date',
+                    'purchase_products.company_id',
+                    'purchase_products.measure_unit_id'
+                )
+                ->leftJoin('products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.product_id', '=', 'products.id')
+                         ->where('products.company_id', $companyId)
+                         ->whereNull('products.deleted_at');
+                })
+                ->leftJoin('measure_units', function ($join) {
+                    $join->on('purchase_products.measure_unit_id', '=', 'measure_units.id');
+                })
+                ->whereNull('purchase_products.deleted_at')
+                ->where('purchase_products.company_id', $companyId)
+                ->where(function ($query) {
+                    $query->whereNull('products.id')
+                          ->orWhereNull('measure_units.id');
+                })
+                ->when($productId, function ($query) use ($productId) {
+                    $query->where('purchase_products.product_id', $productId);
+                })
+                ->when($productName, function ($query) use ($productName) {
+                    $query->where('purchase_products.product_name', $productName)
+                          ->orWhere('products.name', $productName);
+                })
+                ->get();
+
+            Log::debug('Unmatched PurchaseProduct records', [
+                'company_id' => $companyId,
+                'product_id' => $productId,
+                'product_name' => $productName,
+                'unmatched_count' => $unmatchedPurchases->count(),
+                'unmatched_records' => $unmatchedPurchases->toArray()
+            ]);
+
+            // Debug product fields
+            $productFields = ProductField::withoutGlobalScopes()
+                ->whereIn('id', [1, 2, 3, 4, 5])
+                ->select('id', 'name', 'company_id')
+                ->get();
+
+            Log::debug('Product fields check', [
+                'company_id' => $companyId,
+                'product_fields' => $productFields->toArray()
+            ]);
+
+            // Debug purchase product field values
+            $fieldValuesCheck = PurchaseProductFieldValue::withoutGlobalScopes()
+                ->select(
+                    'id',
+                    'purchase_product_id',
+                    'quantity_index',
+                    'product_field_id',
+                    'value',
+                    'company_id',
+                    'product_id',
+                    'deleted_at'
+                )
+                ->whereIn('purchase_product_id', [55, 56])
+                ->get();
+
+            Log::debug('Purchase product field values check', [
+                'company_id' => $companyId,
+                'purchase_product_ids' => [55, 56],
+                'product_id' => 26,
+                'field_values' => $fieldValuesCheck->toArray()
+            ]);
+
+            // Debug purchase_products data
+            $purchaseProductsCheck = PurchaseProduct::withoutGlobalScopes()
+                ->select(
+                    'id',
+                    'product_id',
+                    'product_name',
+                    'company_id',
+                    'measure_unit_id',
+                    'deleted_at'
+                )
+                ->whereIn('id', [55, 56])
+                ->get();
+
+            Log::debug('Purchase product data check', [
+                'company_id' => $companyId,
+                'purchase_product_ids' => [55, 56],
+                'purchase_products' => $purchaseProductsCheck->toArray()
+            ]);
+
+            // Main product query
+            $query = PurchaseProduct::withoutGlobalScopes()
+                ->select([
+                    'products.id as product_id',
+                    'purchase_products.product_name as product_name',
+                    'products.product_unique_id as product_code',
+                    DB::raw('MIN(purchase_products.price) as min_price'),
+                    DB::raw('MAX(purchase_products.is_vatable) as is_vatable'),
+                    'purchase_products.measure_unit_id',
+                    DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) as purchased_quantity'),
+                    DB::raw('COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) as return_quantity'),
+                    DB::raw('COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) as sale_quantity'),
+                    DB::raw('COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as sales_return_quantity'),
+                    DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                             COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) - 
+                             COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) + 
+                             COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as available_quantity'),
+                    DB::raw('GROUP_CONCAT(DISTINCT purchase_products.expiry_date) as expiry_dates')
+                ])
+                ->join('products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.product_id', '=', 'products.id')
+                         ->where('products.company_id', $companyId)
+                         ->whereNull('products.deleted_at');
+                })
+                ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
+                         ->whereNull('purchase_product_returns.deleted_at')
+                         ->where('purchase_product_returns.company_id', $companyId);
+                })
+                ->leftJoin('sale_products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
+                         ->whereNull('sale_products.deleted_at')
+                         ->where('sale_products.company_id', $companyId);
+                })
+                ->leftJoin('sales_return_products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'sales_return_products.purchase_product_id')
+                         ->whereNull('sales_return_products.deleted_at')
+                         ->where('sales_return_products.company_id', $companyId);
+                })
+                ->whereNull('purchase_products.deleted_at')
+                ->where('purchase_products.company_id', $companyId);
+
+            if ($productId) {
+                $query->where('products.id', $productId);
+            }
+
+            if ($productName) {
+                $query->where('purchase_products.product_name', $productName)
+                      ->orWhere('products.name', $productName);
+            }
+
+            $query->groupBy(['products.id', 'purchase_products.product_name', 'products.product_unique_id', 'purchase_products.measure_unit_id'])
+                  ->having('available_quantity', '>', 0);
+
+            $products = $query->get();
+
+            Log::debug('Available product details query', [
+                'sql' => DB::getQueryLog(),
+                'product_count' => $products->count(),
+                'products' => $products->toArray()
+            ]);
+
+            if ($products->isEmpty()) {
+                return [];
+            }
+
+            // Log product IDs
+            $productIds = $products->pluck('product_id')->toArray();
+            Log::debug('Product IDs for field values query', [
+                'product_ids' => $productIds
+            ]);
+
+            // Fetch field values for available quantities
+            $fieldValuesQuery = PurchaseProductFieldValue::withoutGlobalScopes()
+                ->select([
+                    'purchase_product_field_values.purchase_product_id',
+                    'purchase_product_field_values.quantity_index',
+                    'purchase_product_field_values.product_field_id',
+                    'purchase_product_field_values.value',
+                    'product_fields.name as field_name',
+                    'purchase_products.expiry_date',
+                    'purchase_products.product_id'
+                ])
+                ->leftJoin('product_fields', 'purchase_product_field_values.product_field_id', '=', 'product_fields.id')
+                ->join('purchase_products', 'purchase_product_field_values.purchase_product_id', '=', 'purchase_products.id')
+                ->leftJoin('sale_products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
+                         ->whereNull('sale_products.deleted_at')
+                         ->where('sale_products.company_id', $companyId);
+                })
+                ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
+                         ->whereNull('purchase_product_returns.deleted_at')
+                         ->where('purchase_product_returns.company_id', $companyId);
+                })
+                ->leftJoin('sales_return_products', function ($join) use ($companyId) {
+                    $join->on('purchase_products.id', '=', 'sales_return_products.purchase_product_id')
+                         ->whereNull('sales_return_products.deleted_at')
+                         ->where('sales_return_products.company_id', $companyId);
+                })
+                ->whereIn('purchase_products.product_id', $productIds)
+                ->whereNull('purchase_product_field_values.deleted_at')
+                ->whereNull('purchase_products.deleted_at')
+                ->where('purchase_products.company_id', $companyId)
+                // Comment out temporarily
+                ->where('product_fields.company_id', $companyId)
+                ->where('purchase_product_field_values.company_id', $companyId)
+                ->groupBy([
+                    'purchase_product_field_values.purchase_product_id',
+                    'purchase_product_field_values.quantity_index',
+                    'purchase_product_field_values.product_field_id',
+                    'purchase_product_field_values.value',
+                    'product_fields.name',
+                    'purchase_products.expiry_date',
+                    'purchase_products.product_id'
+                ]);
+
+            Log::debug('Field values query SQL', [
+                'sql' => $fieldValuesQuery->toSql(),
+                'bindings' => $fieldValuesQuery->getBindings()
+            ]);
+
+            $fieldValuesRaw = $fieldValuesQuery->get();
+
+            Log::debug('Field values query result', [
+                'field_values_count' => $fieldValuesRaw->count(),
+                'field_values_raw' => $fieldValuesRaw->toArray()
+            ]);
+
+            // Map field values to match available quantities
+            $fieldValues = [];
+            foreach ($products as $product) {
+                $productId = $product->product_id;
+                $availableQuantity = $product->available_quantity;
+
+                // Filter field values for this product
+                $productFieldValues = $fieldValuesRaw->filter(function ($field) use ($productId) {
+                    return $field->product_id == $productId;
+                });
+
+                Log::debug('Filtered field values for product', [
+                    'product_id' => $productId,
+                    'filtered_count' => $productFieldValues->count(),
+                    'filtered_values' => $productFieldValues->toArray()
+                ]);
+
+                if ($productFieldValues->isEmpty()) {
+                    $fieldValues[$productId] = [];
+                    continue;
+                }
+
+                // Group by purchase_product_id and quantity_index
+                $groupedFieldValues = $productFieldValues
+                    ->groupBy('purchase_product_id')
+                    ->flatMap(function ($purchaseGroup) {
+                        return $purchaseGroup->groupBy('quantity_index')->map(function ($indexGroup) {
+                            return $indexGroup->map(function ($field) {
+                                return [
+                                    'product_field_id' => $field->product_field_id,
+                                    'field_name' => $field->field_name ?? 'Unknown',
+                                    'value' => $field->value,
+                                    'expiry_date' => $field->expiry_date
+                                ];
+                            })->values()->toArray();
+                        })->values();
+                    })->values()->toArray();
+
+                // Limit field values to available quantity
+                $fieldValues[$productId] = array_slice($groupedFieldValues, 0, $availableQuantity);
+            }
+
+            $result = $products->map(function ($product) use ($fieldValues) {
+                return [
+                    'product_id' => $product->product_id,
+                    'product_name' => $product->product_name,
+                    'product_code' => $product->product_code,
+                    'min_price' => $product->min_price,
+                    'is_vatable' => (bool)$product->is_vatable,
+                    'measure_unit_id' => $product->measure_unit_id,
+                    'purchased_quantity' => $product->purchased_quantity,
+                    'return_quantity' => $product->return_quantity,
+                    'sale_quantity' => $product->sale_quantity,
+                    'sales_return_quantity' => $product->sales_return_quantity,
+                    'available_quantity' => $product->available_quantity,
+                    'expiry_dates' => array_filter(explode(',', $product->expiry_dates)),
+                    'field_values' => $fieldValues[$product->product_id] ?? []
+                ];
+            })->toArray();
+
+            return $result;
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching detailed available products', [
+                'product_id' => $productId,
+                'product_name' => $productName,
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        } finally {
+            DB::disableQueryLog();
+        }
+    }
 
     public function listAvailableProducts(Request $request): JsonResponse
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id',
-            'include_details' => 'nullable|boolean'
-        ]);
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'company_id' => 'required|integer|exists:companies,id',
+                'include_details' => 'nullable|boolean'
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        $companyId = $request->input('company_id');
-        $includeDetails = $request->boolean('include_details', false);
-
-        // Authorization check for authenticated users
-        if (auth()->check()) {
-            $user = auth()->user();
-            $userCompanyId = optional($user->company)->company_id;
-
-            if (!$userCompanyId || $userCompanyId != $companyId) {
+            if ($validator->fails()) {
                 return response()->json([
-                    'message' => 'Unauthorized access to company resources'
-                ], 403);
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
-            // Optional: Stricter check for company_admin role
-            if ($user->hasRole('company_admin') && $userCompanyId != $companyId) {
+            $companyId = $request->input('company_id');
+            $includeDetails = $request->boolean('include_details', false);
+
+            // Authorization check
+            if (auth()->check()) {
+                $user = auth()->user();
+                $userCompanyId = optional($user->company)->company_id;
+
+                if (!$userCompanyId || $userCompanyId != $companyId) {
+                    return response()->json([
+                        'message' => 'Unauthorized access to company resources'
+                    ], 403);
+                }
+
+                if ($user->hasRole('company_admin') && $userCompanyId != $companyId) {
+                    return response()->json([
+                        'message' => 'Unauthorized access to company resources for company admin'
+                    ], 403);
+                }
+            } else {
                 return response()->json([
-                    'message' => 'Unauthorized access to company resources for company admin'
-                ], 403);
+                    'message' => 'Unauthenticated'
+                ], 401);
             }
-        } else {
+
+            $products = $this->getAvailableProductsForSale($companyId);
+
+            if ($includeDetails) {
+                $products = collect($this->getAvailableProductsDetails(null, null, $companyId));
+            }
+
+            Log::debug('Available products response', [
+                'company_id' => $companyId,
+                'include_details' => $includeDetails,
+                'product_count' => $products->count(),
+                'products' => $products->toArray()
+            ]);
+
             return response()->json([
-                'message' => 'Unauthenticated'
-            ], 401);
+                'message' => 'Available products retrieved successfully',
+                'count' => $products->count(),
+                'data' => $products
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error listing available products', [
+                'request' => $request->all(),
+                'error' => $e->getMessage()
+            ]);
+            return response()->json([
+                'message' => 'Failed to retrieve available products',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $products = $this->getAvailableProductsForSale($companyId);
-
-        if ($includeDetails) {
-            // Add expiry dates if requested
-            $products->each(function ($product) use ($companyId) {
-                $product->expiry_dates = PurchaseProduct::withoutGlobalScopes()
-                    ->where('product_id', $product->id)
-                    ->where('company_id', $companyId)
-                    ->whereNull('deleted_at')
-                    ->pluck('expiry_date')
-                    ->filter()
-                    ->unique()
-                    ->values();
-            });
-        }
-
-        Log::debug('Available products response', [
-            'company_id' => $companyId,
-            'include_details' => $includeDetails,
-            'product_count' => $products->count(),
-            'products' => $products->toArray()
-        ]);
-
-        return response()->json([
-            'message' => 'Available products retrieved successfully',
-            'count' => $products->count(),
-            'data' => $products
-        ], 200);
-
-    } catch (\Exception $e) {
-        Log::error('Error listing available products', [
-            'request' => $request->all(),
-            'error' => $e->getMessage()
-        ]);
-        return response()->json([
-            'message' => 'Failed to retrieve available products',
-            'error' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
     }
-}
 
+    public function getAvailableProductByIdOrName(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'product_id' => 'nullable|integer|exists:products,id',
+                'product_name' => 'nullable|string|max:255',
+                'company_id' => 'required|integer|exists:companies,id',
+            ]);
 
-
-     private function getAvailableProductsDetails($productId = null, $productName = null, $companyId = null)
-{
-    Log::debug('Fetching detailed available products with field values', [
-        'product_id' => $productId,
-        'product_name' => $productName,
-        'company_id' => $companyId
-    ]);
-
-    try {
-        DB::enableQueryLog();
-
-        // Main product query
-        $query = PurchaseProduct::withoutGlobalScopes()
-            ->select(
-                'products.id as product_id',
-                'products.name as product_name',
-                'products.product_unique_id as product_code',
-                DB::raw('MIN(purchase_products.price) as min_price'),
-                DB::raw('MAX(purchase_products.is_vatable) as is_vatable'),
-                'measure_units.name as measure_unit',
-                DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
-                        COALESCE(SUM(purchase_product_returns.quantity), 0) - 
-                        COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) + 
-                        COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as available_quantity'),
-                DB::raw('GROUP_CONCAT(DISTINCT purchase_products.expiry_date) as expiry_dates')
-            )
-            ->join('products', 'purchase_products.product_id', '=', 'products.id')
-            ->leftJoin('purchase_product_returns', function ($join) {
-                $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
-                     ->whereNull('purchase_product_returns.deleted_at');
-            })
-            ->leftJoin('sale_products', function ($join) {
-                $join->on('purchase_products.product_id', '=', 'sale_products.product_id')
-                     ->whereNull('sale_products.deleted_at');
-            })
-            ->leftJoin('sales_return_products', function ($join) {
-                $join->on('purchase_products.product_id', '=', 'sales_return_products.product_id')
-                     ->whereNull('sales_return_products.deleted_at');
-            })
-            ->leftJoin('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
-            ->whereNull('purchase_products.deleted_at');
-
-        // Apply filters
-        
-        if ($companyId) {
-            $query->where('purchase_products.company_id', $companyId)
-                  ->where('products.company_id', $companyId)
-                  ->where(function($q) use ($companyId) {
-                      $q->where('purchase_product_returns.company_id', $companyId)
-                        ->orWhereNull('purchase_product_returns.company_id');
-                  })
-                  ->where(function($q) use ($companyId) {
-                      $q->where('sale_products.company_id', $companyId)
-                        ->orWhereNull('sale_products.company_id');
-                  })
-                  ->where(function($q) use ($companyId) {
-                      $q->where('sales_return_products.company_id', $companyId)
-                        ->orWhereNull('sales_return_products.company_id');
-                  })
-                  ->where('measure_units.company_id', $companyId);
-        }
-       
-
-        if ($productId) {
-            $query->where('products.id', $productId);
-        }
-        
-        if ($productName) {
-            $query->where('products.name', 'like', '%' . $productName . '%');
-        }
-        
-        
-      
-
-        $query->groupBy('products.id', 'products.name', 'products.product_unique_id', 'measure_units.name')
-              ->having('available_quantity', '>', 0);
-           
-
-        $product = $query->first();
-        
-      
-
-        if (!$product) {
-            return null;
-        }
-
-        // Field values query
-        $fieldValuesQuery = PurchaseProductFieldValue::withoutGlobalScopes()
-            ->select(
-                'purchase_product_field_values.quantity_index',
-                'purchase_product_field_values.product_field_id',
-                'purchase_product_field_values.value',
-                'product_fields.name as field_name',
-                'purchase_products.expiry_date'
-            )
-            ->join('product_fields', 'purchase_product_field_values.product_field_id', '=', 'product_fields.id')
-            ->join('purchase_products', 'purchase_product_field_values.purchase_product_id', '=', 'purchase_products.id')
-            ->where('purchase_products.product_id', $product->product_id)
-            ->whereNull('purchase_product_field_values.deleted_at')
-            ->whereNull('purchase_products.deleted_at');
-
-        if ($companyId) {
-            $fieldValuesQuery->where('purchase_products.company_id', $companyId)
-                            ->where('product_fields.company_id', $companyId)
-                            ->where('purchase_product_field_values.company_id', $companyId);
-        }
-
-        $fieldValues = $fieldValuesQuery->get()
-            ->groupBy(['purchase_product_id', 'quantity_index'])
-            ->map(function ($productGroups) {
-                return $productGroups->map(function ($fields) {
-                    return $fields->map(function ($field) {
-                        return [
-                            'product_field_id' => $field->product_field_id,
-                            'field_name' => $field->field_name,
-                            'value' => $field->value,
-                            'expiry_date' => $field->expiry_date
-                        ];
-                    });
-                });
-            })
-            ->values()
-            ->toArray();
-
-        return [
-            'product_id' => $product->product_id,
-            'product_name' => $product->product_name,
-            'product_code' => $product->product_code,
-            'min_price' => $product->min_price,
-            'is_vatable' => (bool)$product->is_vatable,
-            'measure_unit' => $product->measure_unit,
-            'available_quantity' => $product->available_quantity,
-            'expiry_dates' => array_filter(explode(',', $product->expiry_dates)),
-            'field_values' => $fieldValues
-        ];
-
-    } catch (\Exception $e) {
-        Log::error('Error fetching detailed available products', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-        throw $e;
-    } finally {
-        DB::disableQueryLog();
-    }
-}
-
-public function getAvailableProductByIdOrName(Request $request): JsonResponse
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'product_id' => 'nullable|integer|exists:products,id',
-            'product_name' => 'nullable|string|max:255',
-            'company_id' => 'required|integer|exists:companies,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        $productId = $request->input('product_id');
-        $productName = $request->input('product_name');
-        $companyId = $request->input('company_id');
-
-        if (!$productId && !$productName) {
-            return response()->json(['error' => 'Either product_id or product_name is required'], 422);
-        }
-
-        // Improved authorization check
-        if (auth()->check() && auth()->user()->hasRole('company_admin')) {
-            $userCompanyId = optional(auth()->user()->company)->company_id;
-            
-            if ($userCompanyId != $companyId) {
-                return response()->json(['error' => 'Unauthorized access to company resources'], 403);
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
             }
+
+            $productId = $request->input('product_id');
+            $productName = $request->input('product_name');
+            $companyId = $request->input('company_id');
+
+            if (!$productId && !$productName) {
+                return response()->json(['error' => 'Either product_id or product_name is required'], 422);
+            }
+
+            // Authorization check
+            if (auth()->check() && auth()->user()->hasRole('company_admin')) {
+                $userCompanyId = optional(auth()->user()->company)->company_id;
+                if ($userCompanyId != $companyId) {
+                    return response()->json(['error' => 'Unauthorized access to company resources'], 403);
+                }
+            }
+
+            $products = $this->getAvailableProductsDetails($productId, $productName, $companyId);
+
+            return response()->json([
+                'message' => !empty($products) ? 'Product details retrieved' : 'No matching product found',
+                'data' => !empty($products) ? $products : null
+            ], !empty($products) ? 200 : 404);
+
+        } catch (\Exception $e) {
+            Log::error('Error in getAvailableProductByIdOrName', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'An unexpected error occurred',
+                'message' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $product = $this->getAvailableProductsDetails($productId, $productName, $companyId);
-
-        return response()->json([
-            'message' => $product ? 'Product details retrieved' : 'No matching product found',
-            'data' => $product
-        ], $product ? 200 : 404);
-
-    } catch (\Exception $e) {
-        Log::error('Error in getAvailableProductByIdOrName', [
-            'error' => $e->getMessage(),
-            'request' => $request->all()
-        ]);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
-}
    
 
     public function index(Request $request): JsonResponse

@@ -149,7 +149,7 @@ class ProductController extends Controller
             $this->applyFilters($query, $request);
 
             // Pagination
-            $perPage = $request->input('per_page', 2);
+            $perPage = $request->input('per_page', 50);
             $products = $query->paginate($perPage);
 
             // Transform products to include product_fields and exclude product_field_values
@@ -177,7 +177,9 @@ class ProductController extends Controller
                 $productArray['product_fields'] = $product_fields;
 
                 return $productArray;
+                
             });
+            
 
             // Broadcast event
             broadcast(new ProductUpdated($products, 'listed'));
@@ -185,10 +187,11 @@ class ProductController extends Controller
             // Return paginated response with transformed data
             return response()->json([
                 'data' => $transformedProducts->items(),
-                'current_page' => $products->currentPage(),
+                'pagination'=>['current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total()
+                ]
             ]);
 
         } catch (\Exception $e) {

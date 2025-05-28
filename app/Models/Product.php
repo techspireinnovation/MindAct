@@ -10,8 +10,8 @@ use App\Models\ProductCategory;
 use App\Models\ProductList;
 use App\Models\ProductType;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -21,6 +21,7 @@ class Product extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_fixed_amount' => 'boolean',
         'values' => 'array',
     ];
     protected $fillable = [
@@ -29,6 +30,7 @@ class Product extends Model
         'credit_note',
         'product_unique_id',
         'is_active',
+        'is_fixed_amount',
         'deleted_at',
         'company_id',
         'category_id',
@@ -47,10 +49,9 @@ class Product extends Model
         'is_vatable',
         'product_type_id',
         'location_id',
-        
+
     ];
 
-    
     protected $dates = ['deleted_at'];
 
     protected static function booted()
@@ -100,7 +101,8 @@ class Product extends Model
         return $this->hasMany(ProductList::class);
     }
 
-    public function saleProduct(){
+    public function saleProduct()
+    {
         return $this->hasMany(SaleProduct::class);
     }
 

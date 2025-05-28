@@ -153,6 +153,7 @@ return [
 
             'disks' => [
                 'dropbox',
+                'local',
             ],
         ],
 

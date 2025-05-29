@@ -171,7 +171,9 @@ class ProductController extends Controller
                 $productArray['product_fields'] = $product_fields;
 
                 return $productArray;
+                
             });
+            
 
             // Broadcast event
             broadcast(new ProductUpdated($products, 'listed'));
@@ -179,14 +181,12 @@ class ProductController extends Controller
             // Return paginated response with transformed data
             return response()->json([
                 'data' => $transformedProducts->items(),
-                'pagination'=>
-
-                [
-                'current_page' => $products->currentPage(),
+<<<
+                'pagination'=>['current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total()
-                
+
                 ]
             ]);
 
@@ -512,7 +512,7 @@ class ProductController extends Controller
 
             return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productLists'])]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json(['error' => 'Item not SaleCfound'], 404);
         } catch (\Exception $e) {
             Log::error($e);
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);

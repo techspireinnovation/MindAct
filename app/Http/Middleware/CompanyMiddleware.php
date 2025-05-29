@@ -2,8 +2,10 @@
 
 namespace App\Http\Middleware;
 
+use App\Helpers\PermissionsHelper;
 use Closure;
 use Illuminate\Http\Request;
+use Spatie\Permission\Models\Permission;
 use Symfony\Component\HttpFoundation\Response;
 
 class CompanyMiddleware
@@ -35,11 +37,21 @@ class CompanyMiddleware
             $route = $request->route();
             $resource = $route->getName() ?: str_replace('/', '.', $route->uri());
 
-            //dd($user->givePermissionTo([$resource]));
-            if (!auth()->user()->hasPermissionTo($resource)) {
-                abort(403, 'Unauthorized action');
+            // check for valid permissions
+            if (
+                Permission::where('name', $resource)
+                    ->where('guard_name', 'api')
+                    ->exists()
+            ) {
+                //dd($user->givePermissionTo([$resource]));
+                if (!auth()->user()->hasPermissionTo($resource)) {
+                    abort(403, 'Unauthorized action');
+                }
             }
+
+
+            return $next($request);
         }
-        return response()->json(['message' => 'Forbidden: Company Admins/Staff only'], 403);
+        return response()->json(['message' => 'Forbidden: Company Admins or Staff only'], 403);
     }
 }

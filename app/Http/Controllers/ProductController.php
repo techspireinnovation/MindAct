@@ -520,7 +520,7 @@ class ProductController extends Controller
 
             return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productLists'])]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json(['error' => 'Item not SaleCfound'], 404);
         } catch (\Exception $e) {
             Log::error($e);
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);

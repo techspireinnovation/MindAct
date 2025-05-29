@@ -23,7 +23,7 @@ class CompanyAdminMiddleware
             if ($company) {
                 $request->merge(['company_id' => $company->company_id]);
             }
-            return $next($request);
+            //return $next($request);
         }
 
         // Check authorization for company staff
@@ -39,10 +39,7 @@ class CompanyAdminMiddleware
             if (!auth()->user()->hasPermissionTo($resource)) {
                 abort(403, 'Unauthorized action');
             }
-
-
         }
-
         return response()->json(['message' => 'Forbidden: Company Admins only'], 403);
     }
 }

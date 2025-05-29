@@ -69,11 +69,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
 });
 
-
-
-
 Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
-    // 
 
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
@@ -90,9 +86,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
     Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
 
-    //Sales Returns
-
-
+    //Sales Return
     Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
     Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
     Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);

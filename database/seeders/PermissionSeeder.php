@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Helpers\PermissionsHelper;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
@@ -13,7 +14,7 @@ class PermissionSeeder extends Seeder
      */
     public function run(): void
     {
-        $resources = ['branches'];
+        $resources = PermissionsHelper::getPermissionsArray();
         $actions = ['store', 'show', 'update', 'index', 'destroy', 'print', 'export'];
 
         foreach ($resources as $resource) {

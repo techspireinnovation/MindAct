@@ -51,6 +51,7 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\StaffController;
 use Illuminate\Http\Request;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -160,6 +161,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
     Route::resource('receipt-vouchers', ReceiptVoucherController::class);
     Route::resource('payment-vouchers', PaymentVoucherController::class);
+    Route::resource('company-staff', StaffController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);

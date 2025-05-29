@@ -23,6 +23,7 @@ class SaleProduct extends Model
         'expiry_date',
         'code',
         'name',
+        'batch_no',
         'measure_unit_id',
         'quantity',
         'free_quantity',

@@ -181,7 +181,6 @@ class ProductController extends Controller
             // Return paginated response with transformed data
             return response()->json([
                 'data' => $transformedProducts->items(),
-<<<
                 'pagination'=>['current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),

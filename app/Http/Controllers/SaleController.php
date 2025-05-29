@@ -943,14 +943,17 @@ class SaleController extends Controller
         }
         return response()->json($query->paginate(10));
     }
-       public function store(Request $request): JsonResponse
+       
+    public function store(Request $request): JsonResponse
 {
     try {
-        
         $validator = Validator::make($request->all(), [
             'company_id' => 'required|exists:companies,id',
             'customer_id' => 'required|exists:customers,id',
             'salesman_id' => 'required|exists:salesmen,id',
+            'customer_name' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
+            'ref_number' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:255|unique:sales,invoice_number',
             'document_number' => 'nullable|string|max:255',
             'batch_no' => 'nullable|string|max:255',
@@ -996,6 +999,8 @@ class SaleController extends Controller
             'sale_products.*.discount_amount' => 'nullable|numeric|min:0',
             'sale_products.*.is_vatable' => 'nullable|boolean',
             'sale_products.*.measure_unit_id' => 'required|exists:measure_units,id',
+            'sale_products.*.batch_no' => 'required|string|max:255',
+            'sale_products.*.expiry_date' => 'nullable|date',
             'sale_products.*.field_values' => 'nullable|array',
             'sale_products.*.field_values.*' => 'array|min:1',
             'sale_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
@@ -1014,12 +1019,13 @@ class SaleController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $validated = $validator->validated();
+        \Log::debug('Initial validated sale_products', ['sale_products' => $validated['sale_products']]);
 
         // Calculate fiscal year
         $date = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
@@ -1071,23 +1077,19 @@ class SaleController extends Controller
             }
 
             if ($sellEntireBatch) {
-                // Sell entire batch: map all purchase products to sale_products with available quantity
                 $validated['sale_products'] = $purchaseProducts->map(function ($product) use ($validated) {
                     $productModel = Product::find($product->product_id);
 
-                    // Calculate available quantity for this purchase_product
                     $purchasedQuantity = $product->quantity + ($product->free_quantity ?? 0);
                     $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $product->id)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum('quantity');
                     $soldQuantity = SaleProduct::where('product_id', $product->product_id)
-                        ->where('batch_no', $product->batch_no)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
                     $salesReturnedQuantity = SalesReturnProduct::where('product_id', $product->product_id)
-                        ->where('batch_no', $product->batch_no)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
@@ -1095,7 +1097,7 @@ class SaleController extends Controller
                     $availableQuantity = ($purchasedQuantity - $purchaseReturnedQuantity) - ($soldQuantity - $salesReturnedQuantity);
 
                     if ($availableQuantity <= 0) {
-                        return null; // Skip products with no available stock
+                        return null;
                     }
 
                     $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
@@ -1105,21 +1107,21 @@ class SaleController extends Controller
                                 'value' => $field->value,
                             ];
                         })->toArray();
-                    })->take($availableQuantity)->values()->toArray(); // Limit field values to available quantity
+                    })->take($availableQuantity)->values()->toArray();
 
                     return [
                         'product_id' => $product->product_id,
                         'purchase_product_id' => $product->id,
                         'quantity' => $availableQuantity,
-                        'free_quantity' => 0, // Assume free_quantity is not sold separately
+                        'free_quantity' => 0,
                         'price' => $productModel->price ?? $product->price,
                         'discount_percent' => $product->discount_percent ?? 0,
                         'discount_amount' => $product->discount_amount ?? 0,
                         'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
-                        'field_values' => $fieldValues,
-                        'batch_no' => $product->batch_no,
+                        'batch_no' => 'BATCH-' . $product->id . '-' . now()->format('Ymd'), // Generate fallback batch_no
                         'expiry_date' => $product->expiry_date,
+                        'field_values' => $fieldValues,
                     ];
                 })->filter()->values()->toArray();
 
@@ -1127,7 +1129,6 @@ class SaleController extends Controller
                     return response()->json(['error' => 'No available stock for the specified batch'], 422);
                 }
             } else {
-                // Sell specific products: validate they belong to the purchase
                 $purchaseProductIds = $purchaseProducts->pluck('id')->toArray();
                 foreach ($validated['sale_products'] as $index => $saleProduct) {
                     if (!in_array($saleProduct['purchase_product_id'], $purchaseProductIds)) {
@@ -1147,8 +1148,11 @@ class SaleController extends Controller
             }
         }
 
-        // Validate field values and stock (skip stock check for sell_entire_batch)
+        \Log::debug('Validated sale_products after batch processing', ['sale_products' => $validated['sale_products']]);
+
+        // Validate field values and stock
         foreach ($validated['sale_products'] as $index => $product) {
+            \Log::debug('Processing sale product at index ' . $index, ['product' => $product]);
             $productId = $product['product_id'];
             $purchaseProductId = $product['purchase_product_id'];
             $quantity = $product['quantity'];
@@ -1173,7 +1177,7 @@ class SaleController extends Controller
                 }
             }
 
-            // Stock check only for non-entire batch sales
+            // Stock check
             if (!$sellEntireBatch) {
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
                 $purchasedQuantity = PurchaseProduct::where('id', $purchaseProductId)
@@ -1184,13 +1188,22 @@ class SaleController extends Controller
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
                     ->sum('quantity');
+                $batchNo = $product['batch_no'] ?? null;
                 $soldQuantity = SaleProduct::where('product_id', $productId)
-                    ->where('batch_no', $product['batch_no'])
+                    ->when($batchNo, function ($query) use ($batchNo) {
+                        $query->where('batch_no', $batchNo);
+                    }, function ($query) {
+                        $query->whereNull('batch_no');
+                    })
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
                     ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
                 $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
-                    ->where('batch_no', $product['batch_no'])
+                    ->when($batchNo, function ($query) use ($batchNo) {
+                        $query->where('batch_no', $batchNo);
+                    }, function ($query) {
+                        $query->whereNull('batch_no');
+                    })
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
                     ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
@@ -1284,6 +1297,9 @@ class SaleController extends Controller
             'company_id' => 'required|exists:companies,id',
             'customer_id' => 'required|exists:customers,id',
             'salesman_id' => 'required|exists:salesmen,id',
+            'customer_name' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
+            'ref_number' => 'nullable|string|max:255',
             'invoice_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'invoice_number')->ignore($id)],
             'document_number' => 'nullable|string|max:255',
             'batch_no' => 'nullable|string|max:255',
@@ -1330,6 +1346,8 @@ class SaleController extends Controller
             'sale_products.*.discount_amount' => 'nullable|numeric|min:0',
             'sale_products.*.is_vatable' => 'nullable|boolean',
             'sale_products.*.measure_unit_id' => 'required|exists:measure_units,id',
+            'sale_products.*.batch_no' => 'required|string|max:255',
+            'sale_products.*.expiry_date' => 'nullable|date',
             'sale_products.*.field_values' => 'nullable|array',
             'sale_products.*.field_values.*' => 'array|min:1',
             'sale_products.*.field_values.*.*.id' => ['nullable', 'integer', Rule::exists('sales_product_field_values', 'id')],
@@ -1349,12 +1367,13 @@ class SaleController extends Controller
 
         if ($validator->fails()) {
             return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $validated = $validator->validated();
+        \Log::debug('Initial validated sale_products', ['sale_products' => $validated['sale_products']]);
 
         // Calculate fiscal year
         $newInvoiceDate = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
@@ -1408,24 +1427,20 @@ class SaleController extends Controller
             }
 
             if ($sellEntireBatch) {
-                // Sell entire batch: map all purchase products to sale_products with available quantity
                 $validated['sale_products'] = $purchaseProducts->map(function ($product) use ($validated) {
                     $productModel = Product::find($product->product_id);
 
-                    // Calculate available quantity for this purchase_product
                     $purchasedQuantity = $product->quantity + ($product->free_quantity ?? 0);
                     $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $product->id)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum('quantity');
                     $soldQuantity = SaleProduct::where('product_id', $product->product_id)
-                        ->where('batch_no', $product->batch_no)
                         ->where('company_id', $validated['company_id'])
-                        ->where('sale_id', '!=', $id) // Exclude current sale
+                        ->where('sale_id', '!=', $id)
                         ->whereNull('deleted_at')
                         ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
                     $salesReturnedQuantity = SalesReturnProduct::where('product_id', $product->product_id)
-                        ->where('batch_no', $product->batch_no)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
@@ -1433,7 +1448,7 @@ class SaleController extends Controller
                     $availableQuantity = ($purchasedQuantity - $purchaseReturnedQuantity) - ($soldQuantity - $salesReturnedQuantity);
 
                     if ($availableQuantity <= 0) {
-                        return null; // Skip products with no available stock
+                        return null;
                     }
 
                     $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
@@ -1449,15 +1464,15 @@ class SaleController extends Controller
                         'product_id' => $product->product_id,
                         'purchase_product_id' => $product->id,
                         'quantity' => $availableQuantity,
-                        'free_quantity' => 0, // Assume free_quantity is not sold separately
+                        'free_quantity' => 0,
                         'price' => $productModel->price ?? $product->price,
                         'discount_percent' => $product->discount_percent ?? 0,
                         'discount_amount' => $product->discount_amount ?? 0,
                         'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
-                        'field_values' => $fieldValues,
-                        'batch_no' => $product->batch_no,
+                        'batch_no' => 'BATCH-' . $product->id . '-' . now()->format('Ymd'),
                         'expiry_date' => $product->expiry_date,
+                        'field_values' => $fieldValues,
                     ];
                 })->filter()->values()->toArray();
 
@@ -1465,7 +1480,6 @@ class SaleController extends Controller
                     return response()->json(['error' => 'No available stock for the specified batch'], 422);
                 }
             } else {
-                // Validate specific products belong to the purchase
                 $purchaseProductIds = $purchaseProducts->pluck('id')->toArray();
                 foreach ($validated['sale_products'] as $index => $saleProduct) {
                     if (!in_array($saleProduct['purchase_product_id'], $purchaseProductIds)) {
@@ -1475,18 +1489,21 @@ class SaleController extends Controller
                     }
                     $purchaseProduct = $purchaseProducts->firstWhere('id', $saleProduct['purchase_product_id']);
                     $requestedQuantity = $saleProduct['quantity'] + ($saleProduct['free_quantity'] ?? 0);
-                    $availablePurchaseQuantity = $purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0);
-                    if ($requestedQuantity > $availablePurchaseQuantity) {
+                    $availableQuantity = $purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0);
+                    if ($requestedQuantity > $availableQuantity) {
                         return response()->json([
-                            'error' => "Requested quantity for purchase product ID {$saleProduct['purchase_product_id']} at index {$index} exceeds purchased quantity ({$availablePurchaseQuantity})"
+                            'error' => "Requested quantity for purchase product ID {$saleProduct['purchase_product_id']} at index {$index} exceeds purchased quantity ({$availableQuantity})"
                         ], 422);
                     }
                 }
             }
         }
 
+        \Log::debug('Validated sale_products after batch processing', ['sale_products' => $validated['sale_products']]);
+
         // Validate field values and stock
         foreach ($validated['sale_products'] as $index => $product) {
+            \Log::debug('Processing sale product at index ' . $index, ['product' => $product]);
             $productId = $product['product_id'];
             $purchaseProductId = $product['purchase_product_id'];
             $quantity = $product['quantity'];
@@ -1511,7 +1528,7 @@ class SaleController extends Controller
                 }
             }
 
-            // Stock check only for non-entire batch sales
+            // Stock check
             if (!$sellEntireBatch) {
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
                 $purchasedQuantity = PurchaseProduct::where('id', $purchaseProductId)
@@ -1522,14 +1539,23 @@ class SaleController extends Controller
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
                     ->sum('quantity');
+                $batchNo = $product['batch_no'] ?? null;
                 $soldQuantity = SaleProduct::where('product_id', $productId)
-                    ->where('batch_no', $product['batch_no'])
+                    ->when($batchNo, function ($query) use ($batchNo) {
+                        $query->where('batch_no', $batchNo);
+                    }, function ($query) {
+                        $query->whereNull('batch_no');
+                    })
                     ->where('company_id', $validated['company_id'])
                     ->where('sale_id', '!=', $id)
                     ->whereNull('deleted_at')
                     ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
                 $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
-                    ->where('batch_no', $product['batch_no'])
+                    ->when($batchNo, function ($query) use ($batchNo) {
+                        $query->where('batch_no', $batchNo);
+                    }, function ($query) {
+                        $query->whereNull('batch_no');
+                    })
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
                     ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
@@ -1657,17 +1683,40 @@ class SaleController extends Controller
             ])
         ], 200);
     } catch (ModelNotFoundException $e) {
-        Log::error($e);
-        return response()->json(['error' => 'Sale not found'], 404);
+        \Log::error('Model not found during sale update', [
+            'sale_id' => $id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'Sale or related resource not found'], 404);
     } catch (QueryException $e) {
-        Log::error($e);
-        return response()->json(['error' => 'Database error occurred'], 500);
+        \Log::error('Database error during sale update', [
+            'sale_id' => $id,
+            'error' => $e->getMessage(),
+            'sql' => $e->getSql(),
+            'bindings' => $e->getBindings(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'Database error occurred. Please try again later.'], 500);
+    } catch (ValidationException $e) {
+        \Log::warning('Validation failed during sale update', [
+            'sale_id' => $id,
+            'errors' => $e->errors(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json([
+            'message' => $e->getMessage(),
+            'errors' => $e->errors()
+        ], 422);
     } catch (\Exception $e) {
-        Log::error($e);
-        return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
+        \Log::error('Unexpected error during sale update', [
+            'sale_id' => $id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'An unexpected error occurred: ' . $e->getMessage()], 500);
     }
 }
-
 
 
     public function show($id): JsonResponse
@@ -1681,6 +1730,8 @@ class SaleController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
+
 
 
 

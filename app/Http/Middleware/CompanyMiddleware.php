@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class CompanyStaffMiddleware
+class CompanyMiddleware
 {
     /**
      * Handle an incoming request.
@@ -16,6 +16,16 @@ class CompanyStaffMiddleware
     public function handle(Request $request, Closure $next): Response
     {
         $user = $request->user();
+
+        // Check authorization for company admin
+        if ($user && $user->hasRole('company_admin') && $user->tokenCan('company_admin')) {
+            $company = $user->company;
+            if ($company) {
+                $request->merge(['company_id' => $company->company_id]);
+            }
+            //return $next($request);
+        }
+
         // Check authorization for company staff
         if ($user && $user->hasRole('company_admin') && $user->tokenCan('company_admin')) {
             $company = $user->company;
@@ -30,6 +40,6 @@ class CompanyStaffMiddleware
                 abort(403, 'Unauthorized action');
             }
         }
-        return response()->json(['message' => 'Forbidden: Company Staff only'], 403);
+        return response()->json(['message' => 'Forbidden: Company Admins/Staff only'], 403);
     }
 }

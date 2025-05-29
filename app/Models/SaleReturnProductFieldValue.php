@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Request;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
 

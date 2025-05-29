@@ -1,63 +1,71 @@
 <?php
 
 namespace App\Models;
+
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class SalesReturn extends Model
 {
     use SoftDeletes, HasFactory;
 
     protected $casts = [
-        'is_active' => 'boolean',
-        'payment' => 'array'
+        'payment' => 'array',
+        'invoice_date' => 'date',
+        'invoice_date_bs' => 'date',
     ];
-    
+
+    protected $dates = ['deleted_at'];
+
     protected $fillable = [
         'company_id',
         'customer_id', 
         'salesman_id',
-        'sale_id', 
-        'document_number', 
-        'invoice_number',  
-        'batch_no',  
+        'sale_id',
+        'pan_number',
+        'customer_name',
+        'credit_days',
+        'customer_address',
+        'customer_contact',
+        'return_bill_no',
+        'ref_bill_no',
+        'invoice_number',
+        'document_number',
+        'batch_no',
         'balance',
-        'payment',  
-        'invoice_date',  
-        'remarks', 
+        'invoice_date',
+        'invoice_date_bs',
+        'remarks',
         'store_id',
         'location_id',
-        'discount_amount',
-        'excise_duty', 
+        'sub_total_before_discount',
+        'discount',
+        'non_taxable_amount',
+        'taxable_amount',
+        'excise_duty',
         'health_insurance',
-        'freight_amount',  
-        'discount_vat',
-        'discount_after_vat',  
-        'paid_amount',
+        'freight_amount',
+        'discount_after_vat',
+        'total_amount',
         'round_of_amount',
-        'payment_type',
-        
+        'payment',
     ];
-    
-
-    protected $dates = ['deleted_at'];
 
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
     }
 
+    // Relationships
+
     public function sale()
     {
         return $this->belongsTo(Sale::class);
     }
-
 
     public function location()
     {
@@ -69,8 +77,8 @@ class SalesReturn extends Model
         return $this->hasMany(SalesReturnProduct::class);
     }
 
-    public function salesReturnAdditional()
-{
-    return $this->hasMany(SaleReturnAdditional::class,'sales_return_id'); // adjust class name if needed
-}
+    public function salesReturnAdditional(): HasMany
+    {
+        return $this->hasMany(SaleReturnAdditional::class, 'sales_return_id');
+    }
 }

@@ -14,17 +14,27 @@ class PermissionController extends Controller
     public function index(Request $request): JsonResponse
     {
         $allPermissions = PermissionsHelper::getPermissionsArray();
+        $permissionsResources = [];
         sort($allPermissions);
-        return response()->json($allPermissions);
+        foreach ($allPermissions as $permission) {
+            $found = Permission::where('name', 'LIKE', '%' . $permission . '%')->get();
+            if ($found->count())
+                $permissionsResources[$permission][] = $found;
+        }
+        return response()->json($permissionsResources);
     }
 
     public function update(Request $request, int $id)
     {
+        $user = $request->user();
+        // only company admin have this allowed to use
+        if (!$user || !$user->hasRole('company_admin') || !$user->tokenCan('company_admin')) {
+            abort(403, message: 'Unauthorized action');
+        }
         $user = User::find($id);
-
         $request->validate([
             'permissions' => 'required|array',
-            'permissions.*' => 'string' // or 'integer' for IDs
+            'permissions.*' => 'numeric' // or 'integer' for IDs
         ]);
 
         // Sync permissions by name (or IDs if using integer validation)

@@ -25,6 +25,7 @@ use App\Http\Controllers\MeasureUnitController;
 use App\Http\Controllers\NepalLocationPackageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentVoucherController;
+use App\Http\Controllers\Permissions\PermissionController;
 use App\Http\Controllers\ProductCategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
@@ -44,6 +45,7 @@ use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\ShrinkingWorkingLossController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\StockReconciliationController;
@@ -51,7 +53,6 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\StaffController;
 use Illuminate\Http\Request;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -70,8 +71,9 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
 });
 
-Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
 
+Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
+    Route::apiResource('permissions', PermissionController::class);
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('profile', [CompanyAdminController::class, 'profile']);
@@ -180,3 +182,5 @@ Route::post('/send-message', function (Request $request) {
 // forget password
 Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+
+

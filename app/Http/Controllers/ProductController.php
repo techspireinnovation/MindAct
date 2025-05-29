@@ -19,17 +19,12 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
-
-
     public function generateProductID(): JsonResponse
-
     {
-        
         $latestProduct = Product::withTrashed()->orderBy('id', 'desc')->first();
         $nextNumber = $latestProduct ? $latestProduct->id + 1 : 1;
         $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
 
-        
         while (Product::withTrashed()->where('product_unique_id', $productID)->exists()) {
             $nextNumber++;
             $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
@@ -38,14 +33,14 @@ class ProductController extends Controller
         return response()->json(['product_id' => $productID]);
     }
 
-    public function getProductNames(){
+    public function getProductNames()
+    {
 
-        try{
-
+        try {
             $productNames = Product::where('is_active', true)
                 ->whereNull('deleted_at')
                 ->pluck('name');
-            return $productNames ;
+            return $productNames;
         } catch (\Exception $e) {
             Log::error('Error fetching product names: ' . $e->getMessage(), [
                 'exception' => $e
@@ -53,20 +48,22 @@ class ProductController extends Controller
             return response()->json([
                 'error' => 'Server error occurred while fetching product names',
                 'details' => config('app.debug') ? $e->getMessage() : null
-            ], 500);    
+            ], 500);
 
-            }
+        }
     }
 
-    public function getProductDetailsByNames(Request $request) : JsonResponse
+    public function getProductDetailsByNames(Request $request): JsonResponse
     {
-        try{
+        try {
             $name = $request->input('name');
             if (!$name) {
                 return response()->json(['error' => 'Name parameter is required'], 422);
             }
-            $productNames = Product::with(['productLists',
-                'productFieldValues.productField'])
+            $productNames = Product::with([
+                'productLists',
+                'productFieldValues.productField'
+            ])
                 ->where('name', $name)
                 ->whereNull('deleted_at')
                 ->firstorFail();
@@ -74,44 +71,41 @@ class ProductController extends Controller
             $valuesByFieldId = $productNames->productFieldValues->keyBy('product_field_id');
             $productFields = ProductField::where('company_id', $productNames->company_id);
             $productFields = $productFields->whereIn('id', $valuesByFieldId->keys())
-                                        ->get();
-            $productFields = $productFields->map(function ($field) use ($valuesByFieldId){
+                ->get();
+            $productFields = $productFields->map(function ($field) use ($valuesByFieldId) {
                 $fieldArray = [
-                'product_field_id' => $field->id, // Rename id to product_field_id
-                'company_id' => $field->company_id,
-                'name' => $field->name,
-                'type' => $field->type,
-                'values' => $field->values,
-                'is_active' => $field->is_active,
-                'deleted_at' => $field->deleted_at,
-                'created_at' => $field->created_at,
-                'updated_at' => $field->updated_at,
-                'product_field_value' => $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at'])
+                    'product_field_id' => $field->id, // Rename id to product_field_id
+                    'company_id' => $field->company_id,
+                    'name' => $field->name,
+                    'type' => $field->type,
+                    'values' => $field->values,
+                    'is_active' => $field->is_active,
+                    'deleted_at' => $field->deleted_at,
+                    'created_at' => $field->created_at,
+                    'updated_at' => $field->updated_at,
+                    'product_field_value' => $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at'])
                 ];
                 return $fieldArray;
             });
             $productNames = $productNames->toArray();
             unset($productNames['product_field_values']);
             $productNames['product_fields'] = $productFields;
-
-            
             return response()->json([
                 'product' => $productNames
             ]);
-        }catch(ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product not found!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database query error occurred!'], 500);
 
         } catch (\Exception $e) {
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
-            }
+        }
     }
 
     public function index(Request $request): JsonResponse
     {
         try {
-            
             $validator = Validator::make($request->all(), [
                 'filter_by' => 'nullable|string',
                 'search_name' => 'nullable|string|max:100',
@@ -187,10 +181,12 @@ class ProductController extends Controller
             // Return paginated response with transformed data
             return response()->json([
                 'data' => $transformedProducts->items(),
+<<<
                 'pagination'=>['current_page' => $products->currentPage(),
                 'last_page' => $products->lastPage(),
                 'per_page' => $products->perPage(),
                 'total' => $products->total()
+
                 ]
             ]);
 
@@ -284,7 +280,6 @@ class ProductController extends Controller
         });
     }
 
-
     protected function applyPartialMatchFallback($query, $searchTerms, $availableFilters): void
     {
         $matchExpressions = [];
@@ -306,7 +301,6 @@ class ProductController extends Controller
                     });
                 }
             })
-
             ->orderByDesc('relevance_score')
             // Add secondary sorting criteria for consistent results
             ->orderBy('products.name') // or another unique field like ID
@@ -366,59 +360,57 @@ class ProductController extends Controller
 
 
     public function update(Request $request, $id): JsonResponse
-
-   {
-
-    try {
-
-        $item = Product::findOrFail($id);
-        $rules = [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('products')
-                    ->ignore($id)
-                    ->where(function ($query) use ($request, $item) {
-                        return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                    ->whereNull('deleted_at');
-                    }),
-            ],
-            'is_active' => 'boolean|required',
-            'product_unique_id' => 'string|max:255|unique:products,product_unique_id,' . $id,
-            'company_id' => 'integer|exists:companies,id',
-            'category_id' => 'integer|nullable|',
-            'sub_category_id' => 'integer|nullable|',
-            'brand_id' => 'integer|nullable|',
-            'measure_unit_id' => 'integer|exists:measure_units,id',
-            'purchase_rate' => 'numeric|nullable|',
-            'purchase_rate_vat' => 'numeric|nullable|',
-            'retail_sales_price' => 'numeric|nullable|',
-            'retail_sales_price_vat' => 'numeric|nullable|',
-            'retail_sales_price_profit_percent' => 'numeric|nullable|',
-            'wholesales_price' => 'numeric|nullable|',
-            'wholesales_price_vat' => 'numeric|nullable|',
-            'wholesales_price_profit_percent' => 'numeric|nullable|',
-            'is_vatable' => 'boolean|nullable',
-            'stock_alert' => 'nullable',
-            'product_type_id' => 'integer|nullable|',
-            'location_id' => 'integer|nullable|',
-            'field_values' => 'array',
-            'field_values.*.product_field_id' => 'integer|nullable',
-            'field_values.*.value' => 'nullable|string|max:255',
-            'product_list' => 'nullable|array',
-            'product_list.*.id' => 'nullable|nullable',
-            'product_list.*.product_unique_id' => 'nullable',
-            'product_list.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
-            'product_list.*.quantity' => 'nullable|integer',
-            'product_list.*.barcode' => 'nullable|string|max:255', // Removed unique rule
-            'product_list.*.is_primary' => 'boolean',
-            'product_list.*.hs_code' => 'nullable|string|max:255',
-            'product_list.*.price' => 'nullable|numeric',
-            'product_list.*.discount' => 'nullable|numeric',
-            'product_list.*.final_price' => 'nullable|numeric',
-            'product_list.*.primary_measure_unit_id' => 'nullable|integer|exists:measure_units,id',
-        ];
+    {
+        try {
+            $item = Product::findOrFail($id);
+            $rules = [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('products')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $item) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
+                'is_active' => 'boolean|required',
+                'product_unique_id' => 'string|max:255|unique:products,product_unique_id,' . $id,
+                'company_id' => 'integer|exists:companies,id',
+                'category_id' => 'integer|nullable|',
+                'sub_category_id' => 'integer|nullable|',
+                'is_fixed_amount' => 'boolean|nullable',
+                'brand_id' => 'integer|nullable|',
+                'measure_unit_id' => 'integer|exists:measure_units,id',
+                'purchase_rate' => 'numeric|nullable|',
+                'purchase_rate_vat' => 'numeric|nullable|',
+                'retail_sales_price' => 'numeric|nullable|',
+                'retail_sales_price_vat' => 'numeric|nullable|',
+                'retail_sales_price_profit_percent' => 'numeric|nullable|',
+                'wholesales_price' => 'numeric|nullable|',
+                'wholesales_price_vat' => 'numeric|nullable|',
+                'wholesales_price_profit_percent' => 'numeric|nullable|',
+                'is_vatable' => 'boolean|nullable',
+                'stock_alert' => 'nullable',
+                'product_type_id' => 'integer|nullable|',
+                'location_id' => 'integer|nullable|',
+                'field_values' => 'array',
+                'field_values.*.product_field_id' => 'integer|nullable',
+                'field_values.*.value' => 'nullable|string|max:255',
+                'product_list' => 'nullable|array',
+                'product_list.*.id' => 'nullable|nullable',
+                'product_list.*.product_unique_id' => 'nullable',
+                'product_list.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
+                'product_list.*.quantity' => 'nullable|integer',
+                'product_list.*.barcode' => 'nullable|string|max:255', // Removed unique rule
+                'product_list.*.is_primary' => 'boolean',
+                'product_list.*.hs_code' => 'nullable|string|max:255',
+                'product_list.*.price' => 'nullable|numeric',
+                'product_list.*.discount' => 'nullable|numeric',
+                'product_list.*.final_price' => 'nullable|numeric',
+                'product_list.*.primary_measure_unit_id' => 'nullable|integer|exists:measure_units,id',
+            ];
 
 
             $validator = Validator::make($request->all(), $rules, [
@@ -456,7 +448,7 @@ class ProductController extends Controller
             });
 
             if ($validator->fails()) {
-                 return response()->json([
+                return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
                 ], 422);
@@ -524,11 +516,9 @@ class ProductController extends Controller
         } catch (\Exception $e) {
             Log::error($e);
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+        }
+
     }
-
-   } 
-
-
 
     public function store(Request $request): JsonResponse
     {
@@ -545,6 +535,7 @@ class ProductController extends Controller
             ],
             'is_active' => 'boolean|required',
             'category_id' => 'integer|nullable',
+            'is_fixed_amount' => 'boolean|nullable',
             'product_unique_id' => 'string|max:255|unique:products',
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
@@ -607,40 +598,40 @@ class ProductController extends Controller
     }
 
 
-public function show(Request $request, $id): JsonResponse
-{
-    try {
-        $product = Product::where('company_id', $request->company_id)
-            ->with([
-                'productLists',
-                'productFieldValues.productField'
-            ])
-            ->findOrFail($id);
+    public function show(Request $request, $id): JsonResponse
+    {
+        try {
+            $product = Product::where('company_id', $request->company_id)
+                ->with([
+                    'productLists',
+                    'productFieldValues.productField'
+                ])
+                ->findOrFail($id);
 
-        // Group values by field ID
-        $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
+            // Group values by field ID
+            $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
 
-        // Get only product fields with values for this product
-        $productFields = ProductField::where('company_id', $product->company_id)
-            ->whereIn('id', $valuesByFieldId->keys())
-            ->get();
+            // Get only product fields with values for this product
+            $productFields = ProductField::where('company_id', $product->company_id)
+                ->whereIn('id', $valuesByFieldId->keys())
+                ->get();
 
-        // Build response fields with values embedded
-        $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
-            $fieldArray = [
-                'product_field_id' => $field->id, // Rename id to product_field_id
-                'company_id' => $field->company_id,
-                'name' => $field->name,
-                'type' => $field->type,
-                'values' => $field->values,
-                'is_active' => $field->is_active,
-                'deleted_at' => $field->deleted_at,
-                'created_at' => $field->created_at,
-                'updated_at' => $field->updated_at,
-                'product_field_value' => $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at'])
-            ];
-            return $fieldArray;
-        });
+            // Build response fields with values embedded
+            $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
+                $fieldArray = [
+                    'product_field_id' => $field->id, // Rename id to product_field_id
+                    'company_id' => $field->company_id,
+                    'name' => $field->name,
+                    'type' => $field->type,
+                    'values' => $field->values,
+                    'is_active' => $field->is_active,
+                    'deleted_at' => $field->deleted_at,
+                    'created_at' => $field->created_at,
+                    'updated_at' => $field->updated_at,
+                    'product_field_value' => $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at'])
+                ];
+                return $fieldArray;
+            });
 
             // Prepare product response without product_field_values
             $productArray = $product->toArray();
@@ -648,10 +639,10 @@ public function show(Request $request, $id): JsonResponse
             $productArray['product_fields'] = $product_fields;
 
             // Rename 'product_lists' to 'product_list' in the response
-          if (isset($productArray['product_lists'])) {
-            $productArray['product_list'] = $productArray['product_lists'];
-            unset($productArray['product_lists']);
-          }
+            if (isset($productArray['product_lists'])) {
+                $productArray['product_list'] = $productArray['product_lists'];
+                unset($productArray['product_lists']);
+            }
 
             return response()->json([
                 'product' => $productArray
@@ -667,40 +658,33 @@ public function show(Request $request, $id): JsonResponse
     }
 
     public function destroy($id): JsonResponse
+    {
+        try {
+            $item = Product::findOrFail($id);
 
-{
-    try {
-        $item = Product::findOrFail($id);
 
-      
-        $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
-        $hasSales = DB::table('sale_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
+            $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
+            $hasSales = DB::table('sale_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
 
-        if ($hasPurchases || $hasSales) {
-            return response()->json([
-                'error' => 'Cannot delete product because it is associated with purchases or sales.'
-            ], 422);
+            if ($hasPurchases || $hasSales) {
+                return response()->json([
+                    'error' => 'Cannot delete product because it is associated with purchases or sales.'
+                ], 422);
 
+            }
+            $item->delete();
+            broadcast(new ProductUpdated($item, 'deleted'));
+            return response()->json(['message' => 'Product deleted!!']);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
-
-        $item->delete();
-        broadcast(new ProductUpdated($item, 'deleted'));
-        return response()->json(['message' => 'Product deleted!!']);
-
-
-    } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Item not found'], 404);
-    } catch (QueryException $e) {
-        
-        \Log::error($e);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
-}
 
-    
+
 }

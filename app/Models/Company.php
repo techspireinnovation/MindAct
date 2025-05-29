@@ -3,20 +3,22 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Model;
 
 class Company extends Model
 {
-    use HasFactory, SoftDeletes ;
-    
+    use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'name',
         'licence_issue_date',
         'working_date',
         'reg_number',
         'pan_number',
+        'vat_number',
+        'is_vatable',
         'full_address',
         'email_address',
         'website',
@@ -37,9 +39,8 @@ class Company extends Model
         'deleted_at'
 
     ];
-    
-        
-        public function purchaseMasterKey(): HasOne
+
+    public function purchaseMasterKey(): HasOne
     {
         return $this->hasOne(PurchaseMasterKey::class);
     }

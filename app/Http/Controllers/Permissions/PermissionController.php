@@ -59,7 +59,7 @@ class PermissionController extends Controller
         $user = User::find($id);
         $request->validate([
             'permissions' => 'required|array',
-            'permissions.*' => 'numeric' // or 'integer' for IDs
+            'permissions.*' => 'numeric'
         ]);
 
         // Sync permissions by name (or IDs if using integer validation)

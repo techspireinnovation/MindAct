@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Permissions;
 use App\Helpers\PermissionsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Permission;
@@ -20,6 +21,30 @@ class PermissionController extends Controller
             $found = Permission::where('name', 'LIKE', '%' . $permission . '%')->get();
             if ($found->count())
                 $permissionsResources[$permission][] = $found;
+        }
+        return response()->json($permissionsResources);
+    }
+
+    public function show(Request $request, int $userId): JsonResponse
+    {
+        $allPermissions = PermissionsHelper::getPermissionsArray();
+        $permissionsResources = [];
+        sort($allPermissions);
+        foreach ($allPermissions as $permission) {
+            $found = Permission::select([
+                'permissions.id',
+                'permissions.name',
+                DB::raw("CASE WHEN model_has_permissions.permission_id IS NOT NULL THEN true ELSE false END as has_permission")
+            ])
+                ->leftJoin('model_has_permissions', function ($join) use ($userId) {
+                    $join->on('permissions.id', '=', 'model_has_permissions.permission_id')
+                        ->where('model_has_permissions.model_type', '=', User::class)
+                        ->where('model_has_permissions.model_id', '=', $userId);
+                })
+                ->where('name', 'LIKE', '%' . $permission . '%')->orderBy('id')->get();
+            if ($found->count()) {
+                $permissionsResources[$permission][] = $found;
+            }
         }
         return response()->json($permissionsResources);
     }

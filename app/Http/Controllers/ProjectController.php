@@ -126,7 +126,7 @@ class ProjectController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = Bank::findOrFail($id);
+            $item = Project::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

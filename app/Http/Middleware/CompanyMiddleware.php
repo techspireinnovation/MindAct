@@ -25,7 +25,7 @@ class CompanyMiddleware
             if ($company) {
                 $request->merge(['company_id' => $company->company_id]);
             }
-            //return $next($request);
+            return $next($request);
         }
 
         // Check authorization for company staff
@@ -45,11 +45,9 @@ class CompanyMiddleware
             ) {
                 //dd($user->givePermissionTo([$resource]));
                 if (!auth()->user()->hasPermissionTo($resource)) {
-                    abort(403, 'Unauthorized action');
+                    abort(403, message: 'Unauthorized action');
                 }
             }
-
-
             return $next($request);
         }
         return response()->json(['message' => 'Forbidden: Company Admins or Staff only'], 403);

@@ -31,6 +31,7 @@ class Sale extends Model
         'company_id',
         'customer_id',
         'customer_name',
+        'sale_id',
         'customer_address',
         'credit_days',
         'balance',

@@ -20,7 +20,6 @@ return new class extends Migration {
             $table->date('bill_date');
             $table->double('amount')->nullable();
             $table->double('discount')->nullable();
-            $table->double('discount')->nullable();
             $table->double('taxable_amount')->nullable();
             $table->double('tax_amount')->nullable();
             $table->double('total_amount')->nullable();

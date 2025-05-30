@@ -29,46 +29,82 @@ use Carbon\Carbon;
 
 class SaleController extends Controller
 {
-    protected function generateUniqueInvoiceNumber(string $fiscalYear): string
-{
-    // Prefix for the invoice number, e.g., "INV"
-    $prefix = 'INV';
+     public function generateUniqueInvoiceNumber(Request $request): JsonResponse
+    {
+        // Prefix for the invoice number
+        $prefix = 'INV';
 
-    
-    $year = substr($fiscalYear, 0, 4);
+        // Calculate fiscal year based on invoice_date or current date
+        $date = Carbon::now();
+       
+        $fiscal_year_start = Carbon::create($date->year, 7, 16);
+        $fiscalYear = $date->lessThan($fiscal_year_start)
+            ? ($date->year - 1) . '-' . substr($date->year, 2, 2)
+            : $date->year . '-' . substr($date->year + 1, 2, 2);
 
-    // Lock the sales table to prevent race conditions
-    return DB::transaction(function () use ($prefix, $year) {
-        // Find the latest invoice number for the given fiscal year
-        $latestInvoice = Sale::where('invoice_number', 'like', "{$prefix}-{$year}-%")
-            ->orderBy('invoice_number', 'desc')
-            ->first();
+        // Extract the starting year from fiscal year (e.g., '2025' from '2025-26')
+        $year = substr($fiscalYear, 0, 4);
 
-        // Extract the sequence number from the latest invoice or start at 0
-        $sequence = 0;
-        if ($latestInvoice && preg_match("/{$prefix}-{$year}-(\d+)/", $latestInvoice->invoice_number, $matches)) {
-            $sequence = (int)$matches[1];
-        }
+        // Lock the sales_returns table to prevent race conditions
+        return DB::transaction(function () use ($prefix, $year, $fiscalYear) {
+            // Log the start of invoice number generation
+            Log::info('Generating unique invoice number', [
+                'prefix' => $prefix,
+                'year' => $year,
+                'fiscalYear' => $fiscalYear,
+                'date' => now()->toDateTimeString()
+            ]);
 
-        // Increment the sequence
-        $newSequence = $sequence + 1;
+            // Find the latest invoice number in sales_returns (including soft-deleted)
+            $latestInvoice = Sale::withTrashed()
+                ->where('invoice_number', 'like', "{$prefix}-{$year}-%")
+                ->orderBy('invoice_number', 'desc')
+                ->first();
 
-        // Format the new invoice number with leading zeros (e.g., 000001)
-        $formattedSequence = str_pad($newSequence, 6, '0', STR_PAD_LEFT);
+            // Extract the sequence number from the latest invoice or start at 0
+            $sequence = 0;
+            if ($latestInvoice && preg_match("/{$prefix}-{$year}-(\d+)/", $latestInvoice->invoice_number, $matches)) {
+                $sequence = (int)$matches[1];
+                Log::debug('Found latest invoice number', [
+                    'invoice_number' => $latestInvoice->invoice_number,
+                    'sequence' => $sequence
+                ]);
+            } else {
+                Log::debug('No existing invoice numbers found for the year', [
+                    'year' => $year
+                ]);
+            }
 
-        // Construct the new invoice number
-        $newInvoiceNumber = "{$prefix}-{$year}-{$formattedSequence}";
+            // Increment the sequence
+            $newSequence = $sequence + 1;
 
-        // Double-check uniqueness (in case of concurrent transactions)
-        while (Sale::where('invoice_number', $newInvoiceNumber)->exists()) {
-            $newSequence++;
+            // Format the new invoice number with leading zeros (6 digits)
             $formattedSequence = str_pad($newSequence, 6, '0', STR_PAD_LEFT);
-            $newInvoiceNumber = "{$prefix}-{$year}-{$formattedSequence}";
-        }
 
-        return $newInvoiceNumber;
-    });
-}
+            // Construct the new invoice number
+            $newInvoiceNumber = "{$prefix}-{$year}-{$formattedSequence}";
+
+            // Log the generated invoice number
+            Log::info('Generated invoice number', [
+                'new_invoice_number' => $newInvoiceNumber,
+                'new_sequence' => $newSequence
+            ]);
+
+            // Double-check uniqueness in sales_returns (including soft-deleted)
+            while (Sale::withTrashed()->where('invoice_number', $newInvoiceNumber)->exists()) {
+                $newSequence++;
+                $formattedSequence = str_pad($newSequence, 6, '0', STR_PAD_LEFT);
+                $newInvoiceNumber = "{$prefix}-{$year}-{$formattedSequence}";
+                Log::warning('Invoice number already exists, incrementing sequence', [
+                    'new_invoice_number' => $newInvoiceNumber,
+                    'new_sequence' => $newSequence
+                ]);
+            }
+
+            return response()->json(['invoice_number'=>$newInvoiceNumber]);
+        });
+    }
+
 
      private function getAvailableProductsForSale($companyId)
     {
@@ -162,315 +198,7 @@ class SaleController extends Controller
     }
 
     
-    // private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null): array
-    // {
-    //     Log::debug('Fetching detailed available products with field values', [
-    //         'product_id' => $productId,
-    //         'product_name' => $productName,
-    //         'company_id' => $companyId
-    //     ]);
-
-    //     try {
-    //         DB::enableQueryLog();
-
-    //         // Check unmatched PurchaseProduct records
-    //         $unmatchedPurchases = PurchaseProduct::withoutGlobalScopes()
-    //             ->select(
-    //                 'purchase_products.id',
-    //                 'purchase_products.product_id',
-    //                 'purchase_products.quantity',
-    //                 'purchase_products.free_quantity',
-    //                 'purchase_products.expiry_date',
-    //                 'purchase_products.company_id',
-    //                 'purchase_products.measure_unit_id'
-    //             )
-    //             ->leftJoin('products', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.product_id', '=', 'products.id')
-    //                      ->where('products.company_id', $companyId)
-    //                      ->whereNull('products.deleted_at');
-    //             })
-    //             ->leftJoin('measure_units', function ($join) {
-    //                 $join->on('purchase_products.measure_unit_id', '=', 'measure_units.id');
-    //             })
-    //             ->whereNull('purchase_products.deleted_at')
-    //             ->where('purchase_products.company_id', $companyId)
-    //             ->where(function ($query) {
-    //                 $query->whereNull('products.id')
-    //                       ->orWhereNull('measure_units.id');
-    //             })
-    //             ->when($productId, function ($query) use ($productId) {
-    //                 $query->where('purchase_products.product_id', $productId);
-    //             })
-    //             ->when($productName, function ($query) use ($productName) {
-    //                 $query->where('purchase_products.product_name', $productName)
-    //                       ->orWhere('products.name', $productName);
-    //             })
-    //             ->get();
-
-    //         Log::debug('Unmatched PurchaseProduct records', [
-    //             'company_id' => $companyId,
-    //             'product_id' => $productId,
-    //             'product_name' => $productName,
-    //             'unmatched_count' => $unmatchedPurchases->count(),
-    //             'unmatched_records' => $unmatchedPurchases->toArray()
-    //         ]);
-
-    //         // Debug product fields
-    //         $productFields = ProductField::withoutGlobalScopes()
-    //             ->whereIn('id', [1, 2, 3, 4, 5])
-    //             ->select('id', 'name', 'company_id')
-    //             ->get();
-
-    //         Log::debug('Product fields check', [
-    //             'company_id' => $companyId,
-    //             'product_fields' => $productFields->toArray()
-    //         ]);
-
-    //         // Debug purchase product field values
-    //         $fieldValuesCheck = PurchaseProductFieldValue::withoutGlobalScopes()
-    //             ->select(
-    //                 'id',
-    //                 'purchase_product_id',
-    //                 'quantity_index',
-    //                 'product_field_id',
-    //                 'value',
-    //                 'company_id',
-    //                 'product_id',
-    //                 'deleted_at'
-    //             )
-    //             ->whereIn('purchase_product_id', [55, 56])
-    //             ->get();
-
-    //         Log::debug('Purchase product field values check', [
-    //             'company_id' => $companyId,
-    //             'purchase_product_ids' => [55, 56],
-    //             'product_id' => 26,
-    //             'field_values' => $fieldValuesCheck->toArray()
-    //         ]);
-
-    //         // Debug purchase_products data
-    //         $purchaseProductsCheck = PurchaseProduct::withoutGlobalScopes()
-    //             ->select(
-    //                 'id',
-    //                 'product_id',
-    //                 'product_name',
-    //                 'company_id',
-    //                 'measure_unit_id',
-    //                 'deleted_at'
-    //             )
-    //             ->whereIn('id', [55, 56])
-    //             ->get();
-
-    //         Log::debug('Purchase product data check', [
-    //             'company_id' => $companyId,
-    //             'purchase_product_ids' => [55, 56],
-    //             'purchase_products' => $purchaseProductsCheck->toArray()
-    //         ]);
-
-    //         // Main product query
-    //         $query = PurchaseProduct::withoutGlobalScopes()
-    //             ->select([
-    //                 'products.id as product_id',
-    //                 'purchase_products.product_name as product_name',
-    //                 'products.product_unique_id as product_code',
-    //                 DB::raw('MIN(purchase_products.price) as min_price'),
-    //                 DB::raw('MAX(purchase_products.is_vatable) as is_vatable'),
-    //                 'purchase_products.measure_unit_id',
-    //                 DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) as purchased_quantity'),
-    //                 DB::raw('COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) as return_quantity'),
-    //                 DB::raw('COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) as sale_quantity'),
-    //                 DB::raw('COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as sales_return_quantity'),
-    //                 DB::raw('SUM(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
-    //                          COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) - 
-    //                          COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) + 
-    //                          COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as available_quantity'),
-    //                 DB::raw('GROUP_CONCAT(DISTINCT purchase_products.expiry_date) as expiry_dates')
-    //             ])
-    //             ->join('products', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.product_id', '=', 'products.id')
-    //                      ->where('products.company_id', $companyId)
-    //                      ->whereNull('products.deleted_at');
-    //             })
-    //             ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
-    //                      ->whereNull('purchase_product_returns.deleted_at')
-    //                      ->where('purchase_product_returns.company_id', $companyId);
-    //             })
-    //             ->leftJoin('sale_products', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
-    //                      ->whereNull('sale_products.deleted_at')
-    //                      ->where('sale_products.company_id', $companyId);
-    //             })
-    //             ->leftJoin('sales_return_products', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.id', '=', 'sales_return_products.purchase_product_id')
-    //                      ->whereNull('sales_return_products.deleted_at')
-    //                      ->where('sales_return_products.company_id', $companyId);
-    //             })
-    //             ->whereNull('purchase_products.deleted_at')
-    //             ->where('purchase_products.company_id', $companyId);
-
-    //         if ($productId) {
-    //             $query->where('products.id', $productId);
-    //         }
-
-    //         if ($productName) {
-    //             $query->where('purchase_products.product_name', $productName)
-    //                   ->orWhere('products.name', $productName);
-    //         }
-
-    //         $query->groupBy(['products.id', 'purchase_products.product_name', 'products.product_unique_id', 'purchase_products.measure_unit_id'])
-    //               ->having('available_quantity', '>', 0);
-
-    //         $products = $query->get();
-
-    //         Log::debug('Available product details query', [
-    //             'sql' => DB::getQueryLog(),
-    //             'product_count' => $products->count(),
-    //             'products' => $products->toArray()
-    //         ]);
-
-    //         if ($products->isEmpty()) {
-    //             return [];
-    //         }
-
-    //         // Log product IDs
-    //         $productIds = $products->pluck('product_id')->toArray();
-    //         Log::debug('Product IDs for field values query', [
-    //             'product_ids' => $productIds
-    //         ]);
-
-    //         // Fetch field values for available quantities
-    //         $fieldValuesQuery = PurchaseProductFieldValue::withoutGlobalScopes()
-    //             ->select([
-    //                 'purchase_product_field_values.purchase_product_id',
-    //                 'purchase_product_field_values.quantity_index',
-    //                 'purchase_product_field_values.product_field_id',
-    //                 'purchase_product_field_values.value',
-    //                 'product_fields.name as field_name',
-    //                 'purchase_products.expiry_date',
-    //                 'purchase_products.product_id'
-    //             ])
-    //             ->leftJoin('product_fields', 'purchase_product_field_values.product_field_id', '=', 'product_fields.id')
-    //             ->join('purchase_products', 'purchase_product_field_values.purchase_product_id', '=', 'purchase_products.id')
-    //             ->leftJoin('sale_products', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
-    //                      ->whereNull('sale_products.deleted_at')
-    //                      ->where('sale_products.company_id', $companyId);
-    //             })
-    //             ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
-    //                      ->whereNull('purchase_product_returns.deleted_at')
-    //                      ->where('purchase_product_returns.company_id', $companyId);
-    //             })
-    //             ->leftJoin('sales_return_products', function ($join) use ($companyId) {
-    //                 $join->on('purchase_products.id', '=', 'sales_return_products.purchase_product_id')
-    //                      ->whereNull('sales_return_products.deleted_at')
-    //                      ->where('sales_return_products.company_id', $companyId);
-    //             })
-    //             ->whereIn('purchase_products.product_id', $productIds)
-    //             ->whereNull('purchase_product_field_values.deleted_at')
-    //             ->whereNull('purchase_products.deleted_at')
-    //             ->where('purchase_products.company_id', $companyId)
-    //             // Comment out temporarily
-    //             ->where('product_fields.company_id', $companyId)
-    //             ->where('purchase_product_field_values.company_id', $companyId)
-    //             ->groupBy([
-    //                 'purchase_product_field_values.purchase_product_id',
-    //                 'purchase_product_field_values.quantity_index',
-    //                 'purchase_product_field_values.product_field_id',
-    //                 'purchase_product_field_values.value',
-    //                 'product_fields.name',
-    //                 'purchase_products.expiry_date',
-    //                 'purchase_products.product_id'
-    //             ]);
-
-    //         Log::debug('Field values query SQL', [
-    //             'sql' => $fieldValuesQuery->toSql(),
-    //             'bindings' => $fieldValuesQuery->getBindings()
-    //         ]);
-
-    //         $fieldValuesRaw = $fieldValuesQuery->get();
-
-    //         Log::debug('Field values query result', [
-    //             'field_values_count' => $fieldValuesRaw->count(),
-    //             'field_values_raw' => $fieldValuesRaw->toArray()
-    //         ]);
-
-    //         // Map field values to match available quantities
-    //         $fieldValues = [];
-    //         foreach ($products as $product) {
-    //             $productId = $product->product_id;
-    //             $availableQuantity = $product->available_quantity;
-
-    //             // Filter field values for this product
-    //             $productFieldValues = $fieldValuesRaw->filter(function ($field) use ($productId) {
-    //                 return $field->product_id == $productId;
-    //             });
-
-    //             Log::debug('Filtered field values for product', [
-    //                 'product_id' => $productId,
-    //                 'filtered_count' => $productFieldValues->count(),
-    //                 'filtered_values' => $productFieldValues->toArray()
-    //             ]);
-
-    //             if ($productFieldValues->isEmpty()) {
-    //                 $fieldValues[$productId] = [];
-    //                 continue;
-    //             }
-
-    //             // Group by purchase_product_id and quantity_index
-    //             $groupedFieldValues = $productFieldValues
-    //                 ->groupBy('purchase_product_id')
-    //                 ->flatMap(function ($purchaseGroup) {
-    //                     return $purchaseGroup->groupBy('quantity_index')->map(function ($indexGroup) {
-    //                         return $indexGroup->map(function ($field) {
-    //                             return [
-    //                                 'product_field_id' => $field->product_field_id,
-    //                                 'field_name' => $field->field_name ?? 'Unknown',
-    //                                 'value' => $field->value,
-    //                                 'expiry_date' => $field->expiry_date
-    //                             ];
-    //                         })->values()->toArray();
-    //                     })->values();
-    //                 })->values()->toArray();
-
-    //             // Limit field values to available quantity
-    //             $fieldValues[$productId] = array_slice($groupedFieldValues, 0, $availableQuantity);
-    //         }
-
-    //         $result = $products->map(function ($product) use ($fieldValues) {
-    //             return [
-    //                 'product_id' => $product->product_id,
-    //                 'product_name' => $product->product_name,
-    //                 'product_code' => $product->product_code,
-    //                 'min_price' => $product->min_price,
-    //                 'is_vatable' => (bool)$product->is_vatable,
-    //                 'measure_unit_id' => $product->measure_unit_id,
-    //                 'purchased_quantity' => $product->purchased_quantity,
-    //                 'return_quantity' => $product->return_quantity,
-    //                 'sale_quantity' => $product->sale_quantity,
-    //                 'sales_return_quantity' => $product->sales_return_quantity,
-    //                 'available_quantity' => $product->available_quantity,
-    //                 'expiry_dates' => array_filter(explode(',', $product->expiry_dates)),
-    //                 'field_values' => $fieldValues[$product->product_id] ?? []
-    //             ];
-    //         })->toArray();
-
-    //         return $result;
-
-    //     } catch (\Exception $e) {
-    //         Log::error('Error fetching detailed available products', [
-    //             'product_id' => $productId,
-    //             'product_name' => $productName,
-    //             'company_id' => $companyId,
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString()
-    //         ]);
-    //         throw $e;
-    //     } finally {
-    //         DB::disableQueryLog();
-    //     }
-    // }
+    
 
     private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null): array
 {
@@ -940,6 +668,9 @@ class SaleController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'salesman_id' => 'required|exists:salesmen,id',
             'customer_name' => 'nullable|string|max:255',
+            'customer_address' => 'nullable|string|max:255',
+            'contact_number' => 'nullable|string|max:255',
+            'credit_days' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
             'ref_number' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:255|unique:sales,invoice_number',
@@ -947,6 +678,7 @@ class SaleController extends Controller
             'batch_no' => 'nullable|string|max:255',
             'balance' => 'nullable|numeric',
             'invoice_date' => 'nullable|date',
+            'invoice_date_bs' => 'nullable|date',
             'remarks' => 'nullable|string|max:255',
             'store_id' => 'required|exists:stores,id',
             'location_id' => 'required|exists:locations,id',
@@ -1016,14 +748,14 @@ class SaleController extends Controller
         \Log::debug('Initial validated sale_products', ['sale_products' => $validated['sale_products']]);
 
         // Calculate fiscal year
-        $date = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
-        $fiscal_year_start = Carbon::create($date->year, 7, 16);
-        $fiscalYear = $date->lessThan($fiscal_year_start)
-            ? ($date->year - 1) . '-' . substr($date->year, 2, 2)
-            : $date->year . '-' . substr($date->year + 1, 2, 2);
+        // $date = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
+        // $fiscal_year_start = Carbon::create($date->year, 7, 16);
+        // $fiscalYear = $date->lessThan($fiscal_year_start)
+        //     ? ($date->year - 1) . '-' . substr($date->year, 2, 2)
+        //     : $date->year . '-' . substr($date->year + 1, 2, 2);
 
-        // Generate unique invoice number if not provided
-        $validated['invoice_number'] = $request->input('invoice_number') ?? $this->generateUniqueInvoiceNumber($fiscalYear);
+        // // Generate unique invoice number if not provided
+        // $validated['invoice_number'] = $request->input('invoice_number') ?? $this->generateUniqueInvoiceNumber($fiscalYear);
 
         // Handle batch processing
         $hasBatchIdentifier = isset($validated['purchase_id']) || isset($validated['purchase_bill_number']) || isset($validated['batch_no_sale']);
@@ -1286,6 +1018,9 @@ class SaleController extends Controller
             'customer_id' => 'required|exists:customers,id',
             'salesman_id' => 'required|exists:salesmen,id',
             'customer_name' => 'nullable|string|max:255',
+            'customer_address' => 'nullable|string|max:255',
+            'contact_number' => 'nullable|string|max:255',
+            'credit_days' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
             'ref_number' => 'nullable|string|max:255',
             'invoice_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'invoice_number')->ignore($id)],
@@ -1293,6 +1028,7 @@ class SaleController extends Controller
             'batch_no' => 'nullable|string|max:255',
             'balance' => 'nullable|numeric',
             'invoice_date' => 'nullable|date',
+            'invoice_date_bs' => 'nullable|date',
             'remarks' => 'nullable|string|max:255',
             'store_id' => 'required|exists:stores,id',
             'location_id' => 'required|exists:locations,id',
@@ -1364,16 +1100,16 @@ class SaleController extends Controller
         \Log::debug('Initial validated sale_products', ['sale_products' => $validated['sale_products']]);
 
         // Calculate fiscal year
-        $newInvoiceDate = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
-        $fiscal_year_start = Carbon::create($newInvoiceDate->year, 7, 16);
-        $fiscalYearNew = $newInvoiceDate->lessThan($fiscal_year_start)
-            ? ($newInvoiceDate->year - 1) . '-' . substr($newInvoiceDate->year, 2, 2)
-            : $newInvoiceDate->year . '-' . substr($newInvoiceDate->year + 1, 2, 2);
+        // $newInvoiceDate = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
+        // $fiscal_year_start = Carbon::create($newInvoiceDate->year, 7, 16);
+        // $fiscalYearNew = $newInvoiceDate->lessThan($fiscal_year_start)
+        //     ? ($newInvoiceDate->year - 1) . '-' . substr($newInvoiceDate->year, 2, 2)
+        //     : $newInvoiceDate->year . '-' . substr($newInvoiceDate->year + 1, 2, 2);
 
-        // Generate unique invoice number if not provided
-        if (!isset($validated['invoice_number'])) {
-            $validated['invoice_number'] = $this->generateUniqueInvoiceNumber($fiscalYearNew);
-        }
+        // // Generate unique invoice number if not provided
+        // if (!isset($validated['invoice_number'])) {
+        //     $validated['invoice_number'] = $this->generateUniqueInvoiceNumber($fiscalYearNew);
+        // }
 
         // Handle batch processing
         $hasBatchIdentifier = isset($validated['purchase_id']) || isset($validated['purchase_bill_number']) || isset($validated['batch_no_sale']);
@@ -1839,6 +1575,24 @@ public function getSalesByExpiryDate(Request $request): JsonResponse
         return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
     }
 }
+
+public function destroy($id): JsonResponse
+{
+    try {
+            $item = Sale::findOrFail($id);
+            $item->delete();
+            return response()->json(['message' => 'Sale deleted']);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
 
 
 }

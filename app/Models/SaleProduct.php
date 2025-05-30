@@ -52,4 +52,9 @@ class SaleProduct extends Model
         return $this->hasMany(SalesProductFieldValue::class, 'sale_product_id');
     }
     
+    public function saleProductReturns()
+    {
+        return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
+    }
+   
 }

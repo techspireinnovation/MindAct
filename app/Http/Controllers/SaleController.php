@@ -474,7 +474,7 @@ class SaleController extends Controller
 
     private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null): array
 {
-    Log::debug('Fetching detailed available products with field values', [
+    Log::debug('Fetching detailed available products with purchase products', [
         'product_id' => $productId,
         'product_name' => $productName,
         'company_id' => $companyId
@@ -483,101 +483,7 @@ class SaleController extends Controller
     try {
         DB::enableQueryLog();
 
-        // Check unmatched PurchaseProduct records
-        $unmatchedPurchases = PurchaseProduct::withoutGlobalScopes()
-            ->select(
-                'purchase_products.id',
-                'purchase_products.product_id',
-                'purchase_products.quantity',
-                'purchase_products.free_quantity',
-                'purchase_products.expiry_date',
-                'purchase_products.company_id',
-                'purchase_products.measure_unit_id'
-            )
-            ->leftJoin('products', function ($join) use ($companyId) {
-                $join->on('purchase_products.product_id', '=', 'products.id')
-                     ->where('products.company_id', $companyId)
-                     ->whereNull('products.deleted_at');
-            })
-            ->leftJoin('measure_units', function ($join) {
-                $join->on('purchase_products.measure_unit_id', '=', 'measure_units.id');
-            })
-            ->whereNull('purchase_products.deleted_at')
-            ->where('purchase_products.company_id', $companyId)
-            ->where(function ($query) {
-                $query->whereNull('products.id')
-                      ->orWhereNull('measure_units.id');
-            })
-            ->when($productId, function ($query) use ($productId) {
-                $query->where('purchase_products.product_id', $productId);
-            })
-            ->when($productName, function ($query) use ($productName) {
-                $query->where('purchase_products.product_name', $productName)
-                      ->orWhere('products.name', $productName);
-            })
-            ->get();
-
-        Log::debug('Unmatched PurchaseProduct records', [
-            'company_id' => $companyId,
-            'product_id' => $productId,
-            'product_name' => $productName,
-            'unmatched_count' => $unmatchedPurchases->count(),
-            'unmatched_records' => $unmatchedPurchases->toArray()
-        ]);
-
-        // Debug product fields
-        $productFields = ProductField::withoutGlobalScopes()
-            ->whereIn('id', [1, 2, 3, 4, 5])
-            ->select('id', 'name', 'company_id')
-            ->get();
-
-        Log::debug('Product fields check', [
-            'company_id' => $companyId,
-            'product_fields' => $productFields->toArray()
-        ]);
-
-        // Debug purchase product field values
-        $fieldValuesCheck = PurchaseProductFieldValue::withoutGlobalScopes()
-            ->select(
-                'id',
-                'purchase_product_id',
-                'quantity_index',
-                'product_field_id',
-                'value',
-                'company_id',
-                'product_id',
-                'deleted_at'
-            )
-            ->whereIn('purchase_product_id', [55, 56, 60])
-            ->get();
-
-        Log::debug('Purchase product field values check', [
-            'company_id' => $companyId,
-            'purchase_product_ids' => [55, 56, 60],
-            'product_id' => $productId ?? 29,
-            'field_values' => $fieldValuesCheck->toArray()
-        ]);
-
-        // Debug purchase_products data
-        $purchaseProductsCheck = PurchaseProduct::withoutGlobalScopes()
-            ->select(
-                'id',
-                'product_id',
-                'product_name',
-                'company_id',
-                'measure_unit_id',
-                'deleted_at'
-            )
-            ->whereIn('id', [55, 56, 60])
-            ->get();
-
-        Log::debug('Purchase product data check', [
-            'company_id' => $companyId,
-            'purchase_product_ids' => [55, 56, 60],
-            'purchase_products' => $purchaseProductsCheck->toArray()
-        ]);
-
-        // Main product query
+        // Original query for product details (from getAvailableProductsDetails)
         $query = PurchaseProduct::withoutGlobalScopes()
             ->select([
                 'products.id as product_id',
@@ -640,16 +546,14 @@ class SaleController extends Controller
         ]);
 
         if ($products->isEmpty()) {
-            return [];
+            return [
+                'message' => 'Product details retrieved',
+                'data' => []
+            ];
         }
 
-        // Log product IDs
+        // Fetch field values (from original method)
         $productIds = $products->pluck('product_id')->toArray();
-        Log::debug('Product IDs for field values query', [
-            'product_ids' => $productIds
-        ]);
-
-        // Fetch field values for available quantities with quantity_index adjustments
         $fieldValuesQuery = PurchaseProductFieldValue::withoutGlobalScopes()
             ->select([
                 'purchase_product_field_values.purchase_product_id',
@@ -659,7 +563,7 @@ class SaleController extends Controller
                 'product_fields.name as field_name',
                 'purchase_products.expiry_date',
                 'purchase_products.product_id',
-                DB::raw('1 as purchased_quantity'), // Each quantity_index represents 1 unit
+                DB::raw('1 as purchased_quantity'),
                 DB::raw('COALESCE(COUNT(DISTINCT purchase_return_product_field_values.quantity_index), 0) as return_quantity'),
                 DB::raw('COALESCE(COUNT(DISTINCT sales_product_field_values.quantity_index), 0) as sale_quantity'),
                 DB::raw('COALESCE(COUNT(DISTINCT sale_return_product_field_values.quantity_index), 0) as sales_return_quantity'),
@@ -720,11 +624,6 @@ class SaleController extends Controller
             ])
             ->having('available_quantity', '>', 0);
 
-        Log::debug('Field values query SQL', [
-            'sql' => $fieldValuesQuery->toSql(),
-            'bindings' => $fieldValuesQuery->getBindings()
-        ]);
-
         $fieldValuesRaw = $fieldValuesQuery->get();
 
         Log::debug('Field values query results', [
@@ -733,35 +632,25 @@ class SaleController extends Controller
             'quantity_indices' => $fieldValuesRaw->pluck('quantity_index')->unique()->toArray()
         ]);
 
-        // Map field values to match available quantities
+        // Map field values
         $fieldValues = [];
         foreach ($products as $product) {
             $productId = $product->product_id;
             $availableQuantity = $product->available_quantity;
 
-            // Filter field values for this product
             $productFieldValues = $fieldValuesRaw->filter(function ($field) use ($productId) {
                 return $field->product_id == $productId;
             });
-
-            Log::debug('Filtered field values for product', [
-                'product_id' => $productId,
-                'filtered_count' => $productFieldValues->count(),
-                'filtered_values' => $productFieldValues->toArray(),
-                'quantity_indices' => $productFieldValues->pluck('quantity_index')->unique()->toArray()
-            ]);
 
             if ($productFieldValues->isEmpty()) {
                 $fieldValues[$productId] = [];
                 continue;
             }
 
-            // Group by purchase_product_id and quantity_index
             $groupedFieldValues = $productFieldValues
                 ->groupBy('purchase_product_id')
                 ->flatMap(function ($purchaseGroup) use ($availableQuantity) {
                     return $purchaseGroup->groupBy('quantity_index')->map(function ($indexGroup) {
-                        $indexAvailableQuantity = $indexGroup->first()->available_quantity ?? 0;
                         return $indexGroup->map(function ($field) {
                             return [
                                 'product_field_id' => $field->product_field_id,
@@ -771,16 +660,111 @@ class SaleController extends Controller
                                 'available_quantity' => $field->available_quantity
                             ];
                         })->values()->toArray();
-                    })->filter(function ($group) {
-                        return !empty($group); // Only include non-empty groups
-                    })->take($availableQuantity)->values();
+                    })->filter()->take($availableQuantity)->values();
                 })->values()->toArray();
 
-            // Limit field values to the product's total available quantity
             $fieldValues[$productId] = array_slice($groupedFieldValues, 0, $availableQuantity);
         }
 
-        $result = $products->map(function ($product) use ($fieldValues) {
+        // Fetch PurchaseProduct details
+        $purchaseProductsQuery = PurchaseProduct::withoutGlobalScopes()
+            ->select([
+                'purchase_products.id',
+                'purchase_products.purchase_id',
+                'purchase_products.product_id',
+                'purchase_products.product_name',
+                'purchase_products.product_code',
+                'purchase_products.quantity',
+                'purchase_products.free_quantity',
+                'purchase_products.expiry_date',
+                'purchase_products.price',
+                'purchase_products.is_vatable',
+                'purchase_products.measure_unit_id',
+                'purchases.purchase_bill_number',
+                'purchases.invoice_date',
+                DB::raw('COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) as return_quantity'),
+                DB::raw('COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) as sale_quantity'),
+                DB::raw('COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as sales_return_quantity'),
+                DB::raw('(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                         COALESCE(SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)), 0) - 
+                         COALESCE(SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)), 0) + 
+                         COALESCE(SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)), 0) as available_quantity')
+            ])
+            ->join('purchases', function ($join) use ($companyId) {
+                $join->on('purchase_products.purchase_id', '=', 'purchases.id')
+                     ->where('purchases.company_id', $companyId)
+                     ->whereNull('purchases.deleted_at');
+            })
+            ->leftJoin('purchase_product_returns', function ($join) use ($companyId) {
+                $join->on('purchase_products.id', '=', 'purchase_product_returns.purchase_product_id')
+                     ->whereNull('purchase_product_returns.deleted_at')
+                     ->where('purchase_product_returns.company_id', $companyId);
+            })
+            ->leftJoin('sale_products', function ($join) use ($companyId) {
+                $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
+                     ->whereNull('sale_products.deleted_at')
+                     ->where('sale_products.company_id', $companyId);
+            })
+            ->leftJoin('sales_return_products', function ($join) use ($companyId) {
+                $join->on('purchase_products.id', '=', 'sales_return_products.purchase_product_id')
+                     ->whereNull('sales_return_products.deleted_at')
+                     ->where('sales_return_products.company_id', $companyId);
+            })
+            ->whereIn('purchase_products.product_id', $productIds)
+            ->where('purchase_products.company_id', $companyId)
+            ->whereNull('purchase_products.deleted_at')
+            ->groupBy([
+                'purchase_products.id',
+                'purchase_products.purchase_id',
+                'purchase_products.product_id',
+                'purchase_products.product_name',
+                'purchase_products.product_code',
+                'purchase_products.quantity',
+                'purchase_products.free_quantity',
+                'purchase_products.expiry_date',
+                'purchase_products.price',
+                'purchase_products.is_vatable',
+                'purchase_products.measure_unit_id',
+                'purchases.purchase_bill_number',
+                'purchases.invoice_date'
+            ])
+            ->having('available_quantity', '>', 0);
+
+        $purchaseProducts = $purchaseProductsQuery->get();
+
+        Log::debug('PurchaseProduct details query', [
+            'sql' => DB::getQueryLog(),
+            'purchase_product_count' => $purchaseProducts->count(),
+            'purchase_products' => $purchaseProducts->toArray()
+        ]);
+
+        // Map results
+        $result = $products->map(function ($product) use ($fieldValues, $purchaseProducts) {
+            $productId = $product->product_id;
+            $productPurchaseProducts = $purchaseProducts->filter(function ($pp) use ($productId) {
+                return $pp->product_id == $productId;
+            })->map(function ($pp) {
+                return [
+                    'purchase_product_id' => $pp->id,
+                    'purchase_id' => $pp->purchase_id,
+                    'purchase_bill_number' => $pp->purchase_bill_number,
+                    'invoice_date' => $pp->invoice_date,
+                    'product_id' => $pp->product_id,
+                    'product_name' => $pp->product_name,
+                    'product_code' => $pp->product_code,
+                    'quantity' => $pp->quantity,
+                    'free_quantity' => $pp->free_quantity ?? 0,
+                    'price' => $pp->price,
+                    'is_vatable' => (bool)$pp->is_vatable,
+                    'measure_unit_id' => $pp->measure_unit_id,
+                    'expiry_date' => $pp->expiry_date,
+                    'return_quantity' => $pp->return_quantity,
+                    'sale_quantity' => $pp->sale_quantity,
+                    'sales_return_quantity' => $pp->sales_return_quantity,
+                    'available_quantity' => $pp->available_quantity
+                ];
+            })->values()->toArray();
+
             return [
                 'product_id' => $product->product_id,
                 'product_name' => $product->product_name,
@@ -794,14 +778,18 @@ class SaleController extends Controller
                 'sales_return_quantity' => $product->sales_return_quantity,
                 'available_quantity' => $product->available_quantity,
                 'expiry_dates' => array_filter(explode(',', $product->expiry_dates)),
-                'field_values' => $fieldValues[$product->product_id] ?? []
+                'field_values' => $fieldValues[$product->product_id] ?? [],
+                'purchase_products' => $productPurchaseProducts
             ];
         })->toArray();
 
-        return $result;
+        return [
+            'message' => 'Product details retrieved',
+            'data' => $result
+        ];
 
     } catch (\Exception $e) {
-        Log::error('Error fetching detailed available products', [
+        Log::error('Error fetching detailed available products with purchase products', [
             'product_id' => $productId,
             'product_name' => $productName,
             'company_id' => $companyId,
@@ -953,7 +941,7 @@ class SaleController extends Controller
             'salesman_id' => 'required|exists:salesmen,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
-            'ref_bill_no' => 'nullable|string|max:255',
+            'ref_number' => 'nullable|string|max:255',
             'invoice_number' => 'nullable|string|max:255|unique:sales,invoice_number',
             'document_number' => 'nullable|string|max:255',
             'batch_no' => 'nullable|string|max:255',
@@ -1299,7 +1287,7 @@ class SaleController extends Controller
             'salesman_id' => 'required|exists:salesmen,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
-            'ref_bill_no' => 'nullable|string|max:255',
+            'ref_number' => 'nullable|string|max:255',
             'invoice_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'invoice_number')->ignore($id)],
             'document_number' => 'nullable|string|max:255',
             'batch_no' => 'nullable|string|max:255',

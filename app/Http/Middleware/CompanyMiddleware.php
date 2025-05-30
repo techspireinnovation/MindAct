@@ -29,7 +29,7 @@ class CompanyMiddleware
         }
 
         // Check authorization for company staff
-        if ($user && $user->hasRole('company_admin') && $user->tokenCan('company_admin')) {
+        if ($user && $user->hasRole('company_staff') && $user->tokenCan('company_staff')) {
             $company = $user->company;
             if ($company) {
                 $request->merge(['company_id' => $company->company_id]);

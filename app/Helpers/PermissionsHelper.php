@@ -8,7 +8,7 @@ class PermissionsHelper
 {
     public static function getPermissionsArray()
     {
-        return ['branches', 'suppliers', 'banks'];
+        return ['branches', 'suppliers', 'banks', 'brands'];
 
     }
 

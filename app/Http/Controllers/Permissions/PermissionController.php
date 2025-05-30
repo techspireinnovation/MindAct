@@ -56,6 +56,7 @@ class PermissionController extends Controller
         if (!$user || !$user->hasRole('company_admin') || !$user->tokenCan('company_admin')) {
             abort(403, message: 'Unauthorized action');
         }
+
         $user = User::find($id);
         $request->validate([
             'permissions' => 'required|array',

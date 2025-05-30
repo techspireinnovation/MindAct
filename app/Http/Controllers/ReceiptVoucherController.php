@@ -24,79 +24,90 @@ class ReceiptVoucherController extends Controller
 
     }
 
-    public function update(Request $request, $id): JsonResponse
-{
-    try {
-        
-        $validator = Validator::make($request->all(), [
-            'company_id' => 'integer|exists:companies,id',
-            'date_ad' => 'nullable|date',
-            'date_bs' => 'nullable|date',
-           
-            'reference_number' => [
-                'string',
-                Rule::unique('receipt_vouchers')->ignore($id),
-            ],
-            'receipt_voucher_number' => [
-                'string',
-                Rule::unique('receipt_vouchers')->ignore($id),
-            ],
-            'receipt_voucher_list' => 'nullable|array',
-            'receipt_voucher_list.*.id' => 'nullable|integer|exists:receipt_voucher_details,id',
-            'receipt_voucher_list.*.company_id' => 'nullable|integer|exists:companies,id',
-            'receipt_voucher_list.*.customer_id' => 'nullable|integer|exists:customers,id',
-            'receipt_voucher_list.*.party_name' => 'nullable|string',
-            'receipt_voucher_list.*.amount' => 'nullable|numeric',
-            'receipt_voucher_list.*.contra_acount' => 'nullable|string', 
-            'receipt_voucher_list.*.remarks' => 'nullable|string',
-            'receipt_voucher_list.*.cheque_slip' => 'nullable|string',
-            'receipt_voucher_list.*.remaining_balance' => 'nullable|numeric',
-        ]);
+     public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'date_ad' => 'nullable|date',
+                'date_bs' => 'nullable|date',
+                'reference_number' => [
+                    'string',
+                    Rule::unique('receipt_vouchers')->ignore($id),
+                ],
+                'receipt_voucher_number' => [
+                    'string',
+                    Rule::unique('receipt_vouchers')->ignore($id),
+                ],
+                'receipt_voucher_list' => 'nullable|array',
+                'receipt_voucher_list.*.id' => 'nullable|integer|exists:receipt_voucher_details,id',
+                'receipt_voucher_list.*.customer_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('customers', 'id')->where(function ($query) use ($request) {
+                        $query->where('company_id', $request->company_id);
+                    }),
+                ],
+                'receipt_voucher_list.*.party_name' => 'nullable|string',
+                'receipt_voucher_list.*.amount' => 'nullable|numeric',
+                'receipt_voucher_list.*.contra_acount' => 'nullable|string',
+                'receipt_voucher_list.*.remarks' => 'nullable|string',
+                'receipt_voucher_list.*.cheque_slip' => 'nullable|string',
+                'receipt_voucher_list.*.remaining_balance' => 'nullable|numeric',
+            ]);
 
-        if ($validator->fails()) {
-             return response()->json([
+            if ($validator->fails()) {
+                return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
                 ], 422);
-        }
-
-        $validated = $validator->validated();
-
-        $receiptVoucher = DB::transaction(function () use ($validated, $id) {
-            $receiptVoucher = ReceiptVoucher::findOrFail($id);
-            $receiptVoucher->update($validated);
-
-            if (isset($validated['receipt_voucher_list'])) {
-                $existingDetailIds = $receiptVoucher->receiptVoucherDetails()->pluck('id')->toArray();
-                $incomingDetailIds = collect($validated['receipt_voucher_list'])->pluck('id')->filter()->toArray();
-
-                foreach ($validated['receipt_voucher_list'] as $detailData) {
-                    if (isset($detailData['id']) && in_array($detailData['id'], $existingDetailIds)) {
-                        $detail = ReceiptVoucherDetail::find($detailData['id']);
-                        $detail->update($detailData);
-                    } else {
-                        $receiptVoucher->receiptVoucherDetails()->create($detailData);
-                    }
-                }
-
-                $detailsToDelete = array_diff($existingDetailIds, $incomingDetailIds);
-                ReceiptVoucherDetail::whereIn('id', $detailsToDelete)->delete();
             }
 
-            return $receiptVoucher;
-        });
+            $validated = $validator->validated();
+            $companyId = $request->company_id; // Set by middleware
 
-        return response()->json([
-            'message' => 'Receipt Voucher Updated',
-            'item' => $receiptVoucher->load('receiptVoucherDetails'),
-        ], 200);
-    } catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Receipt Voucher not found'], 404);
-    } catch (\Exception $e) {
-        Log::error($e);
-        return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+            $receiptVoucher = DB::transaction(function () use ($validated, $id, $companyId) {
+                $receiptVoucher = ReceiptVoucher::findOrFail($id);
+
+                // Ensure the receipt voucher belongs to the company
+                if ($receiptVoucher->company_id !== $companyId) {
+                    throw new \Exception('Receipt Voucher does not belong to the specified company');
+                }
+
+                $validated['company_id'] = $companyId;
+                $receiptVoucher->update($validated);
+
+                if (isset($validated['receipt_voucher_list'])) {
+                    $existingDetailIds = $receiptVoucher->receiptVoucherDetails()->pluck('id')->toArray();
+                    $incomingDetailIds = collect($validated['receipt_voucher_list'])->pluck('id')->filter()->toArray();
+
+                    foreach ($validated['receipt_voucher_list'] as $detailData) {
+                        $detailData['company_id'] = $companyId; // Set company_id for details
+                        if (isset($detailData['id']) && in_array($detailData['id'], $existingDetailIds)) {
+                            $detail = ReceiptVoucherDetail::find($detailData['id']);
+                            $detail->update($detailData);
+                        } else {
+                            $receiptVoucher->receiptVoucherDetails()->create($detailData);
+                        }
+                    }
+
+                    $detailsToDelete = array_diff($existingDetailIds, $incomingDetailIds);
+                    ReceiptVoucherDetail::whereIn('id', $detailsToDelete)->delete();
+                }
+
+                return $receiptVoucher;
+            });
+
+            return response()->json([
+                'message' => 'Receipt Voucher Updated',
+                'item' => $receiptVoucher->load('receiptVoucherDetails'),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Receipt Voucher not found'], 404);
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+        }
     }
-}
     
         
 
@@ -106,37 +117,41 @@ class ReceiptVoucherController extends Controller
 {
     try {
         $validator = Validator::make($request->all(), [
-            'company_id' => 'integer|exists:companies,id',
             'date_ad' => 'nullable|date',
             'date_bs' => 'nullable|date',
             'reference_number' => 'nullable|string|unique:receipt_vouchers,reference_number',
             'receipt_voucher_number' => 'string|unique:receipt_vouchers,receipt_voucher_number',
             'receipt_voucher_list' => 'nullable|array',
             'receipt_voucher_list.*.id' => 'nullable',
-            'receipt_voucher_list.*.company_id' => 'nullable|integer|exists:companies,id',
             'receipt_voucher_list.*.customer_id' => 'nullable|integer|exists:customers,id',
             'receipt_voucher_list.*.party_name' => 'nullable|string',
             'receipt_voucher_list.*.amount' => 'nullable|numeric',
-            'receipt_voucher_list.*.contra_acount' => 'nullable|string', // Fixed typo
+            'receipt_voucher_list.*.contra_acount' => 'nullable|string',
             'receipt_voucher_list.*.remarks' => 'nullable|string',
             'receipt_voucher_list.*.cheque_slip' => 'nullable|string',
             'receipt_voucher_list.*.remaining_balance' => 'nullable|numeric',
         ]);
 
         if ($validator->fails()) {
-             return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $validated = $validator->validated();
+        $companyId = $request->company_id; // Set by middleware
 
-        $receiptVoucher = DB::transaction(function () use ($validated) {
+        $receiptVoucher = DB::transaction(function () use ($validated, $companyId) {
+            $validated['company_id'] = $companyId;
             $receiptVoucher = ReceiptVoucher::create($validated);
 
             if (isset($validated['receipt_voucher_list'])) {
-                $receiptVoucher->receiptVoucherDetails()->createMany($validated['receipt_voucher_list']);
+                $details = array_map(function ($detail) use ($companyId) {
+                    $detail['company_id'] = $companyId; // Override or set company_id
+                    return $detail;
+                }, $validated['receipt_voucher_list']);
+                $receiptVoucher->receiptVoucherDetails()->createMany($details);
             }
 
             return $receiptVoucher;
@@ -151,7 +166,6 @@ class ReceiptVoucherController extends Controller
         return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
     }
 }
-
 
 public function show(Request $request, $id): JsonResponse
 {

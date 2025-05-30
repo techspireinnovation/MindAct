@@ -153,6 +153,10 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
     Route::get('get-purchase-product-details-by-names', [PurchaseReturnController::class, 'getPurchaseProductDetails']);
+    Route::get('get-sales-ref-numbers', [SalesReturnController::class, 'listAvailableRefNumbers']);
+    Route::get('get-sales-by-ref-numbers', [SalesReturnController::class, 'getSaleByRefNumber']);
+    Route::get('get-sales-invoice-numbers', [SalesReturnController::class, 'listAvailableInvoiceNumbers']);
+    Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
     Route::resource('salesman', SalesmanController::class);
     Route::resource('stock-entries', StockEntryController::class);
     Route::resource('stock-adjustments', StockAdjustmentController::class);

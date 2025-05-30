@@ -67,6 +67,339 @@ class SalesReturnController extends Controller
         });
     }
 
+    public function listAvailableInvoiceNumbers(Request $request): JsonResponse
+{
+    try {
+        // Validate company_id
+        $validator = Validator::make($request->all(), [
+            'company_id' => 'required|exists:companies,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $companyId = $request->input('company_id');
+
+        // Query to get invoice_numbers from sales where not all quantities are returned
+        $invoiceNumbers = Sale::where('company_id', $companyId)
+            ->whereNotNull('invoice_number')
+            ->where('invoice_number', '!=', '')
+            ->whereExists(function ($query) use ($companyId) {
+                $query->select(DB::raw(1))
+                      ->from('sale_products')
+                      ->whereColumn('sale_products.sale_id', 'sales.id')
+                      ->where('sale_products.company_id', $companyId)
+                      ->whereNull('sale_products.deleted_at')
+                      ->where(function ($subQuery) use ($companyId) {
+                          $subQuery->whereExists(function ($existsQuery) use ($companyId) {
+                              $existsQuery->select(DB::raw(1))
+                                          ->from('sales_return_products')
+                                          ->whereColumn('sales_return_products.sale_product_id', 'sale_products.id')
+                                          ->where('sales_return_products.company_id', $companyId)
+                                          ->whereNull('sales_return_products.deleted_at')
+                                          ->havingRaw('SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) < sale_products.quantity + COALESCE(sale_products.free_quantity, 0)');
+                          })
+                          ->orWhereNotExists(function ($notExistsQuery) use ($companyId) {
+                              $notExistsQuery->select(DB::raw(1))
+                                            ->from('sales_return_products')
+                                            ->whereColumn('sales_return_products.sale_product_id', 'sale_products.id')
+                                            ->where('sales_return_products.company_id', $companyId)
+                                            ->whereNull('sales_return_products.deleted_at');
+                          });
+                      });
+            })
+            ->distinct()
+            ->pluck('invoice_number')
+            ->toArray();
+
+        return response()->json([
+            'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
+            'data' => $invoiceNumbers
+        ], 200);
+    } catch (\Exception $e) {
+        \Log::error('Error retrieving available invoice_numbers', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
+    }
+}
+
+
+public function getSaleByRefNumber(Request $request): JsonResponse
+{
+    try {
+        // Validate required parameters
+        if (!$request->has('ref_number') || !$request->has('company_id')) {
+            return response()->json(['error' => 'Missing required parameters.'], 422);
+        }
+
+        // Fetch sale with associated products, filtering for remaining quantities
+        $sale = Sale::where('company_id', $request->company_id)
+            ->where('ref_number', $request->ref_number)
+            ->with([
+                'saleProducts' => function ($query) {
+                    $query->whereRaw('quantity + COALESCE(free_quantity, 0) - COALESCE((
+                        SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                        FROM sales_return_products
+                        WHERE sales_return_products.sale_product_id = sale_products.id
+                        AND sales_return_products.deleted_at IS NULL
+                    ), 0) > 0')
+                    ->with([
+                        'fieldValues.productField',
+                        'saleProductReturns' => function ($subQuery) {
+                            $subQuery->whereNull('deleted_at');
+                        }
+                    ]);
+                }
+            ])
+            ->first();
+
+        // Return 404 if sale not found
+        if (!$sale) {
+            return response()->json(['error' => 'Sale not found'], 404);
+        }
+
+        // If no products with remaining quantity, return not found
+        if (empty($sale->saleProducts)) {
+            return response()->json(['error' => 'No available products for this sale'], 404);
+        }
+
+        // Transform the field_values into nested array format, excluding already returned field_values
+        $saleData = $sale->toArray();
+        foreach ($saleData['sale_products'] as &$product) {
+            // Calculate remaining quantity
+            $totalReturned = SalesReturnProduct::where('sale_product_id', $product['id'])
+                ->whereNull('deleted_at')
+                ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
+            $product['remaining_quantity'] = ($product['quantity'] + ($product['free_quantity'] ?? 0)) - $totalReturned;
+
+            // Include purchase_product_id
+            $product['purchase_product_id'] = $product['purchase_product_id'] ?? null;
+
+            // Get the quantity indices of already returned field_values
+            $returnedQuantityIndices = [];
+            if (!empty($product['sale_product_returns'])) {
+                $returnIds = array_column($product['sale_product_returns'], 'id');
+                $returnedQuantityIndices = SalesReturnProductFieldValue::whereIn('sales_return_product_id', $returnIds)
+                    ->whereNull('deleted_at')
+                    ->pluck('quantity_index')
+                    ->toArray();
+                $returnedQuantityIndices = array_unique($returnedQuantityIndices);
+            }
+
+            // Filter field_values to exclude those already returned
+            $groupedFieldValues = [];
+            foreach ($product['field_values'] as $fieldValue) {
+                $quantityIndex = $fieldValue['quantity_index'];
+                if (in_array($quantityIndex, $returnedQuantityIndices)) {
+                    continue;
+                }
+                if (!isset($groupedFieldValues[$quantityIndex])) {
+                    $groupedFieldValues[$quantityIndex] = [];
+                }
+                $groupedFieldValues[$quantityIndex][] = [
+                    'product_field_id' => $fieldValue['product_field_id'],
+                    'name' => $fieldValue['product_field']['name'] ?? null,
+                    'value' => $fieldValue['value']
+                ];
+            }
+            $product['field_values'] = array_values($groupedFieldValues);
+
+            // Clean up sale_product_returns from the response
+            unset($product['sale_product_returns']);
+        }
+
+        // Filter out products with no field_values (all units returned)
+        $saleData['sale_products'] = array_filter($saleData['sale_products'], function ($product) {
+            return !empty($product['field_values']);
+        });
+
+        // If no products remain after filtering, return not found
+        if (empty($saleData['sale_products'])) {
+            return response()->json(['error' => 'No available products for this sale'], 404);
+        }
+
+        return response()->json(['data' => $saleData]);
+    } catch (QueryException $e) {
+        \Log::error('Database error in getSaleByRefNumber: ' . $e->getMessage());
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error('Unexpected error in getSaleByRefNumber: ' . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
+public function getSaleByInvoiceNumber(Request $request): JsonResponse
+{
+    try {
+        // Validate required parameters
+        if (!$request->has('invoice_number') || !$request->has('company_id')) {
+            return response()->json(['error' => 'Missing required parameters.'], 422);
+        }
+
+        // Fetch sale with associated products, filtering for remaining quantities
+        $sale = Sale::where('company_id', $request->company_id)
+            ->where('invoice_number', $request->invoice_number)
+            ->with([
+                'saleProducts' => function ($query) {
+                    $query->whereRaw('quantity + COALESCE(free_quantity, 0) - COALESCE((
+                        SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                        FROM sales_return_products
+                        WHERE sales_return_products.sale_product_id = sale_products.id
+                        AND sales_return_products.deleted_at IS NULL
+                    ), 0) > 0')
+                    ->with([
+                        'fieldValues.productField',
+                        'saleProductReturns' => function ($subQuery) {
+                            $subQuery->whereNull('deleted_at');
+                        }
+                    ]);
+                }
+            ])
+            ->first();
+
+        // Return 404 if sale not found
+        if (!$sale) {
+            return response()->json(['error' => 'Sale not found'], 404);
+        }
+
+        // If no products with remaining quantity, return not found
+        if (empty($sale->saleProducts)) {
+            return response()->json(['error' => 'No available products for this sale'], 404);
+        }
+
+        // Transform the field_values into nested array format, excluding already returned field_values
+        $saleData = $sale->toArray();
+        foreach ($saleData['sale_products'] as &$product) {
+            // Calculate remaining quantity
+            $totalReturned = SalesReturnProduct::where('sale_product_id', $product['id'])
+                ->whereNull('deleted_at')
+                ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
+            $product['remaining_quantity'] = ($product['quantity'] + ($product['free_quantity'] ?? 0)) - $totalReturned;
+
+            // Include purchase_product_id
+            $product['purchase_product_id'] = $product['purchase_product_id'] ?? null;
+
+            // Get the quantity indices of already returned field_values
+            $returnedQuantityIndices = [];
+            if (!empty($product['sale_product_returns'])) {
+                $returnIds = array_column($product['sale_product_returns'], 'id');
+                $returnedQuantityIndices = SalesReturnProductFieldValue::whereIn('sales_return_product_id', $returnIds)
+                    ->whereNull('deleted_at')
+                    ->pluck('quantity_index')
+                    ->toArray();
+                $returnedQuantityIndices = array_unique($returnedQuantityIndices);
+            }
+
+            // Filter field_values to exclude those already returned
+            $groupedFieldValues = [];
+            foreach ($product['field_values'] as $fieldValue) {
+                $quantityIndex = $fieldValue['quantity_index'];
+                if (in_array($quantityIndex, $returnedQuantityIndices)) {
+                    continue;
+                }
+                if (!isset($groupedFieldValues[$quantityIndex])) {
+                    $groupedFieldValues[$quantityIndex] = [];
+                }
+                $groupedFieldValues[$quantityIndex][] = [
+                    'product_field_id' => $fieldValue['product_field_id'],
+                    'name' => $fieldValue['product_field']['name'] ?? null,
+                    'value' => $fieldValue['value']
+                ];
+            }
+            $product['field_values'] = array_values($groupedFieldValues);
+
+            // Clean up sale_product_returns from the response
+            unset($product['sale_product_returns']);
+        }
+
+        // Filter out products with no field_values (all units returned)
+        $saleData['sale_products'] = array_filter($saleData['sale_products'], function ($product) {
+            return !empty($product['field_values']);
+        });
+
+        // If no products remain after filtering, return not found
+        if (empty($saleData['sale_products'])) {
+            return response()->json(['error' => 'No available products for this sale'], 404);
+        }
+
+        return response()->json(['data' => $saleData]);
+    } catch (QueryException $e) {
+        \Log::error('Database error in getSaleByInvoiceNumber: ' . $e->getMessage());
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error('Unexpected error in getSaleByInvoiceNumber: ' . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
+    public function listAvailableRefNumbers(Request $request): JsonResponse
+{
+    try {
+        // Validate company_id
+        $validator = Validator::make($request->all(), [
+            'company_id' => 'required|exists:companies,id'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $companyId = $request->input('company_id');
+
+        // Query to get ref_numbers from sales where not all quantities are returned
+        $refNumbers = Sale::where('company_id', $companyId)
+            ->whereNotNull('ref_number')
+            ->where('ref_number', '!=', '')
+            ->whereExists(function ($query) use ($companyId) {
+                $query->select(DB::raw(1))
+                      ->from('sale_products')
+                      ->whereColumn('sale_products.sale_id', 'sales.id')
+                      ->where('sale_products.company_id', $companyId)
+                      ->whereNull('sale_products.deleted_at')
+                      ->where(function ($subQuery) use ($companyId) {
+                          $subQuery->whereExists(function ($existsQuery) use ($companyId) {
+                              $existsQuery->select(DB::raw(1))
+                                          ->from('sales_return_products')
+                                          ->whereColumn('sales_return_products.sale_product_id', 'sale_products.id')
+                                          ->where('sales_return_products.company_id', $companyId)
+                                          ->whereNull('sales_return_products.deleted_at')
+                                          ->havingRaw('SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) < sale_products.quantity + COALESCE(sale_products.free_quantity, 0)');
+                          })
+                          ->orWhereNotExists(function ($notExistsQuery) use ($companyId) {
+                              $notExistsQuery->select(DB::raw(1))
+                                            ->from('sales_return_products')
+                                            ->whereColumn('sales_return_products.sale_product_id', 'sale_products.id')
+                                            ->where('sales_return_products.company_id', $companyId)
+                                            ->whereNull('sales_return_products.deleted_at');
+                          });
+                      });
+            })
+            ->distinct()
+            ->pluck('ref_number')
+            ->toArray();
+
+        return response()->json([
+            'message' => 'Available reference numbers with remaining quantities retrieved successfully',
+            'data' => $refNumbers
+        ], 200);
+    } catch (\Exception $e) {
+        \Log::error('Error retrieving available ref_numbers', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
+    }
+}
+
     /**
      * Generate a unique batch number based on fiscal year.
      */

@@ -171,9 +171,9 @@ class ProductController extends Controller
                 $productArray['product_fields'] = $product_fields;
 
                 return $productArray;
-                
+
             });
-            
+
 
             // Broadcast event
             broadcast(new ProductUpdated($products, 'listed'));
@@ -181,10 +181,11 @@ class ProductController extends Controller
             // Return paginated response with transformed data
             return response()->json([
                 'data' => $transformedProducts->items(),
-                'pagination'=>['current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total()
+                'pagination' => [
+                    'current_page' => $products->currentPage(),
+                    'last_page' => $products->lastPage(),
+                    'per_page' => $products->perPage(),
+                    'total' => $products->total()
 
                 ]
             ]);
@@ -685,5 +686,11 @@ class ProductController extends Controller
         }
     }
 
-
+    public function print(): JsonResponse
+    {
+        $latestProduct = Product::select("product_unique_id")->get();
+        return response()->json([
+            'data' => $latestProduct,
+        ]);
+    }
 }

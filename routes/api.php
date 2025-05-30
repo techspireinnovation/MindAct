@@ -44,6 +44,7 @@ use App\Http\Controllers\SaleProductController;
 use App\Http\Controllers\SalesmanController;
 use App\Http\Controllers\SalesReturnController;
 use App\Http\Controllers\ShrinkingWorkingLossController;
+use App\Http\Controllers\StaffController;
 use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\StockReconciliationController;
@@ -51,7 +52,6 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\SupplierController;
-use App\Http\Controllers\StaffController;
 use Illuminate\Http\Request;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -115,7 +115,12 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
-    Route::resource('products', ProductController::class);
+
+    Route::prefix('products')->group(function () {
+        Route::resource('/', ProductController::class);
+        Route::get('print', [ProductController::class, 'print']);
+    });
+
     Route::resource('purchases', PurchaseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);

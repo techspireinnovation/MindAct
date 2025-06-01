@@ -38,6 +38,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\ReceiptVoucherController;
+use App\Http\Controllers\Report\ReportController;
 use App\Http\Controllers\SaleAdditionalController;
 use App\Http\Controllers\SaleController;
 use App\Http\Controllers\SaleProductController;
@@ -119,6 +120,12 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::prefix('products')->group(function () {
         Route::resource('/', ProductController::class);
         Route::get('print', [ProductController::class, 'print']);
+    });
+
+    Route::prefix('reports')->group(function () {
+        //Route::middleware(['can:print'])->group(function () {
+        Route::get('/stock-register-detail', [ReportController::class, 'stockRegisterDetails']);
+        //});
     });
 
     Route::resource('purchases', PurchaseController::class);

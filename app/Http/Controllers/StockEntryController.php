@@ -17,7 +17,7 @@ class StockEntryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = StockEntry::query();
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 

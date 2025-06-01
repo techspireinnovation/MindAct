@@ -124,7 +124,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
     Route::prefix('reports')->group(function () {
         //Route::middleware(['can:print'])->group(function () {
-        Route::get('/stock-register-detail', [ReportController::class, 'stockRegisterDetails']);
+        Route::get('/stock-register', [ReportController::class, 'stockRegisterDetails']);
+        Route::get('/product-list', [ReportController::class, 'productListDetails']);
         //});
     });
 

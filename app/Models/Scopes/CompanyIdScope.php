@@ -18,7 +18,7 @@ class CompanyIdScope implements Scope
      */
     public function apply(Builder $builder, Model $model)
     {
-        $company_id = Request::input('company_id'); // Fetch 'id' from request parameters
+        $company_id = Request::input('company_id'); // Fetch 'company_id' from request parameters
         if ($company_id) {
             $builder->where($model->getTable() . '.company_id', $company_id);
         }

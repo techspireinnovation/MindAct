@@ -3,15 +3,59 @@
 namespace App\Http\Controllers\Report;
 
 use App\Http\Controllers\Controller;
+use App\Models\Product;
 use App\Models\StockEntry;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use JsonException;
 
 class ReportController extends Controller
 {
+    public function productListDetails(Request $request): JsonResponse
+    {
+        //  try {
+        $query = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name", "measure_unit_id")->with([
+            'measureUnit' => function ($query) use ($request) {
+                return $query->select('measure_units.id', 'name')->get();
+            },
+            'location' => function ($query) use ($request) {
+                return $query->select('locations.id', 'name')->get();
+            },
+            'category' => function ($query) use ($request) {
+                return $query->select('product_categories.id', 'name')->get();
+            },
+            'subCategory' => function ($query) use ($request) {
+                return $query->select('product_sub_categories.id', 'name')->get();
+            },
+            'brand' => function ($query) use ($request) {
+                return $query->select('brands.id', 'name')->get();
+            },
+            'productType' => function ($query) use ($request) {
+                return $query->select('product_types.id', 'name')->get();
+            },
+            'latestProduct' => function ($query) use ($request) {
+                return $query->select('product_lists.id', 'product_lists.barcode', 'product_lists.hs_code', 'product_lists.product_id')->get();
+            }
+        ]);
+
+        if ($request->has('from_date') && $request->has('to_date')) {
+            $query->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
+        }
+
+        //$query->groupBy("stock_entries.id", "stock_entries.product_id");
+
+        //  dd($query->toSql());
+        return response()->json($query->paginate(50));
+
+        // } catch (\Exception $e) {
+        //      \Log::error($e);
+        //return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+
+        //}
+    }
     public function stockRegisterDetails(Request $request): JsonResponse
     {
         //  try {

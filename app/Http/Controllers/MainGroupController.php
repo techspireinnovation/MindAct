@@ -121,7 +121,7 @@ class MainGroupController extends Controller
         return response()->json($group, 201);
     }catch (ModelNotFoundException $e) {
         \Log::error($e);
-        return response()->json(['error' => 'Location not found!!'], 404);
+        return response()->json(['error' => 'Main Group not found!!'], 404);
     } catch (QueryException $e) {
         \Log::error($e);
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);

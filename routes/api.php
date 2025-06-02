@@ -173,6 +173,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::resource('company-staff', StaffController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
+    Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

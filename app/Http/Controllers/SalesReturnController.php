@@ -133,7 +133,7 @@ class SalesReturnController extends Controller
                 $unavailableQuantityIndices = [];
                 if (!empty($product['sale_product_returns'])) {
                     $returnIds = array_column($product['sale_product_returns'], 'id');
-                    $unavailableQuantityIndices = SalesReturnProductFieldValue::whereIn('sales_return_product_id', $returnIds)
+                    $unavailableQuantityIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $returnIds)
                         ->whereNull('deleted_at')
                         ->pluck('quantity_index')
                         ->toArray();
@@ -184,6 +184,7 @@ class SalesReturnController extends Controller
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings(),
             ]);
+            dd($e->getMessage());
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
             Log::error('Unexpected error in getSaleByInvoiceNumber', [
@@ -258,7 +259,7 @@ class SalesReturnController extends Controller
                 $unavailableQuantityIndices = [];
                 if (!empty($product['sale_product_returns'])) {
                     $returnIds = array_column($product['sale_product_returns'], 'id');
-                    $unavailableQuantityIndices = SalesReturnProductFieldValue::whereIn('sales_return_product_id', $returnIds)
+                    $unavailableQuantityIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $returnIds)
                         ->whereNull('deleted_at')
                         ->pluck('quantity_index')
                         ->toArray();

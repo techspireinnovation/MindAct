@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Report;
 
+use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\StockEntry;
@@ -17,7 +18,7 @@ class ReportController extends Controller
     public function productListDetails(Request $request): JsonResponse
     {
         //  try {
-        $query = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name", "measure_unit_id")->with([
+        $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name", "measure_unit_id")->with([
             'measureUnit' => function ($query) use ($request) {
                 return $query->select('measure_units.id', 'name')->get();
             },
@@ -38,23 +39,25 @@ class ReportController extends Controller
             },
             'latestProduct' => function ($query) use ($request) {
                 return $query->select('product_lists.id', 'product_lists.barcode', 'product_lists.hs_code', 'product_lists.product_id')->get();
-            }
+            },
+            'lastPurchase',
         ]);
 
+
         if ($request->has('from_date') && $request->has('to_date')) {
-            $query->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
+            $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
+        $items = $items->get();
 
-        //$query->groupBy("stock_entries.id", "stock_entries.product_id");
+        $items = $items->map(function ($item) {
+            $item->last_purchase_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+            return $item;
 
-        //  dd($query->toSql());
-        return response()->json($query->paginate(50));
+        });
 
-        // } catch (\Exception $e) {
-        //      \Log::error($e);
-        //return response()->json(['error' => 'An unexpected error occurred!!'], 500);
 
-        //}
+        return response()->json($items);
+
     }
     public function stockRegisterDetails(Request $request): JsonResponse
     {

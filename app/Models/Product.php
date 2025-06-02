@@ -111,4 +111,18 @@ class Product extends Model
         return $this->hasOne(ProductList::class, 'product_id', 'id')->latestOfMany();
     }
 
+    public function lastPurchase()
+    {
+        return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
+    }
+
+    public function getLastPurchaseDetailAttribute()
+    {
+        if ($this->lastPurchase) {
+            // Example: Remove all non-numeric characters from the phone number
+            return $this->lastPurchase->measure_unit_id;
+        }
+        return null;
+    }
+
 }

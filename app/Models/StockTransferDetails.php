@@ -2,9 +2,45 @@
 
 namespace App\Models;
 
+
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StockTransferDetails extends Model
 {
-    //
+    use softDeletes,HasFactory;
+
+    protected $casts = [
+       
+        'deleted_at' => 'datetime',
+    ];
+
+    protected $fillable = [
+        'company_id',
+        'stock_transfer_id',
+        'product_id',
+        'product_name',
+        'quantity',
+        'unit',
+        'batch_no',
+        'price',
+        'amount',
+      
+    ];
+
+    protected $dates = ['deleted_at'];
+
+    protected static function booted()
+    {
+        static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function measureUnit(){
+        return $this->belongsTo(MeasureUnit::class, 'unit_id');
+    }
+
+   
 }

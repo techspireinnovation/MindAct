@@ -121,12 +121,22 @@ class Helper
         // if primary uom
         if ($productPrimaryUom && $productPurchase) {
 
+            // if same uom then no conversion
             if ($productPrimaryUom->measure_unit_id === $productPurchase->measure_unit_id)
                 return $productPurchase->price;
             else
                 return 45.00;
         }
         return 0;
+    }
+
+    public static function getProductVatableAmount(int $productId, mixed $amount): mixed
+    {
+        $product = Product::where(['id' => $productId])->first();
+        if ($product->is_vatable) {
+            return $amount + ($amount * .13);
+        }
+        return $amount;
     }
 
     public static function getSalesReturnByProductId(int $productId, ?int $companyId = null): Collection

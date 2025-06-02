@@ -50,11 +50,11 @@ class ReportController extends Controller
         $items = $items->get();
 
         $items = $items->map(function ($item) {
-            $item->last_purchase_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+            $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+            $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
             return $item;
 
         });
-
 
         return response()->json($items);
 

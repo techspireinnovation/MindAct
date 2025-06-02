@@ -102,14 +102,14 @@ class StockTransferController extends Controller
                 'remarks' => 'nullable|string|max:255',
                 'reasons_for' => 'nullable|string|max:255',
                 'product_details' => 'nullable|array',
-                'product_details.product_id' => 'required_with:product_details|integer|exists:products,id',
-                'product_details.product_name' => 'required_with:product_details|string|max:255',
-                'product_details.quantity' => 'required_with:product_details|numeric',
+                'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
+                'product_details.*.product_name' => 'required_with:product_details|string|max:255',
+                'product_details.*.quantity' => 'required_with:product_details|numeric',
               
-                'product_details.unit' => 'required_with:product_details|string|max:50',
-                'product_details.batch_no' => 'required_with:product_details|string|max:255',
-                'product_details.price' => 'required_with:product_details|numeric',
-                'product_details.amount' => 'required_with:product_details|numeric',
+                'product_details.*.unit' => 'required_with:product_details|string|max:50',
+                'product_details.*.batch_no' => 'required_with:product_details|string|max:255',
+                'product_details.*.price' => 'required_with:product_details|numeric',
+                'product_details.*.amount' => 'required_with:product_details|numeric',
                 'company_id' => 'required|integer|exists:companies,id',
             ]);
 

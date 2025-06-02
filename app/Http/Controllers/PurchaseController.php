@@ -157,6 +157,7 @@ class PurchaseController extends Controller
             'payment.bank' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:255',
             'store_id' => 'required|integer|exists:stores,id',
+            'bank_id' => 'nullable|integer|exists:banks,id',
             'location_id' => 'required|integer|exists:locations,id',
             'discount_type' => 'nullable|in:percent,amount',
             'discount_value' => 'nullable|numeric',
@@ -223,6 +224,7 @@ class PurchaseController extends Controller
                 'payment' => $validated['payment'] ?? null,
                 'remarks' => $validated['remarks'] ?? null,
                 'store_id' => $validated['store_id'],
+                'bank_id' => $validated['bank_id'] ?? null,
                 'location_id' => $validated['location_id'],
                 'discount_type' => $validated['discount_type'] ?? null,
                 'discount_value' => $validated['discount_value'] ?? null,
@@ -458,6 +460,7 @@ class PurchaseController extends Controller
         'payment.credit' => 'nullable|numeric|min:0',
         'payment.bank' => 'nullable|numeric|min:0',
         'store_id' => 'required|integer|exists:stores,id',
+        'bank_id' => 'nullable|integer|exists:banks,id',
         'location_id' => 'required|integer|exists:locations,id',
         'company_id' => 'required|integer|exists:companies,id',
         'purchase_products' => 'required|array',
@@ -500,6 +503,7 @@ class PurchaseController extends Controller
                 'payment' => $validated['payment'] ?? null,
                 'remarks' => $validated['remarks'] ?? null,
                 'store_id' => $validated['store_id'],
+                'bank_id' => $validated['bank_id'] ?? null,
                 'location_id' => $validated['location_id'],
                 'discount_type' => $validated['discount_type'] ?? null,
                 'discount_value' => $validated['discount_value'] ?? null,
@@ -609,7 +613,7 @@ public function show($id): JsonResponse
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Purchase::findOrFail($id);
+            $item = Purchase::with('PurchaseProduct','PurchaseProductFieldValue')->findOrFail($id);
             $item->delete();
             return response()->json(['message' => 'Purchase deleted']);
         } catch (ModelNotFoundException $e) {

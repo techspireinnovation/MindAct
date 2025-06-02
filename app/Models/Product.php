@@ -53,6 +53,7 @@ class Product extends Model
     ];
 
     protected $dates = ['deleted_at'];
+    protected $appends = ['primary_measure_unit'];
 
     protected static function booted()
     {
@@ -78,6 +79,15 @@ class Product extends Model
     public function measureUnit()
     {
         return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
+    }
+
+    public function getPrimaryMeasureUnitAttribute()
+    {
+        $primary = ProductList::where(['product_id' => $this->id, 'is_primary' => 1])->first();
+        if ($primary)
+            return $primary->measure_unit_id;
+        else
+            return 0;
     }
 
     public function productType()
@@ -114,15 +124,6 @@ class Product extends Model
     public function lastPurchase()
     {
         return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
-    }
-
-    public function getLastPurchaseDetailAttribute()
-    {
-        if ($this->lastPurchase) {
-            // Example: Remove all non-numeric characters from the phone number
-            return $this->lastPurchase->measure_unit_id;
-        }
-        return null;
     }
 
 }

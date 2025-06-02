@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
 use App\Models\PurchaseProduct;
@@ -116,16 +117,29 @@ class Helper
     public static function getPrimaryRateAmount(int $productId, int $purchaseProductId): mixed
     {
         // get product primary measure unit it 
-        $productPrimaryUom = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
+        $productUnits = ProductList::where(['product_id' => $productId])->get();
+        $primaryProductUnit = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
+
         $productPurchase = PurchaseProduct::find($purchaseProductId);
+
         // if primary uom
-        if ($productPrimaryUom && $productPurchase) {
+        if ($primaryProductUnit && $productPurchase) {
 
             // if same uom then no conversion
-            if ($productPrimaryUom->measure_unit_id === $productPurchase->measure_unit_id)
+            if ($primaryProductUnit->measure_unit_id === $productPurchase->measure_unit_id)
                 return $productPurchase->price;
-            else
-                return 45.00;
+            else {
+                //$productMeasureUnits = MeasureUnit::whereIn([ $productUnits])->get();
+
+                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
+
+                $purchaseProductMeasureUnit = MeasureUnit::find($productPurchase->measure_unit_id);
+
+                if ($purchaseProductMeasureUnit->measure_unit_id > $productMeasureUnit->measure_unit_id)
+
+
+                    return 45.00;
+            }
         }
         return 0;
     }

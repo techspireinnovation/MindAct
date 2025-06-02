@@ -18,10 +18,7 @@ class ReportController extends Controller
     public function productListDetails(Request $request): JsonResponse
     {
         //  try {
-        $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name", "measure_unit_id")->with([
-            'measureUnit' => function ($query) use ($request) {
-                return $query->select('measure_units.id', 'name')->get();
-            },
+        $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
             'location' => function ($query) use ($request) {
                 return $query->select('locations.id', 'name')->get();
             },
@@ -42,7 +39,6 @@ class ReportController extends Controller
             },
             'lastPurchase',
         ]);
-
 
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);

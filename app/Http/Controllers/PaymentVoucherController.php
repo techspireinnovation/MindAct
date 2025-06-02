@@ -69,8 +69,13 @@ class PaymentVoucherController extends Controller
             if (isset($validated['payment_voucher_list'])) {
                 $existingDetailIds = $PaymentVoucher->PaymentVoucherDetails()->pluck('id')->toArray();
                 $incomingDetailIds = collect($validated['payment_voucher_list'])->pluck('id')->filter()->toArray();
-
-                foreach ($validated['payment_voucher_list'] as $detailData) {
+                foreach ($validated['payment_voucher_list'] as &$detailData) {
+                    $detailData['company_id'] = $validated['company_id'] ?? null;
+                }
+                unset($detailData);
+                unset($detailData); // break reference
+                $validated['payment_voucher_list']=$validated['company_id']; // Ensure company_id is set
+                foreach ($validated['payment_voucher_list'] as &$detailData) {
                     if (isset($detailData['id']) && in_array($detailData['id'], $existingDetailIds)) {
                         $detail = PaymentVoucherDetail::find($detailData['id']);
                         $detail->update($detailData);
@@ -126,18 +131,25 @@ class PaymentVoucherController extends Controller
         ]);
 
         if ($validator->fails()) {
-             return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $validated = $validator->validated();
 
         $PaymentVoucher = DB::transaction(function () use ($validated) {
             $PaymentVoucher = PaymentVoucher::create($validated);
-
+            
             if (isset($validated['payment_voucher_list'])) {
+                foreach($validated['payment_voucher_list'] as &$detailData){
+                    if(!isset($detailData['company_id'])){
+                        $detailData['company_id'] = $validated['company_id'];
+                    }
+                }
+                unset($detailData); // break reference
+
                 $PaymentVoucher->PaymentVoucherDetails()->createMany($validated['payment_voucher_list']);
             }
 
@@ -148,7 +160,8 @@ class PaymentVoucherController extends Controller
             'message' => 'Payment Voucher Created',
             'item' => $PaymentVoucher->load('PaymentVoucherDetails'),
         ], 201);
-    }catch(ModelNotFoundException $e){
+
+    } catch(ModelNotFoundException $e){
         return response()->json(['error' => 'Payment Voucher not found'], 404);
     } catch (QueryException $e) {
         return response()->json(['error' => 'Database query error occurred!'], 500);
@@ -157,6 +170,7 @@ class PaymentVoucherController extends Controller
         return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
     }
 }
+
 
 
 public function show(Request $request, $id): JsonResponse

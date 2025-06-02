@@ -31,4 +31,8 @@ class StockAdjustment extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+    public function stockProductDetails(): HasMany {
+        return $this->hasMany(StockProductDetails::class, 'stock_adjustment_id');
+    }
+
 }

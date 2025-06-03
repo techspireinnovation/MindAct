@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
@@ -65,9 +66,49 @@ class StockTransferController extends Controller
 
         $validated = $validator->validated();
 
-        $stockTransfer->update($validated);
+       $stockTransfer = DB::transaction(function () use ($validated, $id) {
+            $stockTransfer = StockTransfer::findOrFail($id);
 
-        return response()->json($stockTransfer->refresh(), 200);
+            // Convert product_details to JSON string if present, or set to null
+            if (isset($validated['product_details'])) {
+                $validated['product_details'] = json_encode($validated['product_details']);
+            } else {
+                $validated['product_details'] = null;
+            }
+
+            // Update main record
+            $stockTransfer->update($validated);
+
+            // Handle product details
+            // Delete all existing details to replace with new ones
+            // $stockTransfer->stockTranferDetails()->delete();
+
+            $existingDetails = $stockTransfer->stockTranferDetails->pluck('id')->toArray(); 
+            $incomingDetails = isset($validated['product_details']) ? json_decode($validated['product_details'], true) : [];
+            $toDelete = array_diff($existingDetails, array_column($incomingDetails, 'id'));
+            if (!empty($toDelete)) {
+                $stockTransfer->stockTransferDetails()->whereIn('id', $toDelete)->delete();
+            }
+
+            if (isset($validated['product_details'])) {
+                $productDetails = json_decode($validated['product_details'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('Invalid product details format: ' . json_last_error_msg());
+                }
+
+                $details = [];
+                foreach ($productDetails as $detail) {
+                    $detail['stock_transfer_id'] = $stockTransfer->id;
+                    $detail['company_id'] = $validated['company_id'];
+                    $details[] = $detail;
+                }
+                $stockTransfer->stockTransferDetails()->createMany($details);
+            }
+
+            return $stockTransfer;
+        });
+
+        return response()->json($stockTransfer->refresh('stockTransferDetails'), 200);
     } catch (ModelNotFoundException $e) {
         \Log::error('StockTransfer not found: ' . $e->getMessage());
         return response()->json(['error' => 'Stock transfer not found'], 404);
@@ -102,14 +143,14 @@ class StockTransferController extends Controller
                 'remarks' => 'nullable|string|max:255',
                 'reasons_for' => 'nullable|string|max:255',
                 'product_details' => 'nullable|array',
-                'product_details.product_id' => 'required_with:product_details|integer|exists:products,id',
-                'product_details.product_name' => 'required_with:product_details|string|max:255',
-                'product_details.quantity' => 'required_with:product_details|numeric',
+                'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
+                'product_details.*.product_name' => 'required_with:product_details|string|max:255',
+                'product_details.*.quantity' => 'required_with:product_details|numeric',
               
-                'product_details.unit' => 'required_with:product_details|string|max:50',
-                'product_details.batch_no' => 'required_with:product_details|string|max:255',
-                'product_details.price' => 'required_with:product_details|numeric',
-                'product_details.amount' => 'required_with:product_details|numeric',
+                'product_details.*.unit' => 'required_with:product_details|string|max:50',
+                'product_details.*.batch_no' => 'required_with:product_details|string|max:255',
+                'product_details.*.price' => 'required_with:product_details|numeric',
+                'product_details.*.amount' => 'required_with:product_details|numeric',
                 'company_id' => 'required|integer|exists:companies,id',
             ]);
 
@@ -122,20 +163,42 @@ class StockTransferController extends Controller
 
             $validated = $validator->validated();
 
-            // Convert product_details to JSON string if present
-            if (isset($validated['product_details'])) {
+            $item = DB::Transaction(function () use ($validated){
+
+                if (isset($validated['product_details'])) {
                 $validated['product_details'] = json_encode($validated['product_details']);
             }
-
             $item = StockTransfer::create($validated);
-            return response()->json($item, 201);
+         
+           
+             if (isset($validated['product_details'])) {
+                $productDetails = json_decode($validated['product_details'], true);
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    throw new \Exception('Invalid product details format: ' . json_last_error_msg());
+                }
+                $details = [];
+                foreach ($productDetails as $detail) {
+                    $detail['stock_transfer_id'] = $item->id;
+                    $detail['company_id'] = $validated['company_id'];
+                    $details[] = $detail;
+                }
+                $item->stockTransferDetails()->createMany($details);
+            }
+            return $item;
+
+            });
+
+
+            return response()->json($item->load('stockTransferDetails'), 201);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error('QueryException in StockTransfer::store: ' . $e->getMessage());
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error('Exception in Stock Transfer::store: ' . $e->getMessage());
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

@@ -120,7 +120,17 @@ class PurchaseController extends Controller
         
 
         $validated = $request->validate([
-            'ref_bill_number' => 'required|string|max:255|unique:purchases,ref_bill_number,' . $id,
+            'ref_bill_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('purchases')
+                    ->ignore($id)
+                    ->where(function ($query) use ($request, $item) {
+                        return $query->where('company_id', $request->input('company_id', $item->company_id))
+                        ->whereNull('deleted_at');
+                    }),
+            ],
             'customer_id' => 'required|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
@@ -136,7 +146,8 @@ class PurchaseController extends Controller
                 Rule::unique('purchases')
                     ->ignore($id)
                     ->where(function ($query) use ($request, $item) {
-                        return $query->where('company_id', $request->input('company_id', $item->company_id));
+                        return $query->where('company_id', $request->input('company_id', $item->company_id))
+                        ->whereNull('deleted_at');
                     }),
             ],
             'balance' => 'nullable|numeric',
@@ -148,7 +159,8 @@ class PurchaseController extends Controller
                 Rule::unique('purchases')
                     ->ignore($id)
                     ->where(function ($query) use ($request, $item) {
-                        return $query->where('company_id', $request->input('company_id', $item->company_id));
+                        return $query->where('company_id', $request->input('company_id', $item->company_id))
+                        ->whereNull('deleted_at');
                     }),
             ],
             'payment' => 'nullable|array',
@@ -157,6 +169,7 @@ class PurchaseController extends Controller
             'payment.bank' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:255',
             'store_id' => 'required|integer|exists:stores,id',
+            'bank_id' => 'nullable|integer|exists:banks,id',
             'location_id' => 'required|integer|exists:locations,id',
             'discount_type' => 'nullable|in:percent,amount',
             'discount_value' => 'nullable|numeric',
@@ -223,6 +236,7 @@ class PurchaseController extends Controller
                 'payment' => $validated['payment'] ?? null,
                 'remarks' => $validated['remarks'] ?? null,
                 'store_id' => $validated['store_id'],
+                'bank_id' => $validated['bank_id'] ?? null,
                 'location_id' => $validated['location_id'],
                 'discount_type' => $validated['discount_type'] ?? null,
                 'discount_value' => $validated['discount_value'] ?? null,
@@ -409,169 +423,7 @@ class PurchaseController extends Controller
             
         
 
- public function store(Request $request): JsonResponse
-{
-    
-    $validated = $request->validate([
-        'ref_bill_number' => 'required|string|max:255|unique:purchases,ref_bill_number',
-        'customer_id' => 'required|exists:customers,id',
-        'customer_name' => 'nullable|string|max:255',
-        'pan_number' => 'nullable|string|max:255',
-        'address' => 'nullable|string|max:255',
-        'customer_contact' => 'nullable|string|max:255',
-        'document_number' => 'nullable|string|max:255',
-        'remarks' => 'nullable|string|max:255',
-        'invoice_date' => 'nullable|string|max:255',
-        'batch_no' => [
-            'nullable',
-            'string',
-            'max:255',
-            Rule::unique('purchases')->where(function ($query) use ($request) {
-                return $query->where('company_id', $request->company_id);
-            }),
-        ],
-        'purchase_bill_number' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('purchases')
-                    
-                    ->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->input('company_id', $request->company_id));
-                    }),
-            ],
-        'discount_type' => 'nullable|in:percent,amount',
-        'discount_value' => 'nullable|numeric',
-        'discount_after_vat' => 'nullable|numeric',
-        'roundoff_amount' => 'nullable|numeric',
-        'sub_total_before_discount' => 'nullable|numeric',
-        'taxable_amount' => 'nullable|numeric',
-        'non_taxable_amount' => 'nullable|numeric',
-        'total_amount' => 'nullable|numeric',
-        'excise_duty' => 'nullable|numeric',
-        'vat_percent' => 'nullable|numeric',
-        'health_insurance' => 'nullable|numeric',
-        'freight_amount' => 'nullable|numeric',
-        'balance' => 'nullable|numeric',
-        'payment' => 'nullable|array',
-        'payment.cash' => 'nullable|numeric|min:0',
-        'payment.credit' => 'nullable|numeric|min:0',
-        'payment.bank' => 'nullable|numeric|min:0',
-        'store_id' => 'required|integer|exists:stores,id',
-        'location_id' => 'required|integer|exists:locations,id',
-        'company_id' => 'required|integer|exists:companies,id',
-        'purchase_products' => 'required|array',
-        'purchase_products.*.product_id' => 'required|integer|exists:products,id',
-        'purchase_products.*.product_name' => 'nullable|string|max:255',
-        'purchase_products.*.product_code' => 'nullable|string|max:255',
-        'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-        'purchase_products.*.quantity' => 'required|integer|min:1',
-        'purchase_products.*.free_quantity' => 'nullable|numeric',
-        'purchase_products.*.expiry_date' => 'nullable|date',
-        'purchase_products.*.price' => 'nullable|numeric',
-        'purchase_products.*.discount_percent' => 'nullable|numeric',
-        'purchase_products.*.discount_amount' => 'nullable|numeric',
-        'purchase_products.*.amount' => 'nullable|numeric',
-        'purchase_products.*.is_vatable' => 'required|boolean',
-        'purchase_products.*.field_values' => 'nullable|array',
-        'purchase_products.*.field_values.*' => 'array',
-        'purchase_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
-        'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
-    ]);
-
-    try {
-        $item = DB::transaction(function () use ($validated) {
-           
-
-            // Create Purchase
-            $item = Purchase::create([
-                'customer_id' => $validated['customer_id'],
-                'customer_name' => $validated['customer_name'] ?? null,
-                'pan_number' => $validated['pan_number'] ?? null,
-                'company_id' => $validated['company_id'],
-                'address' => $validated['address'] ?? null,
-                'customer_contact' => $validated['customer_contact'] ?? null,
-                'ref_bill_number' => $validated['ref_bill_number'],
-                'document_number' => $validated['document_number'] ?? null,
-                'purchase_bill_number' => $validated['purchase_bill_number'],
-                'balance' => $validated['balance'] ?? null,
-                'invoice_date' => $validated['invoice_date'] ?? null,
-                'batch_no' => $validated['batch_no'] ?? null,
-                'payment' => $validated['payment'] ?? null,
-                'remarks' => $validated['remarks'] ?? null,
-                'store_id' => $validated['store_id'],
-                'location_id' => $validated['location_id'],
-                'discount_type' => $validated['discount_type'] ?? null,
-                'discount_value' => $validated['discount_value'] ?? null,
-                'sub_total_before_discount' => $validated['sub_total_before_discount'] ?? null,
-                'taxable_amount' => $validated['taxable_amount'] ?? null,
-                'non_taxable_amount' => $validated['non_taxable_amount'] ?? null,
-                'roundoff_amount' => $validated['roundoff_amount'] ?? null,
-                'total_amount' => $validated['total_amount'] ?? null,
-                'excise_duty' => $validated['excise_duty'] ?? null,
-                'vat_percent' => $validated['vat_percent'] ?? null,
-                'health_insurance' => $validated['health_insurance'] ?? null,
-                'freight_amount' => $validated['freight_amount'] ?? null,
-                'discount_after_vat' => $validated['discount_after_vat'] ?? null,
-            ]);
-
-            // Create Purchase Products
-            if (isset($validated['purchase_products'])) {
-                foreach ($validated['purchase_products'] as $purchaseProductData) {
-                    // Create PurchaseProduct using static create method
-                    $purchaseProduct = PurchaseProduct::create([
-                        'purchase_id' => $item->id, // Manually set the foreign key
-                        'customer_id' => $validated['customer_id'],
-                        'company_id' => $validated['company_id'],
-                        'product_id' => $purchaseProductData['product_id'],
-                        'product_name' => $purchaseProductData['product_name'] ?? null,
-                        'product_code' => $purchaseProductData['product_code'] ?? null,
-                        'expiry_date' => $purchaseProductData['expiry_date'] ?? null,
-                        'quantity' => $purchaseProductData['quantity'],
-                        'free_quantity' => $purchaseProductData['free_quantity'] ?? null,
-                        'price' => $purchaseProductData['price'] ?? null,
-                        'discount_percent' => $purchaseProductData['discount_percent'] ?? null,
-                        'discount_amount' => $purchaseProductData['discount_amount'] ?? null,
-                        'amount' => $purchaseProductData['amount'] ?? null,
-                        'is_vatable' => $purchaseProductData['is_vatable'],
-                        'measure_unit_id' => $purchaseProductData['measure_unit_id'],
-                    ]);
-
-                    // Create Field Values
-                    if (!empty($purchaseProductData['field_values'])) {
-                        $fieldValues = [];
-                        foreach ($purchaseProductData['field_values'] as $quantityIndex => $fieldValueSet) {
-                            foreach ($fieldValueSet as $fieldValue) {
-                                $fieldValues[] = [
-                                    'product_field_id' => $fieldValue['product_field_id'],
-                                    'value' => $fieldValue['value'],
-                                    'product_id' => $purchaseProduct->product_id,
-                                    'company_id' => $purchaseProduct->company_id,
-                                    'purchase_product_id' => $purchaseProduct->id,
-                                    'quantity_index' => $quantityIndex,
-                                ];
-                            }
-                        }
-                        PurchaseProductFieldValue::insert($fieldValues);
-                    }
-                }
-            }
-
-            return $item;
-        });
-
-        return response()->json([
-            'message' => 'Purchase Created Successfully!!',
-            'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
-        ], 201);
-    } catch (\Exception $e) {
-        \Log::error('Purchase creation failed: ' . $e->getMessage());
-        return response()->json([
-            'message' => 'Failed to create purchase',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
+ 
 
 public function show($id): JsonResponse
 {
@@ -609,7 +461,7 @@ public function show($id): JsonResponse
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Purchase::findOrFail($id);
+            $item = Purchase::with('PurchaseProduct.PurchaseProductFieldValue')->findOrFail($id);
             $item->delete();
             return response()->json(['message' => 'Purchase deleted']);
         } catch (ModelNotFoundException $e) {

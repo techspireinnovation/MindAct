@@ -12,6 +12,7 @@ use App\Models\SaleReturnAdditional;
 use App\Models\SaleReturnProductFieldValue;
 use App\Models\SaleProduct;
 use App\Models\Purchase;
+use App\Models\Product;
 use DB;
 use Carbon\Carbon;
 use Illuminate\Validation\Rule;
@@ -132,7 +133,7 @@ class SalesReturnController extends Controller
                 $unavailableQuantityIndices = [];
                 if (!empty($product['sale_product_returns'])) {
                     $returnIds = array_column($product['sale_product_returns'], 'id');
-                    $unavailableQuantityIndices = SalesReturnProductFieldValue::whereIn('sales_return_product_id', $returnIds)
+                    $unavailableQuantityIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $returnIds)
                         ->whereNull('deleted_at')
                         ->pluck('quantity_index')
                         ->toArray();
@@ -183,6 +184,7 @@ class SalesReturnController extends Controller
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings(),
             ]);
+            dd($e->getMessage());
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
             Log::error('Unexpected error in getSaleByInvoiceNumber', [
@@ -257,7 +259,7 @@ class SalesReturnController extends Controller
                 $unavailableQuantityIndices = [];
                 if (!empty($product['sale_product_returns'])) {
                     $returnIds = array_column($product['sale_product_returns'], 'id');
-                    $unavailableQuantityIndices = SalesReturnProductFieldValue::whereIn('sales_return_product_id', $returnIds)
+                    $unavailableQuantityIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $returnIds)
                         ->whereNull('deleted_at')
                         ->pluck('quantity_index')
                         ->toArray();
@@ -441,7 +443,6 @@ class SalesReturnController extends Controller
        public function store(Request $request): JsonResponse
     {
         try {
-        
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'required|exists:customers,id',
@@ -559,7 +560,7 @@ class SalesReturnController extends Controller
             $useSaleProductIds = isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids']);
 
             if ($returnEntireBatch || $returnEntireSale) {
-                $saleProducts = $sale->saleProducts;
+                $saleProducts = $sale->saleProducts()->with('fieldValues')->get();
                 if ($saleProducts->isEmpty()) {
                     return response()->json(['error' => 'No products found in the specified sale'], 422);
                 }
@@ -698,15 +699,26 @@ class SalesReturnController extends Controller
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
 
                 // Validate sale_product_id and sale_id consistency
-                $saleProduct = SaleProduct::where('id', $saleProductId)
+                $saleProduct = SaleProduct::with('fieldValues')
+                    ->where('id', $saleProductId)
                     ->where('sale_id', $validated['sale_id'])
-                    ->firstOrFail();
+                    ->first();
+                if (!$saleProduct) {
+                    return response()->json([
+                        'error' => "Sale product ID {$saleProductId} at index {$index} does not belong to sale ID {$validated['sale_id']}"
+                    ], 422);
+                }
 
                 // Validate purchase_product_id
                 $purchaseProduct = PurchaseProduct::where('id', $purchaseProductId)
                     ->where('company_id', $validated['company_id'])
                     ->where('product_id', $productId)
-                    ->firstOrFail();
+                    ->first();
+                if (!$purchaseProduct) {
+                    return response()->json([
+                        'error' => "Purchase product ID {$purchaseProductId} at index {$index} is invalid for product ID {$productId}"
+                    ], 422);
+                }
 
                 // Check available quantity to return
                 $availableToReturn = $saleProduct->quantity + ($saleProduct->free_quantity ?? 0);
@@ -771,32 +783,110 @@ class SalesReturnController extends Controller
             $salesReturn = DB::transaction(function () use ($salesReturnData, $validated, $salesReturnAdditionalsData) {
                 $salesReturn = SalesReturn::create($salesReturnData);
 
-                foreach ($validated['sales_return_products'] as $product) {
+                foreach ($validated['sales_return_products'] as $index => $product) {
                     $product['company_id'] = $validated['company_id'];
                     $product['sales_return_id'] = $salesReturn->id;
-                    $productModel = \App\Models\Product::find($product['product_id']);
+                    $productModel = Product::find($product['product_id']);
                     $product['product_code'] = $productModel->product_unique_id ?? null;
                     $product['product_name'] = $productModel->name ?? null;
 
+                    // Fetch available field values to validate
+                    $availableFieldValues = PurchaseProductFieldValue::withoutGlobalScopes()
+                        ->select([
+                            'purchase_product_field_values.quantity_index',
+                            'purchase_product_field_values.product_field_id',
+                            'purchase_product_field_values.value',
+                        ])
+                        ->join('purchase_products', 'purchase_product_field_values.purchase_product_id', '=', 'purchase_products.id')
+                        ->leftJoin('sale_products', function ($join) use ($validated, $product) {
+                            $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
+                                 ->whereNull('sale_products.deleted_at')
+                                 ->where('sale_products.company_id', $validated['company_id'])
+                                 ->where('sale_products.id', '=', $product['sale_product_id']);
+                        })
+                        ->leftJoin('sales_product_field_values', function ($join) use ($validated, $product) {
+                            $join->on('sale_products.id', '=', 'sales_product_field_values.sale_product_id')
+                                 ->on('purchase_product_field_values.quantity_index', '=', 'sales_product_field_values.quantity_index')
+                                 ->whereNull('sales_product_field_values.deleted_at')
+                                 ->where('sales_product_field_values.company_id', $validated['company_id']);
+                        })
+                        ->where('purchase_product_field_values.purchase_product_id', $product['purchase_product_id'])
+                        ->whereNull('purchase_product_field_values.deleted_at')
+                        ->where('purchase_product_field_values.company_id', $validated['company_id'])
+                        ->whereNotNull('sales_product_field_values.id')
+                        ->groupBy([
+                            'purchase_product_field_values.quantity_index',
+                            'purchase_product_field_values.product_field_id',
+                            'purchase_product_field_values.value',
+                        ])
+                        ->get();
+
+                    \Log::debug('Available field values for sales return', [
+                        'purchase_product_id' => $product['purchase_product_id'],
+                        'sale_product_id' => $product['sale_product_id'],
+                        'field_values' => $availableFieldValues->toArray(),
+                    ]);
+
                     $salesReturnProduct = $salesReturn->salesReturnProducts()->create($product);
 
-                    if (isset($product['field_values'])) {
+                    if (!empty($product['field_values'])) {
                         $fieldValues = [];
-                        foreach ($product['field_values'] as $quantityIndex => $fieldValueSet) {
-                            foreach ($fieldValueSet as $fieldValue) {
-                                $fieldValues[] = [
-                                    'company_id' => $validated['company_id'],
-                                    'product_field_id' => $fieldValue['product_field_id'],
-                                    'product_id' => $salesReturnProduct->product_id,
-                                    'sale_return_product_id' => $salesReturnProduct->id,
-                                    'quantity_index' => $quantityIndex,
-                                    'value' => $fieldValue['value'],
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ];
+                        $selectedQuantityIndices = [];
+                        foreach ($product['field_values'] as $fieldValueSet) {
+                            $matched = false;
+                            foreach ($availableFieldValues as $availableFieldValue) {
+                                $matchesAllFields = true;
+                                foreach ($fieldValueSet as $fieldValue) {
+                                    $found = $availableFieldValues->contains(function ($item) use ($fieldValue, $availableFieldValue) {
+                                        return $item->product_field_id == $fieldValue['product_field_id'] &&
+                                               $item->value == $fieldValue['value'] &&
+                                               $item->quantity_index == $availableFieldValue->quantity_index;
+                                    });
+                                    if (!$found) {
+                                        $matchesAllFields = false;
+                                        break;
+                                    }
+                                }
+                                if ($matchesAllFields && !in_array($availableFieldValue->quantity_index, $selectedQuantityIndices)) {
+                                    foreach ($fieldValueSet as $fieldValue) {
+                                        $fieldValues[] = [
+                                            'company_id' => $validated['company_id'],
+                                            'product_field_id' => $fieldValue['product_field_id'],
+                                            'product_id' => $salesReturnProduct->product_id,
+                                            'sale_return_product_id' => $salesReturnProduct->id,
+                                            'quantity_index' => $availableFieldValue->quantity_index,
+                                            'value' => $fieldValue['value'],
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ];
+                                    }
+                                    $selectedQuantityIndices[] = $availableFieldValue->quantity_index;
+                                    $matched = true;
+                                    break;
+                                }
+                            }
+                            if (!$matched) {
+                                \Log::warning('Field values mismatch for sales return', [
+                                    'purchase_product_id' => $product['purchase_product_id'],
+                                    'sale_product_id' => $product['sale_product_id'],
+                                    'field_value_set' => $fieldValueSet,
+                                    'available_field_values' => $availableFieldValues->toArray(),
+                                ]);
+                                throw new \Exception("Provided field values do not match available stock for sale product ID {$product['sale_product_id']} at index {$index}");
                             }
                         }
-                        SaleReturnProductFieldValue::insert($fieldValues);
+
+                        if (count($selectedQuantityIndices) > $product['quantity']) {
+                            throw new \Exception("Number of selected field value sets (" . count($selectedQuantityIndices) . ") exceeds requested quantity ({$product['quantity']}) for sale product ID {$product['sale_product_id']} at index {$index}");
+                        }
+
+                        if (!empty($fieldValues)) {
+                            SaleReturnProductFieldValue::insert($fieldValues);
+                            \Log::debug('SaleReturnProductFieldValue created', [
+                                'sale_return_product_id' => $salesReturnProduct->id,
+                                'field_values' => $fieldValues,
+                            ]);
+                        }
                     }
                 }
 
@@ -827,18 +917,24 @@ class SalesReturnController extends Controller
                 ])
             ], 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error('Model not found during sales return creation', ['error' => $e->getMessage()]);
-            dd($e->getMessage());
-            return response()->json(['error' => 'Resource not found'], 404);
+            \Log::error('Model not found during sales return creation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Resource not found: ' . $e->getMessage()], 404);
         } catch (QueryException $e) {
             \Log::error('Database error during sales return creation', [
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
-                'bindings' => $e->getBindings()
+                'bindings' => $e->getBindings(),
+                'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['error' => 'Database error occurred'], 500);
+            return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error during sales return creation', ['error' => $e->getMessage()]);
+            \Log::error('Unexpected error during sales return creation', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
@@ -961,7 +1057,7 @@ class SalesReturnController extends Controller
             $useSaleProductIds = isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids']);
 
             if ($returnEntireBatch || $returnEntireSale) {
-                $saleProducts = $sale->saleProducts;
+                $saleProducts = $sale->saleProducts()->with('fieldValues')->get();
                 if ($saleProducts->isEmpty()) {
                     return response()->json(['error' => 'No products found in the specified sale'], 422);
                 }
@@ -1102,15 +1198,26 @@ class SalesReturnController extends Controller
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
 
                 // Validate sale_product_id and sale_id consistency
-                $saleProduct = SaleProduct::where('id', $saleProductId)
+                $saleProduct = SaleProduct::with('fieldValues')
+                    ->where('id', $saleProductId)
                     ->where('sale_id', $validated['sale_id'])
-                    ->firstOrFail();
+                    ->first();
+                if (!$saleProduct) {
+                    return response()->json([
+                        'error' => "Sale product ID {$saleProductId} at index {$index} does not belong to sale ID {$validated['sale_id']}"
+                    ], 422);
+                }
 
                 // Validate purchase_product_id
                 $purchaseProduct = PurchaseProduct::where('id', $purchaseProductId)
                     ->where('company_id', $validated['company_id'])
                     ->where('product_id', $productId)
-                    ->firstOrFail();
+                    ->first();
+                if (!$purchaseProduct) {
+                    return response()->json([
+                        'error' => "Purchase product ID {$purchaseProductId} at index {$index} is invalid for product ID {$productId}"
+                    ], 422);
+                }
 
                 // Check available quantity to return
                 $availableToReturn = $saleProduct->quantity + ($saleProduct->free_quantity ?? 0);
@@ -1126,6 +1233,7 @@ class SalesReturnController extends Controller
                 if (isset($product['id'])) {
                     $existingProduct = SalesReturnProduct::where('id', $product['id'])
                         ->where('sales_return_id', $salesReturn->id)
+                        ->whereNull('deleted_at')
                         ->first();
                     if ($existingProduct) {
                         $existingQuantity = $existingProduct->quantity + ($existingProduct->free_quantity ?? 0);
@@ -1199,13 +1307,51 @@ class SalesReturnController extends Controller
                     });
                 }
 
-                foreach ($validated['sales_return_products'] as $product) {
+                foreach ($validated['sales_return_products'] as $index => $product) {
                     $product['company_id'] = $validated['company_id'];
                     $product['sales_return_id'] = $salesReturn->id;
-                    $productModel = \App\Models\Product::find($product['product_id']);
+                    $productModel = Product::find($product['product_id']);
                     $product['product_code'] = $productModel->product_unique_id ?? null;
                     $product['product_name'] = $productModel->name ?? null;
 
+                    // Fetch available field values to validate
+                    $availableFieldValues = PurchaseProductFieldValue::withoutGlobalScopes()
+                        ->select([
+                            'purchase_product_field_values.quantity_index',
+                            'purchase_product_field_values.product_field_id',
+                            'purchase_product_field_values.value',
+                        ])
+                        ->join('purchase_products', 'purchase_product_field_values.purchase_product_id', '=', 'purchase_products.id')
+                        ->leftJoin('sale_products', function ($join) use ($validated, $product) {
+                            $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
+                                 ->whereNull('sale_products.deleted_at')
+                                 ->where('sale_products.company_id', $validated['company_id'])
+                                 ->where('sale_products.id', '=', $product['sale_product_id']);
+                        })
+                        ->leftJoin('sales_product_field_values', function ($join) use ($validated, $product) {
+                            $join->on('sale_products.id', '=', 'sales_product_field_values.sale_product_id')
+                                 ->on('purchase_product_field_values.quantity_index', '=', 'sales_product_field_values.quantity_index')
+                                 ->whereNull('sales_product_field_values.deleted_at')
+                                 ->where('sales_product_field_values.company_id', $validated['company_id']);
+                        })
+                        ->where('purchase_product_field_values.purchase_product_id', $product['purchase_product_id'])
+                        ->whereNull('purchase_product_field_values.deleted_at')
+                        ->where('purchase_product_field_values.company_id', $validated['company_id'])
+                        ->whereNotNull('sales_product_field_values.id')
+                        ->groupBy([
+                            'purchase_product_field_values.quantity_index',
+                            'purchase_product_field_values.product_field_id',
+                            'purchase_product_field_values.value',
+                        ])
+                        ->get();
+
+                    \Log::debug('Available field values for sales return update', [
+                        'purchase_product_id' => $product['purchase_product_id'],
+                        'sale_product_id' => $product['sale_product_id'],
+                        'field_values' => $availableFieldValues->toArray(),
+                    ]);
+
+                    // Create or update sales return product
                     if (isset($product['id'])) {
                         $salesReturnProduct = SalesReturnProduct::where('id', $product['id'])
                             ->where('sales_return_id', $salesReturn->id)
@@ -1216,56 +1362,99 @@ class SalesReturnController extends Controller
                                 $salesReturnProduct->restore();
                             }
                             $salesReturnProduct->update($product);
+                        } else {
+                            $salesReturnProduct = $salesReturn->salesReturnProducts()->create($product);
                         }
                     } else {
                         $salesReturnProduct = $salesReturn->salesReturnProducts()->create($product);
                     }
 
-                    if (isset($product['field_values'])) {
-                        $processedFieldIds = [];
-                        $existingFieldIds = SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)
-                            ->withTrashed()
-                            ->pluck('id')
-                            ->toArray();
-
-                        foreach ($product['field_values'] as $quantityIndex => $fieldValueSet) {
-                            foreach ($fieldValueSet as $fieldValue) {
-                                if (isset($fieldValue['id']) && !empty($fieldValue['id'])) {
-                                    $existingValue = SaleReturnProductFieldValue::where('id', $fieldValue['id'])
-                                        ->where('sale_return_product_id', $salesReturnProduct->id)
-                                        ->withTrashed()
-                                        ->first();
-                                    if ($existingValue) {
-                                        if ($existingValue->trashed()) {
-                                            $existingValue->restore();
-                                        }
-                                        $existingValue->update([
-                                            'product_field_id' => $fieldValue['product_field_id'],
-                                            'value' => $fieldValue['value'],
-                                            'quantity_index' => $quantityIndex,
-                                            'updated_at' => now(),
-                                        ]);
-                                        $processedFieldIds[] = $existingValue->id;
+                    // Handle field values
+                    if (!empty($product['field_values']) && !($returnEntireBatch || $returnEntireSale || $useSaleProductIds)) {
+                        $fieldValues = [];
+                        $selectedQuantityIndices = [];
+                        foreach ($product['field_values'] as $fieldValueSet) {
+                            $matched = false;
+                            foreach ($availableFieldValues as $availableFieldValue) {
+                                $matchesAllFields = true;
+                                foreach ($fieldValueSet as $fieldValue) {
+                                    $found = $availableFieldValues->contains(function ($item) use ($fieldValue, $availableFieldValue) {
+                                        return $item->product_field_id == $fieldValue['product_field_id'] &&
+                                               $item->value == $fieldValue['value'] &&
+                                               $item->quantity_index == $availableFieldValue->quantity_index;
+                                    });
+                                    if (!$found) {
+                                        $matchesAllFields = false;
+                                        break;
                                     }
-                                } else {
-                                    $newFieldValue = SaleReturnProductFieldValue::create([
-                                        'company_id' => $validated['company_id'],
-                                        'product_field_id' => $fieldValue['product_field_id'],
-                                        'product_id' => $salesReturnProduct->product_id,
-                                        'sale_return_product_id' => $salesReturnProduct->id,
-                                        'quantity_index' => $quantityIndex,
-                                        'value' => $fieldValue['value'],
-                                    ]);
-                                    $processedFieldIds[] = $newFieldValue->id;
                                 }
+                                if ($matchesAllFields && !in_array($availableFieldValue->quantity_index, $selectedQuantityIndices)) {
+                                    foreach ($fieldValueSet as $fieldValue) {
+                                        $fieldValues[] = [
+                                            'company_id' => $validated['company_id'],
+                                            'product_field_id' => $fieldValue['product_field_id'],
+                                            'product_id' => $salesReturnProduct->product_id,
+                                            'sale_return_product_id' => $salesReturnProduct->id,
+                                            'quantity_index' => $availableFieldValue->quantity_index,
+                                            'value' => $fieldValue['value'],
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ];
+                                    }
+                                    $selectedQuantityIndices[] = $availableFieldValue->quantity_index;
+                                    $matched = true;
+                                    break;
+                                }
+                            }
+                            if (!$matched) {
+                                \Log::warning('Field values mismatch for sales return update', [
+                                    'purchase_product_id' => $product['purchase_product_id'],
+                                    'sale_product_id' => $product['sale_product_id'],
+                                    'field_value_set' => $fieldValueSet,
+                                    'available_field_values' => $availableFieldValues->toArray(),
+                                ]);
+                                throw new \Exception("Provided field values do not match available stock for sale product ID {$product['sale_product_id']} at index {$index}");
                             }
                         }
 
-                        $unprocessedFieldIds = array_diff($existingFieldIds, $processedFieldIds);
-                        if (!empty($unprocessedFieldIds)) {
-                            SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)
-                                ->whereIn('id', $unprocessedFieldIds)
-                                ->delete();
+                        if (count($selectedQuantityIndices) > $product['quantity']) {
+                            throw new \Exception("Number of selected field value sets (" . count($selectedQuantityIndices) . ") exceeds requested quantity ({$product['quantity']}) for sale product ID {$product['sale_product_id']} at index {$index}");
+                        }
+
+                        // Delete existing field values and insert new ones
+                        SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)->delete();
+                        if (!empty($fieldValues)) {
+                            SaleReturnProductFieldValue::insert($fieldValues);
+                            \Log::debug('SaleReturnProductFieldValue updated', [
+                                'sale_return_product_id' => $salesReturnProduct->id,
+                                'field_values' => $fieldValues,
+                            ]);
+                        }
+                    } elseif ($returnEntireBatch || $returnEntireSale || $useSaleProductIds) {
+                        // Copy field values from sale for these modes
+                        $saleFieldValues = $saleProduct->fieldValues->groupBy('quantity_index')->take($product['quantity'])->values();
+                        $fieldValues = [];
+                        foreach ($saleFieldValues as $quantityIndex => $fieldValueSet) {
+                            foreach ($fieldValueSet as $fieldValue) {
+                                $fieldValues[] = [
+                                    'company_id' => $validated['company_id'],
+                                    'product_field_id' => $fieldValue->product_field_id,
+                                    'product_id' => $salesReturnProduct->product_id,
+                                    'sale_return_product_id' => $salesReturnProduct->id,
+                                    'quantity_index' => $fieldValue->quantity_index,
+                                    'value' => $fieldValue->value,
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ];
+                            }
+                        }
+                        SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)->delete();
+                        if (!empty($fieldValues)) {
+                            SaleReturnProductFieldValue::insert($fieldValues);
+                            \Log::debug('SaleReturnProductFieldValue copied from sale', [
+                                'sale_return_product_id' => $salesReturnProduct->id,
+                                'field_values' => $fieldValues,
+                            ]);
                         }
                     } else {
                         SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)->delete();
@@ -1335,6 +1524,7 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
+
 
 
     /**

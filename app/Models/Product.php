@@ -189,4 +189,19 @@ class Product extends Model
         return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
     }
 
+    public function getStockAdjustmentQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->sum('diff_stock') ?? 0;
+    }
+
+    public function getStockInQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) > 0')->sum('diff_stock') ?? 0;
+    }
+
+    public function getStockOutQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) < 0')->sum('diff_stock') ?? 0;
+    }
+
 }

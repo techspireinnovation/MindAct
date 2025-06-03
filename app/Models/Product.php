@@ -120,6 +120,11 @@ class Product extends Model
         return $this->hasOne(ProductList::class, 'product_id', 'id')->latestOfMany();
     }
 
+    public function primaryProductItem()
+    {
+        return $this->hasOne(ProductList::class)->where('is_primary', '=', 1);
+    }
+
     public function lastPurchase()
     {
         return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
@@ -127,13 +132,18 @@ class Product extends Model
 
     public function getProductStockQuantityAttribute()
     {
-        $purchases = PurchaseProduct::where('product_id', $this->id)->count();
-        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->count();
-        $sale = SaleProduct::where('product_id', $this->id)->count();
-        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->count();
-        $openQty = StockEntry::where('product_id', $this->id)->sum('quantity');
+        $purchases = PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $sale = SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $openQty = $this->getOpeningQuantityAttribute();
         $stock = $purchases - $purchaseReturn - $sale + $saleReturn + $openQty;
         return ($stock) >= 0 ? $stock : 0;
+    }
+
+    public function getOpeningQuantityAttribute()
+    {
+        return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
     }
 
 }

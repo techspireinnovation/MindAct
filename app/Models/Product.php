@@ -125,10 +125,10 @@ class Product extends Model
         return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
     }
 
-    public function lastestQuantity()
+    public function getProductStockQuantityAttribute()
     {
-        $purchases = $this->hasMany(PurchaseProduct::class, 'id', 'product_id');
-        dd($purchases->get());
+        $purchases = PurchaseProduct::where('product_id', $this->id)->count();
+        dd($purchases);
     }
 
 }

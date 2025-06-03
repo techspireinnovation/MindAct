@@ -116,8 +116,7 @@ class Helper
 
     public static function getPrimaryRateAmount(int $productId, int $purchaseProductId): mixed
     {
-        // get product primary measure unit it 
-        $productUnits = ProductList::where(['product_id' => $productId])->get();
+        // get product primary measure unit
         $primaryProductUnit = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
 
         $productPurchase = PurchaseProduct::find($purchaseProductId);
@@ -129,16 +128,20 @@ class Helper
             if ($primaryProductUnit->measure_unit_id === $productPurchase->measure_unit_id)
                 return $productPurchase->price;
             else {
-                //$productMeasureUnits = MeasureUnit::whereIn([ $productUnits])->get();
+                $productUnits = ProductList::where(['product_id' => $productId])->pluck('measure_unit_id');
 
-                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
+                $productMeasureUnits = MeasureUnit::find($productUnits);
+
+                $minPrice = $productMeasureUnits->min('quantity');
+
+                dd($minPrice);
 
                 $purchaseProductMeasureUnit = MeasureUnit::find($productPurchase->measure_unit_id);
 
-                if ($purchaseProductMeasureUnit->measure_unit_id > $productMeasureUnit->measure_unit_id)
+                // if ($purchaseProductMeasureUnit->measure_unit_id > $productMeasureUnits->measure_unit_id)
 
 
-                    return 45.00;
+                return 45.00;
             }
         }
         return 0;

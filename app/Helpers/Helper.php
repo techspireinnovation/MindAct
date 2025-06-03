@@ -179,7 +179,6 @@ class Helper
 
     public static function getSalesReturnByBatch(string $batchNo, ?int $companyId = null): Collection
     {
-        // dd('here');
         $query = SalesReturn::query()
             ->where(function ($query) use ($batchNo, $companyId) {
                 $query->where('batch_no', $batchNo);

@@ -128,7 +128,11 @@ class Product extends Model
     public function getProductStockQuantityAttribute()
     {
         $purchases = PurchaseProduct::where('product_id', $this->id)->count();
-        dd($purchases);
+        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->count();
+        $sale = SaleProduct::where('product_id', $this->id)->count();
+        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->count();
+        $stock = $purchases - $purchaseReturn - $sale + $saleReturn;
+        return ($stock) >= 0 ? $stock : 0;
     }
 
 }

@@ -43,10 +43,8 @@ class ReportController extends Controller
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
-        // $items->each->append('product_stock_quantity');
-
         $items = $items->get();
-
+        $items->each->append('product_stock_quantity');
         $items = $items->map(function ($item) {
             $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
             $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);

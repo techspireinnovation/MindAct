@@ -757,7 +757,7 @@ class SaleController extends Controller
             ]);
             return response()->json(['message' => 'No matching product found', 'data' => []], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+             \Log::error($e););
             Log::error('Database query error in getAvailableProductByIdOrName', [
                 'product_id' => $productId,
                 'product_name' => $productName,

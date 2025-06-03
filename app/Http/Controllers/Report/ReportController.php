@@ -40,9 +40,24 @@ class ReportController extends Controller
                 'lastPurchase',
             ]);
 
-            if ($request->has('from_date') && $request->has('to_date')) {
-                $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
+            if ($request->has('product_id')) {
+                $items->where('id', $request->input('product_id'));
             }
+            if ($request->has('brand_id')) {
+                $items->where('brand_id', $request->input('brand_id'));
+            }
+
+            if ($request->has('product_type_id')) {
+                $items->where('product_type_id', $request->input('product_type_id'));
+            }
+
+            if ($request->has('sub_category_id')) {
+                $items->where('sub_category_id', $request->input('sub_category_id'));
+            }
+            if ($request->has('location_id')) {
+                $items->where('location_id', $request->input('location_id'));
+            }
+
             $items = $items->get();
             $items->each->append('product_stock_quantity');
 

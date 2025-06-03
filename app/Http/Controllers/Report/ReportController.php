@@ -17,7 +17,7 @@ class ReportController extends Controller
     public function productListDetails(Request $request): mixed
     {
         //  try {
-        $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
+        $items = Product::select("products.id", "products.id AS quantity", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
             'location' => function ($query) use ($request) {
                 return $query->select('locations.id', 'name')->get();
             },

@@ -132,7 +132,7 @@ class Product extends Model
 
     public function getProductStockQuantityAttribute()
     {
-        $purchases = PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $purchases = $this->getPurchaseQuantityAttribute();
         $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
         $sale = SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
         $saleReturn = SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
@@ -144,6 +144,16 @@ class Product extends Model
     public function getOpeningQuantityAttribute()
     {
         return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseQuantityAttribute()
+    {
+        return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseRateAttribute()
+    {
+        return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
     }
 
 }

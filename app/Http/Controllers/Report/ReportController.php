@@ -70,7 +70,7 @@ class ReportController extends Controller
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
         $items = $items->get();
-        $items->each->append(['product_stock_quantity', 'opening_quantity']);
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'purchase_rate']);
 
         $items = $items->map(function ($item) {
             $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);

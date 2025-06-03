@@ -156,4 +156,37 @@ class Product extends Model
         return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
     }
 
+
+
+    public function getSaleQuantityAttribute()
+    {
+        return SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleRateAttribute()
+    {
+        return SaleProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+
+    public function getPurchaseReturnQuantityAttribute()
+    {
+        return PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseReturnRateAttribute()
+    {
+        return PurchaseProductReturn::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getSaleReturnQuantityAttribute()
+    {
+        return SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleReturnRateAttribute()
+    {
+        return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
 }

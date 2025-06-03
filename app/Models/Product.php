@@ -157,7 +157,6 @@ class Product extends Model
     }
 
 
-
     public function getSaleQuantityAttribute()
     {
         return SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
@@ -167,7 +166,6 @@ class Product extends Model
     {
         return SaleProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
     }
-
 
     public function getPurchaseReturnQuantityAttribute()
     {

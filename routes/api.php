@@ -116,11 +116,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
-
-    Route::prefix('products')->group(function () {
-        Route::resource('/', ProductController::class);
-        Route::get('print', [ProductController::class, 'print']);
-    });
+    Route::apiResource('products', ProductController::class);
 
     Route::prefix('reports')->group(function () {
         //Route::middleware(['can:print'])->group(function () {

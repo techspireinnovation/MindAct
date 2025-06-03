@@ -105,7 +105,6 @@ class Product extends Model
         return $this->hasMany(ProductFieldValue::class);
     }
 
-
     public function productLists(): HasMany
     {
         return $this->hasMany(ProductList::class);
@@ -124,6 +123,12 @@ class Product extends Model
     public function lastPurchase()
     {
         return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
+    }
+
+    public function lastestQuantity()
+    {
+        $purchases = $this->hasMany(PurchaseProduct::class, 'id', 'product_id');
+        dd($purchases->get());
     }
 
 }

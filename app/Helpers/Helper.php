@@ -128,20 +128,26 @@ class Helper
             if ($primaryProductUnit->measure_unit_id === $productPurchase->measure_unit_id)
                 return $productPurchase->price;
             else {
-                $productUnits = ProductList::where(['product_id' => $productId])->pluck('measure_unit_id');
-
-                $productMeasureUnits = MeasureUnit::find($productUnits);
-
-                $minPrice = $productMeasureUnits->min('quantity');
-
-                dd($minPrice);
-
+                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
                 $purchaseProductMeasureUnit = MeasureUnit::find($productPurchase->measure_unit_id);
 
-                // if ($purchaseProductMeasureUnit->measure_unit_id > $productMeasureUnits->measure_unit_id)
+                $fromQty = $purchaseProductMeasureUnit->quantity;
+                $toQty = $productMeasureUnit->quantity;
 
+                if ($toQty > $fromQty) {
+                    // Conversion is to a **larger unit** (e.g. grams → kilograms)
+                    // Quantity should **decrease**, so divide
+                    $factor = $fromQty / $toQty;
+                } elseif ($toQty < $fromQty) {
+                    // Conversion is to a **smaller unit** (e.g. grams → milligrams)
+                    // Quantity should **increase**, so multiply
+                    $factor = $fromQty * $toQty;
+                } else {
+                    // Same unit
+                    $factor = 1;
+                }
+                return $productPurchase->price * $factor;
 
-                return 45.00;
             }
         }
         return 0;

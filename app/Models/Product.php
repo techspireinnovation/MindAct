@@ -131,7 +131,8 @@ class Product extends Model
         $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->count();
         $sale = SaleProduct::where('product_id', $this->id)->count();
         $saleReturn = SalesReturnProduct::where('product_id', $this->id)->count();
-        $stock = $purchases - $purchaseReturn - $sale + $saleReturn;
+        $openQty = StockEntry::where('product_id', $this->id)->sum('quantity');
+        $stock = $purchases - $purchaseReturn - $sale + $saleReturn + $openQty;
         return ($stock) >= 0 ? $stock : 0;
     }
 

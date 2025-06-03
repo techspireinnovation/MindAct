@@ -85,9 +85,9 @@ class Product extends Model
     {
         $primary = ProductList::where(['product_id' => $this->id, 'is_primary' => 1])->first();
         if ($primary)
-            return $primary->measure_unit_id;
+            return MeasureUnit::find($primary->measure_unit_id);
         else
-            return 0;
+            return null;
     }
 
     public function productType()

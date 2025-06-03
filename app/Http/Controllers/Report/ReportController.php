@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers\Report;
 
+use App\Exports\Exports\ProductListDetailsReport;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\StockEntry;
 use DB;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use JsonException;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ReportController extends Controller
 {
-    public function productListDetails(Request $request): JsonResponse
+    public function productListDetails(Request $request): mixed
     {
         //  try {
         $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
@@ -51,6 +50,11 @@ class ReportController extends Controller
             return $item;
 
         });
+
+        // Excel::store(new ProductListDetailsReport, 'users.csv');
+
+        // Excel::download(new ProductListDetailsReport, 'users.xlsx');
+//        Excel::store(new ProductListDetailsReport(), 'invoices.xlsx');
 
         return response()->json($items);
 

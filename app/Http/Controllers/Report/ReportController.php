@@ -7,6 +7,7 @@ use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\StockEntry;
+use Carbon\Carbon;
 use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -51,11 +52,8 @@ class ReportController extends Controller
 
         });
 
-        // Excel::store(new ProductListDetailsReport, 'users.csv');
-
-        // Excel::download(new ProductListDetailsReport, 'users.xlsx');
-//        Excel::store(new ProductListDetailsReport(), 'invoices.xlsx');
-
+        //$date = Carbon::now();
+        //Excel::store(new ProductListDetailsReport($items), "product-list-{$date}.xlsx");
         return response()->json($items);
 
     }

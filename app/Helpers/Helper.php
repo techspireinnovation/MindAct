@@ -5,12 +5,14 @@ namespace App\Helpers;
 use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\Sale;
 use App\Models\SaleProduct;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\JsonResponse;
 use PhpParser\Node\Expr\Cast\Double;
 
 class Helper
@@ -53,10 +55,6 @@ class Helper
                 }
             })
             ->with('saleProducts');
-
-
-
-
         return $query->get();
     }
 
@@ -71,10 +69,6 @@ class Helper
                 }
             })
             ->with('saleProducts');
-
-
-
-
         return $query->get();
     }
     public function getAllExpiryDates(): JsonResponse
@@ -194,10 +188,6 @@ class Helper
                 }
             })
             ->with('salesReturnProducts');
-
-
-
-
         return $query->get();
     }
 
@@ -212,10 +202,6 @@ class Helper
                 }
             })
             ->with('salesReturnProducts');
-
-
-
-
         return $query->get();
     }
     public function getAllsalesReturnExpiryDates(): JsonResponse
@@ -230,9 +216,6 @@ class Helper
             'data' => $expiryDates
         ], 200);
     }
-
-
-
     public static function getSalesReturnByExpiryDate($expiryDate, ?int $companyId = null): Collection
     {
         $query = SalesReturn::query()

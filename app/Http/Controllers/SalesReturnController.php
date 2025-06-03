@@ -184,7 +184,7 @@ class SalesReturnController extends Controller
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings(),
             ]);
-             \Log::error($e););
+            
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
             Log::error('Unexpected error in getSaleByInvoiceNumber', [

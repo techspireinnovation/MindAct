@@ -194,11 +194,11 @@ class StockTransferController extends Controller
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error('QueryException in StockTransfer::store: ' . $e->getMessage());
-             \Log::error($e););
+          
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error('Exception in Stock Transfer::store: ' . $e->getMessage());
-             \Log::error($e););
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

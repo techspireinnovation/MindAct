@@ -291,6 +291,7 @@ public function getPurchaseByBillNumber(Request $request)
                 $groupedFieldValues[$quantityIndex][] = [
                     'product_field_id' => $fieldValue['product_field_id'],
                     'name' => $fieldValue['product_field']['name'] ?? null,
+                    'quantity_index' => $quantityIndex,
                     'value' => $fieldValue['value']
                 ];
             }
@@ -308,9 +309,9 @@ public function getPurchaseByBillNumber(Request $request)
             unset($product['purchase_product_returns']);
         }
 
-        $purchaseData['purchase_products'] = array_filter($purchaseData['purchase_products'], function ($product) {
-            return !empty($product['field_values']);
-        });
+        // $purchaseData['purchase_products'] = array_filter($purchaseData['purchase_products'], function ($product) {
+        //     return !empty($product['field_values']);
+        // });
 
         if (empty($purchaseData['purchase_products'])) {
             return response()->json(['error' => 'No available products for this purchase'], 404);
@@ -487,9 +488,9 @@ public function getPurchaseByRefBillNumber(Request $request)
             unset($product['purchase_product_returns']);
         }
 
-        $purchaseData['purchase_products'] = array_filter($purchaseData['purchase_products'], function ($product) {
-            return !empty($product['field_values']);
-        });
+        // $purchaseData['purchase_products'] = array_filter($purchaseData['purchase_products'], function ($product) {
+        //     return !empty($product['field_values']);
+        // });
 
         if (empty($purchaseData['purchase_products'])) {
             return response()->json(['message' => 'No available products for this purchase'], 404);

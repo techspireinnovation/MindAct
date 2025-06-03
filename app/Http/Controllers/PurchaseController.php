@@ -424,7 +424,17 @@ public function store(Request $request): JsonResponse
 {
 
     $validated = $request->validate([
-        'ref_bill_number' => 'required|string|max:255|unique:purchases,ref_bill_number',
+        'ref_bill_number' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('purchases')
+                        
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
         'customer_id' => 'required|exists:customers,id',
         'customer_name' => 'nullable|string|max:255',
         'pan_number' => 'nullable|string|max:255',
@@ -627,7 +637,7 @@ public function show($id): JsonResponse
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Purchase::with('PurchaseProduct.PurchaseProductFieldValue')->findOrFail($id);
+            $item = Purchase::with('purchaseProducts.fieldValues')->findOrFail($id);
             $item->delete();
             return response()->json(['message' => 'Purchase deleted']);
         } catch (ModelNotFoundException $e) {
@@ -635,9 +645,11 @@ public function show($id): JsonResponse
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

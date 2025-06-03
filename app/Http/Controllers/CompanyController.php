@@ -126,6 +126,7 @@ class CompanyController extends Controller
                 'batch_no' => false,
                 'discount_after_vat' => false,
                 'expiry_date' => false,
+                'mfd' => false,
             ]);
 
             $saleMaster = $company->salesMasterKey()->withoutGlobalScopes()->create([
@@ -237,6 +238,7 @@ class CompanyController extends Controller
                 'discount_after_vat' => 'nullable|boolean',
                 'expiry_date' => 'nullable|boolean',
                 'batch_no' => 'nullable|boolean',
+                'mfd' => 'nullable|boolean',
             ]);
 
             if ($validator->fails()) {

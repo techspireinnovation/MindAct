@@ -26,7 +26,8 @@ class PurchaseMasterKey extends Model
             'freight_charge',
             'discount_after_vat',
             'expiry_date',
-            'batch_no'
+            'batch_no',
+            'mfd',
     ];
 
     protected $dates = ['deleted_at'];

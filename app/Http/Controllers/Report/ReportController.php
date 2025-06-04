@@ -6,12 +6,15 @@ use App\Exports\Exports\ProductListDetailsReport;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\PurchaseProduct;
+use App\Models\SaleProduct;
 use App\Models\StockEntry;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use Validator;
 
 
 class ReportController extends Controller
@@ -85,6 +88,9 @@ class ReportController extends Controller
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
+        $items->where('id', $request->input('product_id'));
+
+
         $items = $items->get();
         $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
 
@@ -105,4 +111,52 @@ class ReportController extends Controller
 
         //}
     }
+
+    public function productPriceListDetails(Request $request): JsonResponse
+    {
+
+        $validator = Validator::make($request->all(), [
+
+            'type' => 'required|string|in:purchase,sales',
+            'product_id' => 'required|numeric',
+
+        ]);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        if ($request->type === "purchase") {
+            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number', 'purchase.customer:id,party_name'])->where('product_id', $request->product_id);
+
+            if ($request->has('customer_id')) {
+                $items->where('customer_id', $request->input('customer_id'));
+            }
+
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $items->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
+            }
+
+            $items = $items->get();
+            $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+        } else {
+            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with(['sale:id,customer_id,purchase_bill_number', 'purchase.customer:id,party_name'])->where('product_id', $request->product_id);
+
+            if ($request->has('customer_id')) {
+                $items->where('customer_id', $request->input('customer_id'));
+            }
+
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $items->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
+            }
+
+            $items = $items->get();
+            $items->each->append(['sale_quantity', 'sale_unit', 'sale_rate', 'sale_discount_amount']);
+        }
+
+        return response()->json($items);
+
+
+    }
+
+
 }

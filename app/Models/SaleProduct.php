@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SaleProduct extends Model
 {
@@ -14,7 +14,7 @@ class SaleProduct extends Model
     protected $casts = [
         'is_active' => 'boolean'
     ];
-    
+
     protected $fillable = [
         'company_id',
         'sale_id',
@@ -30,7 +30,7 @@ class SaleProduct extends Model
         'price',
         'discount_percent',
         'discount_amount',
-        'is_vatable',   
+        'is_vatable',
     ];
     protected $dates = ['deleted_at'];
 
@@ -43,7 +43,8 @@ class SaleProduct extends Model
         return $this->belongsTo(Sale::class);
     }
 
-    public function product() {
+    public function product()
+    {
         return $this->belongsTo(Product::class);
     }
 
@@ -51,10 +52,34 @@ class SaleProduct extends Model
     {
         return $this->hasMany(SalesProductFieldValue::class, 'sale_product_id');
     }
-    
+
     public function saleProductReturns()
     {
         return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
     }
-   
+
+    public function getSaleQuantityAttribute()
+    {
+        return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getSaleDiscountAmountAttribute()
+    {
+        return self::where('product_id', $this->product_id)->latest('id')->first()->discount_amount ?? 0;
+    }
+
+    public function getSaleUnitAttribute()
+    {
+        $primary = self::where('product_id', $this->product_id)->latest('id')->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id);
+        else
+            return null;
+    }
+
 }

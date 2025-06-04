@@ -25,7 +25,7 @@ class PurchaseProduct extends Model
         'discount_percent',
         'discount_amount',
         'amount',
-        
+
         'is_vatable',
         'measure_unit_id',
     ];
@@ -52,12 +52,36 @@ class PurchaseProduct extends Model
 
     public function purchase()
     {
-        return $this->belongsTo(Purchase::class, 'purchase_id');
+        return $this->belongsTo(Purchase::class, 'purchase_id', 'id');
     }
 
     public function purchaseProductReturns()
     {
         return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
     }
-   
+
+    public function getPurchaseQuantityAttribute()
+    {
+        return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getPurchaseDiscountAmountAttribute()
+    {
+        return self::where('product_id', $this->product_id)->latest('id')->first()->discount_amount ?? 0;
+    }
+
+    public function getPurchaseUnitAttribute()
+    {
+        $primary = self::where('product_id', $this->product_id)->latest('id')->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id);
+        else
+            return null;
+    }
+
 }

@@ -122,6 +122,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         //Route::middleware(['can:print'])->group(function () {
         Route::get('/stock-register', [ReportController::class, 'stockRegisterDetails']);
         Route::get('/product-list', [ReportController::class, 'productListDetails']);
+        Route::get('/product-price-list', [ReportController::class, 'productPriceListDetails']);
         //});
     });
 

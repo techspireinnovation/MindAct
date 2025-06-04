@@ -89,6 +89,7 @@ class PurchaseProduct extends Model
 
     public function getCreatedAtBsAttribute(): string
     {
-        return NepaliDate::create($this->created_at)->toBS();
+        return $this->created_at ? NepaliDate::create($this->created_at)->toBS() : "";
     }
+
 }

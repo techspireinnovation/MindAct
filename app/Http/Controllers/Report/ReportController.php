@@ -7,6 +7,7 @@ use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\SaleProduct;
 use App\Models\StockEntry;
@@ -191,15 +192,23 @@ class ReportController extends Controller
 
     public function stockLedgerListDetails(Request $request): JsonResponse
     {
+        $validator = Validator::make($request->all(), [
+            'product_id' => 'required|numeric',
+        ]);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
 
-        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount')->withSum('purchases', 'discount_value')->withSum('purchaseReturns', 'sub_total_before_discount')->withSum('purchaseReturns', 'discount_value');
+        $opening = StockEntry::where('product_id', $request->product_id)->sum('quantity');
+
+        $items = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id);
 
         if ($request->has('customer_id')) {
             $items->where('id', $request->input('customer_id'));
         }
 
         $items = $items->get();
-        //$items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+        $items->each->append(['purchase_quantity']);
 
         return response()->json($items);
     }

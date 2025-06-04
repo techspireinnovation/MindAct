@@ -170,10 +170,7 @@ class ReportController extends Controller
             $items = $items->get();
             $items->each->append(['sale_quantity', 'sale_unit', 'sale_rate', 'sale_discount_amount']);
         }
-
         return response()->json($items);
-
-
     }
 
 

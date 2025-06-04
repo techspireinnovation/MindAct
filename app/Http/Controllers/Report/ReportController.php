@@ -140,7 +140,19 @@ class ReportController extends Controller
             $items = $items->get();
             $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
         } else {
-            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with(['sale:id,customer_id,invoice_number', 'sale.customer:id,party_name'])->where('product_id', $request->product_id);
+            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with([
+                'sale' => function ($q) {
+                    $q->select("sales.id", "sales.customer_id", "sales.invoice_number", "sales.invoice_date_bs")->with([
+                        "customer" => function ($cus) {
+                            $cus->select("customers.id", "customers.party_name");
+                        }
+                    ]);
+                }
+            ])->whereHas('sale', function ($query) use ($request) {
+                if ($request->has('from_date_bs') && $request->has('to_date_bs')) {
+                    $query->whereDate('invoice_date_bs', '>=', $request->from_date_bs)->whereDate('invoice_date_bs', '<=', $request->to_date_bs);
+                }
+            })->where('product_id', $request->product_id);
 
             if ($request->has('customer_id')) {
                 $items->where('customer_id', $request->input('customer_id'));

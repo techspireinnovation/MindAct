@@ -6,6 +6,7 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Pratiksh\Nepalidate\Services\NepaliDate;
 
 class SaleProduct extends Model
 {
@@ -33,7 +34,7 @@ class SaleProduct extends Model
         'is_vatable',
     ];
     protected $dates = ['deleted_at'];
-
+    protected $appends = ['created_at_bs'];
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
@@ -80,6 +81,10 @@ class SaleProduct extends Model
             return MeasureUnit::find($primary->measure_unit_id);
         else
             return null;
+    }
+    public function getCreatedAtBsAttribute(): string
+    {
+        return NepaliDate::create($this->created_at)->toBS();
     }
 
 }

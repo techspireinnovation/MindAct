@@ -21,11 +21,11 @@ class Sale extends Model
         'is_vatable' => 'boolean',
         'abvt' => 'boolean',
         'payment' => 'array',
-        'invoice_date' => 'date',
-        'invoice_date_bs' => 'date',
+        'invoice_date' => 'date:Y-m-d',
+        'invoice_date_bs' => 'date:Y-m-d',
     ];
 
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'invoice_date_bs'];
 
     protected $fillable = [
         'company_id',

@@ -139,7 +139,7 @@ class ReportController extends Controller
             $items = $items->get();
             $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
         } else {
-            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with(['sale:id,customer_id,purchase_bill_number', 'purchase.customer:id,party_name'])->where('product_id', $request->product_id);
+            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with(['sale:id,customer_id,invoice_number', 'sale.customer:id,party_name'])->where('product_id', $request->product_id);
 
             if ($request->has('customer_id')) {
                 $items->where('customer_id', $request->input('customer_id'));

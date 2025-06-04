@@ -52,6 +52,7 @@ class SalesReturn extends Model
         'discount_after_vat',
         'total_amount',
         'round_of_amount',
+        'roundoff_type',
         'payment',
     ];
 

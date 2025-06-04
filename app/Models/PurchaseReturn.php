@@ -48,6 +48,7 @@ class PurchaseReturn extends Model
         'location_id',
         'discount_amount',
         'roundoff_amount',
+        'roundoff_type',
         'total_amount',
         'vat_percent',
         'excise_duty',

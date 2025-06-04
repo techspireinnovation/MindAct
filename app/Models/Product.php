@@ -120,6 +120,11 @@ class Product extends Model
         return $this->hasOne(ProductList::class, 'product_id', 'id')->latestOfMany();
     }
 
+    public function primaryProductItem()
+    {
+        return $this->hasOne(ProductList::class)->where('is_primary', '=', 1);
+    }
+
     public function lastPurchase()
     {
         return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
@@ -127,13 +132,74 @@ class Product extends Model
 
     public function getProductStockQuantityAttribute()
     {
-        $purchases = PurchaseProduct::where('product_id', $this->id)->count();
-        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->count();
-        $sale = SaleProduct::where('product_id', $this->id)->count();
-        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->count();
-        $openQty = StockEntry::where('product_id', $this->id)->sum('quantity');
+        $purchases = $this->getPurchaseQuantityAttribute();
+        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $sale = SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $openQty = $this->getOpeningQuantityAttribute();
         $stock = $purchases - $purchaseReturn - $sale + $saleReturn + $openQty;
         return ($stock) >= 0 ? $stock : 0;
+    }
+
+    public function getOpeningQuantityAttribute()
+    {
+        return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseQuantityAttribute()
+    {
+        return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseRateAttribute()
+    {
+        return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+
+    public function getSaleQuantityAttribute()
+    {
+        return SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleRateAttribute()
+    {
+        return SaleProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getPurchaseReturnQuantityAttribute()
+    {
+        return PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseReturnRateAttribute()
+    {
+        return PurchaseProductReturn::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getSaleReturnQuantityAttribute()
+    {
+        return SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleReturnRateAttribute()
+    {
+        return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getStockAdjustmentQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->sum('diff_stock') ?? 0;
+    }
+
+    public function getStockInQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) > 0')->sum('diff_stock') ?? 0;
+    }
+
+    public function getStockOutQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) < 0')->sum('diff_stock') ?? 0;
     }
 
 }

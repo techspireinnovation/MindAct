@@ -5,46 +5,96 @@ namespace App\Http\Controllers\Report;
 use App\Exports\Exports\ProductListDetailsReport;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Product;
+use App\Models\PurchaseProduct;
+use App\Models\SaleProduct;
 use App\Models\StockEntry;
 use Carbon\Carbon;
 use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
+use Pratiksh\Nepalidate\Services\NepaliDate;
+use Validator;
+
 
 class ReportController extends Controller
 {
-    public function productListDetails(Request $request): mixed
+    public function productListDetails(Request $request): JsonResponse
     {
-        // try {
-        $items = Product::select("products.id", "products.id AS quantity", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
-            'location' => function ($query) use ($request) {
-                return $query->select('locations.id', 'name')->get();
-            },
-            'category' => function ($query) use ($request) {
-                return $query->select('product_categories.id', 'name')->get();
-            },
-            'subCategory' => function ($query) use ($request) {
-                return $query->select('product_sub_categories.id', 'name')->get();
-            },
-            'brand' => function ($query) use ($request) {
-                return $query->select('brands.id', 'name')->get();
-            },
-            'productType' => function ($query) use ($request) {
-                return $query->select('product_types.id', 'name')->get();
-            },
-            'latestProduct' => function ($query) use ($request) {
-                return $query->select('product_lists.id', 'product_lists.barcode', 'product_lists.hs_code', 'product_lists.product_id')->get();
-            },
+        try {
+            $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
+                'location' => function ($query) use ($request) {
+                    return $query->select('locations.id', 'name')->get();
+                },
+                'category' => function ($query) use ($request) {
+                    return $query->select('product_categories.id', 'name')->get();
+                },
+                'subCategory' => function ($query) use ($request) {
+                    return $query->select('product_sub_categories.id', 'name')->get();
+                },
+                'brand' => function ($query) use ($request) {
+                    return $query->select('brands.id', 'name')->get();
+                },
+                'productType' => function ($query) use ($request) {
+                    return $query->select('product_types.id', 'name')->get();
+                },
+                'latestProduct' => function ($query) use ($request) {
+                    return $query->select('product_lists.id', 'product_lists.barcode', 'product_lists.hs_code', 'product_lists.product_id')->get();
+                },
+                'lastPurchase',
+            ]);
+
+            if ($request->has('product_id')) {
+                $items->where('id', $request->input('product_id'));
+            }
+            if ($request->has('brand_id')) {
+                $items->where('brand_id', $request->input('brand_id'));
+            }
+
+            if ($request->has('product_type_id')) {
+                $items->where('product_type_id', $request->input('product_type_id'));
+            }
+
+            if ($request->has('sub_category_id')) {
+                $items->where('sub_category_id', $request->input('sub_category_id'));
+            }
+            if ($request->has('location_id')) {
+                $items->where('location_id', $request->input('location_id'));
+            }
+
+            $items = $items->get();
+            $items->each->append('product_stock_quantity');
+
+            $items = $items->map(function ($item) {
+                $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+                $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
+                return $item;
+            });
+            return response()->json($items);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }
+
+    }
+    public function stockRegisterDetails(Request $request): JsonResponse
+    {
+        //  try {
+        $items = Product::select("products.id", "products.product_unique_id", "products.name")->with([
             'lastPurchase',
+            'primaryProductItem'
         ]);
 
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
+        $items->where('id', $request->input('product_id'));
+
+
         $items = $items->get();
-        $items->each->append('product_stock_quantity');
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
 
         $items = $items->map(function ($item) {
             $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
@@ -57,38 +107,87 @@ class ReportController extends Controller
         //Excel::store(new ProductListDetailsReport($items), "product-list-{$date}.xlsx");
         return response()->json($items);
 
-        //  } catch (\Exception $e) {
-        //    \Log::error($e);
-        //  return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-
-        //}
-
-    }
-    public function stockRegisterDetails(Request $request): JsonResponse
-    {
-        //  try {
-        $query = StockEntry::select("stock_entries.id", "stock_entries.product_id", "stock_entries.uom", "stock_entries.quantity", "stock_entries.rate", "stock_entries.amount", DB::raw('COALESCE(SUM(purchase_products.quantity),0) as purchase_quantity,COALESCE(AVG(purchase_products.price),0) as purchase_rate'), DB::raw('COALESCE(SUM(sale_products.quantity),0) as sale_quantity,COALESCE(AVG(sale_products.price),0) as sale_rate'), DB::raw('COALESCE(SUM(purchase_product_returns.quantity),0) as purchase_return_quantity,COALESCE(AVG(purchase_product_returns.price),0) as purchase_return_rate'), DB::raw('COALESCE(SUM(sales_return_products.quantity),0) as sale_return_quantity,COALESCE(AVG(sales_return_products.price),0) as sale_return_rate'))->leftJoin('purchase_products', 'stock_entries.product_id', '=', 'purchase_products.product_id')->leftJoin('sales_return_products', 'stock_entries.product_id', '=', 'sales_return_products.product_id')->leftJoin('purchase_product_returns', 'stock_entries.product_id', '=', 'purchase_product_returns.product_id')->leftJoin('sale_products', 'stock_entries.product_id', '=', 'sale_products.product_id')->with([
-            'product' => function ($query) use ($request) {
-                $query->select('id', 'name');
-                // if ($request->has('from_date') && $request->has('to_date')) {
-                //   $query->whereDate('created_at', '>=', $request->from_date)->whereDate('created_at', '<=', $request->to_date);
-                // }
-            }
-        ]);
-
-        if ($request->has('from_date') && $request->has('to_date')) {
-            $query->whereDate('stock_entries.created_at', '>=', $request->from_date)->whereDate('stock_entries.created_at', '<=', $request->to_date);
-        }
-
-        $query->groupBy("stock_entries.id", "stock_entries.product_id");
-
-        //  dd($query->toSql());
-        return response()->json($query->paginate(50));
-
         // } catch (\Exception $e) {
         //      \Log::error($e);
         //return response()->json(['error' => 'An unexpected error occurred!!'], 500);
 
         //}
     }
+
+    public function productPriceListDetails(Request $request): JsonResponse
+    {
+
+        $validator = Validator::make($request->all(), [
+
+            'type' => 'required|string|in:purchase,sales',
+            'product_id' => 'required|numeric',
+
+        ]);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        if ($request->type === "purchase") {
+            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number', 'purchase.customer:id,party_name'])->whereHas('purchase', function ($query) use ($request) {
+                if ($request->has('from_date') && $request->has('to_date')) {
+                    $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
+                }
+            })->where('product_id', $request->product_id);
+
+            if ($request->has('customer_id')) {
+                $items->where('customer_id', $request->input('customer_id'));
+            }
+
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $items->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
+            }
+
+            $items = $items->get();
+            $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+        } else {
+            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with([
+                'sale' => function ($q) {
+                    $q->select("sales.id", "sales.customer_id", "sales.invoice_number", "sales.invoice_date_bs")->with([
+                        "customer" => function ($cus) {
+                            $cus->select("customers.id", "customers.party_name");
+                        }
+                    ]);
+                }
+            ])->whereHas('sale', function ($query) use ($request) {
+                if ($request->has('from_date') && $request->has('to_date')) {
+                    $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
+                }
+            })->where('product_id', $request->product_id);
+
+            if ($request->has('customer_id')) {
+                $items->where('customer_id', $request->input('customer_id'));
+            }
+
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $items->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
+            }
+
+            $items = $items->get();
+            $items->each->append(['sale_quantity', 'sale_unit', 'sale_rate', 'sale_discount_amount']);
+        }
+        return response()->json($items);
+    }
+
+
+    public function vendorSupplierListDetails(Request $request): JsonResponse
+    {
+
+        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount')->withSum('purchases', 'discount_value')->withSum('purchaseReturns', 'sub_total_before_discount')->withSum('purchaseReturns', 'discount_value');
+
+        if ($request->has('customer_id')) {
+            $items->where('id', $request->input('customer_id'));
+        }
+
+        $items = $items->get();
+        //$items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+
+        return response()->json($items);
+    }
+
+
 }

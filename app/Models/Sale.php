@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
-use App\Models\SaleProduct;
 use App\Models\SaleAdditional;
+use App\Models\SaleProduct;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Sale extends Model
 {
@@ -21,11 +21,11 @@ class Sale extends Model
         'is_vatable' => 'boolean',
         'abvt' => 'boolean',
         'payment' => 'array',
-        'invoice_date' => 'date',
-        'invoice_date_bs' => 'date',
+        'invoice_date' => 'date:Y-m-d',
+        'invoice_date_bs' => 'date:Y-m-d',
     ];
 
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'invoice_date_bs'];
 
     protected $fillable = [
         'company_id',
@@ -80,4 +80,10 @@ class Sale extends Model
     {
         return $this->hasMany(SaleAdditional::class, 'sale_id');
     }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
+    }
+
 }

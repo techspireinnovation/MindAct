@@ -15,6 +15,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
+        "pratiksh/nepalidate": "^2.0",
         "sagautam5/local-states-nepal": "^2.0",
         "spatie/flysystem-dropbox": "^3.0",
         "spatie/laravel-backup": "^9.3",

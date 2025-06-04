@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
 class PurchaseProduct extends Model
@@ -31,7 +32,9 @@ class PurchaseProduct extends Model
     ];
 
     use SoftDeletes;
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'created_at_bs'];
+    protected $appends = ['created_at_bs'];
+
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
@@ -84,4 +87,8 @@ class PurchaseProduct extends Model
             return null;
     }
 
+    public function getCreatedAtBsAttribute(): string
+    {
+        return NepaliDate::create($this->created_at)->toBS();
+    }
 }

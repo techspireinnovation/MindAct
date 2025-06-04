@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Report;
 use App\Exports\Exports\ProductListDetailsReport;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Product;
 use App\Models\PurchaseProduct;
 use App\Models\SaleProduct;
@@ -173,6 +174,21 @@ class ReportController extends Controller
         return response()->json($items);
 
 
+    }
+
+
+    public function vendorSupplierListDetails(Request $request): JsonResponse
+    {
+
+        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number");
+
+        if ($request->has('customer_id')) {
+            $items->where('id', $request->input('customer_id'));
+        }
+        $items = $items->get();
+        //  $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+
+        return response()->json($items);
     }
 
 

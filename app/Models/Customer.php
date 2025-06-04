@@ -5,22 +5,22 @@ namespace App\Models;
 use App\Models\Sale;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Customer extends Model
 {
     use SoftDeletes, HasFactory;
-    
+
     protected $casts = [
         'is_active' => 'boolean'
-    ];  
+    ];
     protected $fillable = [
         'company_id',
         'party_name',
         'pan_number',
         'billing_address',
-        'opening_balance',       
+        'opening_balance',
         'ledger_type',
         'address',
         'phone',
@@ -33,9 +33,9 @@ class Customer extends Model
         'vdc_municipality',
         'ward_no',
         'area',
-        'city',        
+        'city',
         'bank_name',
-        'bank_account_number',                              
+        'bank_account_number',
         'is_active'
     ];
 
@@ -45,4 +45,10 @@ class Customer extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class, 'customer_id', 'id');
+    }
+
 }

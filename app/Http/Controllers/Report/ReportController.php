@@ -180,11 +180,12 @@ class ReportController extends Controller
     public function vendorSupplierListDetails(Request $request): JsonResponse
     {
 
-        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number");
+        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount');
 
         if ($request->has('customer_id')) {
             $items->where('id', $request->input('customer_id'));
         }
+
         $items = $items->get();
         //  $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
 

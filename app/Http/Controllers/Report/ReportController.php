@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
+
 class ReportController extends Controller
 {
     public function productListDetails(Request $request): JsonResponse
@@ -68,7 +69,7 @@ class ReportController extends Controller
             });
             return response()->json($items);
         } catch (\Exception $e) {
-            \Log::error($e);
+            \Illuminate\Support\Facades\Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
 

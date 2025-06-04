@@ -56,6 +56,7 @@ class Sale extends Model
         'freight_charge',
         'discount_after_vat',
         'round_off_amount',
+        'roundoff_type',
         'total_amount',
         'payment',
         'note',

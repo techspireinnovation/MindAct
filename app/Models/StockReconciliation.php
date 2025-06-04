@@ -25,10 +25,9 @@ class StockReconciliation extends Model
         'document_no',
         'branch_id',
         'branch_id',
-        'product_details',
+       
         'remarks',
-        
-        
+  
         
     ];
 
@@ -37,6 +36,10 @@ class StockReconciliation extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function stockReconciliationDetails(): HasMany {
+        return $this->hasMany(StockReconciliationDetail::class , 'stock_reconciliation_id');
     }
 
 }

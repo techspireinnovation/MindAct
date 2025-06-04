@@ -51,4 +51,9 @@ class Customer extends Model
         return $this->hasMany(Purchase::class, 'customer_id', 'id');
     }
 
+    public function purchaseReturns()
+    {
+        return $this->hasMany(PurchaseReturn::class, 'customer_id', 'id');
+    }
+
 }

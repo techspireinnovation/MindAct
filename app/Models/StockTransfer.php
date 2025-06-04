@@ -39,7 +39,8 @@ class StockTransfer extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function stockTransferDetails(): HasMany {
+    public function stockTransferDetails(): HasMany 
+    {
         return $this->hasMany(StockTransferDetails::class, 'stock_transfer_id');
     }
 }

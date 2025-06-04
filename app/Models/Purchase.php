@@ -44,6 +44,7 @@ class Purchase extends Model
         'taxable_amount',
         'non_taxable_amount',
         'roundoff_amount',
+        'roundoff_type',
         'total_amount',
         'excise_duty',
         'vat_percent',

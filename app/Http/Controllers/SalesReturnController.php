@@ -780,6 +780,7 @@ class SalesReturnController extends Controller
                     'return_code' => 'RETURN' . now()->format('YmdHis'),
                     'return_date' => now()->toDateString(),
                     'return_time' => now()->toTimeString(),
+                    
                 ];
             }
 
@@ -945,7 +946,7 @@ class SalesReturnController extends Controller
     }
 
     
-    public function update(Request $request, $id): JsonResponse
+     public function update(Request $request, $id): JsonResponse
     {
         try {
             $salesReturn = SalesReturn::with(['salesReturnProducts.fieldValues', 'salesReturnAdditional'])
@@ -1041,13 +1042,30 @@ class SalesReturnController extends Controller
             }
 
             $validated = $validator->validated();
-            \Log::debug('Initial validated sales_return_products', ['sales_return_products' => $validated['sales_return_products'] ?? []]);
+            Log::debug('Initial validated sales_return_products', ['sales_return_products' => $validated['sales_return_products'] ?? []]);
+
+            // Initialize control flags
+            $returnEntireBatch = $validated['return_entire_batch'] ?? false;
+            $returnEntireSale = $validated['return_entire_sale'] ?? false;
+            $useSaleProductIds = isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids']);
 
             // Use existing sale_id if not provided
             $validated['sale_id'] = $validated['sale_id'] ?? $salesReturn->sale_id;
             $sale = Sale::with(['saleProducts.fieldValues', 'saleAdditionals'])
                 ->where('company_id', $validated['company_id'])
                 ->findOrFail($validated['sale_id']);
+
+            // Load sale products for reuse if needed
+            $saleProducts = null;
+            if ($returnEntireBatch || $returnEntireSale || $useSaleProductIds) {
+                $query = $returnEntireBatch || $returnEntireSale
+                    ? $sale->saleProducts()->with('fieldValues')
+                    : SaleProduct::whereIn('id', $validated['sale_product_ids'])->with('fieldValues')->where('sale_id', $validated['sale_id']);
+                $saleProducts = $query->get()->keyBy('id');
+                if ($saleProducts->isEmpty()) {
+                    return response()->json(['error' => 'No valid sale products found'], 422);
+                }
+            }
 
             // Calculate fiscal year
             $date = $request->invoice_date ? Carbon::parse($request->invoice_date) : now();
@@ -1060,16 +1078,7 @@ class SalesReturnController extends Controller
             $validated['invoice_number'] = $request->input('invoice_number') ?? $this->generateUniqueInvoiceNumber($fiscalYear);
 
             // Handle return_entire_batch or return_entire_sale
-            $returnEntireBatch = $validated['return_entire_batch'] ?? false;
-            $returnEntireSale = $validated['return_entire_sale'] ?? false;
-            $useSaleProductIds = isset($validated['sale_product_ids']) && !empty($validated['sale_product_ids']);
-
             if ($returnEntireBatch || $returnEntireSale) {
-                $saleProducts = $sale->saleProducts()->with('fieldValues')->get();
-                if ($saleProducts->isEmpty()) {
-                    return response()->json(['error' => 'No products found in the specified sale'], 422);
-                }
-
                 $validated['sales_return_products'] = $saleProducts->map(function ($product) use ($validated, $salesReturn) {
                     $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
                         return $group->map(function ($field) {
@@ -1094,7 +1103,7 @@ class SalesReturnController extends Controller
                     $remainingQuantity = min($product->quantity, $remainingTotal);
                     $remainingFreeQuantity = $remainingTotal > $product->quantity ? $remainingTotal - $product->quantity : 0;
 
-                    \Log::info('Update return calculation', [
+                    Log::info('Update return calculation', [
                         'sale_product_id' => $product->id,
                         'total_available' => $totalAvailable,
                         'returned_total' => $returned->total ?? 0,
@@ -1126,15 +1135,6 @@ class SalesReturnController extends Controller
                     return response()->json(['error' => 'No remaining products available to return'], 422);
                 }
             } elseif ($useSaleProductIds) {
-                $saleProducts = SaleProduct::whereIn('id', $validated['sale_product_ids'])
-                    ->with('fieldValues')
-                    ->where('sale_id', $validated['sale_id'])
-                    ->get();
-
-                if ($saleProducts->isEmpty()) {
-                    return response()->json(['error' => 'No valid sale products found for provided IDs'], 422);
-                }
-
                 $validated['sales_return_products'] = $saleProducts->map(function ($product) use ($validated, $salesReturn) {
                     $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
                         return $group->map(function ($field) {
@@ -1159,7 +1159,7 @@ class SalesReturnController extends Controller
                     $remainingQuantity = min($product->quantity, $remainingTotal);
                     $remainingFreeQuantity = $remainingTotal > $product->quantity ? $remainingTotal - $product->quantity : 0;
 
-                    \Log::info('Update specific products calculation', [
+                    Log::info('Update specific products calculation', [
                         'sale_product_id' => $product->id,
                         'total_available' => $totalAvailable,
                         'returned_total' => $returned->total ?? 0,
@@ -1201,17 +1201,19 @@ class SalesReturnController extends Controller
 
             // Validate return quantities and field values
             foreach ($validated['sales_return_products'] as $index => $product) {
-                \Log::debug('Processing sales return product at index ' . $index, ['product' => $product]);
+                Log::debug('Processing sales return product at index ' . $index, ['product' => $product]);
                 $saleProductId = $product['sale_product_id'];
                 $productId = $product['product_id'];
                 $purchaseProductId = $product['purchase_product_id'];
                 $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
 
                 // Validate sale_product_id and sale_id consistency
-                $saleProduct = SaleProduct::with('fieldValues')
-                    ->where('id', $saleProductId)
-                    ->where('sale_id', $validated['sale_id'])
-                    ->first();
+                $saleProduct = $saleProducts && $saleProducts->has($saleProductId)
+                    ? $saleProducts->get($saleProductId)
+                    : SaleProduct::with('fieldValues')
+                        ->where('id', $saleProductId)
+                        ->where('sale_id', $validated['sale_id'])
+                        ->first();
                 if (!$saleProduct) {
                     return response()->json([
                         'error' => "Sale product ID {$saleProductId} at index {$index} does not belong to sale ID {$validated['sale_id']}"
@@ -1302,7 +1304,7 @@ class SalesReturnController extends Controller
 
             $salesReturnData = array_intersect_key($validated, array_flip((new SalesReturn)->getFillable()));
 
-            $salesReturn = DB::transaction(function () use ($salesReturn, $salesReturnData, $validated, $salesReturnAdditionalsData) {
+            $salesReturn = DB::transaction(function () use ($salesReturn, $salesReturnData, $validated, $salesReturnAdditionalsData, $returnEntireBatch, $returnEntireSale, $useSaleProductIds, $saleProducts) {
                 // Update sales return
                 $salesReturn->update($salesReturnData);
 
@@ -1323,6 +1325,17 @@ class SalesReturnController extends Controller
                     $productModel = Product::find($product['product_id']);
                     $product['product_code'] = $productModel->product_unique_id ?? null;
                     $product['product_name'] = $productModel->name ?? null;
+
+                    // Fetch sale product for field values
+                    $saleProduct = $saleProducts && $saleProducts->has($product['sale_product_id'])
+                        ? $saleProducts->get($product['sale_product_id'])
+                        : SaleProduct::with('fieldValues')
+                            ->where('id', $product['sale_product_id'])
+                            ->where('sale_id', $validated['sale_id'])
+                            ->first();
+                    if (!$saleProduct) {
+                        throw new \Exception("Sale product ID {$product['sale_product_id']} not found for index {$index}");
+                    }
 
                     // Fetch available field values to validate
                     $availableFieldValues = PurchaseProductFieldValue::withoutGlobalScopes()
@@ -1355,7 +1368,7 @@ class SalesReturnController extends Controller
                         ])
                         ->get();
 
-                    \Log::debug('Available field values for sales return update', [
+                    Log::debug('Available field values for sales return update', [
                         'purchase_product_id' => $product['purchase_product_id'],
                         'sale_product_id' => $product['sale_product_id'],
                         'field_values' => $availableFieldValues->toArray(),
@@ -1417,7 +1430,7 @@ class SalesReturnController extends Controller
                                 }
                             }
                             if (!$matched) {
-                                \Log::warning('Field values mismatch for sales return update', [
+                                Log::warning('Field values mismatch for sales return update', [
                                     'purchase_product_id' => $product['purchase_product_id'],
                                     'sale_product_id' => $product['sale_product_id'],
                                     'field_value_set' => $fieldValueSet,
@@ -1435,13 +1448,13 @@ class SalesReturnController extends Controller
                         SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)->delete();
                         if (!empty($fieldValues)) {
                             SaleReturnProductFieldValue::insert($fieldValues);
-                            \Log::debug('SaleReturnProductFieldValue updated', [
+                            Log::debug('SaleReturnProductFieldValue updated', [
                                 'sale_return_product_id' => $salesReturnProduct->id,
                                 'field_values' => $fieldValues,
                             ]);
                         }
                     } elseif ($returnEntireBatch || $returnEntireSale || $useSaleProductIds) {
-                        // Copy field values from sale for these modes
+                        // Copy field values from sale product
                         $saleFieldValues = $saleProduct->fieldValues->groupBy('quantity_index')->take($product['quantity'])->values();
                         $fieldValues = [];
                         foreach ($saleFieldValues as $quantityIndex => $fieldValueSet) {
@@ -1461,7 +1474,7 @@ class SalesReturnController extends Controller
                         SaleReturnProductFieldValue::where('sale_return_product_id', $salesReturnProduct->id)->delete();
                         if (!empty($fieldValues)) {
                             SaleReturnProductFieldValue::insert($fieldValues);
-                            \Log::debug('SaleReturnProductFieldValue copied from sale', [
+                            Log::debug('SaleReturnProductFieldValue copied from sale', [
                                 'sale_return_product_id' => $salesReturnProduct->id,
                                 'field_values' => $fieldValues,
                             ]);
@@ -1500,14 +1513,14 @@ class SalesReturnController extends Controller
                 ])
             ], 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error('Model not found during sales return update', [
+            Log::error('Model not found during sales return update', [
                 'sales_return_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
             return response()->json(['error' => 'Sales Return or related resource not found'], 404);
         } catch (QueryException $e) {
-            \Log::error('Database error during sales return update', [
+            Log::error('Database error during sales return update', [
                 'sales_return_id' => $id,
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
@@ -1516,7 +1529,7 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (ValidationException $e) {
-            \Log::warning('Validation failed during sales return update', [
+            Log::warning('Validation failed during sales return update', [
                 'sales_return_id' => $id,
                 'errors' => $e->errors(),
                 'trace' => $e->getTraceAsString()
@@ -1526,14 +1539,15 @@ class SalesReturnController extends Controller
                 'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error during sales return update', [
+            Log::error('Unexpected error during sales return update', [
                 'sales_return_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Error occurred: ' . $e->getMessage()], 422);
         }
     }
+
 
 
 

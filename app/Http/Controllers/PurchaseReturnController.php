@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ProductFieldValue;
 use App\Helpers\Helper;
+use App\Helpers\PurchaseReturnHelper;
 use App\Models\PurchaseReturnProductFieldValue;
 use App\Models\PurchaseProductFieldValue;
 use App\Models\PurchaseReturnHistory;
@@ -40,21 +41,220 @@ class PurchaseReturnController extends Controller
         return response()->json($query->paginate(50));
     }
 
-// public function getBills(){
-//     try{
-//         $company = $request->company_id;
-//         $bills = Helper::getPurchaseBills($company);
-//         return response()->json($bills);
-//     }catch(ModelNotFoundException $e){
-//             return response()->json(['error','Item Not Found!!'],422);
-//     }catch(QueryException $e){
-//             return response()->json(['error','Database error occurred!!'],500);
-//         }catch(ModelNotFoundException $e){
-//             return response()->json(['error','An unexpected error occurred!!'],500);
-//         }
-//     }
+    public function getPurchaseProductNames(Request $request): JsonResponse
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
 
-    public function getPurchaseBillNumber(Request $request)
+            // Get unique product IDs with available quantities for return
+            $productIds = PurchaseProduct::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->whereRaw('
+                    (
+                        (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                        COALESCE((
+                            SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
+                            FROM purchase_product_returns
+                            WHERE purchase_product_returns.purchase_product_id = purchase_products.id
+                            AND purchase_product_returns.deleted_at IS NULL
+                        ), 0) - 
+                        COALESCE((
+                            SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
+                            FROM sale_products
+                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            AND sale_products.deleted_at IS NULL
+                        ), 0) + 
+                        COALESCE((
+                            SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                            FROM sales_return_products
+                            WHERE sales_return_products.sale_product_id IN (
+                                SELECT id FROM sale_products
+                                WHERE sale_products.purchase_product_id = purchase_products.id
+                                AND sale_products.deleted_at IS NULL
+                            )
+                            AND sales_return_products.deleted_at IS NULL
+                        ), 0)
+                    ) > 0
+                ')
+                ->pluck('product_id')
+                ->unique()
+                ->toArray();
+
+            if (empty($productIds)) {
+                return response()->json(['error' => 'No products with available quantities found'], 404);
+            }
+
+            // Get product names using the helper function
+            $productNames = PurchaseReturnHelper::getPurchaseProductforPurchaseReturn($productIds, $request->company_id);
+
+            if (isset($productNames['error'])) {
+                return response()->json(['error' => $productNames['error']], 404);
+            }
+
+            return response()->json($productNames);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getPurchaseProductNames: ' . $e->getMessage());
+            return response()->json(['error' => 'Database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getPurchaseProductNames: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+    public function getPurchaseProductUniqueId(Request $request): JsonResponse
+    {
+        try {
+            // Validate company_id
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            // Fetch product codes with available quantities
+            $productCodes = PurchaseProduct::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->whereRaw('
+                    (
+                        (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) -
+                        COALESCE((
+                            SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
+                            FROM purchase_product_returns
+                            WHERE purchase_product_returns.purchase_product_id = purchase_products.id
+                            AND purchase_product_returns.deleted_at IS NULL
+                        ), 0) -
+                        COALESCE((
+                            SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
+                            FROM sale_products
+                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            AND sale_products.deleted_at IS NULL
+                        ), 0) +
+                        COALESCE((
+                            SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                            FROM sales_return_products
+                            WHERE sales_return_products.sale_product_id IN (
+                                SELECT id FROM sale_products
+                                WHERE sale_products.purchase_product_id = purchase_products.id
+                                AND sale_products.deleted_at IS NULL
+                            )
+                            AND sales_return_products.deleted_at IS NULL
+                        ), 0)
+                    ) > 0
+                ')
+                ->pluck('product_code')
+                ->unique()
+                ->toArray();
+
+            // Check if no products are found
+            if (empty($productCodes)) {
+                return response()->json(['error' => 'No products with available quantities found'], 404);
+            }
+
+            // Get product details using the helper function
+            $productDetails = PurchaseReturnHelper::getPurchaseProductforPurchaseReturnByPrductId($productCodes, $request->company_id);
+
+            // Handle error response from helper
+            if (isset($productDetails['error'])) {
+                return response()->json(['error' => $productDetails['error']], 404);
+            }
+
+            return response()->json($productDetails);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getPurchaseProductDetails: ' . $e->getMessage());
+            return response()->json(['error' => 'Database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getPurchaseProductDetails: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
+    public function getPurchaseProductBarcode(Request $request): JsonResponse
+    {
+        try {
+            // Validate company_id
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            // Fetch product codes with available quantities
+            $productIds = PurchaseProduct::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->whereRaw('
+                    (
+                        (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) -
+                        COALESCE((
+                            SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
+                            FROM purchase_product_returns
+                            WHERE purchase_product_returns.purchase_product_id = purchase_products.id
+                            AND purchase_product_returns.deleted_at IS NULL
+                        ), 0) -
+                        COALESCE((
+                            SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
+                            FROM sale_products
+                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            AND sale_products.deleted_at IS NULL
+                        ), 0) +
+                        COALESCE((
+                            SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                            FROM sales_return_products
+                            WHERE sales_return_products.sale_product_id IN (
+                                SELECT id FROM sale_products
+                                WHERE sale_products.purchase_product_id = purchase_products.id
+                                AND sale_products.deleted_at IS NULL
+                            )
+                            AND sales_return_products.deleted_at IS NULL
+                        ), 0)
+                    ) > 0
+                ')
+                ->pluck('product_id')
+                ->unique()
+                ->toArray();
+
+            // Check if no products are found
+            if (empty($productIds)) {
+                return response()->json(['error' => 'No products with available quantities found'], 404);
+            }
+
+            // Get product details using the helper function
+            $productDetails = PurchaseReturnHelper::getPurchaseProductforPurchaseReturnByBarcode($productIds, $request->company_id);
+
+            // Handle error response from helper
+            if (isset($productDetails['error'])) {
+                return response()->json(['error' => $productDetails['error']], 404);
+            }
+
+            return response()->json($productDetails);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getPurchaseProductDetails: ' . $e->getMessage());
+            return response()->json(['error' => 'Database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getPurchaseProductDetails: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
+   
+
+    public function getAllPurchaseProductDetailsByName(Request $request):JsonResponse
+    {
+        try{
+
+
+        }catch(ModelNotFoundException $e){
+            return resoponse()->json(["error"=>"Item not Found!!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+
+    }
+
+
+
+    public function getPurchaseBillNumber(Request $request): JsonResponse
     {
         try {
             if (!$request->has('company_id')) {
@@ -66,28 +266,53 @@ class PurchaseReturnController extends Controller
             // Get purchase bill numbers where at least one product has remaining quantity
             // Accounts for purchase quantity and free_quantity, minus returns and sales (including free quantities)
             // Adds back quantities from non-deleted sale product returns
+            // Excludes purchases where all products are fully returned
             $billNumbers = Purchase::where('company_id', $companyId)
                 ->whereHas('purchaseProducts', function ($query) {
-                    $query->whereRaw('(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - COALESCE((
-                        SELECT SUM(purchase_product_returns.quantity)
-                        FROM purchase_product_returns
-                        WHERE purchase_product_returns.purchase_product_id = purchase_products.id
-                        AND purchase_product_returns.deleted_at IS NULL
-                    ), 0) - COALESCE((
-                        SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
-                        FROM sale_products
-                        WHERE sale_products.purchase_product_id = purchase_products.id
-                        AND sale_products.deleted_at IS NULL
-                    ), 0) + COALESCE((
-                        SELECT SUM(sales_return_products.quantity)
-                        FROM sales_return_products
-                        WHERE sales_return_products.sale_product_id IN (
-                            SELECT id FROM sale_products
-                            WHERE sale_products.purchase_product_id = purchase_products.id
-                            AND sale_products.deleted_at IS NULL
-                        )
-                        AND sales_return_products.deleted_at IS NULL
-                    ), 0) > 0');
+                    $query->whereRaw('
+                        (
+                            (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                            COALESCE((
+                                SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
+                                FROM purchase_product_returns
+                                WHERE purchase_product_returns.purchase_product_id = purchase_products.id
+                                AND purchase_product_returns.deleted_at IS NULL
+                            ), 0) - 
+                            COALESCE((
+                                SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
+                                FROM sale_products
+                                WHERE sale_products.purchase_product_id = purchase_products.id
+                                AND sale_products.deleted_at IS NULL
+                            ), 0) + 
+                            COALESCE((
+                                SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                                FROM sales_return_products
+                                WHERE sales_return_products.sale_product_id IN (
+                                    SELECT id FROM sale_products
+                                    WHERE sale_products.purchase_product_id = purchase_products.id
+                                    AND sale_products.deleted_at IS NULL
+                                )
+                                AND sales_return_products.deleted_at IS NULL
+                            ), 0)
+                        ) > 0
+                    ');
+                })
+                ->whereNotExists(function ($query) {
+                    // Exclude purchases where all products are fully returned
+                    $query->select(DB::raw(1))
+                        ->from('purchase_products')
+                        ->whereColumn('purchase_products.purchase_id', 'purchases.id')
+                        ->havingRaw('
+                            SUM(
+                                (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                                COALESCE((
+                                    SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
+                                    FROM purchase_product_returns
+                                    WHERE purchase_product_returns.purchase_product_id = purchase_products.id
+                                    AND purchase_product_returns.deleted_at IS NULL
+                                ), 0)
+                            ) = 0
+                        ');
                 })
                 ->pluck('purchase_bill_number');
 

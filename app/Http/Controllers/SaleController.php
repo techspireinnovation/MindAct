@@ -794,9 +794,9 @@ class SaleController extends Controller
     try {
         $validator = Validator::make($request->all(), [
             'company_id' => 'required|exists:companies,id',
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'salesman_id' => 'required|exists:salesmen,id',
-            'customer_name' => 'nullable|string|max:255',
+            'customer_name' => 'required|string|max:255',
             'customer_address' => 'nullable|string|max:255',
             'contact_number' => 'nullable|string|max:255',
             'credit_days' => 'nullable|string|max:255',
@@ -1300,9 +1300,9 @@ class SaleController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'customer_id' => 'required|exists:customers,id',
+                'customer_id' => 'nullable|exists:customers,id',
                 'salesman_id' => 'required|exists:salesmen,id',
-                'customer_name' => 'nullable|string|max:255',
+                'customer_name' => 'required|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'contact_number' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',

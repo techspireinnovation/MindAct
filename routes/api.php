@@ -185,6 +185,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('company-staff', StaffController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
+    Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);
+    Route::get('get-all-purchase-product-code', [PurchaseReturnController::class, 'getPurchaseProductUniqueId']);
+    Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\FixedAssetGroup;
-use App\Models\JournalVoucher;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;

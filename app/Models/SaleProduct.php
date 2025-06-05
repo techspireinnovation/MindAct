@@ -13,7 +13,8 @@ class SaleProduct extends Model
     use SoftDeletes, HasFactory;
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'mfd' => 'date'
     ];
 
     protected $fillable = [
@@ -24,6 +25,7 @@ class SaleProduct extends Model
         'expiry_date',
         'code',
         'name',
+        'mfd',
         'batch_no',
         'measure_unit_id',
         'quantity',

@@ -56,5 +56,7 @@ class SaleProduct extends Model
     {
         return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
     }
+
+    
    
 }

@@ -68,6 +68,11 @@ class PurchaseProduct extends Model
         return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
     }
 
+    public function getAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+
     public function getPurchaseRateAttribute()
     {
         return self::where('product_id', $this->product_id)->latest('id')->first()->price ?? 0;
@@ -109,5 +114,6 @@ class PurchaseProduct extends Model
     {
         return $this->created_at ? NepaliDate::create($this->created_at)->toBS() : "";
     }
+
 
 }

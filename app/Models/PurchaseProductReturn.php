@@ -89,4 +89,9 @@ class PurchaseProductReturn extends Model
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }
 
+    public function getPurchaseReturnAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+
 }

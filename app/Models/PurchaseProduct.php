@@ -63,22 +63,23 @@ class PurchaseProduct extends Model
         return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
     }
 
-    public function saleProducts(){
+    public function saleProducts()
+    {
         return $this->hasMany(SaleProduct::class, 'purchase_product_id');
     }
 
-   
-public function product()
-{
-    return $this->belongsTo(Product::class, 'product_id');
-}
-   
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id');
+    }
+
     public function getPurchaseQuantityAttribute()
     {
         return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
     }
 
-    public function getAverageRateAttribute()
+    public function getPurchaseAverageRateAttribute()
     {
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }

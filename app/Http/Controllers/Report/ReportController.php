@@ -201,16 +201,27 @@ class ReportController extends Controller
 
         $opening = StockEntry::where('product_id', $request->product_id)->sum('quantity');
 
-        $items = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id);
+        $purchaseItems = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.quantity AS purchase_quantity", DB::raw('0 AS sale_quantity'), "purchase_products.product_id AS product_id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+            if ($request->has('date_from')) {
+                $where->where('id', $request->input('customer_id'));
+            }
+        });
 
-        if ($request->has('customer_id')) {
-            $items->where('id', $request->input('customer_id'));
-        }
+        $saleItems = SaleProduct::select("sale_products.id AS id", "sale_products.quantity AS sale_quantity", DB::raw('0 AS purchase_quantity'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+            if ($request->has('date_from')) {
+                $where->where('id', $request->input('customer_id'));
+            }
+        });
 
-        $items = $items->get();
-        $items->each->append(['purchase_quantity']);
+        //$items = $purchaseItems->get();
+        $merged = $saleItems->get()->concat($purchaseItems->get());
 
-        return response()->json($items);
+        // $items = $saleItems->get();
+        //$items->each->append(['purchase_quantity']);
+        //$items = $saleItems->get();
+
+
+        return response()->json($merged->sortBy('date'));
     }
 
 

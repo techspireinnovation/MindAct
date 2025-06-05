@@ -3,19 +3,19 @@
 namespace App\Models;
 
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 class StockProductDetails extends Model
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
     protected $casts = [
-       
+
         'deleted_at' => 'datetime',
     ];
 
@@ -28,7 +28,7 @@ class StockProductDetails extends Model
         'actual_stock',
         'diff_stock',
         'unit_id',
-      
+
     ];
 
     protected $dates = ['deleted_at'];
@@ -38,11 +38,12 @@ class StockProductDetails extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function measureUnit(){
+    public function measureUnit()
+    {
         return $this->belongsTo(MeasureUnit::class, 'unit_id');
     }
 
-   
+
 
 
 }

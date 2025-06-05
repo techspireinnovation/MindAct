@@ -53,6 +53,7 @@ class Product extends Model
     ];
 
     protected $dates = ['deleted_at'];
+    protected $appends = ['primary_measure_unit'];
 
     protected static function booted()
     {
@@ -80,6 +81,15 @@ class Product extends Model
         return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
     }
 
+    public function getPrimaryMeasureUnitAttribute()
+    {
+        $primary = ProductList::where(['product_id' => $this->id, 'is_primary' => 1])->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id);
+        else
+            return null;
+    }
+
     public function productType()
     {
         return $this->belongsTo(ProductType::class, 'product_type_id');
@@ -95,7 +105,6 @@ class Product extends Model
         return $this->hasMany(ProductFieldValue::class);
     }
 
-
     public function productLists(): HasMany
     {
         return $this->hasMany(ProductList::class);
@@ -106,5 +115,91 @@ class Product extends Model
         return $this->hasMany(SaleProduct::class);
     }
 
+    public function latestProduct()
+    {
+        return $this->hasOne(ProductList::class, 'product_id', 'id')->latestOfMany();
+    }
+
+    public function primaryProductItem()
+    {
+        return $this->hasOne(ProductList::class)->where('is_primary', '=', 1);
+    }
+
+    public function lastPurchase()
+    {
+        return $this->hasOne(PurchaseProduct::class, 'product_id', 'id')->latestOfMany();
+    }
+
+    public function getProductStockQuantityAttribute()
+    {
+        $purchases = $this->getPurchaseQuantityAttribute();
+        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $sale = SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $openQty = $this->getOpeningQuantityAttribute();
+        $stock = $purchases - $purchaseReturn - $sale + $saleReturn + $openQty;
+        return ($stock) >= 0 ? $stock : 0;
+    }
+
+    public function getOpeningQuantityAttribute()
+    {
+        return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseQuantityAttribute()
+    {
+        return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseRateAttribute()
+    {
+        return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+
+    public function getSaleQuantityAttribute()
+    {
+        return SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleRateAttribute()
+    {
+        return SaleProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getPurchaseReturnQuantityAttribute()
+    {
+        return PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseReturnRateAttribute()
+    {
+        return PurchaseProductReturn::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getSaleReturnQuantityAttribute()
+    {
+        return SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getSaleReturnRateAttribute()
+    {
+        return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+    }
+
+    public function getStockAdjustmentQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->sum('diff_stock') ?? 0;
+    }
+
+    public function getStockInQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) > 0')->sum('diff_stock') ?? 0;
+    }
+
+    public function getStockOutQuantityAttribute()
+    {
+        return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) < 0')->sum('diff_stock') ?? 0;
+    }
 
 }

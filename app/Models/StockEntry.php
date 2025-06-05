@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockEntry extends Model
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
     protected $fillable = [
         'product_code',
@@ -30,6 +30,11 @@ class StockEntry extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function product()
+    {
+        return $this->hasOne(Product::class, 'id', 'product_id');
     }
 
 

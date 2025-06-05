@@ -5,9 +5,9 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Purchase extends Model
@@ -17,7 +17,7 @@ class Purchase extends Model
     protected $casts = [
         'payment' => 'array',
     ];
-   
+
     protected $fillable = [
         'customer_id',
         'customer_name',
@@ -63,6 +63,11 @@ class Purchase extends Model
     public function location()
     {
         return $this->belongsTo(Location::class, 'location_id');
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 
     public function purchaseProducts(): HasMany

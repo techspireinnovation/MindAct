@@ -18,12 +18,9 @@ class AutoNumberController extends Controller
 
         $lastPurchaseReturn = PurchaseReturn::latest('id')->first();
         $lastPurchaseReturnId = ($lastPurchaseReturn) ? $lastPurchaseReturn->id : 1;
-
-        //$salePurchase = Purchase::latest('id')->first();
         return response()->json([
             'purchase' => "P-" . $lastPurchaseId,
             'purchaseReturn' => "P-" . $lastPurchaseReturnId,
-            //'sale' => "S-" . $salePurchase->id+1
         ], 200);
     }
 }

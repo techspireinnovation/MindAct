@@ -34,6 +34,7 @@ class Purchase extends Model
         'deleted_at',
         'balance',
         'invoice_date',
+        'invoice_date_bs',
         'batch_no',
         'payment',
         'remarks',

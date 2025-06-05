@@ -190,6 +190,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-all-purchase-product-code', [PurchaseReturnController::class, 'getPurchaseProductUniqueId']);
     Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
     Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
+    Route::get('get-all-customers', [CustomerController::class, 'customerList']);
+    Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

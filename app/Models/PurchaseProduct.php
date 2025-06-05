@@ -23,6 +23,7 @@ class PurchaseProduct extends Model
         'deleted_at',
         'free_quantity',
         'price',
+        'mfd',
         'discount_percent',
         'discount_amount',
         'amount',

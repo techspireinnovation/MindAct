@@ -111,7 +111,7 @@ class FixedAssetGroupController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }

@@ -2,23 +2,18 @@
 
 namespace App\Http\Controllers\Report;
 
-use App\Exports\Exports\ProductListDetailsReport;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Product;
-use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductReturn;
 use App\Models\SaleProduct;
 use App\Models\SalesReturnProduct;
 use App\Models\StockEntry;
-use Carbon\Carbon;
 use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
-use Pratiksh\Nepalidate\Services\NepaliDate;
 use Validator;
 
 

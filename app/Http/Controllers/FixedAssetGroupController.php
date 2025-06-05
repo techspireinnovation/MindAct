@@ -58,7 +58,7 @@ class FixedAssetGroupController extends Controller
             return response()->json(['message' => 'Fixed Asset Group Updated']);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
             Log::error($e);

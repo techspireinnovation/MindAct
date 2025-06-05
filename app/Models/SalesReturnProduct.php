@@ -3,8 +3,8 @@
 namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SalesReturnProduct extends Model
@@ -69,5 +69,9 @@ class SalesReturnProduct extends Model
     public function fieldValues()
     {
         return $this->hasMany(SaleReturnProductFieldValue::class, 'sale_return_product_id');
+    }
+    public function getAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }
 }

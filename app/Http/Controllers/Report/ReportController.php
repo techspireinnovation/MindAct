@@ -227,7 +227,7 @@ class ReportController extends Controller
         $saleItems->each->append(['primary_unit_name', 'average_rate']);
 
 
-        $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_return_products.quantity AS purchase_return_quantity", DB::raw('0 AS sale_quantity'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_return_products.quantity AS sale_return_quantity", DB::raw('0 AS sale_quantity'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sales_return_products.created_at', '>=', $request->from_date)->whereDate('sales_return_products.created_at', '<=', $request->to_date);
             }
@@ -237,9 +237,14 @@ class ReportController extends Controller
         $merged = $saleItems->concat($purchaseItems);
         $merged = $merged->concat($purchaseReturnItems);
         $merged = $merged->concat($saleReturnItems);
-        $merged = $merged->concat([['opening_quantity' => (int) $opening->quantity, 'date' => $opening->created_at->toDateString(), 'rate' => $opening->rate]]);
+        $transactions = $merged->concat([['opening_quantity' => (int) $opening->quantity, 'date' => $opening->created_at->toDateString(), 'rate' => $opening->rate]]);
+        $balance = 0;
+        $transactions->sortBy('date')->each(function ($transaction) use (&$balance) {
+            $balance += ($transaction['opening_quantity'] ?? 0) + ($transaction['purchase_quantity'] ?? 0) - ($transaction['purchase_return_quantity'] ?? 0) - ($transaction['sale_quantity'] ?? 0) + ($transaction['sale_return_quantity'] ?? 0); // or your relevant field
+            $transaction['balance'] = $balance; // Add the running balance to the item
+        });
 
-        return response()->json($merged->sortBy('date'));
+        return response()->json($transactions->sortBy('date'));
     }
 
 

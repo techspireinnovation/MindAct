@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\FixedAssetGroup;
-use App\Models\JournalVoucher;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -59,7 +58,7 @@ class FixedAssetGroupController extends Controller
             return response()->json(['message' => 'Fixed Asset Group Updated']);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
             Log::error($e);
@@ -111,7 +110,7 @@ class FixedAssetGroupController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }

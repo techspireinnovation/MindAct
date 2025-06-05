@@ -1,8 +1,9 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\Models\SalesReturnProduct;
 use App\Models\SalesReturn;
+use App\Models\SalesReturnProduct;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SalesReturnProductController extends Controller
@@ -60,7 +61,7 @@ class SalesReturnProductController extends Controller
             return response()->json(['error' => 'Sales Return not found'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database error'], 500);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred!!']);
         }
     }
@@ -100,8 +101,8 @@ class SalesReturnProductController extends Controller
             return response()->json(['error' => 'Sales Return not found'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database error'], 500);
-        }catch (\Exception $e){
-            
+        } catch (\Exception $e) {
+
             return response()->json(['error' => 'An unexpected error occurred!!']);
 
         }

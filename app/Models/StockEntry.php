@@ -25,12 +25,13 @@ class StockEntry extends Model
         'location_id'
     ];
 
-    protected $dates = ['deleted_at'];
+    protected $dates = ['deleted_at', 'created_at'];
 
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
 
     public function product()
     {

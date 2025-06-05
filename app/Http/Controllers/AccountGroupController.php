@@ -5,9 +5,9 @@ use App\Models\AccountGroup;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Illuminate\Http\Request;
 
 class AccountGroupController extends Controller
 {
@@ -16,11 +16,11 @@ class AccountGroupController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = AccountGroup::query();
-    
+
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
-    
+
         return response()->json($query->paginate(50));
     }
 
@@ -29,27 +29,28 @@ class AccountGroupController extends Controller
     {
         try {
             $group = AccountGroup::findOrFail($id);
-            $validator = Validator::make($request->all(),[
-                'name' => ['required',
-                           'string',
-                            'max:255',
-                           Rule::unique('account_groups')
-                            ->ignore($id)
-                            ->where(function ($query) use ($request, $group){
-                                return $query->where('company_id',$request->input('company_id',$request->company_id))
+            $validator = Validator::make($request->all(), [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('account_groups')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $group) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
 
-                            }),
-                    ],
+                        }),
+                ],
                 'is_active' => 'boolean|required',
-                'is_primary' =>'boolean',
+                'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
                 'code' => 'string|max:255',
 
             ]);
-            if($validator->fails()){
+            if ($validator->fails()) {
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -58,16 +59,16 @@ class AccountGroupController extends Controller
             $validated = $validator->validated();
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 AccountGroup::where('company_id', $group->company_id)
-                    ->where('id', '!=', $id) 
+                    ->where('id', '!=', $id)
                     ->where('is_primary', true)
                     ->update(['is_primary' => false]);
             }
-    
-            
+
+
             if ($request->has('is_primary')) {
                 $validated['is_primary'] = (bool) $request->input('is_primary');
             }
-            
+
             $group->update($validated);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
@@ -76,7 +77,7 @@ class AccountGroupController extends Controller
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-        }catch(\Exception $e){
+        } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
@@ -84,56 +85,57 @@ class AccountGroupController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        try{
+        try {
 
-        $validator = Validator::make($request->all(),[
-            'name' => ['required',
-                       'string',
-                       'max:255',
-                    Rule::unique('account_groups')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id)
-                        ->whereNull('deleted_at');
+            $validator = Validator::make($request->all(), [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('account_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
 
                     }),
 
                 ],
-            'is_active' => 'boolean|required',
-            'is_primary' =>'boolean',
-            'company_id' => 'integer|exists:companies,id',
-            'main_group_id' => 'integer|exists:main_groups,id',
-            'sub_group_id' => 'integer|exists:sub_groups,id',
-            'code' => 'string|max:255'
-        ]);
+                'is_active' => 'boolean|required',
+                'is_primary' => 'boolean',
+                'company_id' => 'integer|exists:companies,id',
+                'main_group_id' => 'integer|exists:main_groups,id',
+                'sub_group_id' => 'integer|exists:sub_groups,id',
+                'code' => 'string|max:255'
+            ]);
 
-        if($validator->fails()){
-            return response()->json([
+            if ($validator->fails()) {
+                return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
                 ], 422);
-        }
+            }
 
-        $validated = $validator->validated();
-        if (!empty($validated['is_primary'])) {
-            AccountGroup::where('company_id', $validated['company_id'])
-            ->where('is_primary', true)
-            ->update(['is_primary' => false]);
-        }
-            
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
+            $validated = $validator->validated();
+            if (!empty($validated['is_primary'])) {
+                AccountGroup::where('company_id', $validated['company_id'])
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
 
-        $group = AccountGroup::create($validated);
-        return response()->json($group, 201);
-    }catch(ModelFoundNotException $e){
-        \Log::error($e);
-        return response()->json(['error' => 'Main Group not found!!'], 404);
-    }catch(QueryExeption $e){
-        \Log::error($e);
-        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-    }catch(\Exception $e){
-        \Log::error($e);
-        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            $validated['is_primary'] = $validated['is_primary'] ?? false;
+
+            $group = AccountGroup::create($validated);
+            return response()->json($group, 201);
+        } catch (ModelFoundNotException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Main Group not found!!'], 404);
+        } catch (QueryExeption $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }
     }
-}
 
     public function show($id): JsonResponse
     {

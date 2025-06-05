@@ -5,6 +5,7 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
+use BcMath\Number;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -74,6 +75,11 @@ class Purchase extends Model
     public function purchaseProducts(): HasMany
     {
         return $this->hasMany(PurchaseProduct::class);
+    }
+
+    public function getPurchaseProductQuantityAttribute(): int
+    {
+        return PurchaseProduct::where('purchase_id', $this->id)->sum('quantity') ?? 0;
     }
 
 

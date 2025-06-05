@@ -32,6 +32,7 @@ class StockEntry extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+
     public function product()
     {
         return $this->hasOne(Product::class, 'id', 'product_id');

@@ -202,7 +202,11 @@ class ReportController extends Controller
         }
         Product::findOrFail($request->product_id);
 
-        $opening = StockEntry::where('product_id', $request->product_id)->first();
+        $openingItems = StockEntry::select("id", "product_id", "quantity AS opening_quantity", "rate", DB::raw('DATE(created_at) AS date'))->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $where->whereDate('created_at', '>=', $request->from_date)->whereDate('created_at', '<=', $request->to_date);
+            }
+        })->get();
 
         $purchaseItems = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.quantity AS purchase_quantity", DB::raw('0 AS sale_quantity'), "purchase_products.product_id AS product_id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
@@ -237,11 +241,12 @@ class ReportController extends Controller
         $merged = $saleItems->concat($purchaseItems);
         $merged = $merged->concat($purchaseReturnItems);
         $merged = $merged->concat($saleReturnItems);
-        $transactions = $merged->concat([['opening_quantity' => (int) $opening->quantity, 'date' => $opening->created_at->toDateString(), 'rate' => $opening->rate]]);
+        $transactions = $merged->concat($openingItems);
+
         $balance = 0;
         $transactions->sortBy('date')->each(function ($transaction) use (&$balance) {
-            $balance += ($transaction['opening_quantity'] ?? 0) + ($transaction['purchase_quantity'] ?? 0) - ($transaction['purchase_return_quantity'] ?? 0) - ($transaction['sale_quantity'] ?? 0) + ($transaction['sale_return_quantity'] ?? 0); // or your relevant field
-            $transaction['balance'] = $balance; // Add the running balance to the item
+            $balance += ($transaction['opening_quantity'] ?? 0) + ($transaction['purchase_quantity'] ?? 0) - ($transaction['purchase_return_quantity'] ?? 0) - ($transaction['sale_quantity'] ?? 0) + ($transaction['sale_return_quantity'] ?? 0);
+            $transaction['total_quantity'] = $balance;
         });
 
         return response()->json($transactions->sortBy('date'));

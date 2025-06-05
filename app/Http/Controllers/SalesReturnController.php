@@ -454,6 +454,7 @@ class SalesReturnController extends Controller
                 'batch_no' => 'nullable|string|max:255|unique:sales_returns,batch_no',
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|date',
+                'invoice_date_bs' => 'nullable|date',
                 'remarks' => 'nullable|string|max:255',
                 'reason' => 'required|string|in:damaged,defective,incorrect,expired,other',
                 'store_id' => 'required|exists:stores,id',
@@ -495,6 +496,7 @@ class SalesReturnController extends Controller
                 'sales_return_products.*.is_vatable' => 'nullable|boolean',
                 'sales_return_products.*.measure_unit_id' => 'required|exists:measure_units,id',
                 'sales_return_products.*.batch_no' => 'required|string|max:255',
+                'sales_return_products.*.mfd' => 'nullable|string|max:255',
                 'sales_return_products.*.expiry_date' => 'nullable|date',
                 'sales_return_products.*.field_values' => 'nullable|array',
                 'sales_return_products.*.field_values.*' => 'array|min:1',
@@ -609,6 +611,7 @@ class SalesReturnController extends Controller
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'batch_no' => $product->batch_no,
+                        'mfd' => $product->mfd,
                         'expiry_date' => $product->expiry_date,
                         'field_values' => $fieldValues,
                     ];
@@ -672,6 +675,7 @@ class SalesReturnController extends Controller
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'batch_no' => $product->batch_no,
+                         'mfd' => $product->mfd,
                         'expiry_date' => $product->expiry_date,
                         'field_values' => $fieldValues,
                     ];
@@ -967,6 +971,7 @@ class SalesReturnController extends Controller
                 ],
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|date',
+                'invoice_date_bs' => 'nullable|date',
                 'remarks' => 'nullable|string|max:255',
                 'reason' => 'required|string|in:damaged,defective,incorrect,expired,other',
                 'store_id' => 'required|exists:stores,id',
@@ -1009,6 +1014,7 @@ class SalesReturnController extends Controller
                 'sales_return_products.*.is_vatable' => 'nullable|boolean',
                 'sales_return_products.*.measure_unit_id' => 'required|exists:measure_units,id',
                 'sales_return_products.*.batch_no' => 'required|string|max:255',
+                'sales_return_products.*.mfd' => 'nullable|string|max:255',
                 'sales_return_products.*.expiry_date' => 'nullable|date',
                 'sales_return_products.*.field_values' => 'nullable|array',
                 'sales_return_products.*.field_values.*' => 'array|min:1',
@@ -1108,6 +1114,7 @@ class SalesReturnController extends Controller
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'batch_no' => $product->batch_no,
+                        'mfd' => $product->mfd,
                         'expiry_date' => $product->expiry_date,
                         'field_values' => $fieldValues,
                     ];
@@ -1172,6 +1179,7 @@ class SalesReturnController extends Controller
                         'is_vatable' => $product->is_vatable,
                         'measure_unit_id' => $product->measure_unit_id,
                         'batch_no' => $product->batch_no,
+                        'mfd' => $product->mfd,
                         'expiry_date' => $product->expiry_date,
                         'field_values' => $fieldValues,
                     ];

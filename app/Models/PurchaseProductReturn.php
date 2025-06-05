@@ -20,6 +20,7 @@ class PurchaseProductReturn extends Model
         'purchase_id',
         'product_id',
         'quantity',
+        'mfd',
         'expiry_date',
         'deleted_at',
         'free_quantity',

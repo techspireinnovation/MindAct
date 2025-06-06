@@ -15,6 +15,8 @@ class PurchaseReturn extends Model
 {
     use SoftDeletes, HasFactory;
 
+
+
     protected $casts = [
         'payment' => 'array'
     ];
@@ -107,13 +109,13 @@ class PurchaseReturn extends Model
         return $this->belongsTo(Purchase::class);
     }
 
-  
+
     public function store()
     {
         return $this->belongsTo(Store::class);
     }
 
-    
+
 
     public function company()
     {

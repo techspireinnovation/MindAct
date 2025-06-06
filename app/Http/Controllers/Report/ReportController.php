@@ -93,7 +93,7 @@ class ReportController extends Controller
 
 
         $items = $items->get();
-        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
 
         $items = $items->map(function ($item) {
             $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);

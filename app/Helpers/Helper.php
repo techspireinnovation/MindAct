@@ -220,6 +220,42 @@ class Helper
         return 0;
     }
 
+    public static function convertToPrimaryUnitQuantityRate(int $productId, int $fromMeasureUnit, mixed $qty, float $rate): array
+    {
+        // get product primary measure unit
+        $primaryProductUnit = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
+
+        // if primary uom
+        if ($primaryProductUnit && $fromMeasureUnit) {
+
+            // if same uom then no conversion
+            if ($primaryProductUnit->measure_unit_id === $fromMeasureUnit)
+                return [$qty, $rate];
+            else {
+                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
+                $purchaseProductMeasureUnit = MeasureUnit::find($fromMeasureUnit);
+
+                $fromQty = $purchaseProductMeasureUnit->quantity;
+                $toQty = $productMeasureUnit->quantity;
+
+                if ($toQty > $fromQty) {
+                    // Conversion is to a **larger unit** (e.g. grams → kilograms)
+                    // Quantity should **decrease**, so divide
+                    $factor = $fromQty / $toQty;
+                } elseif ($toQty < $fromQty) {
+                    // Conversion is to a **smaller unit** (e.g. grams → milligrams)
+                    // Quantity should **increase**, so multiply
+                    $factor = $fromQty * $toQty;
+                } else {
+                    // Same unit
+                    $factor = 1;
+                }
+                return [$qty * $factor, $rate * $factor];
+
+            }
+        }
+        return [0, 0];
+    }
     public static function getProductVatableAmount(int $productId, mixed $amount): mixed
     {
         $product = Product::where(['id' => $productId])->first();

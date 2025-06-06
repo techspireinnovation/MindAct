@@ -200,7 +200,7 @@ class ReportController extends Controller
             }
 
             $items = $items->get();
-            //$items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+            $items->each->append(['purchase_return_amount', 'purchase_return_discount_amount']);
         }
         return response()->json($items);
     }

@@ -47,34 +47,52 @@ class PurchaseProductReturn extends Model
         });
     }
     public function purchaseReturn()
-       {
-           return $this->belongsTo(PurchaseReturn::class);
-       }
+    {
+        return $this->belongsTo(PurchaseReturn::class);
+    }
 
-       public function purchaseProduct()
-       {
-           return $this->belongsTo(PurchaseProduct::class);
-       }
+    public function purchaseProduct()
+    {
+        return $this->belongsTo(PurchaseProduct::class);
+    }
 
-       public function product()
-       {
-           return $this->belongsTo(Product::class);
-       }
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
 
-       public function customer()
-       {
-           return $this->belongsTo(Customer::class);
-       }
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 
-       public function measureUnit()
-       {
-           return $this->belongsTo(MeasureUnit::class);
-       }
+    public function measureUnit()
+    {
+        return $this->belongsTo(MeasureUnit::class);
+    }
 
-       public function fieldValues()
-       {
-           return $this->hasMany(PurchaseReturnProductFieldValue::class, 'purchase_return_product_id');
-       }
+    public function fieldValues()
+    {
+        return $this->hasMany(PurchaseReturnProductFieldValue::class, 'purchase_return_product_id');
+    }
 
-   
+    public function getPrimaryUnitnameAttribute()
+    {
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id)->name;
+        else
+            return null;
+    }
+
+    public function getAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+
+    public function getPurchaseReturnAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+
 }

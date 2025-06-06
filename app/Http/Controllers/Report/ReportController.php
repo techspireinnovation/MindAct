@@ -126,7 +126,7 @@ class ReportController extends Controller
         }
 
         if ($request->type === "purchase") {
-            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number,ref_bill_number', 'purchase.customer:id,party_name'])->whereHas('purchase', function ($query) use ($request) {
+            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.quantity", "purchase_products.measure_unit_id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number,ref_bill_number', 'purchase.customer:id,party_name'])->whereHas('purchase', function ($query) use ($request) {
                 if ($request->has('from_date') && $request->has('to_date')) {
                     $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
                 }
@@ -155,11 +155,10 @@ class ReportController extends Controller
                 if ($request->has('from_date') && $request->has('to_date')) {
                     $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
                 }
+                if ($request->has('customer_id')) {
+                    $query->where('customer_id', $request->input('customer_id'));
+                }
             })->where('product_id', $request->product_id);
-
-            if ($request->has('customer_id')) {
-                $items->where('customer_id', $request->input('customer_id'));
-            }
 
             if ($request->has('from_date') && $request->has('to_date')) {
                 $items->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);

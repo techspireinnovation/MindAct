@@ -78,8 +78,7 @@ class PurchaseProduct extends Model
 
     public function getPurchaseQuantityAttribute()
     {
-        $qty = self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
-        return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id || 0, $qty));
+        return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id || 0, $this->quantity));
     }
 
     public function getPurchaseAverageRateAttribute()
@@ -90,7 +89,19 @@ class PurchaseProduct extends Model
 
     public function getPurchaseRateAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->avg('price') ?? 0;
+        $averagePrice = self::where(['product_id' => $this->product_id, 'purchase_id' => $this->purchase_id])->get()->map(function ($purchaseProduct) {
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id || 0, $purchaseProduct->quantity, $purchaseProduct->price));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $averagePrice['total_price'] / $averagePrice['primary_units'];
     }
 
     public function getPurchaseDiscountAmountAttribute()
@@ -126,14 +137,13 @@ class PurchaseProduct extends Model
     }
 
     public function getCreatedAtBsAttribute(): string
+    {
+        if (!$this->created_at) {
+            return 'N/A';
+        }
 
- {
-    if (!$this->created_at) {
-        return 'N/A'; 
-     }
-
-    return NepaliDate::create($this->created_at)->toBS();
- }
+        return NepaliDate::create($this->created_at)->toBS();
+    }
 
 
 }

@@ -68,12 +68,12 @@ class SaleProduct extends Model
 
     public function getSaleRateAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->first()->price ?? 0;
+        return self::where('product_id', $this->product_id)->latest('id')->avg('price') ?? 0;
     }
 
     public function getSaleDiscountAmountAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->first()->discount_amount ?? 0;
+        return self::where('product_id', $this->product_id)->latest('id')->sum('discount_amount') ?? 0;
     }
 
     public function getSaleUnitAttribute()

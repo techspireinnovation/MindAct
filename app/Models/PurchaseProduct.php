@@ -80,19 +80,21 @@ class PurchaseProduct extends Model
         return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
     }
 
+
     public function getPurchaseAverageRateAttribute()
     {
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+
     }
 
     public function getPurchaseRateAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->first()->price ?? 0;
+        return self::where('product_id', $this->product_id)->latest('id')->avg('price') ?? 0;
     }
 
     public function getPurchaseDiscountAmountAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->first()->discount_amount ?? 0;
+        return self::where('product_id', $this->product_id)->latest('id')->sum('discount_amount') ?? 0;
     }
 
     public function getPurchaseUnitAttribute()

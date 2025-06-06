@@ -6,6 +6,7 @@ use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductReturn;
 use App\Models\SaleProduct;
@@ -174,15 +175,33 @@ class ReportController extends Controller
     public function vendorSupplierListDetails(Request $request): JsonResponse
     {
 
-        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount')->withSum('purchases', 'discount_value')->withSum('purchaseReturns', 'sub_total_before_discount')->withSum('purchaseReturns', 'discount_value');
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|string|in:invoice,list',
+        ]);
 
-        if ($request->has('customer_id')) {
-            $items->where('id', $request->input('customer_id'));
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
         }
 
-        $items = $items->get();
-        //$items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+        if ($request->type === "list") {
 
+            $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount')->withSum('purchases', 'discount_value')->withSum('purchaseReturns', 'sub_total_before_discount')->withSum('purchaseReturns', 'discount_value');
+
+            if ($request->has('customer_id')) {
+                $items->where('id', $request->input('customer_id'));
+            }
+
+            $items = $items->get();
+        } else {
+            $items = Purchase::select("purchases.id", "purchases.invoice_date", "purchases.sub_total_before_discount", "purchases.discount_value", "purchases.purchase_bill_number", "purchases.ref_bill_number", "purchases.customer_id")->with('customer:id,party_name,pan_number');
+
+            if ($request->has('customer_id')) {
+                $items->where('id', $request->input('customer_id'));
+            }
+
+            $items = $items->get();
+            //$items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+        }
         return response()->json($items);
     }
 

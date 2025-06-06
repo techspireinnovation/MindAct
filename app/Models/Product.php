@@ -151,7 +151,7 @@ class Product extends Model
         return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
     }
 
-    public function getPurchaseRateAttribute()
+    public function getProductPurchaseRateAttribute()
     {
         return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
     }

@@ -22,6 +22,59 @@ class ProductTypeController extends Controller
         return response()->json($query->paginate(50));
     }
 
+    public function productTypeList(Request $request){
+        try{
+
+            $types = ProductType::where('company_id',$request->company_id)
+                                        ->whereNull('deleted_at')
+                                        ->pluck('name');
+            return response()->json(["message"=>"Product Type List Received !!",
+                                       "data"=>$types
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Product Type not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function productTypeDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $type = $request->type_name;
+           $typeDetails = ProductType::where('company_id',$request->company_id)
+                                         ->where('name',$type)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Product Type Details Received !!",
+                                    "data"=>$typeDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Not Item Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    } 
+    
+
+
+
     public function update(Request $request, $id): JsonResponse
     {
         try {

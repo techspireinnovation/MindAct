@@ -24,6 +24,58 @@ class ProductSubCategoryController extends Controller
         return response()->json($query->paginate(50));
     }
 
+
+    public function subCategoryList(Request $request){
+        try{
+
+            $subCategories = ProductSubCategory::where('company_id',$request->company_id)
+                                        ->whereNull('deleted_at')
+                                        ->pluck('name');
+            return response()->json(["message"=>"Sub Category List Received !!",
+                                       "data"=>$subCategories
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Sub Category not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function subCategoryDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $category = $request->category_name;
+           $categoryDetails = ProductSubCategory::where('company_id',$request->company_id)
+                                         ->where('name',$category)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Sub Category Details Received !!",
+                                    "data"=>$categoryDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Sub Category Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    } 
+    
+
     public function update(Request $request, $id): JsonResponse
     {
         try {

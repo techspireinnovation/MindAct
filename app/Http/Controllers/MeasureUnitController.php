@@ -22,6 +22,58 @@ class MeasureUnitController extends Controller
         return response()->json($query->paginate(50));
     }
 
+
+
+    public function unitList(Request $request){
+        try{
+
+            $units = MeasureUnit::where('company_id',$request->company_id)
+                                        ->whereNull('deleted_at')
+                                        ->pluck('name');
+            return response()->json(["message"=>"Measure Unit List Received !!",
+                                       "data"=>$units
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Measure Unit not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function unitDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $unit = $request->measure_unit;
+           $unitDetails = MeasureUnit::where('company_id',$request->company_id)
+                                         ->where('name',$unit)
+                                         ->whereNull('deleted_at')
+                                         ->firstorFail();   
+           return response()->json(["message"=>"Measure Unit Details Received !!",
+                                    "data"=>$unitDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Measure Unit not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    } 
+
     public function update(Request $request, $id): JsonResponse
     {
         try {

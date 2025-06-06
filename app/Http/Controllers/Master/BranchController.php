@@ -23,6 +23,58 @@ class BranchController extends Controller
         return response()->json($query->paginate(50));
     }
 
+
+
+    public function branchList(Request $request){
+        try{
+
+            $branches = Branch::where('company_id',$request->company_id)
+                                        ->whereNull('deleted_at')
+                                        ->pluck('name');
+            return response()->json(["message"=>"Branch List Received !!",
+                                       "data"=>$branches
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Branch not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function branchDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $branch = $request->branch_name;
+           $branchDetails = Branch::where('company_id',$request->company_id)
+                                         ->where('name',$branch)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Branch Details Received !!",
+                                    "data"=>$branchDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Not Item Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    } 
+
     public function update(Request $request, $id): JsonResponse
     {
         try {

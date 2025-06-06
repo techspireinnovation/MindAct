@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -63,7 +64,7 @@ class SaleProduct extends Model
 
     public function getSaleQuantityAttribute()
     {
-        return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
+        return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id || 0, $this->quantity));
     }
 
     public function getSaleRateAttribute()

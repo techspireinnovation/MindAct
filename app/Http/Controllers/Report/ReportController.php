@@ -145,7 +145,7 @@ class ReportController extends Controller
         } else {
             $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with([
                 'sale' => function ($q) {
-                    $q->select("sales.id", "sales.customer_id", "sales.invoice_number", "sales.invoice_date_bs")->with([
+                    $q->select("sales.id", "sales.customer_id", "sales.ref_number", "sales.invoice_number", "sales.invoice_date_bs")->with([
                         "customer" => function ($cus) {
                             $cus->select("customers.id", "customers.party_name");
                         }

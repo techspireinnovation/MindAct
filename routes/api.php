@@ -190,8 +190,35 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
     Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
     Route::post('store-purchase-return-by-item', [PurchaseReturnController::class, 'storePurchaseReturnByInput']);
+
+    //List and Details
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
+
+    Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
+    Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
+
+
+    Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+    Route::get('product-type-details', [ProductTypeController::class, 'productTypeDetails']);
+
+    Route::get('branch-list', [BranchController::class, 'branchList']);
+    Route::get('branch-details', [BranchController::class, 'branchDetails']);
+
+
+    Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);
+    Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
+
+
+    Route::get('unit-list', [MeasureUnitController::class, 'unitList']);
+    Route::get('unit-details', [MeasureUnitController::class, 'unitDetails']);
+
+    Route::get('sub-category-list', [ProductSubCategoryController::class, 'subCategoryList']);
+    Route::get('sub-category-details', [ProductSubCategoryController::class, 'subCategoryDetails']);
+
+    Route::get('brand-list', [BrandController::class, 'subCategoryList']);
+    Route::get('brand-details', [BrandController::class, 'subCategoryDetails']);
+
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(

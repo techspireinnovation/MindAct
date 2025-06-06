@@ -522,6 +522,8 @@ class ProductController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+       
+        
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -569,6 +571,7 @@ class ProductController extends Controller
             'product_list.*.primary_measure_unit_id' => 'nullable||integer|exists:measure_units,id',
             'company_id' => 'integer|exists:companies,id'
         ]);
+        
 
         $item = Product::create($validated);
 

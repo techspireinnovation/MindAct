@@ -23,6 +23,57 @@ class BrandController extends Controller
         return response()->json($query->paginate(50));
     }
 
+
+    public function brandList(Request $request){
+        try{
+
+            $brands = Brand::where('company_id',$request->company_id)
+                                        ->whereNull('deleted_at')
+                                        ->pluck('name');
+            return response()->json(["message"=>"Brand List Received !!",
+                                       "data"=>$brands
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Brand not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function brandDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $brand = $request->brand_name;
+           $brandDetails = Brand::where('company_id',$request->company_id)
+                                         ->where('name',$brand)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Sub Category Details Received !!",
+                                    "data"=>$brandDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Brand not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
     public function getListProvice(){
         $province = new Province('np');
         $provincesData = $province->allProvinces();

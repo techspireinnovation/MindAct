@@ -840,8 +840,9 @@ class SaleController extends Controller
                     'array',
                     'min:1',
                 ],
-                'sale_products.*.product_id' => 'required|exists:products,id',
-                'sale_products.*.purchase_product_id' => 'required|exists:purchase_products,id',
+                'sale_products.*.product_name' => 'required_without:sale_products.*.product_id|string|max:255',
+                'sale_products.*.product_id' => 'nullable|exists:products,id',
+                'sale_products.*.purchase_product_id' => 'nullable|exists:purchase_products,id',
                 'sale_products.*.quantity' => 'required|numeric|min:0',
                 'sale_products.*.free_quantity' => 'nullable|numeric|min:0',
                 'sale_products.*.price' => 'required|numeric|min:0',
@@ -890,11 +891,13 @@ class SaleController extends Controller
                 $purchaseProducts = collect();
 
                 if (isset($validated['purchase_id'])) {
-                    $purchaseProducts = PurchaseProduct::where('purchase_id', $validated['purchase_id'])
-                        ->whereHas('purchase', function ($query) use ($validated) {
-                            $query->where('company_id', $validated['company_id']);
-                        })
-                        ->with('fieldValues')
+                    $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $validated['purchase_id'])
+                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                        ->where('purchases.company_id', $validated['company_id'])
+                        ->whereNull('purchase_products.deleted_at')
+                        ->with(['fieldValues', 'purchase'])
+                        ->orderBy('purchases.created_at', 'asc') // FIFO: Sort by purchase date
+                        ->select('purchase_products.*')
                         ->get();
                 } elseif (isset($validated['purchase_bill_number'])) {
                     $purchase = Purchase::where('purchase_bill_number', $validated['purchase_bill_number'])
@@ -903,14 +906,24 @@ class SaleController extends Controller
                     if (!$purchase) {
                         return response()->json(['error' => 'Purchase with specified bill number not found'], 422);
                     }
-                    $purchaseProducts = PurchaseProduct::where('purchase_id', $purchase->id)
-                        ->with('fieldValues')
+                    $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $purchase->id)
+                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                        ->whereNull('purchase_products.deleted_at')
+                        ->with(['fieldValues', 'purchase'])
+                        ->orderBy('purchases.created_at', 'asc') // FIFO: Sort by purchase date
+                        ->select('purchase_products.*')
                         ->get();
                 } elseif (isset($validated['batch_no_sale'])) {
                     $purchaseProducts = PurchaseProduct::whereHas('purchase', function ($query) use ($validated) {
                         $query->where('batch_no', $validated['batch_no_sale'])
                             ->where('company_id', $validated['company_id']);
-                    })->with('fieldValues')->get();
+                    })
+                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                        ->whereNull('purchase_products.deleted_at')
+                        ->with(['fieldValues', 'purchase'])
+                        ->orderBy('purchases.created_at', 'asc') // FIFO: Sort by purchase date
+                        ->select('purchase_products.*')
+                        ->get();
                 }
 
                 if ($purchaseProducts->isEmpty()) {
@@ -952,6 +965,7 @@ class SaleController extends Controller
 
                         return [
                             'product_id' => $product->product_id,
+                            'product_name' => $productModel->name,
                             'purchase_product_id' => $product->id,
                             'quantity' => $availableQuantity,
                             'free_quantity' => 0,
@@ -973,18 +987,20 @@ class SaleController extends Controller
                 } else {
                     $purchaseProductIds = $purchaseProducts->pluck('id')->toArray();
                     foreach ($validated['sale_products'] as $index => $saleProduct) {
-                        if (!in_array($saleProduct['purchase_product_id'], $purchaseProductIds)) {
+                        if (isset($saleProduct['purchase_product_id']) && !in_array($saleProduct['purchase_product_id'], $purchaseProductIds)) {
                             return response()->json([
                                 'error' => "Purchase product ID {$saleProduct['purchase_product_id']} at index {$index} does not belong to the specified purchase or batch"
                             ], 422);
                         }
-                        $purchaseProduct = $purchaseProducts->firstWhere('id', $saleProduct['purchase_product_id']);
-                        $requestedQuantity = $saleProduct['quantity'] + ($saleProduct['free_quantity'] ?? 0);
-                        $availablePurchaseQuantity = $purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0);
-                        if ($requestedQuantity > $availablePurchaseQuantity) {
-                            return response()->json([
-                                'error' => "Requested quantity for purchase product ID {$saleProduct['purchase_product_id']} at index {$index} exceeds purchased quantity ({$availablePurchaseQuantity})"
-                            ], 422);
+                        if (isset($saleProduct['purchase_product_id'])) {
+                            $purchaseProduct = $purchaseProducts->firstWhere('id', $saleProduct['purchase_product_id']);
+                            $requestedQuantity = $saleProduct['quantity'] + ($saleProduct['free_quantity'] ?? 0);
+                            $availablePurchaseQuantity = $purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0);
+                            if ($requestedQuantity > $availablePurchaseQuantity) {
+                                return response()->json([
+                                    'error' => "Requested quantity for purchase product ID {$saleProduct['purchase_product_id']} at index {$index} exceeds purchased quantity ({$availablePurchaseQuantity})"
+                                ], 422);
+                            }
                         }
                     }
                 }
@@ -992,60 +1008,49 @@ class SaleController extends Controller
 
             \Log::debug('Validated sale_products after batch processing', ['sale_products' => $validated['sale_products']]);
 
-            // Validate field values and stock
-            foreach ($validated['sale_products'] as $index => $product) {
+            // Process sale_products with FIFO and field values
+            foreach ($validated['sale_products'] as $index => &$product) {
                 \Log::debug('Processing sale product at index ' . $index, ['product' => $product]);
-                $productId = $product['product_id'];
-                $purchaseProductId = $product['purchase_product_id'];
-                $quantity = $product['quantity'];
 
-                // Validate field_values
-                $hasFieldValues = PurchaseProductFieldValue::where('purchase_product_id', $purchaseProductId)
-                    ->exists();
-                if ($hasFieldValues && !$sellEntireBatch && (!isset($product['field_values']) || count($product['field_values']) !== $quantity)) {
-                    return response()->json([
-                        'error' => "Field values count (" . (isset($product['field_values']) ? count($product['field_values']) : 0) . ") must match quantity ({$quantity}) for product ID {$productId} at index {$index}"
-                    ], 422);
-                }
-
-                if (isset($product['field_values'])) {
-                    foreach ($product['field_values'] as $setIndex => $fieldValueSet) {
-                        $fieldIds = array_column($fieldValueSet, 'product_field_id');
-                        if (count($fieldIds) !== count(array_unique($fieldIds))) {
-                            return response()->json([
-                                'error' => "Duplicate product_field_id found in field_values set {$setIndex} for product ID {$productId} at index {$index}"
-                            ], 422);
-                        }
+                // Resolve product_id from product_name if not provided
+                if (!isset($product['product_id']) && isset($product['product_name'])) {
+                    $productModel = Product::where('name', $product['product_name'])
+                        ->where('company_id', $validated['company_id'])
+                        ->first();
+                    if (!$productModel) {
+                        return response()->json([
+                            'error' => "Product with name {$product['product_name']} not found at index {$index}"
+                        ], 422);
                     }
+                    $product['product_id'] = $productModel->id;
                 }
 
-                // Stock check
-                if (!$sellEntireBatch) {
-                    $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
-                    $purchasedQuantity = PurchaseProduct::where('id', $purchaseProductId)
+                $productId = $product['product_id'];
+                $requestedQuantity = $product['quantity'] + ($product['free_quantity'] ?? 0);
+
+                // If purchase_product_id is provided, validate it directly
+                if (isset($product['purchase_product_id'])) {
+                    $purchaseProduct = PurchaseProduct::where('id', $product['purchase_product_id'])
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
-                        ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
-                    $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $purchaseProductId)
+                        ->with('fieldValues')
+                        ->first();
+                    if (!$purchaseProduct) {
+                        return response()->json([
+                            'error' => "Purchase product ID {$product['purchase_product_id']} not found at index {$index}"
+                        ], 422);
+                    }
+
+                    $purchasedQuantity = $purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0);
+                    $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $purchaseProduct->id)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum('quantity');
-                    $batchNo = $product['batch_no'] ?? null;
-                    $soldQuantity = SaleProduct::where('product_id', $productId)
-                        ->when($batchNo, function ($query) use ($batchNo) {
-                            $query->where('batch_no', $batchNo);
-                        }, function ($query) {
-                            $query->whereNull('batch_no');
-                        })
+                    $soldQuantity = SaleProduct::where('purchase_product_id', $purchaseProduct->id)
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
                     $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
-                        ->when($batchNo, function ($query) use ($batchNo) {
-                            $query->where('batch_no', $batchNo);
-                        }, function ($query) {
-                            $query->whereNull('batch_no');
-                        })
                         ->where('company_id', $validated['company_id'])
                         ->whereNull('deleted_at')
                         ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
@@ -1054,11 +1059,229 @@ class SaleController extends Controller
 
                     if ($requestedQuantity > $availableQuantity) {
                         return response()->json([
-                            'error' => "Insufficient stock for purchase product ID {$purchaseProductId} at index {$index}. Available: {$availableQuantity}, Requested: {$requestedQuantity}"
+                            'error' => "Insufficient stock for purchase product ID {$purchaseProduct->id} at index {$index}. Available: {$availableQuantity}, Requested: {$requestedQuantity}"
+                        ], 422);
+                    }
+
+                    // Validate field values
+                    $hasFieldValues = PurchaseProductFieldValue::where('purchase_product_id', $purchaseProduct->id)
+                        ->exists();
+                    if ($hasFieldValues && !$sellEntireBatch && (!isset($product['field_values']) || count($product['field_values']) !== $product['quantity'])) {
+                        return response()->json([
+                            'error' => "Field values count (" . (isset($product['field_values']) ? count($product['field_values']) : 0) . ") must match quantity ({$product['quantity']}) for product ID {$productId} at index {$index}"
+                        ], 422);
+                    }
+
+                    if (isset($product['field_values'])) {
+                        $availableFieldValues = $purchaseProduct->fieldValues->groupBy('quantity_index');
+                        foreach ($product['field_values'] as $setIndex => $fieldValueSet) {
+                            $matched = false;
+                            foreach ($availableFieldValues as $availableSet) {
+                                $matchesAllFields = true;
+                                foreach ($fieldValueSet as $fieldValue) {
+                                    $found = $availableSet->contains(function ($item) use ($fieldValue) {
+                                        return $item->product_field_id == $fieldValue['product_field_id'] && $item->value == $fieldValue['value'];
+                                    });
+                                    if (!$found) {
+                                        $matchesAllFields = false;
+                                        break;
+                                    }
+                                }
+                                if ($matchesAllFields) {
+                                    $matched = true;
+                                    break;
+                                }
+                            }
+                            if (!$matched) {
+                                return response()->json([
+                                    'error' => "Field values at set {$setIndex} for product ID {$productId} at index {$index} do not match available stock"
+                                ], 422);
+                            }
+                        }
+                    }
+
+                    continue; // Skip FIFO allocation since purchase_product_id is specified
+                }
+
+                // Fetch available PurchaseProducts with FIFO (sorted by purchase created_at)
+                $purchaseProducts = PurchaseProduct::where('purchase_products.product_id', $productId)
+                    ->where('purchase_products.company_id', $validated['company_id'])
+                    ->whereNull('purchase_products.deleted_at')
+                    ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                    ->with(['fieldValues', 'purchase'])
+                    ->orderBy('purchases.created_at', 'asc') // FIFO: Sort by purchase date
+                    ->select('purchase_products.*')
+                    ->get();
+
+                if ($purchaseProducts->isEmpty()) {
+                    return response()->json([
+                        'error' => "No purchase products found for product ID {$productId} at index {$index}"
+                    ], 422);
+                }
+
+                // Filter PurchaseProducts by provided field_values if any
+                if (isset($product['field_values']) && !empty($product['field_values'])) {
+                    $purchaseProducts = $purchaseProducts->filter(function ($purchaseProduct) use ($product) {
+                        $availableFieldValues = $purchaseProduct->fieldValues->groupBy('quantity_index');
+                        foreach ($product['field_values'] as $fieldValueSet) {
+                            $matchesAllFields = true;
+                            foreach ($fieldValueSet as $fieldValue) {
+                                $found = $availableFieldValues->contains(function ($group) use ($fieldValue) {
+                                    return $group->contains(function ($item) use ($fieldValue) {
+                                        return $item->product_field_id == $fieldValue['product_field_id'] && $item->value == $fieldValue['value'];
+                                    });
+                                });
+                                if (!$found) {
+                                    $matchesAllFields = false;
+                                    break;
+                                }
+                            }
+                            if ($matchesAllFields) {
+                                return true;
+                            }
+                        }
+                        return false;
+                    })->values();
+
+                    if ($purchaseProducts->isEmpty()) {
+                        return response()->json([
+                            'error' => "No purchase products match the provided field values for product ID {$productId} at index {$index}"
                         ], 422);
                     }
                 }
+
+                // Allocate quantity using FIFO
+                $remainingQuantity = $requestedQuantity;
+                $allocatedProducts = [];
+                foreach ($purchaseProducts as $purchaseProduct) {
+                    if ($remainingQuantity <= 0) {
+                        break;
+                    }
+
+                    $purchasedQuantity = $purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0);
+                    $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $purchaseProduct->id)
+                        ->where('company_id', $validated['company_id'])
+                        ->whereNull('deleted_at')
+                        ->sum('quantity');
+                    $soldQuantity = SaleProduct::where('purchase_product_id', $purchaseProduct->id)
+                        ->where('company_id', $validated['company_id'])
+                        ->whereNull('deleted_at')
+                        ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
+                    $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
+                        ->where('company_id', $validated['company_id'])
+                        ->whereNull('deleted_at')
+                        ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
+
+                    $availableQuantity = ($purchasedQuantity - $purchaseReturnedQuantity) - ($soldQuantity - $salesReturnedQuantity);
+
+                    if ($availableQuantity <= 0) {
+                        continue;
+                    }
+
+                    $allocateQuantity = min($remainingQuantity, $availableQuantity);
+                    $remainingQuantity -= $allocateQuantity;
+
+                    // Handle field values for this allocation
+                    $fieldValues = [];
+                    $hasFieldValues = $purchaseProduct->fieldValues->isNotEmpty();
+                    if ($hasFieldValues) {
+                        $availableFieldValues = $purchaseProduct->fieldValues->groupBy('quantity_index')->take($allocateQuantity)->values();
+                        if (count($availableFieldValues) < $allocateQuantity) {
+                            return response()->json([
+                                'error' => "Insufficient field values for purchase product ID {$purchaseProduct->id} at index {$index}. Available: " . count($availableFieldValues) . ", Requested: {$allocateQuantity}"
+                            ], 422);
+                        }
+
+                        $fieldValues = $availableFieldValues->map(function ($group) {
+                            return $group->map(function ($field) {
+                                return [
+                                    'product_field_id' => $field->product_field_id,
+                                    'value' => $field->value,
+                                ];
+                            })->toArray();
+                        })->toArray();
+
+                        // Validate provided field values if any
+                        if (isset($product['field_values']) && !empty($product['field_values'])) {
+                            foreach ($product['field_values'] as $setIndex => $fieldValueSet) {
+                                $matched = false;
+                                foreach ($availableFieldValues as $availableSet) {
+                                    $matchesAllFields = true;
+                                    foreach ($fieldValueSet as $fieldValue) {
+                                        $found = $availableSet->contains(function ($item) use ($fieldValue) {
+                                            return $item->product_field_id == $fieldValue['product_field_id'] && $item->value == $fieldValue['value'];
+                                        });
+                                        if (!$found) {
+                                            $matchesAllFields = false;
+                                            break;
+                                        }
+                                    }
+                                    if ($matchesAllFields) {
+                                        $matched = true;
+                                        break;
+                                    }
+                                }
+                                if (!$matched) {
+                                    return response()->json([
+                                        'error' => "Field values at set {$setIndex} for product ID {$productId} at index {$index} do not match available stock"
+                                    ], 422);
+                                }
+                            }
+                        }
+                    } elseif (isset($product['field_values']) && !empty($product['field_values'])) {
+                        return response()->json([
+                            'error' => "Purchase product ID {$purchaseProduct->id} has no field values, but field values were provided at index {$index}"
+                        ], 422);
+                    }
+
+                    $productModel = Product::find($productId);
+                    $allocatedProducts[] = [
+                        'product_id' => $productId,
+                        'product_name' => $productModel->name ?? $product['product_name'],
+                        'purchase_product_id' => $purchaseProduct->id,
+                        'quantity' => $allocateQuantity,
+                        'free_quantity' => $product['free_quantity'] ?? 0,
+                        'price' => $product['price'] ?? $productModel->price ?? $purchaseProduct->price,
+                        'discount_percent' => $product['discount_percent'] ?? 0,
+                        'discount_amount' => $product['discount_amount'] ?? 0,
+                        'is_vatable' => $product['is_vatable'] ?? $productModel->is_vatable ?? $purchaseProduct->is_vatable,
+                        'measure_unit_id' => $product['measure_unit_id'],
+                        'mfd' => $product['mfd'],
+                        'batch_no' => $product['batch_no'],
+                        'expiry_date' => $product['expiry_date'] ?? $purchaseProduct->expiry_date,
+                        'field_values' => $fieldValues,
+                    ];
+                }
+
+                if ($remainingQuantity > 0) {
+                    return response()->json([
+                        'error' => "Insufficient stock for product ID {$productId} at index {$index}. Available: " . ($requestedQuantity - $remainingQuantity) . ", Requested: {$requestedQuantity}"
+                    ], 422);
+                }
+
+                // Replace the original product with allocated products
+                $validated['sale_products'] = array_merge(
+                    array_slice($validated['sale_products'], 0, $index),
+                    $allocatedProducts,
+                    array_slice($validated['sale_products'], $index + 1)
+                );
+
+                // Validate field values for uniqueness
+                foreach ($allocatedProducts as $allocIndex => $allocProduct) {
+                    if (isset($allocProduct['field_values'])) {
+                        foreach ($allocProduct['field_values'] as $setIndex => $fieldValueSet) {
+                            $fieldIds = array_column($fieldValueSet, 'product_field_id');
+                            if (count($fieldIds) !== count(array_unique($fieldIds))) {
+                                return response()->json([
+                                    'error' => "Duplicate product_field_id found in field_values set {$setIndex} for product ID {$productId} at allocated index {$allocIndex}"
+                                ], 422);
+                            }
+                        }
+                    }
+                }
             }
+
+            \Log::debug('Validated sale_products after FIFO allocation', ['sale_products' => $validated['sale_products']]);
 
             $sale = DB::transaction(function () use ($validated) {
                 $sale = Sale::create($validated);
@@ -1191,16 +1414,15 @@ class SaleController extends Controller
                             'field_values' => $availableFieldValues->toArray(),
                         ]);
 
-                        // Validate provided field values against available ones
+                        // Validate and create field values
                         $fieldValues = [];
                         $selectedQuantityIndices = [];
                         foreach ($product['field_values'] as $fieldValueSet) {
                             $matched = false;
                             foreach ($availableFieldValues as $availableFieldValue) {
-                                // Check if the field_value set matches the available field values
                                 $matchesAllFields = true;
                                 foreach ($fieldValueSet as $fieldValue) {
-                                    $found = $availableFieldValues->contains(function ($item) use ($fieldValue, $availableFieldValue) { // Fixed: Added $availableFieldValue to use
+                                    $found = $availableFieldValues->contains(function ($item) use ($fieldValue, $availableFieldValue) {
                                         return $item->product_field_id == $fieldValue['product_field_id'] &&
                                             $item->value == $fieldValue['value'] &&
                                             $item->quantity_index == $availableFieldValue->quantity_index;
@@ -1211,7 +1433,6 @@ class SaleController extends Controller
                                     }
                                 }
                                 if ($matchesAllFields && !in_array($availableFieldValue->quantity_index, $selectedQuantityIndices)) {
-                                    // Use the quantity_index from PurchaseProductFieldValue
                                     foreach ($fieldValueSet as $fieldValue) {
                                         $fieldValues[] = [
                                             'company_id' => $validated['company_id'],
@@ -1239,7 +1460,6 @@ class SaleController extends Controller
                             }
                         }
 
-                        // Ensure the number of matched quantity indices does not exceed requested quantity
                         if (count($selectedQuantityIndices) > $product['quantity']) {
                             throw new \Exception('Number of selected field value sets (' . count($selectedQuantityIndices) . ') exceeds requested quantity (' . $product['quantity'] . ') for purchase_product_id: ' . $product['purchase_product_id']);
                         }
@@ -1271,7 +1491,7 @@ class SaleController extends Controller
                 'message' => 'Sale created successfully',
                 'data' => $sale->load([
                     'saleProducts.fieldValues' => function ($query) {
-                        $query->orderBy('quantity_index')->orderBy('product_field_id');
+                        $query->orderBy('quantity_index', 'asc')->orderBy('product_field_id', 'asc');
                     },
                     'saleAdditionals'
                 ])

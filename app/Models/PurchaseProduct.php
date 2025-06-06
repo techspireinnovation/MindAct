@@ -99,7 +99,12 @@ public function product()
     }
 
     public function getCreatedAtBsAttribute(): string
-    {
-        return NepaliDate::create($this->created_at)->toBS();
-    }
+ {
+    if (!$this->created_at) {
+        return 'N/A'; 
+     }
+
+    return NepaliDate::create($this->created_at)->toBS();
+ }
+
 }

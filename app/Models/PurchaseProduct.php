@@ -99,7 +99,7 @@ class PurchaseProduct extends Model
 
     public function getPurchaseUnitAttribute()
     {
-        $primary = self::where('product_id', $this->product_id)->latest('id')->first();
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
         if ($primary)
             return MeasureUnit::find($primary->measure_unit_id);
         else

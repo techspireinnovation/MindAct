@@ -78,12 +78,13 @@ class SaleProduct extends Model
 
     public function getSaleUnitAttribute()
     {
-        $primary = self::where('product_id', $this->product_id)->latest('id')->first();
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
         if ($primary)
             return MeasureUnit::find($primary->measure_unit_id);
         else
             return null;
     }
+
     public function getCreatedAtBsAttribute(): string
     {
         return $this->created_at ? NepaliDate::create($this->created_at)->toBS() : "";
@@ -97,6 +98,7 @@ class SaleProduct extends Model
         else
             return null;
     }
+
 
     public function getAverageRateAttribute()
     {

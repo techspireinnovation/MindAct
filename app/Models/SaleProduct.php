@@ -69,19 +69,21 @@ class SaleProduct extends Model
 
     public function getSaleRateAttribute()
     {
-        $averagePrice = self::where('product_id', $this->product_id)->get()->map(function ($saleProduct) {
-            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($saleProduct->product_id, $saleProduct->measure_unit_id || 0, $saleProduct->quantity, $saleProduct->price));
-            return [
-                'total_price' => $primaryEntities[1],
-                'primary_units' => $primaryEntities[0],
-            ];
-        })->reduce(function ($carry, $item) {
-            $carry['total_price'] += $item['total_price'];
-            $carry['primary_units'] += $item['primary_units'];
-            return $carry;
-        }, ['total_price' => 0, 'primary_units' => 0]);
+        return self::where(['product_id' => $this->product_id, 'sale_id' => $this->sale_id])->first()->price ?? 0;
+        /*
+       $averagePrice = self::where('product_id', $this->product_id)->get()->map(function ($saleProduct) {
+           $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($saleProduct->product_id, $saleProduct->measure_unit_id || 0, $saleProduct->quantity, $saleProduct->price));
+           return [
+               'total_price' => $primaryEntities[1],
+               'primary_units' => $primaryEntities[0],
+           ];
+       })->reduce(function ($carry, $item) {
+           $carry['total_price'] += $item['total_price'];
+           $carry['primary_units'] += $item['primary_units'];
+           return $carry;
+       }, ['total_price' => 0, 'primary_units' => 0]);
 
-        return $averagePrice['total_price'] / $averagePrice['primary_units'];
+       return $averagePrice['total_price'] / $averagePrice['primary_units'];*/
     }
 
     public function getSaleDiscountAmountAttribute()

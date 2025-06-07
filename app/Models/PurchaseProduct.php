@@ -89,6 +89,8 @@ class PurchaseProduct extends Model
 
     public function getPurchaseRateAttribute()
     {
+        return self::where(['product_id' => $this->product_id, 'purchase_id' => $this->purchase_id])->first()->price ?? 0;
+        /*
         $averagePrice = self::where(['product_id' => $this->product_id])->get()->map(function ($purchaseProduct) {
             $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id ?? 0, $purchaseProduct->quantity, $purchaseProduct->price));
 
@@ -102,6 +104,7 @@ class PurchaseProduct extends Model
             return $carry;
         }, ['total_price' => 0, 'primary_units' => 0]);
         return $averagePrice['total_price'] / $averagePrice['primary_units'];
+        */
     }
 
     public function getPurchaseDiscountAmountAttribute()

@@ -752,8 +752,7 @@ class SaleController extends Controller
                 'sale_products.*.mfd' => 'required|string|max:255',
                 'sale_products.*.expiry_date' => 'nullable|date',
                 'sale_products.*.field_values' => 'nullable|array',
-                // Support both flat and nested field_values
-                'sale_products.*.field_values.*' => 'array',
+                                'sale_products.*.field_values.*' => 'array',
                 'sale_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'sale_products.*.field_values.*.*.value' => 'required|string|max:255',
                 'sale_products.*.field_values.*.*.quantity_index' => 'required|integer|min:0',

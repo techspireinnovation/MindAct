@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductReturn;
+use App\Models\Sale;
 use App\Models\SaleProduct;
 use App\Models\SalesReturnProduct;
 use App\Models\StockEntry;
@@ -269,6 +270,42 @@ class ReportController extends Controller
 
         return response()->json($transactions);
     }
+
+    public function cbmsVatReturnListDetails(Request $request): JsonResponse
+    {
+
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|string|in:sales,sales_return,purchases,purchase_return',
+            'month' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        if ($request->type === "purchases") {
+
+            $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.total_amount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id")->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+
+            if ($request->has('month')) {
+                $items->whereMonth('invoice_date', $request->input('month'));
+            }
+
+            $items = $items->get();
+            //$items->each->append(['purchase_return_amount', 'purchase_return_discount_amount']);
+        } else if ($request->type === "sales") {
+            $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.total_amount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id")->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+
+            if ($request->has('month')) {
+                $items->whereMonth('invoice_date', $request->input('month'));
+            }
+
+            $items = $items->get();
+        }
+        return response()->json($items);
+    }
+
+
 
 
 }

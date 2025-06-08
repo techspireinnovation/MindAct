@@ -301,6 +301,25 @@ class ReportController extends Controller
             }
 
             $items = $items->get();
+        } else if ($request->type === "purchase_return") {
+            $items = PurchaseProductReturn::join('products', 'purchase_product_returns.product_id', '=', 'products.id')->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_product_returns.purchase_return_id')->select(
+                'purchase_product_returns.product_id as product_id',
+                'products.name as product_name',
+                DB::raw('SUM(purchase_product_returns.amount) as total_amount'),
+                DB::raw('SUM(purchase_product_returns.quantity) as total_quantity')
+            )
+                ->with('purchaseReturn')->groupBy('products.id', 'products.name')
+                ->get();
+            $items->each->append(['primary_unit_name']);
+
+        } else if ($request->type === "sales") {
+            $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.total_amount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id")->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+
+            if ($request->has('month')) {
+                $items->whereMonth('invoice_date', $request->input('month'));
+            }
+
+            $items = $items->get();
         }
         return response()->json($items);
     }

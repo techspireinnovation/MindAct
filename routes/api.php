@@ -124,6 +124,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/product-list', [ReportController::class, 'productListDetails']);
         Route::get('/product-price-list', [ReportController::class, 'productPriceListDetails']);
         Route::get('/vendor-supplier-list', [ReportController::class, 'vendorSupplierListDetails']);
+        Route::get('/stock-ledger-list', [ReportController::class, 'stockLedgerListDetails']);
         //});
     });
 

@@ -64,19 +64,25 @@ class PurchaseProduct extends Model
         return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
     }
 
-    public function saleProducts(){
+    public function saleProducts()
+    {
         return $this->hasMany(SaleProduct::class, 'purchase_product_id');
     }
 
-   
-public function product()
-{
-    return $this->belongsTo(Product::class, 'product_id');
-}
-   
+
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id');
+    }
+
     public function getPurchaseQuantityAttribute()
     {
         return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }
 
     public function getPurchaseRateAttribute()
@@ -98,7 +104,26 @@ public function product()
             return null;
     }
 
+    public function getPurchasePrimaryUnitAttribute()
+    {
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id);
+        else
+            return null;
+    }
+
+    public function getPrimaryUnitnameAttribute()
+    {
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id)->name;
+        else
+            return null;
+    }
+
     public function getCreatedAtBsAttribute(): string
+
  {
     if (!$this->created_at) {
         return 'N/A'; 
@@ -106,5 +131,6 @@ public function product()
 
     return NepaliDate::create($this->created_at)->toBS();
  }
+
 
 }

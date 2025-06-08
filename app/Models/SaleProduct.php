@@ -88,7 +88,25 @@ class SaleProduct extends Model
     }
     public function getCreatedAtBsAttribute(): string
     {
-        return NepaliDate::create($this->created_at)->toBS();
+        return $this->created_at ? NepaliDate::create($this->created_at)->toBS() : "";
+    }
+
+    public function getPrimaryUnitnameAttribute()
+    {
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
+        if ($primary)
+            return MeasureUnit::find($primary->measure_unit_id)->name;
+        else
+            return null;
+    }
+
+    public function getAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+    public function getSaleAverageRateAttribute()
+    {
+        return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }
 
 }

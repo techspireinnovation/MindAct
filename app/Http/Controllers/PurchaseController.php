@@ -3,21 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
-use App\Models\ProductFieldValue;
-use App\Models\ProductList;
 use App\Models\Purchase;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Log;
-
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Validation\Rule;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class PurchaseController extends Controller
 {

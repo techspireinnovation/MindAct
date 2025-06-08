@@ -12,6 +12,7 @@ use App\Models\PurchaseProductReturn;
 use App\Models\SaleProduct;
 use App\Models\SalesReturnProduct;
 use App\Models\StockEntry;
+use App\Models\StockProductDetails;
 use DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -207,61 +208,66 @@ class ReportController extends Controller
     public function stockLedgerListDetails(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'product_id' => 'required|numeric',
+            'product_id' => 'required|integer|exists:products,id',
         ]);
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-        Product::findOrFail($request->product_id);
+        $product = Product::findOrFail($request->product_id);
 
-        $openingItems = StockEntry::select("id", "product_id", "quantity AS opening_quantity", "rate", DB::raw('DATE(created_at) AS date'))->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $openingItems = StockEntry::select("id", "product_id", "quantity AS opening_qty", DB::raw('DATE(created_at) AS date'))->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('created_at', '>=', $request->from_date)->whereDate('created_at', '<=', $request->to_date);
             }
         })->get();
 
-        $purchaseItems = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.quantity AS purchase_quantity", "purchases.purchase_bill_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS sale_quantity'), "purchase_products.product_id AS product_id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $stockAdjustments = StockProductDetails::select("id", "product_id", "diff_stock AS adjustment_qty", DB::raw('DATE(created_at) AS date'))->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+            if ($request->has('from_date') && $request->has('to_date')) {
+                $where->whereDate('created_at', '>=', $request->from_date)->whereDate('created_at', '<=', $request->to_date);
+            }
+        })->get();
+
+        $purchaseItems = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.quantity AS purchase_qty", "purchases.purchase_bill_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "purchase_products.product_id AS product_id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
             }
         })->get();
-        $purchaseItems->each->append(['primary_unit_name', 'purchase_average_rate']);
 
-        $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "purchase_product_returns.quantity AS purchase_return_quantity", DB::raw('0 AS sale_quantity'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        //$purchaseItems->each->append(['primary_unit_name']);
+
+        $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "purchase_product_returns.quantity AS purchase_return_qty", DB::raw('0 AS sale_qty'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_product_returns.created_at', '>=', $request->from_date)->whereDate('purchase_product_returns.created_at', '<=', $request->to_date);
             }
         })->get();
-        $purchaseReturnItems->each->append(['primary_unit_name', 'purchase_return_average_rate']);
 
-
-        $saleItems = SaleProduct::select("sale_products.id AS id", "sale_products.quantity AS sale_quantity", "sales.invoice_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS purchase_quantity'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $saleItems = SaleProduct::select("sale_products.id AS id", "sale_products.quantity AS sale_qty", "sales.invoice_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS purchase_qty'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
             }
         })->get();
-        $saleItems->each->append(['primary_unit_name', 'sale_average_rate']);
 
-
-        $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_quantity", "customers.party_name AS customer_name", DB::raw('0 AS sale_quantity'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_qty", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sales_return_products.created_at', '>=', $request->from_date)->whereDate('sales_return_products.created_at', '<=', $request->to_date);
             }
         })->get();
-        $saleReturnItems->each->append(['primary_unit_name', 'sale_return_average_rate']);
 
         $merged = $saleItems->concat($purchaseItems);
         $merged = $merged->concat($purchaseReturnItems);
         $merged = $merged->concat($saleReturnItems);
+        $merged = $merged->concat($stockAdjustments);
         $transactions = $merged->concat($openingItems);
 
         $balance = 0;
-        $transactions->sortBy('date')->each(function ($transaction) use (&$balance) {
-            $balance += ($transaction['opening_quantity'] ?? 0) + ($transaction['purchase_quantity'] ?? 0) - ($transaction['purchase_return_quantity'] ?? 0) - ($transaction['sale_quantity'] ?? 0) + ($transaction['sale_return_quantity'] ?? 0);
+        $transactions->sortBy('date')->each(function ($transaction) use (&$balance, $product) {
+
+            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['purchase_qty'] ?? 0) - ($transaction['purchase_return_qty'] ?? 0) - ($transaction['sale_qty'] ?? 0) + ($transaction['sale_return_qty'] ?? 0);
             $transaction['total_quantity'] = $balance;
+            $transaction['primary_unit_name'] = $product->getPrimaryMeasureUnitAttribute()->name;
         });
 
-        return response()->json($transactions->sortBy('date'));
+        return response()->json($transactions);
     }
 
 

@@ -213,7 +213,7 @@ class ReportController extends Controller
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-        Product::findOrFail($request->product_id);
+        $product = Product::findOrFail($request->product_id);
 
         $openingItems = StockEntry::select("id", "product_id", "quantity AS opening_quantity", DB::raw('DATE(created_at) AS date'))->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
@@ -232,14 +232,14 @@ class ReportController extends Controller
                 $where->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
             }
         })->get();
-        $purchaseItems->each->append(['primary_unit_name']);
+        //$purchaseItems->each->append(['primary_unit_name']);
 
         $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "purchase_product_returns.quantity AS purchase_return_quantity", DB::raw('0 AS sale_quantity'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_product_returns.created_at', '>=', $request->from_date)->whereDate('purchase_product_returns.created_at', '<=', $request->to_date);
             }
         })->get();
-        $purchaseReturnItems->each->append(['primary_unit_name']);
+        //$purchaseReturnItems->each->append(['primary_unit_name']);
 
 
         $saleItems = SaleProduct::select("sale_products.id AS id", "sale_products.quantity AS sale_quantity", "sales.invoice_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS purchase_quantity'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
@@ -247,7 +247,7 @@ class ReportController extends Controller
                 $where->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
             }
         })->get();
-        $saleItems->each->append(['primary_unit_name']);
+        //$saleItems->each->append(['primary_unit_name']);
 
 
         $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_quantity", "customers.party_name AS customer_name", DB::raw('0 AS sale_quantity'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
@@ -255,7 +255,7 @@ class ReportController extends Controller
                 $where->whereDate('sales_return_products.created_at', '>=', $request->from_date)->whereDate('sales_return_products.created_at', '<=', $request->to_date);
             }
         })->get();
-        $saleReturnItems->each->append(['primary_unit_name']);
+        //$saleReturnItems->each->append(['primary_unit_name']);
 
         $merged = $saleItems->concat($purchaseItems);
         $merged = $merged->concat($purchaseReturnItems);
@@ -264,9 +264,10 @@ class ReportController extends Controller
         $transactions = $merged->concat($openingItems);
 
         $balance = 0;
-        $transactions->sortBy('date')->each(function ($transaction) use (&$balance) {
+        $transactions->sortBy('date')->each(function ($transaction) use (&$balance, $product) {
             $balance += ($transaction['adjustment_quantity'] ?? 0) + ($transaction['opening_quantity'] ?? 0) + ($transaction['purchase_quantity'] ?? 0) - ($transaction['purchase_return_quantity'] ?? 0) - ($transaction['sale_quantity'] ?? 0) + ($transaction['sale_return_quantity'] ?? 0);
             $transaction['total_quantity'] = $balance;
+            $transaction['primary_unit_name'] = $product->getPrimaryMeasureUnitAttribute()->name;
         });
 
         return response()->json($transactions->sortBy('date'));

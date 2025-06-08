@@ -270,7 +270,7 @@ class ReportController extends Controller
             $transaction['primary_unit_name'] = $product->getPrimaryMeasureUnitAttribute()->name;
         });
 
-        return response()->json($transactions->sortBy('date'));
+        return response()->json($transactions);
     }
 
 

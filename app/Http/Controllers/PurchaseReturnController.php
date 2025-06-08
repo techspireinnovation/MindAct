@@ -533,7 +533,6 @@ class PurchaseReturnController extends Controller
     }
 
 
-
    public function storePurchaseReturnByInput(Request $request): JsonResponse
     {
         try {

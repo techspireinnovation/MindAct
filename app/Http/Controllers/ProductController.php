@@ -555,7 +555,16 @@ class ProductController extends Controller
             'is_active' => 'boolean|required',
             'category_id' => 'integer|nullable',
             'is_fixed_amount' => 'boolean|nullable',
-            'product_unique_id' => 'string|max:255|unique:products',
+            'product_unique_id' => [
+              
+                'string',
+                'max:255',
+                Rule::unique('products')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
+                        ->whereNull('deleted_at');
+
+                }),
+            ],
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',

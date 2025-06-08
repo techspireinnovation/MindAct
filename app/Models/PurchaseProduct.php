@@ -109,7 +109,7 @@ class PurchaseProduct extends Model
 
     public function getPurchaseDiscountAmountAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->sum('discount_amount') ?? 0;
+        return self::where(['product_id' => $this->product_id, 'purchase_id' => $this->purchase_id])->first()->discount_amount ?? 0;
     }
 
     public function getPurchaseUnitAttribute()

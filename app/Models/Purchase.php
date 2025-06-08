@@ -5,7 +5,6 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
-use BcMath\Number;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -72,6 +71,11 @@ class Purchase extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
+    public function purchaseReturns()
+    {
+        return $this->hasMany(PurchaseReturn::class, 'purchase_id');
+    }
+
     public function purchaseProducts(): HasMany
     {
         return $this->hasMany(PurchaseProduct::class);
@@ -80,6 +84,16 @@ class Purchase extends Model
     public function getPurchaseProductQuantityAttribute(): int
     {
         return PurchaseProduct::where('purchase_id', $this->id)->sum('quantity') ?? 0;
+    }
+
+    public function getPurchaseReturnAmountAttribute()
+    {
+        return PurchaseReturn::where('purchase_id', $this->id)->sum('sub_total_before_discount') ?? 0;
+    }
+
+    public function getPurchaseReturnDiscountAmountAttribute()
+    {
+        return PurchaseReturn::where('purchase_id', $this->id)->sum('discount_value') ?? 0;
     }
 
 

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -77,27 +78,43 @@ class PurchaseProduct extends Model
 
     public function getPurchaseQuantityAttribute()
     {
-        return self::where('product_id', $this->product_id)->sum('quantity') ?? 0;
+        return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id ?? 0, $this->quantity));
     }
 
     public function getPurchaseAverageRateAttribute()
     {
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+
     }
 
     public function getPurchaseRateAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->first()->price ?? 0;
+        return self::where(['product_id' => $this->product_id, 'purchase_id' => $this->purchase_id])->first()->price ?? 0;
+        /*
+        $averagePrice = self::where(['product_id' => $this->product_id])->get()->map(function ($purchaseProduct) {
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id ?? 0, $purchaseProduct->quantity, $purchaseProduct->price));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $averagePrice['total_price'] / $averagePrice['primary_units'];
+        */
     }
 
     public function getPurchaseDiscountAmountAttribute()
     {
-        return self::where('product_id', $this->product_id)->latest('id')->first()->discount_amount ?? 0;
+        return self::where(['product_id' => $this->product_id, 'purchase_id' => $this->purchase_id])->first()->discount_amount ?? 0;
     }
 
     public function getPurchaseUnitAttribute()
     {
-        $primary = self::where('product_id', $this->product_id)->latest('id')->first();
+        $primary = ProductList::where(['product_id' => $this->product_id, 'is_primary' => 1])->first();
         if ($primary)
             return MeasureUnit::find($primary->measure_unit_id);
         else
@@ -123,14 +140,13 @@ class PurchaseProduct extends Model
     }
 
     public function getCreatedAtBsAttribute(): string
+    {
+        if (!$this->created_at) {
+            return 'N/A';
+        }
 
- {
-    if (!$this->created_at) {
-        return 'N/A'; 
-     }
-
-    return NepaliDate::create($this->created_at)->toBS();
- }
+        return NepaliDate::create($this->created_at)->toBS();
+    }
 
 
 }

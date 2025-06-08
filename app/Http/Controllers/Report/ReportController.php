@@ -6,6 +6,7 @@ use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductReturn;
 use App\Models\SaleProduct;
@@ -92,7 +93,7 @@ class ReportController extends Controller
 
 
         $items = $items->get();
-        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
 
         $items = $items->map(function ($item) {
             $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
@@ -114,19 +115,18 @@ class ReportController extends Controller
 
     public function productPriceListDetails(Request $request): JsonResponse
     {
-
         $validator = Validator::make($request->all(), [
-
             'type' => 'required|string|in:purchase,sales',
             'product_id' => 'required|numeric',
 
         ]);
+
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
         if ($request->type === "purchase") {
-            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number', 'purchase.customer:id,party_name'])->whereHas('purchase', function ($query) use ($request) {
+            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.quantity", "purchase_products.measure_unit_id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number,ref_bill_number', 'purchase.customer:id,party_name'])->whereHas('purchase', function ($query) use ($request) {
                 if ($request->has('from_date') && $request->has('to_date')) {
                     $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
                 }
@@ -143,9 +143,9 @@ class ReportController extends Controller
             $items = $items->get();
             $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
         } else {
-            $items = SaleProduct::select("sale_products.id", "sale_products.product_id", "sale_products.product_id", "sale_products.created_at", "sale_products.sale_id")->with([
+            $items = SaleProduct::select("sale_products.id", "sale_products.quantity", "sale_products.product_id", "sale_products.measure_unit_id", "sale_products.created_at", "sale_products.sale_id")->with([
                 'sale' => function ($q) {
-                    $q->select("sales.id", "sales.customer_id", "sales.invoice_number", "sales.invoice_date_bs")->with([
+                    $q->select("sales.id", "sales.customer_id", "sales.ref_number", "sales.invoice_number", "sales.invoice_date_bs")->with([
                         "customer" => function ($cus) {
                             $cus->select("customers.id", "customers.party_name");
                         }
@@ -155,11 +155,10 @@ class ReportController extends Controller
                 if ($request->has('from_date') && $request->has('to_date')) {
                     $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
                 }
+                if ($request->has('customer_id')) {
+                    $query->where('customer_id', $request->input('customer_id'));
+                }
             })->where('product_id', $request->product_id);
-
-            if ($request->has('customer_id')) {
-                $items->where('customer_id', $request->input('customer_id'));
-            }
 
             if ($request->has('from_date') && $request->has('to_date')) {
                 $items->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
@@ -175,15 +174,33 @@ class ReportController extends Controller
     public function vendorSupplierListDetails(Request $request): JsonResponse
     {
 
-        $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount')->withSum('purchases', 'discount_value')->withSum('purchaseReturns', 'sub_total_before_discount')->withSum('purchaseReturns', 'discount_value');
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|string|in:invoice,list',
+        ]);
 
-        if ($request->has('customer_id')) {
-            $items->where('id', $request->input('customer_id'));
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
         }
 
-        $items = $items->get();
-        //$items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+        if ($request->type === "list") {
 
+            $items = Customer::select("customers.id", "customers.party_name", "customers.pan_number")->withSum('purchases', 'sub_total_before_discount')->withSum('purchases', 'discount_value')->withSum('purchaseReturns', 'sub_total_before_discount')->withSum('purchaseReturns', 'discount_value');
+
+            if ($request->has('customer_id')) {
+                $items->where('id', $request->input('customer_id'));
+            }
+
+            $items = $items->get();
+        } else {
+            $items = Purchase::select("purchases.id", "purchases.invoice_date", "purchases.sub_total_before_discount", "purchases.discount_value", "purchases.purchase_bill_number", "purchases.ref_bill_number", "purchases.customer_id")->with('customer:id,party_name,pan_number');
+
+            if ($request->has('customer_id')) {
+                $items->where('id', $request->input('customer_id'));
+            }
+
+            $items = $items->get();
+            $items->each->append(['purchase_return_amount', 'purchase_return_discount_amount']);
+        }
         return response()->json($items);
     }
 

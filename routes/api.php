@@ -1,7 +1,6 @@
 <?php
 
 use App\Events\MessageSent;
-use App\Helpers\Helper;
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -52,7 +51,6 @@ use App\Http\Controllers\StockReconciliationController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
-use App\Http\Controllers\SupplierController;
 use Illuminate\Http\Request;
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -125,6 +123,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/product-price-list', [ReportController::class, 'productPriceListDetails']);
         Route::get('/vendor-supplier-list', [ReportController::class, 'vendorSupplierListDetails']);
         Route::get('/stock-ledger-list', [ReportController::class, 'stockLedgerListDetails']);
+        Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
         //});
     });
 

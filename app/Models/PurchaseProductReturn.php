@@ -48,7 +48,7 @@ class PurchaseProductReturn extends Model
     }
     public function purchaseReturn()
     {
-        return $this->belongsTo(PurchaseReturn::class);
+        return $this->belongsTo(PurchaseReturn::class, 'purchase_return_id', 'id');
     }
 
     public function purchaseProduct()
@@ -93,6 +93,12 @@ class PurchaseProductReturn extends Model
     public function getPurchaseReturnAverageRateAttribute()
     {
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+
+    public function getPurchaseReturnCustomerAttribute()
+    {
+        //dd($this);
+        return $this->belongsTo(PurchaseReturn::class, 'purchase_return_id', 'id');
     }
 
 }

@@ -302,16 +302,37 @@ class ReportController extends Controller
 
             $items = $items->get();
         } else if ($request->type === "purchase_return") {
-            $items = PurchaseProductReturn::join('products', 'purchase_product_returns.product_id', '=', 'products.id')->join('purchase_returns', 'purchase_returns.id', '=', 'purchase_product_returns.purchase_return_id')->select(
-                'purchase_product_returns.product_id as product_id',
-                'products.name as product_name',
-                //   'purchase_returns.customer_id as customer_id',
-                DB::raw('SUM(purchase_product_returns.amount) as total_amount'),
-                DB::raw('SUM(purchase_product_returns.quantity) as total_quantity')
-            )
-                ->with('purchaseReturn')->groupBy('products.id')
+            $items = DB::table('purchase_product_returns as ppr')
+                ->join('purchase_returns as pr', 'ppr.purchase_return_id', '=', 'pr.id')
+                ->join('customers as c', 'pr.customer_id', '=', 'c.id')
+                ->leftJoin('measure_units as mu', 'ppr.measure_unit_id', '=', 'mu.id')
+                ->select([
+                    'pr.invoice_date as date',
+                    'pr.purchase_bill_number as bill_Number',
+                    'c.party_name as supplier_name',
+                    'c.pan_number as supplier_pan',
+                    'ppr.product_name as product_service_name',
+
+                    DB::raw('SUM(ppr.quantity) as product_quantity'),
+                    'mu.name as Unit_Name',
+                    DB::raw('SUM(ppr.amount) as total_purchase'),
+                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.amount ELSE 0 END) as non_taxable'),
+                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.amount ELSE 0 END) as taxable'),
+                ])
+                ->groupBy([
+                    'pr.invoice_date',
+                    'pr.purchase_bill_number',
+                    'c.party_name',
+                    'c.pan_number',
+                    'ppr.product_name',
+                    'mu.name',
+                ])
+                ->orderBy('pr.invoice_date')
+                ->orderBy('pr.purchase_bill_number')
+                ->orderBy('ppr.product_name')
                 ->get();
-            $items->each->append(['primary_unit_name', 'purchase_return_customer']);
+
+            //            $items->each->append(['primary_unit_name', 'purchase_return_customer']);
 
         } else if ($request->type === "sales") {
             $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.total_amount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id")->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');

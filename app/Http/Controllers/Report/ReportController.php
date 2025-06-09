@@ -316,6 +316,7 @@ class ReportController extends Controller
                     DB::raw('SUM(ppr.amount) as total_purchase'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.amount ELSE 0 END) as non_taxable'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.amount ELSE 0 END) as taxable'),
+                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.amount * .13,2) ELSE 0 END) as vat_amount'),
                 ])
                 ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
                     $query->whereMonth('pr.invoice_date', $request->month)

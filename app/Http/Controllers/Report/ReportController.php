@@ -390,6 +390,9 @@ class ReportController extends Controller
 
         $purchase_taxable_amount = Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
 
+        $sale_return_amount = SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+
+
         return response()->json([
             'sales' => [
                 'vatable' => $sale_taxable_amount,
@@ -412,6 +415,12 @@ class ReportController extends Controller
                 'purchase_return_advice' => 0,
                 'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
             ],
+            'other' => [
+                'purchase_return_vat' => 0,
+                'sale_return_vat' => $sale_return_amount * 0.13,
+                'customer_return_vat' => 0,
+            ],
+            'net_payable_amount' => ($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13)
         ]);
 
     }

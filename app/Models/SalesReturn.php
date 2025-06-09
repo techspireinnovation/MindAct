@@ -4,14 +4,15 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\ConvertsAdToBsDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SalesReturn extends Model
 {
-    use SoftDeletes, HasFactory;
+    use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
     protected $casts = [
         'payment' => 'array',
@@ -23,7 +24,7 @@ class SalesReturn extends Model
 
     protected $fillable = [
         'company_id',
-        'customer_id', 
+        'customer_id',
         'salesman_id',
         'sale_id',
         'pan_number',

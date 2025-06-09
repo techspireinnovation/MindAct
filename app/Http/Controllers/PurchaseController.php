@@ -448,7 +448,6 @@ class PurchaseController extends Controller
             'remarks' => 'nullable|string|max:255',
             'invoice_date' => 'nullable|string|max:255',
             'invoice_date_bs' => 'nullable|string|max:255',
-
             'batch_no' => [
                 'nullable',
                 'string',

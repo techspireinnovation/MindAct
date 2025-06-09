@@ -9,8 +9,10 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductReturn;
+use App\Models\PurchaseReturn;
 use App\Models\Sale;
 use App\Models\SaleProduct;
+use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
 use App\Models\StockEntry;
 use App\Models\StockProductDetails;
@@ -290,9 +292,8 @@ class ReportController extends Controller
             if ($request->has('month')) {
                 $items->whereMonth('invoice_date', $request->input('month'));
             }
-
             $items = $items->get();
-            //$items->each->append(['purchase_return_amount', 'purchase_return_discount_amount']);
+
         } else if ($request->type === "sales") {
             $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.total_amount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id")->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
@@ -374,6 +375,46 @@ class ReportController extends Controller
         return response()->json($items);
     }
 
+    public function vatReturnDataListDetails(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'month' => 'required|numeric',
+            'year' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $sale_taxable_amount = Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+
+        $purchase_taxable_amount = Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+
+        return response()->json([
+            'sales' => [
+                'vatable' => $sale_taxable_amount,
+                'non_vatable' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'),
+                'export' => 0,
+                'vat' => $sale_taxable_amount * 0.13,
+            ],
+            'purchase' => [
+                'vatable' => $purchase_taxable_amount,
+                'non_vatable' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'),
+                'vatable_import' => 0,
+                'non_vatable_import' => 0,
+                'vat' => $purchase_taxable_amount * 0.13,
+            ],
+            'bill' => [
+                'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                'purchase_return' => PurchaseReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                'sale_return' => SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                'sale_return_advice' => 0,
+                'purchase_return_advice' => 0,
+                'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+            ],
+        ]);
+
+    }
 
 
 

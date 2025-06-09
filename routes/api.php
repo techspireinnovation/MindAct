@@ -124,6 +124,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/vendor-supplier-list', [ReportController::class, 'vendorSupplierListDetails']);
         Route::get('/stock-ledger-list', [ReportController::class, 'stockLedgerListDetails']);
         Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
+        Route::get('/vat-return-data-list', [ReportController::class, 'vatReturnDataListDetails']);
         //});
     });
 

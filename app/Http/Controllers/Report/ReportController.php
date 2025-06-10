@@ -425,6 +425,23 @@ class ReportController extends Controller
 
     }
 
+    public function grossProfitRatioListDetails(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            //  'month' => 'required|numeric',
+            // 'year' => 'required|numeric',
+            // 'year' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $products = Product::get();
+        $products->each->append(['stock_opening']);
+        return response()->json($products);
+    }
+
 
 
 }

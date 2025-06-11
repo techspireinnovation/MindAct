@@ -49,6 +49,10 @@ class PurchaseProduct extends Model
         });
     }
 
+    public function measureUnit(){
+        return $this->hasMany(MeasureUnit::class, 'id');
+    }
+
     public function fieldValues()
     {
         return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');

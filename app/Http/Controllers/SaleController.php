@@ -12,6 +12,7 @@ use App\Models\SalesProductFieldValue;
 use App\Models\PurchaseProductFieldValue;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Http\Request;
 use App\Models\Product;
 use App\Models\ProductField;
 use App\Models\Purchase;
@@ -24,7 +25,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Http\Request;
+
 use Carbon\Carbon;
 
 
@@ -107,8 +108,7 @@ class SaleController extends Controller
     }
 
 
-    private function getAvailableProductsForSale($companyId)
-    {
+    private function getAvailableProductsForSale($companyId)    {
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
 
         try {
@@ -118,13 +118,12 @@ class SaleController extends Controller
             $purchaseSubQuery = DB::table('purchase_products as pp')
                 ->select([
                     'pp.product_id',
+                    DB::raw('MIN(pp.product_name) as purchase_product_name'),
                     DB::raw('SUM((pp.quantity + COALESCE(pp.free_quantity, 0)) * COALESCE(mu.quantity, 1)) as purchased_quantity')
                 ])
-                ->join('measure_units as mu', 'pp.measure_unit_id', '=', 'mu.id')
+                ->leftJoin('measure_units as mu', 'pp.measure_unit_id', '=', 'mu.id')
                 ->whereNull('pp.deleted_at')
                 ->where('pp.company_id', $companyId)
-                ->where('mu.company_id', $companyId)
-                ->whereNull('mu.deleted_at')
                 ->groupBy('pp.product_id');
 
             // Subquery for sale_products quantities
@@ -147,7 +146,7 @@ class SaleController extends Controller
                     DB::raw('SUM((ppr.quantity + COALESCE(ppr.free_quantity, 0)) * COALESCE(mu.quantity, 1)) as return_quantity')
                 ])
                 ->join('purchase_products as pp', 'ppr.purchase_product_id', '=', 'pp.id')
-                ->join('measure_units as mu', 'pp.measure_unit_id', '=', 'mu.id')
+                ->join('measure_units as mu', 'ppr.measure_unit_id', '=', 'mu.id')
                 ->whereNull('ppr.deleted_at')
                 ->where('ppr.company_id', $companyId)
                 ->where('mu.company_id', $companyId)
@@ -161,25 +160,29 @@ class SaleController extends Controller
                     DB::raw('SUM((srp.quantity + COALESCE(srp.free_quantity, 0)) * COALESCE(mu.quantity, 1)) as sales_return_quantity')
                 ])
                 ->join('sale_products as sp', 'srp.sale_product_id', '=', 'sp.id')
-                ->join('measure_units as mu', 'sp.measure_unit_id', '=', 'mu.id')
+                ->join('measure_units as mu', 'srp.measure_unit_id', '=', 'mu.id')
                 ->whereNull('srp.deleted_at')
                 ->where('srp.company_id', $companyId)
                 ->where('mu.company_id', $companyId)
                 ->whereNull('mu.deleted_at')
                 ->groupBy('sp.product_id');
 
+            // Log purchase product IDs
+            $purchaseProductIds = $purchaseSubQuery->pluck('product_id')->toArray();
+            Log::debug('Purchase subquery product IDs', ['product_ids' => $purchaseProductIds]);
+
             // Main query
             $mainQuery = DB::table(DB::raw("({$purchaseSubQuery->toSql()}) as purchase_totals"))
                 ->select([
                     'products.id',
-                    'products.name',
+                    DB::raw('COALESCE(products.name, purchase_totals.purchase_product_name) as name'),
                     'purchase_totals.purchased_quantity',
                     'return_totals.return_quantity',
                     'sale_totals.sale_quantity',
                     'sales_return_totals.sales_return_quantity'
                 ])
                 ->mergeBindings($purchaseSubQuery)
-                ->join('products', function ($join) use ($companyId) {
+                ->leftJoin('products', function ($join) use ($companyId) {
                     $join->on('purchase_totals.product_id', '=', 'products.id')
                         ->where(function ($query) use ($companyId) {
                             $query->where('products.company_id', $companyId)
@@ -229,8 +232,6 @@ class SaleController extends Controller
             DB::disableQueryLog();
         }
     }
-
-
 
 
 
@@ -374,7 +375,7 @@ class SaleController extends Controller
         try {
             DB::enableQueryLog();
 
-            // Main query for product totals (unchanged)
+            // Main query for product totals
             $purchaseSubQuery = DB::table('purchase_products')
                 ->select([
                     'purchase_products.product_id',
@@ -390,7 +391,7 @@ class SaleController extends Controller
                 ])
                 ->leftJoin('products', 'purchase_products.product_id', '=', 'products.id')
                 ->leftJoin('measure_units as product_measure_units', 'products.measure_unit_id', '=', 'product_measure_units.id')
-                ->join('measure_units as purchase_measure_units', 'purchase_products.measure_unit_id', '=', 'purchase_measure_units.id')
+                ->leftJoin('measure_units as purchase_measure_units', 'purchase_products.measure_unit_id', '=', 'purchase_measure_units.id')
                 ->whereNull('purchase_products.deleted_at')
                 ->where('purchase_products.company_id', $companyId)
                 ->where(function ($query) use ($companyId) {
@@ -398,8 +399,6 @@ class SaleController extends Controller
                         ->orWhereNull('products.company_id');
                 })
                 ->whereNull('products.deleted_at')
-                ->where('purchase_measure_units.company_id', $companyId)
-                ->whereNull('purchase_measure_units.deleted_at')
                 ->groupBy('purchase_products.product_id');
 
             $saleSubQuery = DB::table('sale_products')
@@ -407,11 +406,9 @@ class SaleController extends Controller
                     'sale_products.product_id',
                     DB::raw('SUM((sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)) as sale_quantity')
                 ])
-                ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
+                ->leftJoin('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
                 ->whereNull('sale_products.deleted_at')
                 ->where('sale_products.company_id', $companyId)
-                ->where('measure_units.company_id', $companyId)
-                ->whereNull('measure_units.deleted_at')
                 ->groupBy('sale_products.product_id');
 
             $returnSubQuery = DB::table('purchase_product_returns')
@@ -420,11 +417,9 @@ class SaleController extends Controller
                     DB::raw('SUM((purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)) as return_quantity')
                 ])
                 ->join('purchase_products', 'purchase_product_returns.purchase_product_id', '=', 'purchase_products.id')
-                ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
+                ->leftJoin('measure_units', 'purchase_product_returns.measure_unit_id', '=', 'measure_units.id')
                 ->whereNull('purchase_product_returns.deleted_at')
                 ->where('purchase_product_returns.company_id', $companyId)
-                ->where('measure_units.company_id', $companyId)
-                ->whereNull('measure_units.deleted_at')
                 ->groupBy('purchase_products.product_id');
 
             $salesReturnSubQuery = DB::table('sales_return_products')
@@ -433,11 +428,9 @@ class SaleController extends Controller
                     DB::raw('SUM((sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)) as sales_return_quantity')
                 ])
                 ->join('sale_products', 'sales_return_products.sale_product_id', '=', 'sale_products.id')
-                ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
+                ->leftJoin('measure_units', 'sales_return_products.measure_unit_id', '=', 'measure_units.id')
                 ->whereNull('sales_return_products.deleted_at')
                 ->where('sales_return_products.company_id', $companyId)
-                ->where('measure_units.company_id', $companyId)
-                ->whereNull('measure_units.deleted_at')
                 ->groupBy('sale_products.product_id');
 
             $mainQuery = DB::table(DB::raw("({$purchaseSubQuery->toSql()}) as purchase_totals"))
@@ -516,14 +509,14 @@ class SaleController extends Controller
                     'measure_units.quantity as measure_unit_quantity',
                     'purchases.purchase_bill_number',
                     'purchases.invoice_date',
-                    DB::raw('COALESCE(SUM((purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)), 0) as return_quantity'),
+                    DB::raw('COALESCE(SUM((purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(return_measure_units.quantity, 1)), 0) as return_quantity'),
                     DB::raw('COALESCE(SUM((sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(sale_measure_units.quantity, 1)), 0) as sale_quantity'),
-                    DB::raw('COALESCE(SUM((sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(sale_measure_units.quantity, 1)), 0) as sales_return_quantity'),
+                    DB::raw('COALESCE(SUM((sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(sales_return_measure_units.quantity, 1)), 0) as sales_return_quantity'),
                     DB::raw('(
                         ((purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1))
-                        - COALESCE(SUM((purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)), 0)
+                        - COALESCE(SUM((purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(return_measure_units.quantity, 1)), 0)
                         - COALESCE(SUM((sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(sale_measure_units.quantity, 1)), 0)
-                        + COALESCE(SUM((sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(sale_measure_units.quantity, 1)), 0)
+                        + COALESCE(SUM((sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(sales_return_measure_units.quantity, 1)), 0)
                     ) as available_quantity')
                 ])
                 ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
@@ -537,6 +530,7 @@ class SaleController extends Controller
                         ->whereNull('purchase_product_returns.deleted_at')
                         ->where('purchase_product_returns.company_id', $companyId);
                 })
+                ->leftJoin('measure_units as return_measure_units', 'purchase_product_returns.measure_unit_id', '=', 'return_measure_units.id')
                 ->leftJoin('sale_products', function ($join) use ($companyId) {
                     $join->on('purchase_products.id', '=', 'sale_products.purchase_product_id')
                         ->whereNull('sale_products.deleted_at')
@@ -548,11 +542,10 @@ class SaleController extends Controller
                         ->where('sales_return_products.company_id', $companyId);
                 })
                 ->leftJoin('measure_units as sale_measure_units', 'sale_products.measure_unit_id', '=', 'sale_measure_units.id')
+                ->leftJoin('measure_units as sales_return_measure_units', 'sales_return_products.measure_unit_id', '=', 'sales_return_measure_units.id')
                 ->whereIn('purchase_products.product_id', $productIds)
                 ->where('purchase_products.company_id', $companyId)
                 ->whereNull('purchase_products.deleted_at')
-                ->where('measure_units.company_id', $companyId)
-                ->whereNull('measure_units.deleted_at')
                 ->groupBy([
                     'purchase_products.id',
                     'purchase_products.purchase_id',
@@ -571,12 +564,11 @@ class SaleController extends Controller
                     'purchases.invoice_date'
                 ])
                 ->orderBy('purchases.invoice_date', 'asc')
-                ->orderBy('purchase_products.mfd', 'asc');
+                ->orderBy('purchase_products.created_at', 'asc');
 
-            // Fetch purchase products
             $purchaseProducts = $purchaseProductsQuery->get();
 
-            // Fetch sold quantity indexes for each purchase product
+            // Fetch sold quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')
                 ->select([
                     'sale_products.purchase_product_id',
@@ -593,7 +585,29 @@ class SaleController extends Controller
                     return $group->pluck('quantity_index')->toArray();
                 });
 
-            // Fetch field values for the retrieved purchase products
+            // Fetch returned quantity indexes
+            $returnedQuantityIndexes = DB::table('purchase_return_product_field_values')
+                ->select([
+                    'purchase_product_returns.purchase_product_id',
+                    'purchase_return_product_field_values.quantity_index'
+                ])
+                ->join('purchase_product_returns', 'purchase_return_product_field_values.purchase_return_product_id', '=', 'purchase_product_returns.id')
+                ->whereIn('purchase_product_returns.purchase_product_id', $purchaseProducts->pluck('purchase_product_id'))
+                ->where('purchase_product_returns.company_id', $companyId)
+                ->whereNull('purchase_product_returns.deleted_at')
+                ->distinct()
+                ->get()
+                ->groupBy('purchase_product_id')
+                ->map(function ($group) {
+                    return $group->pluck('quantity_index')->toArray();
+                });
+
+            Log::debug('Quantity indexes', [
+                'sold_quantity_indexes' => $soldQuantityIndexes,
+                'returned_quantity_indexes' => $returnedQuantityIndexes
+            ]);
+
+            // Fetch field values
             $fieldValues = DB::table('purchase_product_field_values')
                 ->select([
                     'purchase_product_field_values.purchase_product_id',
@@ -613,17 +627,19 @@ class SaleController extends Controller
                 ->get()
                 ->groupBy('purchase_product_id');
 
-            $result = $products->map(function ($product) use ($purchaseProducts, $fieldValues, $soldQuantityIndexes) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $fieldValues, $soldQuantityIndexes, $returnedQuantityIndexes) {
                 $productId = $product->product_id;
                 $productFieldValues = collect();
                 $productPurchaseProducts = $purchaseProducts->filter(function ($pp) use ($productId) {
                     return $pp->product_id == $productId;
-                })->map(function ($pp) use ($fieldValues, $soldQuantityIndexes, &$productFieldValues) {
+                })->map(function ($pp) use ($fieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, &$productFieldValues) {
                     $availableUnits = floor($pp->available_quantity / ($pp->measure_unit_quantity ?? 1));
                     if ($availableUnits > 0 && isset($fieldValues[$pp->purchase_product_id])) {
                         $soldIndexes = $soldQuantityIndexes[$pp->purchase_product_id] ?? [];
-                        $ppFieldValues = $fieldValues[$pp->purchase_product_id]->filter(function ($fv) use ($soldIndexes) {
-                            return !in_array($fv->quantity_index, $soldIndexes);
+                        $returnedIndexes = $returnedQuantityIndexes[$pp->purchase_product_id] ?? [];
+                        $excludedIndexes = array_unique(array_merge($soldIndexes, $returnedIndexes));
+                        $ppFieldValues = $fieldValues[$pp->purchase_product_id]->filter(function ($fv) use ($excludedIndexes) {
+                            return !in_array($fv->quantity_index, $excludedIndexes);
                         })->map(function ($fv) {
                             return [
                                 'purchase_product_id' => $fv->purchase_product_id,
@@ -723,8 +739,8 @@ class SaleController extends Controller
                 'contact_number' => 'nullable|string|max:255',
                 'invoice_number' => 'nullable|string|max:255|unique:sales,invoice_number',
                 'invoice_date' => 'nullable|date',
-                'store_id' => 'required|exists:stores,id',
-                'location_id' => 'required|exists:stores,id',
+                'store_id' => 'nullable|exists:stores,id',
+                'location_id' => 'nullable|exists:stores,id',
                 'sub_total_before_discount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
@@ -748,8 +764,8 @@ class SaleController extends Controller
                 'sale_products.*.discount_amount' => 'nullable|numeric|min:0',
                 'sale_products.*.is_vatable' => 'nullable|boolean',
                 'sale_products.*.measure_unit_id' => 'required|exists:measure_units,id',
-                'sale_products.*.batch_no' => 'required|string|max:255',
-                'sale_products.*.mfd' => 'required|string|max:255',
+                'sale_products.*.batch_no' => 'nullable|string|max:255',
+                'sale_products.*.mfd' => 'nullable|string|max:255',
                 'sale_products.*.expiry_date' => 'nullable|date',
                 'sale_products.*.field_values' => 'nullable|array',
                 'sale_products.*.field_values.*' => 'array',

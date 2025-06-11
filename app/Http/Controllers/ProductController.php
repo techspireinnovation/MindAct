@@ -393,7 +393,17 @@ class ProductController extends Controller
                         }),
                 ],
                 'is_active' => 'boolean|required',
-                'product_unique_id' => 'string|max:255|unique:products,product_unique_id,' . $id,
+                'product_unique_id' =>[
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('products')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $item) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'company_id' => 'integer|exists:companies,id',
                 'category_id' => 'integer|nullable|',
                 'sub_category_id' => 'integer|nullable|',

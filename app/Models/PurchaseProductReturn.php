@@ -17,7 +17,7 @@ class PurchaseProductReturn extends Model
         'product_name',
         'customer_id',
         'company_id',
-        'purchase_id',
+        
         'product_id',
         'quantity',
         'mfd',

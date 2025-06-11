@@ -19,19 +19,36 @@ use Illuminate\Validation\Rule;
 
 class ProductController extends Controller
 {
-    public function generateProductID(): JsonResponse
-    {
-        $latestProduct = Product::withTrashed()->orderBy('id', 'desc')->first();
-        $nextNumber = $latestProduct ? $latestProduct->id + 1 : 1;
+    public function generateProductID(Request $request): JsonResponse
+{
+    // Get the latest product for the given company (including soft-deleted ones)
+
+    $companyId = $request->company_id;
+    $latestProduct = Product::withTrashed()
+        ->where('company_id', $companyId)
+        ->orderBy('id', 'desc')
+        ->first();
+
+    // Determine the next number
+    $nextNumber = $latestProduct ? ((int) filter_var($latestProduct->product_unique_id, FILTER_SANITIZE_NUMBER_INT)) + 1 : 1;
+
+    // Generate the unique ID string
+    $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+    // Ensure uniqueness within the same company
+    while (
+        Product::withTrashed()
+            ->where('company_id', $companyId)
+            ->where('product_unique_id', $productID)
+            ->exists()
+    ) {
+        $nextNumber++;
         $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-
-        while (Product::withTrashed()->where('product_unique_id', $productID)->exists()) {
-            $nextNumber++;
-            $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-        }
-
-        return response()->json(['product_id' => $productID]);
     }
+
+    return response()->json(['product_id' => $productID]);
+}
+
 
     public function getProductNames()
     {
@@ -538,7 +555,16 @@ class ProductController extends Controller
             'is_active' => 'boolean|required',
             'category_id' => 'integer|nullable',
             'is_fixed_amount' => 'boolean|nullable',
-            'product_unique_id' => 'string|max:255|unique:products',
+            'product_unique_id' => [
+              
+                'string',
+                'max:255',
+                Rule::unique('products')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
+                        ->whereNull('deleted_at');
+
+                }),
+            ],
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',

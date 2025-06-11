@@ -69,6 +69,7 @@ class SalesReturnController extends Controller
     }
 
 
+   
     public function getSaleByInvoiceNumber(Request $request): JsonResponse
     {
         try {
@@ -88,12 +89,23 @@ class SalesReturnController extends Controller
                             WHERE sales_return_products.sale_product_id = sale_products.id
                             AND sales_return_products.deleted_at IS NULL
                         ), 0) > 0')
-                        ->with([
-                            'fieldValues.productField',
-                            'saleProductReturns' => function ($subQuery) {
-                                $subQuery->whereNull('deleted_at');
-                            }
-                        ]);
+                            ->with([
+                                'fieldValues' => function ($subQuery) {
+                                    $subQuery->select([
+                                        'sales_product_field_values.id',
+                                        'sales_product_field_values.sale_product_id',
+                                        'sales_product_field_values.product_field_id',
+                                        'sales_product_field_values.quantity_index',
+                                        'sales_product_field_values.value',
+                                        'product_fields.name as product_field_name'
+                                    ])
+                                        ->join('product_fields', 'sales_product_field_values.product_field_id', '=', 'product_fields.id')
+                                        ->whereNull('sales_product_field_values.deleted_at');
+                                },
+                                'saleProductReturns' => function ($subQuery) {
+                                    $subQuery->whereNull('deleted_at');
+                                }
+                            ]);
                     }
                 ])
                 ->first();
@@ -119,6 +131,30 @@ class SalesReturnController extends Controller
 
             // Transform field_values and calculate remaining quantities
             $saleData = $sale->toArray();
+            $purchaseProductIds = !empty($saleData['sale_products']) ? array_column($saleData['sale_products'], 'purchase_product_id') : [];
+
+            // Fetch purchase details for field values
+            $fieldValuesWithPurchase = PurchaseProductFieldValue::select([
+                'purchase_product_field_values.purchase_product_id',
+                'purchase_product_field_values.product_field_id',
+                'purchase_product_field_values.quantity_index',
+                'purchase_product_field_values.value',
+                'product_fields.name as product_field_name',
+                'purchases.id as purchase_id',
+                'purchases.purchase_bill_number as purchase_bill_number'
+            ])
+                ->join('purchase_products', 'purchase_product_field_values.purchase_product_id', '=', 'purchase_products.id')
+                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                ->join('product_fields', 'purchase_product_field_values.product_field_id', '=', 'product_fields.id')
+                ->whereIn('purchase_product_field_values.purchase_product_id', $purchaseProductIds)
+                ->where('purchase_product_field_values.company_id', $request->company_id)
+                ->whereNull('purchase_product_field_values.deleted_at')
+                ->whereNull('purchase_products.deleted_at')
+                ->whereNull('purchases.deleted_at')
+                ->get();
+
+            // Aggregate root-level field_values for all purchase_product_ids
+            $rootFieldValues = [];
             foreach ($saleData['sale_products'] as &$product) {
                 // Calculate remaining quantity
                 $totalReturned = SalesReturnProduct::where('sale_product_id', $product['id'])
@@ -128,6 +164,7 @@ class SalesReturnController extends Controller
 
                 // Include purchase_product_id
                 $product['purchase_product_id'] = $product['purchase_product_id'] ?? null;
+                $saleProductId = $product['id'] ?? null;
 
                 // Get quantity indices of already returned field_values
                 $unavailableQuantityIndices = [];
@@ -140,35 +177,67 @@ class SalesReturnController extends Controller
                     $unavailableQuantityIndices = array_unique($unavailableQuantityIndices);
                 }
 
-                // Group field_values by quantity_index, excluding returned ones
-                $groupedFieldValues = [];
-                foreach ($product['field_values'] as $fieldValue) {
-                    $quantityIndex = $fieldValue['quantity_index'];
+                // Transform product-level field_values to flat format
+                $productFieldValues = [];
+                foreach ($product['field_values'] ?? [] as $fieldValue) {
+                    $quantityIndex = $fieldValue['quantity_index'] ?? 0;
                     if (in_array($quantityIndex, $unavailableQuantityIndices)) {
                         continue;
                     }
-                    if (!isset($groupedFieldValues[$quantityIndex])) {
-                        $groupedFieldValues[$quantityIndex] = [];
-                    }
-                    $groupedFieldValues[$quantityIndex][] = [
-                        'product_field_id' => $fieldValue['product_field_id'],
-                        'name' => $fieldValue['product_field']['name'] ?? null,
-                        'value' => $fieldValue['value']
-                    ];
-                }
-                $product['field_values'] = array_values($groupedFieldValues);
 
-                // Clean up sale_product_returns from the response
+                    // Find matching purchase field value
+                    $matchingField = $fieldValuesWithPurchase->firstWhere(function ($item) use ($product, $fieldValue, $quantityIndex) {
+                        return $item->purchase_product_id == $product['purchase_product_id'] &&
+                               $item->product_field_id == ($fieldValue['product_field_id'] ?? null) &&
+                               $item->value == ($fieldValue['value'] ?? null) &&
+                               $item->quantity_index == $quantityIndex;
+                    });
+
+                    if ($matchingField) {
+                        $fieldValueData = [
+                            'sale_product_id' => $saleProductId,
+                            'purchase_id' => $matchingField->purchase_id,
+                            'purchase_bill_number' => $matchingField->purchase_bill_number,
+                            'purchase_product_id' => $product['purchase_product_id'],
+                            'product_field_id' => $fieldValue['product_field_id'] ?? null,
+                            'name' => $fieldValue['product_field_name'] ?? null,
+                            'value' => $fieldValue['value'] ?? null,
+                            'quantity_index' => $quantityIndex
+                        ];
+                        $productFieldValues[] = $fieldValueData;
+                        $rootFieldValues[] = $fieldValueData;
+                    }
+                }
+                $product['field_values'] = $productFieldValues;
+
+                // Clean up sale_product_returns
                 unset($product['sale_product_returns']);
             }
 
-            // Filter out products with no field_values or no remaining quantity
-            $saleData['sale_products'] = array_filter($saleData['sale_products'], function ($product) {
-                return !empty($product['field_values']) && $product['remaining_quantity'] > 0;
+            // Sort rootFieldValues by purchase_product_id and quantity_index
+            usort($rootFieldValues, function ($a, $b) {
+                if ($a['purchase_product_id'] === $b['purchase_product_id']) {
+                    return $a['quantity_index'] <=> $b['quantity_index'];
+                }
+                return $a['purchase_product_id'] <=> $b['purchase_product_id'];
+            });
+
+            // Reorder saleData to place field_values after updated_at
+            $orderedSaleData = [];
+            foreach ($saleData as $key => $value) {
+                $orderedSaleData[$key] = $value;
+                if ($key === 'updated_at') {
+                    $orderedSaleData['field_values'] = $rootFieldValues;
+                }
+            }
+
+            // Filter out products with no remaining quantity
+            $orderedSaleData['sale_products'] = array_filter($orderedSaleData['sale_products'], function ($product) {
+                return ($product['remaining_quantity'] ?? 0) > 0;
             });
 
             // If no products remain after filtering, return not found
-            if (empty($saleData['sale_products'])) {
+            if (empty($orderedSaleData['sale_products'])) {
                 Log::warning('No available products after filtering', [
                     'invoice_number' => $request->invoice_number,
                     'company_id' => $request->company_id,
@@ -177,14 +246,14 @@ class SalesReturnController extends Controller
                 return response()->json(['error' => 'No available products for this sale'], 404);
             }
 
-            return response()->json(['data' => $saleData]);
+            return response()->json(['message'=>'Product Details Received Successfully !!',
+            'data' => $orderedSaleData]);
         } catch (QueryException $e) {
             Log::error('Database error in getSaleByInvoiceNumber', [
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings(),
             ]);
-            
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
             Log::error('Unexpected error in getSaleByInvoiceNumber', [

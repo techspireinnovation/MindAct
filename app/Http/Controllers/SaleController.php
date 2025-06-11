@@ -721,7 +721,6 @@ class SaleController extends Controller
         }
     }
 
-
     public function index(Request $request): JsonResponse
     {
         $query = Sale::query();

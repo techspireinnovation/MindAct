@@ -349,9 +349,10 @@ class ReportController extends Controller
                     'c.pan_number as supplier_pan',
                     'ppr.product_name as product_service_name',
                     DB::raw('SUM(ppr.quantity) as product_quantity'),
-                    DB::raw('SUM(ppr.price) as total_purchase'),
+                    DB::raw('SUM(ppr.price) as total_sales'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.price ELSE 0 END) as non_taxable'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.price ELSE 0 END) as taxable'),
+                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.price * .13,2) ELSE 0 END) as vat_amount'),
                 ])
                 ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
                     $query->whereMonth('pr.invoice_date', $request->month)

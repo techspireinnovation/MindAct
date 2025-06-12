@@ -66,7 +66,7 @@ class SaleProduct extends Model
 
     public function getSaleQuantityAttribute()
     {
-        return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id || 0, $this->quantity));
+        return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id ?? 0, $this->quantity));
     }
 
     public function getSaleRateAttribute()

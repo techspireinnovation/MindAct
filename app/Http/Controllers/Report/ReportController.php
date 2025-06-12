@@ -275,7 +275,6 @@ class ReportController extends Controller
 
     public function cbmsVatReturnListDetails(Request $request): JsonResponse
     {
-
         $validator = Validator::make($request->all(), [
             'type' => 'required|string|in:sales,sales_return,purchases,purchase_return',
             'month' => 'required|numeric',

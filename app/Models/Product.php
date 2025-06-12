@@ -3,6 +3,7 @@
 namespace App\Models;
 
 
+use App\Helpers\Helper;
 use App\Models\Brand;
 use App\Models\Location;
 use App\Models\MeasureUnit;
@@ -201,5 +202,26 @@ class Product extends Model
     {
         return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) < 0')->sum('diff_stock') ?? 0;
     }
+
+    public function getStockOpeningAttribute()
+    {
+        $averagePrice = StockEntry::where(['product_id' => $this->id])->get()->map(function ($stockEntry) {
+
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($stockEntry->product_id, $stockEntry->uom ?? 0, $stockEntry->quantity ?? 0, $stockEntry->rate));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['opening_qty' => $averagePrice['primary_units'], 'opening_avg_price' => $averagePrice['primary_units'] > 0 ? $averagePrice['total_price'] / $averagePrice['primary_units'] : 0];
+    }
+
+
 
 }

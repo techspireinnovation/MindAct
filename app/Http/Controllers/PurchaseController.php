@@ -426,6 +426,7 @@ class PurchaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        
 
         $validated = $request->validate([
             'ref_bill_number' => [
@@ -484,9 +485,9 @@ class PurchaseController extends Controller
             'payment.cash' => 'nullable|numeric|min:0',
             'payment.credit' => 'nullable|numeric|min:0',
             'payment.bank' => 'nullable|numeric|min:0',
-            'store_id' => 'required|integer|exists:stores,id',
+            'store_id' => 'nullable|integer|exists:stores,id',
             'bank_id' => 'nullable|integer|exists:banks,id',
-            'location_id' => 'required|integer|exists:locations,id',
+            'location_id' => 'nullable|integer|exists:locations,id',
             'company_id' => 'required|integer|exists:companies,id',
             'purchase_products' => 'required|array',
             'purchase_products.*.product_id' => 'required|integer|exists:products,id',
@@ -496,7 +497,7 @@ class PurchaseController extends Controller
             'purchase_products.*.mfd' => 'nullable|string|max:255',
             'purchase_products.*.quantity' => 'required|integer|min:1',
             'purchase_products.*.free_quantity' => 'nullable|numeric',
-            'purchase_products.*.expiry_date' => 'nullable|date',
+            'purchase_products.*.expiry_date' => 'nullable|string|max:255',
             'purchase_products.*.price' => 'nullable|numeric',
             'purchase_products.*.discount_percent' => 'nullable|numeric',
             'purchase_products.*.discount_amount' => 'nullable|numeric',

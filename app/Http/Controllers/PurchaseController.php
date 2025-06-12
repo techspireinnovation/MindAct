@@ -498,7 +498,7 @@ class PurchaseController extends Controller
             'purchase_products.*.mfd' => 'nullable|string|max:255',
             'purchase_products.*.quantity' => 'required|integer|min:1',
             'purchase_products.*.free_quantity' => 'nullable|numeric',
-            'purchase_products.*.expiry_date' => 'nullable|date',
+            'purchase_products.*.expiry_date' => 'nullable|string|max:255',
             'purchase_products.*.price' => 'nullable|numeric',
             'purchase_products.*.discount_percent' => 'nullable|numeric',
             'purchase_products.*.discount_amount' => 'nullable|numeric',

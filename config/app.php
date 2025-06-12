@@ -128,6 +128,7 @@ return [
     'providers' => ServiceProvider::defaultProviders()->merge([
         App\Providers\AppServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
+        Rollbar\Laravel\RollbarServiceProvider::class,
     ])->toArray(),
 
 ];

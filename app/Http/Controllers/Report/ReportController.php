@@ -436,7 +436,10 @@ class ReportController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $products = Product::get();
+        $products = Product::when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
+            $query->whereBetween('created_at', [$request->from_date, $request->to_date]);
+        })->get();
+
         $products->each->append(['stock_opening', 'purchase_detail', 'sale_detail']);
         return response()->json($products);
     }

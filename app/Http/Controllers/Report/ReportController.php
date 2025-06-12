@@ -286,7 +286,7 @@ class ReportController extends Controller
 
         if ($request->type === "purchases") {
 
-            $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.total_amount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id")->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+            $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.total_amount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('ROUND(purchases.vat_percent * .13,2) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
             if ($request->has('month')) {
                 $items->whereMonth('invoice_date', $request->input('month'));

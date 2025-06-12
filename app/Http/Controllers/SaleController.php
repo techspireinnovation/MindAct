@@ -108,7 +108,8 @@ class SaleController extends Controller
     }
 
 
-    private function getAvailableProductsForSale($companyId)    {
+    private function getAvailableProductsForSale($companyId)
+    {
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
 
         try {
@@ -687,7 +688,7 @@ class SaleController extends Controller
                     'min_price' => $product->min_price,
                     'is_vatable' => (bool) $product->is_vatable,
                     'measure_unit_id' => $product->measure_unit_id,
-                 
+
                     'measure_unit_name' => $product->measure_unit_name,
                     'measure_unit_quantity' => $product->measure_unit_quantity,
                     'purchased_quantity' => $product->purchased_quantity,
@@ -772,7 +773,7 @@ class SaleController extends Controller
                 'sale_products.*.measure_unit_id' => 'required|exists:measure_units,id',
                 'sale_products.*.batch_no' => 'nullable|string|max:255',
                 'sale_products.*.mfd' => 'nullable|string|max:255',
-                'sale_products.*.expiry_date' =>'nullable|string|max:255',
+                'sale_products.*.expiry_date' => 'nullable|string|max:255',
                 'sale_products.*.field_values' => 'nullable|array',
                 'sale_products.*.field_values.*' => 'array',
                 'sale_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
@@ -808,7 +809,7 @@ class SaleController extends Controller
                         ->where('purchases.company_id', $validated['company_id'])
                         ->whereNull('purchase_products.deleted_at')
                         ->select('purchase_products.*')
-                        ->orderBy('purchases.created_at', 'desc')
+                        //->orderBy('purchases.created_at', 'desc')
                         // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
@@ -823,7 +824,7 @@ class SaleController extends Controller
                         ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                         ->whereNull('purchase_products.deleted_at')
                         ->select('purchase_products.*')
-                        ->orderBy('purchases.created_at')
+                        //->orderBy('purchases.created_at')
                         // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
@@ -835,7 +836,7 @@ class SaleController extends Controller
                         ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                         ->whereNull('purchase_products.deleted_at')
                         ->select('purchase_products.*')
-                        ->orderBy('purchases.created_at')
+                        //->orderBy('purchases.created_at')
                         // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
@@ -1218,7 +1219,7 @@ class SaleController extends Controller
                         ->leftJoin('purchase_product_field_values', 'purchase_products.id', '=', 'purchase_product_field_values.purchase_product_id')
                         ->whereNull('purchase_product_field_values.id')
                         ->select('purchase_products.*')
-                        ->orderBy('purchases.created_at')
+                        //->orderBy('purchases.created_at')
                         // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
@@ -1331,7 +1332,6 @@ class SaleController extends Controller
     }
 
 
-
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -1350,7 +1350,7 @@ class SaleController extends Controller
                 'batch_no' => 'nullable|string|max:255',
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|date',
-                'invoice_date_bs' =>'nullable|string|max:255',
+                'invoice_date_bs' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
                 'store_id' => 'required|exists:stores,id',
                 'location_id' => 'required|exists:locations,id',

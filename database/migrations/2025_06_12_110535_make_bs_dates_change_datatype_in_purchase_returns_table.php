@@ -1,8 +1,9 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
+
 return new class extends Migration
 {
     /**
@@ -10,23 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-     
-        try {
-            DB::statement('ALTER TABLE purchases DROP FOREIGN KEY purchases_store_id_foreign');
+         try {
+            DB::statement('ALTER TABLE purchases DROP FOREIGN KEY purchase_returns_store_id_foreign');
         } catch (\Illuminate\Database\QueryException $e) {
            
         }
         try {
-            DB::statement('ALTER TABLE purchases DROP FOREIGN KEY purchases_location_id_foreign');
+            DB::statement('ALTER TABLE purchases DROP FOREIGN KEY purchase_returns_location_id_foreign');
         } catch (\Illuminate\Database\QueryException $e) {
            
         }
       
-        Schema::table('purchases', function (Blueprint $table) {
+        Schema::table('purchase_returns', function (Blueprint $table) {
             $table->unsignedBigInteger('store_id')->nullable()->change();
             $table->unsignedBigInteger('location_id')->nullable()->change();
-            $table->foreign('store_id')->references('id')->on('stores');
-            $table->foreign('location_id')->references('id')->on('locations');
+
         });
     }
     /**
@@ -34,19 +33,11 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('purchases', function (Blueprint $table) {
-            $table->dropForeign(['store_id']);
-            $table->dropForeign(['location_id']);
+        Schema::table('purchase_returns', function (Blueprint $table) {
+       
             $table->unsignedBigInteger('store_id')->nullable(false)->change();
             $table->unsignedBigInteger('location_id')->nullable(false)->change();
-            $table->foreign('store_id')->references('id')->on('stores');
-            $table->foreign('location_id')->references('id')->on('locations');
+
         });
     }
 };
-
-
-
-
-
-

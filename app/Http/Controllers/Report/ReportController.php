@@ -427,17 +427,19 @@ class ReportController extends Controller
     public function grossProfitRatioListDetails(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            //  'month' => 'required|numeric',
-            // 'year' => 'required|numeric',
-            // 'year' => 'required|numeric',
+            'from_date' => 'required',
+            'to_date' => 'required',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $products = Product::get();
-        $products->each->append(['stock_opening']);
+        $products = Product::when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
+            $query->whereBetween('created_at', [$request->from_date, $request->to_date]);
+        })->get();
+
+        $products->each->append(['stock_opening', 'purchase_detail', 'sale_detail']);
         return response()->json($products);
     }
 

@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -13,7 +12,7 @@ return new class extends Migration
     {
         Schema::table('purchase_product_returns', function (Blueprint $table) {
             $table->string('mfd')->nullable()->change();
-              $table->string('expiry_date')->nullable()->change();
+            $table->string('expiry_date', 20)->nullable()->change();
         });
     }
 
@@ -24,7 +23,7 @@ return new class extends Migration
     {
         Schema::table('purchase_product_returns', function (Blueprint $table) {
             $table->date('mfd')->nullable()->change();
-              $table->date('expiry_date')->nullable()->change();
+            $table->date('expiry_date')->nullable()->change();
         });
     }
 };

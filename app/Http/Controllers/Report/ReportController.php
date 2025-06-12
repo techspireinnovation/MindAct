@@ -396,17 +396,17 @@ class ReportController extends Controller
 
         return response()->json([
             'sales' => [
-                'vatable' => $sale_taxable_amount,
-                'non_vatable' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'),
+                'vatable' => round($sale_taxable_amount, 2),
+                'non_vatable' => round(Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
                 'export' => 0,
-                'vat' => $sale_taxable_amount * 0.13,
+                'vat' => round($sale_taxable_amount * 0.13, 2),
             ],
             'purchase' => [
-                'vatable' => $purchase_taxable_amount,
-                'non_vatable' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'),
+                'vatable' => round($purchase_taxable_amount, 2),
+                'non_vatable' => round(Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
                 'vatable_import' => 0,
                 'non_vatable_import' => 0,
-                'vat' => $purchase_taxable_amount * 0.13,
+                'vat' => round($purchase_taxable_amount * 0.13),
             ],
             'bill' => [
                 'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
@@ -418,10 +418,10 @@ class ReportController extends Controller
             ],
             'other' => [
                 'purchase_return_vat' => 0,
-                'sale_return_vat' => $sale_return_amount * 0.13,
+                'sale_return_vat' => round($sale_return_amount * 0.13, 2),
                 'customer_return_vat' => 0,
             ],
-            'net_payable_amount' => ($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13)
+            'net_payable_amount' => round(($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13), 2),
         ]);
 
     }

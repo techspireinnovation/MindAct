@@ -286,7 +286,7 @@ class ReportController extends Controller
 
         if ($request->type === "purchases") {
 
-            $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.total_amount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('ROUND(purchases.vat_percent) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+            $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.sub_total_before_discount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('COALESCE(ROUND(purchases.vat_percent,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
             if ($request->has('month')) {
                 $items->whereMonth('invoice_date', $request->input('month'));
@@ -294,7 +294,7 @@ class ReportController extends Controller
             $items = $items->get();
 
         } else if ($request->type === "sales") {
-            $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.total_amount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('ROUND(sales.taxable_amount * .13,2) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+            $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.sub_total_before_discount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('COALESCE(ROUND(sales.taxable_amount * .13,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
             if ($request->has('month')) {
                 $items->whereMonth('invoice_date', $request->input('month'));
@@ -322,6 +322,7 @@ class ReportController extends Controller
                     $query->whereMonth('pr.invoice_date', $request->month)
                         ->whereYear('pr.invoice_date', $request->year);
                 })
+                ->where('ppr.company_id', $request->company_id)
                 ->groupBy([
                     'pr.invoice_date',
                     'pr.purchase_bill_number',
@@ -353,7 +354,7 @@ class ReportController extends Controller
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.price ELSE 0 END) as non_taxable'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.price ELSE 0 END) as taxable'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.price * .13,2) ELSE 0 END) as vat_amount'),
-                ])
+                ])->where('ppr.company_id', $request->company_id)
                 ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
                     $query->whereMonth('pr.invoice_date', $request->month)
                         ->whereYear('pr.invoice_date', $request->year);

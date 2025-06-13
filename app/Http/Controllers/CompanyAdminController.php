@@ -52,7 +52,6 @@ class CompanyAdminController extends Controller
             'message' => 'Company Admin Login successful.',
             'token' => $token,
             'data' => [
-
                 'user' => $user,
             ],
         ], 200);

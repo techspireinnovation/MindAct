@@ -736,6 +736,7 @@ class SaleController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
@@ -743,7 +744,17 @@ class SaleController extends Controller
                 'customer_name' => 'required|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'contact_number' => 'nullable|string|max:255',
-                'invoice_number' => 'nullable|string|max:255|unique:sales,invoice_number',
+                'invoice_number' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('sales')
+
+                    ->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->input('company_id', $request->company_id))
+                        ->whereNull('deleted_at');
+                    }),
+            ],
                 'invoice_date' => 'nullable|date',
                 'invoice_date_bs' => 'nullable|string|max:255',
                 'store_id' => 'nullable|exists:stores,id',

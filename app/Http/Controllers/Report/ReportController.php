@@ -157,9 +157,9 @@ class ReportController extends Controller
                     'customers.party_name as party_name',
                     'purchases.purchase_bill_number as invoice_number',
                     'purchases.ref_bill_number as ref_no',
-                    DB::raw('SUM(purchase_products.quantity) as purchase_quantity'),
-                    DB::raw('SUM(purchase_products.discount_amount) as purchase_discount_amount'),
-                    DB::raw('AVG(purchase_products.price) as purchase_rate')
+                    DB::raw('SUM(purchase_products.quantity) as quantity'),
+                    DB::raw('SUM(purchase_products.discount_amount) as discount_amount'),
+                    DB::raw('AVG(purchase_products.price) as rate')
                 ])
                 ->orderBy('purchases.invoice_date', 'desc')
                 ->get();
@@ -178,9 +178,9 @@ class ReportController extends Controller
                     'customers.party_name as party_name',
                     'sales.invoice_number as invoice_number',
                     'sales.ref_number as ref_no',
-                    DB::raw('SUM(sale_products.quantity) as sale_quantity'),
-                    DB::raw('SUM(sale_products.discount_amount) as sale_discount_amount'),
-                    DB::raw('AVG(sale_products.price) as sale_rate')
+                    DB::raw('SUM(sale_products.quantity) as quantity'),
+                    DB::raw('SUM(sale_products.discount_amount) as discount_amount'),
+                    DB::raw('AVG(sale_products.price) as rate')
                 ])
                 ->orderBy('sales.invoice_date', 'desc')
                 ->get();

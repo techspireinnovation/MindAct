@@ -776,7 +776,7 @@ class SaleController extends Controller
                 'non_taxable_amount' => 'nullable|numeric|min:0',
                 'ref_bill_number' => 'nullable|string|max:255',
                 'roundoff_amount' => 'nullable|numeric|max:255',
-                'roundoff_type' => 'nullable|numeric|max:255',
+                'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
                 'abvt' => 'nullable|boolean',
                 'is_vatable' => 'nullable|boolean',

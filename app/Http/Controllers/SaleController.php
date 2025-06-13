@@ -733,10 +733,10 @@ class SaleController extends Controller
     }
 
 
+
     public function store(Request $request): JsonResponse
     {
         try {
-
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
@@ -744,24 +744,41 @@ class SaleController extends Controller
                 'customer_name' => 'required|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'contact_number' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|string|max:255',
+                'credit_days' => 'nullable|string|max:255',
+                'payment' => 'nullable|array',
+                'payment.cash' => 'nullable|numeric|min:0',
+                'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank' => 'nullable|numeric|min:0',
                 'invoice_number' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('sales')
-
-                    ->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->input('company_id', $request->company_id))
-                        ->whereNull('deleted_at');
-                    }),
-            ],
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sales')
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'invoice_date' => 'nullable|date',
                 'invoice_date_bs' => 'nullable|string|max:255',
                 'store_id' => 'nullable|exists:stores,id',
                 'location_id' => 'nullable|exists:locations,id',
                 'sub_total_before_discount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
+                'discount_after_vat' => 'nullable|numeric|min:0',
+                'freight_amount' => 'nullable|numeric|min:0',
+                'excise_duty' => 'nullable|numeric|min:0',
+                'health_insurance' => 'nullable|numeric|min:0',
+                'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
+                'non_taxable_amount' => 'nullable|numeric|min:0',
+                'ref_bill_number' => 'nullable|string|max:255',
+                'roundoff_amount' => 'nullable|numeric|max:255',
+                'roundoff_type' => 'nullable|string|max:255',
+                'remarks' => 'nullable|string|max:255',
+                'abvt' => 'nullable|boolean',
+                'is_vatable' => 'nullable|boolean',
                 'total_amount' => 'nullable|numeric|min:0',
                 'sell_entire_batch' => 'nullable|boolean',
                 'purchase_id' => 'nullable|integer|exists:purchases,id',
@@ -783,6 +800,7 @@ class SaleController extends Controller
                 'sale_products.*.is_vatable' => 'nullable|boolean',
                 'sale_products.*.measure_unit_id' => 'required|exists:measure_units,id',
                 'sale_products.*.batch_no' => 'nullable|string|max:255',
+                'sale_products.*.amount' => 'nullable|numeric|min:0',
                 'sale_products.*.mfd' => 'nullable|string|max:255',
                 'sale_products.*.expiry_date' => 'nullable|string|max:255',
                 'sale_products.*.field_values' => 'nullable|array',
@@ -791,6 +809,18 @@ class SaleController extends Controller
                 'sale_products.*.field_values.*.*.value' => 'required|string|max:255',
                 'sale_products.*.field_values.*.*.quantity_index' => 'required|integer|min:0',
                 'sale_products.*.field_values.*.*.purchase_product_id' => 'required|integer|exists:purchase_products,id',
+                'sale_additionals' => 'nullable|array',
+                'sale_additionals.company_id' => 'nullable|string|exists:companies,id',
+                'sale_additionals.sale_id' => 'nullable|string|max:255',
+                'sale_additionals.place' => 'nullable|string|max:255',
+                'sale_additionals.transport' => 'nullable|string|max:255',
+                'sale_additionals.vehicle_number' => 'nullable|string|max:255',
+                'sale_additionals.vehicle_name' => 'nullable|string|max:255',
+                'sale_additionals.driver_name' => 'nullable|string|max:255',
+                'sale_additionals.dispatch_code' => 'required_if:sale_additionals,exists|string|max:255',
+                'sale_additionals.driver_contact_number' => 'nullable|string|max:255',
+                'sale_additionals.delivery_date' => 'nullable|string|max:255',
+                'sale_additionals.delivery_time' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {
@@ -820,8 +850,6 @@ class SaleController extends Controller
                         ->where('purchases.company_id', $validated['company_id'])
                         ->whereNull('purchase_products.deleted_at')
                         ->select('purchase_products.*')
-                        //->orderBy('purchases.created_at', 'desc')
-                        // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
                 } elseif (isset($validated['purchase_bill_number'])) {
@@ -835,8 +863,6 @@ class SaleController extends Controller
                         ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                         ->whereNull('purchase_products.deleted_at')
                         ->select('purchase_products.*')
-                        //->orderBy('purchases.created_at')
-                        // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
                 } elseif (isset($validated['batch_no_sale'])) {
@@ -847,8 +873,6 @@ class SaleController extends Controller
                         ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                         ->whereNull('purchase_products.deleted_at')
                         ->select('purchase_products.*')
-                        //->orderBy('purchases.created_at')
-                        // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
                 }
@@ -935,16 +959,53 @@ class SaleController extends Controller
                     'salesman_id' => $validated['salesman_id'],
                     'customer_name' => $validated['customer_name'],
                     'customer_address' => $validated['customer_address'] ?? null,
-                    'contact_number' => $validated['customer_address'] ?? null,
+                    'contact_number' => $validated['contact_number'] ?? null,
+                    'pan_number' => $validated['pan_number'] ?? null,
+                    'credit_days' => $validated['credit_days'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? 'INV-' . now()->format('Ymd') . '-' . rand(1000, 9999),
                     'invoice_date' => $validated['invoice_date'] ?? now(),
+                    'invoice_date_bs' => $validated['invoice_date_bs'] ?? now(),
                     'store_id' => $validated['store_id'],
                     'location_id' => $validated['location_id'],
                     'sub_total_before_discount' => $validated['sub_total_before_discount'] ?? 0,
                     'discount' => $validated['discount'] ?? 0,
+                    'discount_after_vat' => $validated['discount_after_vat'] ?? 0,
+                    'freight_amount' => $validated['freight_amount'] ?? 0,
+                    'excise_duty' => $validated['excise_duty'] ?? 0,
+                    'health_insurance' => $validated['health_insurance'] ?? 0,
+                    'balance' => $validated['health_insurance'] ?? 0,
                     'taxable_amount' => $validated['taxable_amount'] ?? 0,
+                    'non_taxable_amount' => $validated['non_taxable_amount'] ?? 0,
+                    'ref_bill_number' => $validated['ref_bill_number'] ?? 0,
+                    'roundoff_amount' => $validated['roundoff_amount'] ?? 0,
+                    'roundoff_type' => $validated['roundoff_type'] ?? 0,
+                    'remarks' => $validated['remarks'] ?? null,
+                    'abvt' => $validated['abvt'] ?? 0,
+                    'cash' => $validated['payment']['cash'] ?? 0,
+                    'credit' => $validated['payment']['credit'] ?? 0,
+                    'bank' => $validated['payment']['bank'] ?? 0,
+                    'is_vatable' => $validated['is_vatable'] ?? 0,
                     'total_amount' => $validated['total_amount'] ?? 0,
+                    'purchase_id' => $validated['purchase_id'] ?? null,
+                    'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
+
+                // Create SaleAdditional if provided
+                if (isset($validated['sale_additionals']) && !empty($validated['sale_additionals'])) {
+                    SaleAdditional::create([
+                        'company_id' => $validated['company_id'],
+                        'sale_id' => $sale->id,
+                        'place' => $validated['sale_additionals']['place'] ?? null,
+                        'transport' => $validated['sale_additionals']['transport'] ?? null,
+                        'vehicle_number' => $validated['sale_additionals']['vehicle_number'] ?? null,
+                        'vehicle_name' => $validated['sale_additionals']['vehicle_name'] ?? null,
+                        'driver_name' => $validated['sale_additionals']['driver_name'] ?? null,
+                        'dispatch_code' => $validated['sale_additionals']['dispatch_code'] ?? null,
+                        'driver_contact_number' => $validated['sale_additionals']['driver_contact_number'] ?? null,
+                        'delivery_date' => $validated['sale_additionals']['delivery_date'] ?? null,
+                        'delivery_time' => $validated['sale_additionals']['delivery_time'] ?? null,
+                    ]);
+                }
 
                 foreach ($validated['sale_products'] as $index => $productData) {
                     $productId = $productData['product_id'] ?? null;
@@ -1126,6 +1187,7 @@ class SaleController extends Controller
                                 'product_id' => $productId,
                                 'purchase_product_id' => $allocation['purchase_product_id'],
                                 'quantity' => $allocation['quantity'],
+                                'amount' => $productData['amount'],
                                 'free_quantity' => $productData['free_quantity'] ?? 0,
                                 'price' => $productData['price'],
                                 'discount_percent' => $productData['discount_percent'] ?? 0,
@@ -1230,8 +1292,6 @@ class SaleController extends Controller
                         ->leftJoin('purchase_product_field_values', 'purchase_products.id', '=', 'purchase_product_field_values.purchase_product_id')
                         ->whereNull('purchase_product_field_values.id')
                         ->select('purchase_products.*')
-                        //->orderBy('purchases.created_at')
-                        // ->orderBy('purchase_products.mfd', 'asc')
                         ->distinct()
                         ->get();
 
@@ -1327,7 +1387,8 @@ class SaleController extends Controller
                 'data' => $sale->load([
                     'saleProducts.fieldValues' => function ($query) {
                         $query->orderBy('quantity_index', 'asc')->orderBy('product_field_id', 'asc');
-                    }
+                    },
+                    'saleAdditionals' // Added to load SaleAdditional relationship
                 ])
             ], 201);
         } catch (ModelNotFoundException $e) {
@@ -1341,6 +1402,7 @@ class SaleController extends Controller
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
+
 
 
     public function update(Request $request, $id): JsonResponse

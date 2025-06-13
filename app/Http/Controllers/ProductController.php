@@ -20,34 +20,39 @@ use Illuminate\Validation\Rule;
 class ProductController extends Controller
 {
     public function generateProductID(Request $request): JsonResponse
-{
-    // Get the latest product for the given company (including soft-deleted ones)
+    {
+        // Get the latest product for the given company (including soft-deleted ones)
 
-    $companyId = $request->company_id;
-    $latestProduct = Product::withTrashed()
-        ->where('company_id', $companyId)
-        ->orderBy('id', 'desc')
-        ->first();
-
-    // Determine the next number
-    $nextNumber = $latestProduct ? ((int) filter_var($latestProduct->product_unique_id, FILTER_SANITIZE_NUMBER_INT)) + 1 : 1;
-
-    // Generate the unique ID string
-    $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-
-    // Ensure uniqueness within the same company
-    while (
-        Product::withTrashed()
+        $companyId = $request->company_id;
+        $latestProduct = Product::withTrashed()
             ->where('company_id', $companyId)
-            ->where('product_unique_id', $productID)
-            ->exists()
-    ) {
-        $nextNumber++;
-        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-    }
+            ->orderBy('id', 'desc')
+            ->first();
 
-    return response()->json(['product_id' => $productID]);
-}
+        // Determine the next number
+        if ($latestProduct && preg_match('/PID-(\d+)/', $latestProduct->product_unique_id, $matches)) {
+            $nextNumber = (int) $matches[1] + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+
+        // Generate the unique ID string
+        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+        // Ensure uniqueness within the same company
+        while (
+            Product::withTrashed()
+                ->where('company_id', $companyId)
+                ->where('product_unique_id', $productID)
+                ->exists()
+        ) {
+            $nextNumber++;
+            $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        }
+
+        return response()->json(['product_id' => $productID]);
+    }
 
 
     public function getProductNames()
@@ -393,7 +398,7 @@ class ProductController extends Controller
                         }),
                 ],
                 'is_active' => 'boolean|required',
-                'product_unique_id' =>[
+                'product_unique_id' => [
                     'required',
                     'string',
                     'max:255',
@@ -549,8 +554,8 @@ class ProductController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-       
-        
+
+
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -566,7 +571,7 @@ class ProductController extends Controller
             'category_id' => 'integer|nullable',
             'is_fixed_amount' => 'boolean|nullable',
             'product_unique_id' => [
-              
+
                 'string',
                 'max:255',
                 Rule::unique('products')->where(function ($query) use ($request) {
@@ -607,7 +612,7 @@ class ProductController extends Controller
             'product_list.*.primary_measure_unit_id' => 'nullable||integer|exists:measure_units,id',
             'company_id' => 'integer|exists:companies,id'
         ]);
-        
+
 
         $item = Product::create($validated);
 

@@ -13,6 +13,8 @@ class SaleReturnProductFieldValue extends Model
 
        protected $fillable = [
            'sale_return_product_id',
+           'purchase_product_id',
+           'sale_product_id',
            'product_field_id',
            'value',
            'product_id',

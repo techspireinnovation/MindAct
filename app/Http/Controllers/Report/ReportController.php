@@ -85,9 +85,14 @@ class ReportController extends Controller
     public function stockRegisterDetails(Request $request): JsonResponse
     {
         //  try {
-        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name")->with([
+        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
             'lastPurchase',
-            'primaryProductItem'
+            'primaryProductItem',
+            'category:id,name',
+            'location:id,name',
+            'subCategory:id,name',
+            'brand:id,name',
+            'productType:id,name',
         ]);
 
         if ($request->has('from_date') && $request->has('to_date')) {

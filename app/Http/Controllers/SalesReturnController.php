@@ -125,7 +125,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                         'products.name as product_name',
                         'products.product_unique_id as product_code',
                     ])
-                        ->join('products', 'sale_products.product_id', '=', 'products.id') // Fixed join clause
+                        ->join('products', 'sale_products.product_id', '=', 'products.id')
                         ->where('sale_products.company_id', $companyId)
                         ->whereNull('sale_products.deleted_at');
                 },
@@ -141,6 +141,44 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                         ->where('sales_product_field_values.company_id', $companyId)
                         ->whereNull('sales_product_field_values.deleted_at');
                 },
+            ])
+            ->select([
+                'id',
+                'company_id',
+                'customer_id',
+                'customer_name',
+                'pan_number',
+                'balance',
+                'batch_no',
+                'ref_number',
+                'document_number',
+                'customer_address',
+                'contact_number',
+                'invoice_date',
+                'invoice_date_bs',
+              
+                'remarks',
+                'store_id',
+                'location_id',
+                'discount',
+                'sub_total_before_discount',
+                'taxable_amount',
+                'non_taxable_amount',
+                'excise_duty',
+                'health_insurance',
+                'freight_charge',
+                'discount_after_vat',
+                'round_off_amount',
+                'roundoff_type',
+                'total_amount',
+                'payment',
+                'is_vatable',
+                'is_mail_notify',
+                'is_whatsapp_notify',
+                'abvt',
+                'created_at',
+                'updated_at',
+                'deleted_at',
             ])
             ->first();
 
@@ -164,7 +202,6 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
 
         // Fetch measure units
         $measureUnitIds = $sale->saleProducts->pluck('measure_unit_id')->unique()->toArray();
-        // Add sales return measure_unit_id to the list
         $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $sale->saleProducts->pluck('id'))
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
@@ -245,13 +282,13 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                         ->get();
 
                     $returned = 0;
-                    $lastReturnMeasureUnitQuantity = $primaryUnit->quantity; // Default for logging
-                    $lastReturnMeasureUnitId = $primaryUnit->id; // Default for logging
+                    $lastReturnMeasureUnitQuantity = $primaryUnit->quantity;
+                    $lastReturnMeasureUnitId = $primaryUnit->id;
                     foreach ($returnProducts as $returnProduct) {
                         $returnMeasureUnit = $measureUnits[$returnProduct->measure_unit_id] ?? $primaryUnit;
                         $returnMeasureUnitQuantity = $returnMeasureUnit->quantity;
                         $returned += round(($returnProduct->quantity + ($returnProduct->free_quantity ?? 0)) * $returnMeasureUnitQuantity, 0);
-                        $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity; // Update for logging
+                        $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
                         $lastReturnMeasureUnitId = $returnProduct->measure_unit_id ?? $primaryUnit->id;
                     }
 
@@ -274,13 +311,13 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                     ->get();
 
                 $returned = 0;
-                $lastReturnMeasureUnitQuantity = $primaryUnit->quantity; // Default for logging
-                $lastReturnMeasureUnitId = $primaryUnit->id; // Default for logging
+                $lastReturnMeasureUnitQuantity = $primaryUnit->quantity;
+                $lastReturnMeasureUnitId = $primaryUnit->id;
                 foreach ($returnProducts as $returnProduct) {
                     $returnMeasureUnit = $measureUnits[$returnProduct->measure_unit_id] ?? $primaryUnit;
                     $returnMeasureUnitQuantity = $returnMeasureUnit->quantity;
                     $returned += round(($returnProduct->quantity + ($returnProduct->free_quantity ?? 0)) * $returnMeasureUnitQuantity, 0);
-                    $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity; // Update for logging
+                    $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
                     $lastReturnMeasureUnitId = $returnProduct->measure_unit_id ?? $primaryUnit->id;
                 }
 
@@ -292,7 +329,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                     'sale_product_id' => $saleProduct->id,
                     'returned' => $returned,
                     'measure_unit_id' => $lastReturnMeasureUnitId,
-                    'measure_unit_quantity' => $lastReturnMeasureUnitQuantity, // Now defined
+                    'measure_unit_quantity' => $lastReturnMeasureUnitQuantity,
                 ]);
             }
 
@@ -412,9 +449,53 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
             return response()->json(['error' => 'No available products for this sale'], 404);
         }
 
+        // Prepare sale data according to Sale model
+        $saleData = [
+            'id' => $sale->id,
+            'company_id' => $sale->company_id,
+            'customer_id' => $sale->customer_id,
+            'customer_name' => $sale->customer_name,
+            'customer_address' => $sale->customer_address,
+            'credit_days' => $sale->credit_days,
+            'balance' => $sale->balance,
+            'invoice_number' => $sale->invoice_number,
+            'batch_no' => $sale->batch_no,
+            'invoice_date' => $sale->invoice_date,
+            'invoice_date_bs' => $sale->invoice_date_bs,
+            'document_number' => $sale->document_number,
+            'contact_number' => $sale->contact_number,
+            'ref_number' => $sale->ref_number,
+            'pan_number' => $sale->pan_number,
+            'remarks' => $sale->remarks,
+            'store_id' => $sale->store_id,
+            'location_id' => $sale->location_id,
+            'salesman_id' => $sale->salesman_id,
+            'sub_total_before_discount' => $sale->sub_total_before_discount,
+            'discount' => $sale->discount,
+            'non_taxable_amount' => $sale->non_taxable_amount,
+            'taxable_amount' => $sale->taxable_amount,
+            'excise_duty' => $sale->excise_duty,
+            'health_insurance' => $sale->health_insurance,
+            'freight_charge' => $sale->freight_charge,
+            'discount_after_vat' => $sale->discount_after_vat,
+            'round_off_amount' => $sale->round_off_amount,
+            'roundoff_type' => $sale->roundoff_type,
+            'total_amount' => $sale->total_amount,
+            'payment' => $sale->payment,
+            'note' => $sale->note,
+            'is_vatable' => $sale->is_vatable,
+            'is_mail_notify' => $sale->is_mail_notify,
+            'is_whatsapp_notify' => $sale->is_whatsapp_notify,
+            'abvt' => $sale->abvt,
+            'created_at' => $sale->created_at->toIso8601String(),
+            'updated_at' => $sale->updated_at->toIso8601String(),
+            'deleted_at' => $sale->deleted_at ? $sale->deleted_at->toIso8601String() : null,
+            'products' => array_values($products),
+        ];
+
         return response()->json([
-            'message' => 'Product details retrieved successfully',
-            'data' => array_values($products),
+            'message' => 'Sale details retrieved successfully',
+            'data' => $saleData,
         ]);
     } catch (QueryException $e) {
         Log::error('Database error in getSaleByInvoiceNumber', [
@@ -422,6 +503,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
             'sql' => $e->getSql(),
             'bindings' => $e->getBindings(),
         ]);
+        dd($e->getMessage());
         return response()->json(['error' => 'A database error occurred'], 500);
     } catch (\Exception $e) {
         Log::error('Unexpected error in getSaleByInvoiceNumber', [
@@ -548,7 +630,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings(),
             ]);
-
+             dd($e->getMessage());
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
             Log::error('Unexpected error in getSaleByRefNumber', [
@@ -669,6 +751,114 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
+    private function getSaleProductforSalesReturn(array $productIds, int $companyId): array
+    { 
+        try {
+            // Get product names for products with available quantities
+            $productIds = SaleProduct::whereIn('product_id', $productIds)
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->whereRaw('
+                    (
+                        (sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
+                            FROM sale_products
+                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            AND sale_products.deleted_at IS NULL
+                        ), 0) - 
+                        COALESCE((
+                            SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                            FROM sales_return_products
+                            WHERE sales_return_products.sale_product_id IN (
+                                SELECT id FROM sale_products
+                                WHERE sale_products.purchase_product_id = purchase_products.id
+                                AND sale_products.deleted_at IS NULL
+                            )
+                            AND sales_return_products.deleted_at IS NULL
+                        ), 0)
+                    ) > 0
+                ')
+                ->groupBy('product_id')
+                ->pluck('product_id')
+                ->unique()
+                ->toArray();
+
+            if (empty($productIds)) {
+                return ['error' => 'No products with available quantities found'];
+            }
+           
+
+            $productNames = Product::whereIn('id',$productIds)->pluck('name')->toArray();
+            
+
+            return array_values(array_unique($productNames));
+        } catch (QueryException $e) {
+            \Log::error('Database error in getPurchaseProductforPurchaseReturn: ' . $e->getMessage());
+          
+            return ['error' => 'Database error occurred'];
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getPurchaseProductforPurchaseReturn: ' . $e->getMessage());
+           
+            return ['error' => 'An unexpected error occurred'];
+        }
+    }
+
+
+    public function getSaleProductNames(Request $request): JsonResponse
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            // Get unique product IDs with available quantities for return
+            $productIds = SaleProduct::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->whereRaw('
+                    ((sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
+                            FROM sale_products
+                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            AND sale_products.deleted_at IS NULL
+                        ), 0) - 
+                        COALESCE((
+                            SELECT SUM(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0))
+                            FROM sales_return_products
+                            WHERE sales_return_products.sale_product_id IN (
+                                SELECT id FROM sale_products
+                                WHERE sale_products.purchase_product_id = purchase_products.id
+                                AND sale_products.deleted_at IS NULL
+                            )
+                            AND sales_return_products.deleted_at IS NULL
+                        ), 0)
+                    ) > 0
+                ')
+                ->pluck('product_id')
+                ->unique()
+                ->toArray();
+
+            if (empty($productIds)) {
+                return response()->json(['error' => 'No products with available quantities found'], 404);
+            }
+
+            // Get product names using the helper function
+            $productNames = $this->getSaleProductforSalesReturn($productIds, $request->company_id);
+
+            if (isset($productNames['error'])) {
+                return response()->json(['error' => $productNames['error']], 404);
+            }
+         
+
+            return response()->json($productNames);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getPurchaseProductNames: ' . $e->getMessage());
+              dd($e->getMessage());
+            return response()->json(['error' => 'Database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getPurchaseProductNames: ' . $e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

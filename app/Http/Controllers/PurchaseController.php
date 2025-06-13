@@ -465,7 +465,8 @@ class PurchaseController extends Controller
                 Rule::unique('purchases')
 
                     ->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->input('company_id', $request->company_id));
+                        return $query->where('company_id', $request->input('company_id', $request->company_id))
+                        ->whereNull('deleted_at');
                     }),
             ],
             'discount_type' => 'nullable|in:percent,amount',

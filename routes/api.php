@@ -191,6 +191,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
     Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
     Route::post('store-purchase-return-by-item', [PurchaseReturnController::class, 'storePurchaseReturnByInput']);
+    Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
 
     //List and Details
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);

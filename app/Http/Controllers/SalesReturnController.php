@@ -147,6 +147,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                 'company_id',
                 'customer_id',
                 'customer_name',
+                'invoice_number',
                 'pan_number',
                 'balance',
                 'batch_no',

@@ -156,7 +156,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
                 'contact_number',
                 'invoice_date',
                 'invoice_date_bs',
-              
+                 'bank_id',
                 'remarks',
                 'store_id',
                 'location_id',
@@ -454,6 +454,7 @@ public function getSaleByInvoiceNumber(Request $request): JsonResponse
             'id' => $sale->id,
             'company_id' => $sale->company_id,
             'customer_id' => $sale->customer_id,
+            'bank_id' => $sale->bank_id,
             'customer_name' => $sale->customer_name,
             'customer_address' => $sale->customer_address,
             'credit_days' => $sale->credit_days,

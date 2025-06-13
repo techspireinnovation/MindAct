@@ -183,6 +183,16 @@ class Helper
         return 0;
     }
 
+    public static function getPrimaryUnitWithPrice(int $productId, int $unitId, float $quantity, float $price)
+    {
+        $primaryEntities = self::convertToPrimaryUnitQuantityRate($productId, $unitId, $quantity, $price);
+        return [
+            'total_price' => $primaryEntities[1],
+            'primary_units' => $primaryEntities[0],
+        ];
+
+    }
+
     public static function convertToPrimaryUnitRate(int $productId, int $fromMeasureUnit, float $rate): mixed
     {
         // get product primary measure unit

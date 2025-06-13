@@ -84,7 +84,19 @@ class ReportController extends Controller
     }
     public function stockRegisterDetails(Request $request): JsonResponse
     {
+
         //  try {
+
+        $validator = Validator::make($request->all(), [
+            'method' => 'required|string|in:fifo,average',
+            //  'product_id' => 'required|numeric',
+
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
         $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
             'lastPurchase',
             'primaryProductItem',
@@ -100,14 +112,14 @@ class ReportController extends Controller
         }
 
         $items = $items->get();
-        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
 
-        $items = $items->map(function ($item) {
-            $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
-            $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
-            return $item;
+        // $items = $items->map(function ($item) {
+        //$item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+        //$item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
+        //   return $item;
 
-        });
+        //});
 
         //$date = Carbon::now();
         //Excel::store(new ProductListDetailsReport($items), "product-list-{$date}.xlsx");

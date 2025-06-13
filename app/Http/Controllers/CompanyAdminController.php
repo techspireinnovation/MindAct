@@ -5,8 +5,6 @@ namespace App\Http\Controllers;
 use Auth;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
-use Spatie\Permission\Models\Role;
 use Validator;
 
 class CompanyAdminController extends Controller
@@ -43,6 +41,9 @@ class CompanyAdminController extends Controller
             ], 403);
         }
 
+        // Delete all previous tokens
+        // make one login at one time
+        //$user->tokens()->delete();
 
         $token = $user->createToken('MatraErpToken', ['company_admin'])->plainTextToken;
 

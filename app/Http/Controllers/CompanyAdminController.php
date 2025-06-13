@@ -43,7 +43,7 @@ class CompanyAdminController extends Controller
 
         // Delete all previous tokens
         // make one login at one time
-        //$user->tokens()->delete();
+        // $user->tokens()->delete(); 
 
         $token = $user->createToken('MatraErpToken', ['company_admin'])->plainTextToken;
 

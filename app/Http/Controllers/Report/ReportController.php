@@ -166,8 +166,6 @@ class ReportController extends Controller
                 })
                 ->orderBy('purchases.invoice_date', 'desc')
                 ->get();
-
-
             $items->each(function ($item) use ($product) {
                 $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
             });

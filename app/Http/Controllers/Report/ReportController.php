@@ -93,7 +93,7 @@ class ReportController extends Controller
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
-        $items->where('id', $request->input('product_id'));
+        //$items->where('id', $request->input('product_id'));
 
 
         $items = $items->get();
@@ -404,22 +404,22 @@ class ReportController extends Controller
             'purchase' => [
                 'vatable' => round($purchase_taxable_amount, 2),
                 'non_vatable' => round(Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
-                'vatable_import' => 0,
-                'non_vatable_import' => 0,
-                'vat' => round($purchase_taxable_amount * 0.13),
+                'vatable_import' => round(0 * 0.13, 2),
+                'non_vatable_import' => round(0 * 0.13, 2),
+                'vat' => round($purchase_taxable_amount * 0.13, 2),
             ],
             'bill' => [
                 'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
                 'purchase_return' => PurchaseReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
                 'sale_return' => SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                'sale_return_advice' => 0,
-                'purchase_return_advice' => 0,
+                'sale_return_advice' => round(0 * 0.13, 2),
+                'purchase_return_advice' => round(0 * 0.13, 2),
                 'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
             ],
             'other' => [
-                'purchase_return_vat' => 0,
+                'purchase_return_vat' => round(0 * 0.13, 2),
                 'sale_return_vat' => round($sale_return_amount * 0.13, 2),
-                'customer_return_vat' => 0,
+                'customer_return_vat' => round(0 * 0.13, 2),
             ],
             'net_payable_amount' => round(($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13), 2),
         ]);

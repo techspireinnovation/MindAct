@@ -21,6 +21,7 @@ jobs:
           port: 2025
           script: |
             cd ${{ secrets.PROJECT_PATH }}
+            git stash
             git pull origin main
             # Add any build or restart commands here, e.g.:
             composer install --no-interaction --prefer-dist --optimize-autoloader

@@ -147,6 +147,11 @@ class Product extends Model
         return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
     }
 
+    public function getOpeningRateAttribute()
+    {
+        return StockEntry::where('product_id', $this->id)->avg('rate') ?? 0;
+    }
+
     public function getPurchaseQuantityAttribute()
     {
         return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
@@ -188,10 +193,45 @@ class Product extends Model
         return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
     }
 
-    public function getStockAdjustmentQuantityAttribute()
+    public function getStockAdjustmentDetailAttribute()
     {
-        return StockProductDetails::where('product_id', $this->id)->sum('diff_stock') ?? 0;
+        $averagePrice = StockProductDetails::where(['product_id' => $this->id])->get()->map(function ($stock) {
+            return Helper::getPrimaryUnitWithPrice($stock->product_id, $stock->measure_unit_id ?? 0, $stock->quantity ?? 0, $stock->price);
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+
     }
+
+    public function getStockInDetailAttribute()
+    {
+        $averagePrice = StockProductDetails::where(['product_id' => $this->id])->get()->map(function ($stock) {
+            return Helper::getPrimaryUnitWithPrice($stock->product_id, $stock->measure_unit_id ?? 0, $stock->quantity ?? 0, $stock->price);
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+
+    }
+
+    public function getStockOutDetailAttribute()
+    {
+        $averagePrice = StockProductDetails::where(['product_id' => $this->id])->get()->map(function ($stock) {
+            return Helper::getPrimaryUnitWithPrice($stock->product_id, $stock->measure_unit_id ?? 0, $stock->quantity ?? 0, $stock->price);
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+
+    }
+
 
     public function getStockInQuantityAttribute()
     {

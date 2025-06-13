@@ -84,27 +84,42 @@ class ReportController extends Controller
     }
     public function stockRegisterDetails(Request $request): JsonResponse
     {
+
         //  try {
-        $items = Product::select("products.id", "products.product_unique_id", "products.name")->with([
+
+        $validator = Validator::make($request->all(), [
+            'method' => 'required|string|in:fifo,average',
+            //  'product_id' => 'required|numeric',
+
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
             'lastPurchase',
-            'primaryProductItem'
+            'primaryProductItem',
+            'category:id,name',
+            'location:id,name',
+            'subCategory:id,name',
+            'brand:id,name',
+            'productType:id,name',
         ]);
 
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
-        $items->where('id', $request->input('product_id'));
-
 
         $items = $items->get();
-        $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
 
-        $items = $items->map(function ($item) {
-            $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
-            $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
-            return $item;
+        // $items = $items->map(function ($item) {
+        //$item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+        //$item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
+        //   return $item;
 
-        });
+        //});
 
         //$date = Carbon::now();
         //Excel::store(new ProductListDetailsReport($items), "product-list-{$date}.xlsx");
@@ -396,32 +411,32 @@ class ReportController extends Controller
 
         return response()->json([
             'sales' => [
-                'vatable' => $sale_taxable_amount,
-                'non_vatable' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'),
+                'vatable' => round($sale_taxable_amount, 2),
+                'non_vatable' => round(Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
                 'export' => 0,
-                'vat' => $sale_taxable_amount * 0.13,
+                'vat' => round($sale_taxable_amount * 0.13, 2),
             ],
             'purchase' => [
-                'vatable' => $purchase_taxable_amount,
-                'non_vatable' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'),
-                'vatable_import' => 0,
-                'non_vatable_import' => 0,
-                'vat' => $purchase_taxable_amount * 0.13,
+                'vatable' => round($purchase_taxable_amount, 2),
+                'non_vatable' => round(Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
+                'vatable_import' => round(0 * 0.13, 2),
+                'non_vatable_import' => round(0 * 0.13, 2),
+                'vat' => round($purchase_taxable_amount * 0.13, 2),
             ],
             'bill' => [
                 'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
                 'purchase_return' => PurchaseReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
                 'sale_return' => SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                'sale_return_advice' => 0,
-                'purchase_return_advice' => 0,
+                'sale_return_advice' => round(0 * 0.13, 2),
+                'purchase_return_advice' => round(0 * 0.13, 2),
                 'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
             ],
             'other' => [
-                'purchase_return_vat' => 0,
-                'sale_return_vat' => $sale_return_amount * 0.13,
-                'customer_return_vat' => 0,
+                'purchase_return_vat' => round(0 * 0.13, 2),
+                'sale_return_vat' => round($sale_return_amount * 0.13, 2),
+                'customer_return_vat' => round(0 * 0.13, 2),
             ],
-            'net_payable_amount' => ($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13)
+            'net_payable_amount' => round(($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13), 2),
         ]);
 
     }

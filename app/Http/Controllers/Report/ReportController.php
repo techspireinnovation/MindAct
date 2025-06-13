@@ -85,7 +85,7 @@ class ReportController extends Controller
     public function stockRegisterDetails(Request $request): JsonResponse
     {
         //  try {
-        $items = Product::select("products.id", "products.product_unique_id", "products.name")->with([
+        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name")->with([
             'lastPurchase',
             'primaryProductItem'
         ]);
@@ -93,8 +93,6 @@ class ReportController extends Controller
         if ($request->has('from_date') && $request->has('to_date')) {
             $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
         }
-        //$items->where('id', $request->input('product_id'));
-
 
         $items = $items->get();
         $items->each->append(['product_stock_quantity', 'opening_quantity', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_quantity', 'stock_in_quantity', 'stock_out_quantity']);

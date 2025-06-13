@@ -161,8 +161,12 @@ class ReportController extends Controller
                     DB::raw('SUM(purchase_products.discount_amount) as discount_amount'),
                     DB::raw('AVG(purchase_products.price) as rate')
                 ])
+                ->when(isset($request->customer_id), function ($query) use ($request) {
+                    $query->where('purchases.customer_id', $request->customer_id);
+                })
                 ->orderBy('purchases.invoice_date', 'desc')
                 ->get();
+
 
             $items->each(function ($item) use ($product) {
                 $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
@@ -182,6 +186,9 @@ class ReportController extends Controller
                     DB::raw('SUM(sale_products.discount_amount) as discount_amount'),
                     DB::raw('AVG(sale_products.price) as rate')
                 ])
+                ->when(isset($request->customer_id), function ($query) use ($request) {
+                    $query->where('sales.customer_id', $request->customer_id);
+                })
                 ->orderBy('sales.invoice_date', 'desc')
                 ->get();
 

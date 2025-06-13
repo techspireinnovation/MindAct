@@ -12,27 +12,27 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // Drop foreign keys safely before changing columns
+        // Drop foreign key safely before changing columns
         try {
-            DB::statement('ALTER TABLE sales_returns DROP FOREIGN KEY sales_returns_location_id_foreign');
+            DB::statement('ALTER TABLE sales_returns DROP FOREIGN KEY sales_returns_customer_id_foreign');
         } catch (\Illuminate\Database\QueryException $e) {
             // Foreign key might not exist yet – ignore
         }
 
         try {
-            DB::statement('ALTER TABLE sales_returns DROP FOREIGN KEY sales_returns_store_id_foreign');
+            DB::statement('ALTER TABLE sales_returns DROP FOREIGN KEY sales_returns_salesman_id_foreign');
         } catch (\Illuminate\Database\QueryException $e) {
             // Foreign key might not exist yet – ignore
         }
 
         Schema::table('sales_returns', function (Blueprint $table) {
             // Change columns to nullable
-            $table->unsignedBigInteger('location_id')->nullable()->change();
-            $table->unsignedBigInteger('store_id')->nullable()->change();
+            $table->unsignedBigInteger('customer_id')->nullable()->change();
+            $table->unsignedBigInteger('salesman_id')->nullable()->change();
 
             // Recreate foreign keys
-            $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
-            $table->foreign('store_id')->references('id')->on('stores')->onDelete('set null');
+            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('set null');
+            $table->foreign('salesman_id')->references('id')->on('salesmen')->onDelete('set null');
         });
     }
 
@@ -41,19 +41,20 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drop foreign keys first
         Schema::table('sales_returns', function (Blueprint $table) {
-            $table->dropForeign(['location_id']);
-            $table->dropForeign(['store_id']);
+            $table->dropForeign(['customer_id']);
+            $table->dropForeign(['salesman_id']);
         });
 
         Schema::table('sales_returns', function (Blueprint $table) {
             // Change columns back to not nullable
-            $table->unsignedBigInteger('location_id')->nullable(false)->change();
-            $table->unsignedBigInteger('store_id')->nullable(false)->change();
+            $table->unsignedBigInteger('customer_id')->nullable(false)->change();
+            $table->unsignedBigInteger('salesman_id')->nullable(false)->change();
 
             // Re-add foreign keys without onDelete('set null')
-            $table->foreign('location_id')->references('id')->on('locations');
-            $table->foreign('store_id')->references('id')->on('stores');
+            $table->foreign('customer_id')->references('id')->on('customers');
+            $table->foreign('salesman_id')->references('id')->on('salesmen');
         });
     }
 };

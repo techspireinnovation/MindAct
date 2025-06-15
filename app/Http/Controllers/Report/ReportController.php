@@ -143,48 +143,57 @@ class ReportController extends Controller
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
+        $product = Product::findOrFail($request->product_id);
+
 
         if ($request->type === "purchase") {
-            $items = PurchaseProduct::select("purchase_products.id", "purchase_products.quantity", "purchase_products.measure_unit_id", "purchase_products.customer_id", "purchase_products.product_id", "purchase_products.created_at", "purchase_products.purchase_id")->with(['purchase:id,customer_id,purchase_bill_number,ref_bill_number', 'purchase.customer:id,party_name'])->whereHas('purchase', function ($query) use ($request) {
-                if ($request->has('from_date') && $request->has('to_date')) {
-                    $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
-                }
-            })->where('product_id', $request->product_id);
-
-            if ($request->has('customer_id')) {
-                $items->where('customer_id', $request->input('customer_id'));
-            }
-
-            if ($request->has('from_date') && $request->has('to_date')) {
-                $items->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
-            }
-
-            $items = $items->get();
-            $items->each->append(['purchase_quantity', 'purchase_unit', 'purchase_rate', 'purchase_discount_amount']);
+            $items = Purchase::
+                join('purchase_products', 'purchases.id', '=', 'purchase_products.purchase_id')
+                ->join('customers', 'purchases.customer_id', '=', 'customers.id')
+                ->groupBy('purchases.id', 'purchases.purchase_bill_number', 'purchases.customer_name', 'purchases.invoice_date')
+                ->where('purchase_products.product_id', $request->product_id)
+                ->select([
+                    'purchases.invoice_date as date',
+                    'customers.party_name as party_name',
+                    'purchases.purchase_bill_number as invoice_number',
+                    'purchases.ref_bill_number as ref_no',
+                    DB::raw('SUM(purchase_products.quantity) as quantity'),
+                    DB::raw('SUM(purchase_products.discount_amount) as discount_amount'),
+                    DB::raw('AVG(purchase_products.price) as rate')
+                ])
+                ->when(isset($request->customer_id), function ($query) use ($request) {
+                    $query->where('purchases.customer_id', $request->customer_id);
+                })
+                ->orderBy('purchases.invoice_date', 'desc')
+                ->get();
+            $items->each(function ($item) use ($product) {
+                $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
+            });
         } else {
-            $items = SaleProduct::select("sale_products.id", "sale_products.quantity", "sale_products.product_id", "sale_products.measure_unit_id", "sale_products.created_at", "sale_products.sale_id")->with([
-                'sale' => function ($q) {
-                    $q->select("sales.id", "sales.customer_id", "sales.ref_number", "sales.invoice_number", "sales.invoice_date_bs")->with([
-                        "customer" => function ($cus) {
-                            $cus->select("customers.id", "customers.party_name");
-                        }
-                    ]);
-                }
-            ])->whereHas('sale', function ($query) use ($request) {
-                if ($request->has('from_date') && $request->has('to_date')) {
-                    $query->whereDate('invoice_date', '>=', $request->from_date)->whereDate('invoice_date', '<=', $request->to_date);
-                }
-                if ($request->has('customer_id')) {
-                    $query->where('customer_id', $request->input('customer_id'));
-                }
-            })->where('product_id', $request->product_id);
+            $items = Sale::
+                join('sale_products', 'sales.id', '=', 'sale_products.sale_id')
+                ->join('customers', 'sales.customer_id', '=', 'customers.id')
+                ->groupBy('sales.id', 'sales.invoice_date', 'sales.customer_name', 'sales.invoice_number')
+                ->where('sale_products.product_id', $request->product_id)
+                ->select([
+                    'sales.invoice_date as date',
+                    'customers.party_name as party_name',
+                    'sales.invoice_number as invoice_number',
+                    'sales.ref_number as ref_no',
+                    DB::raw('SUM(sale_products.quantity) as quantity'),
+                    DB::raw('SUM(sale_products.discount_amount) as discount_amount'),
+                    DB::raw('AVG(sale_products.price) as rate')
+                ])
+                ->when(isset($request->customer_id), function ($query) use ($request) {
+                    $query->where('sales.customer_id', $request->customer_id);
+                })
+                ->orderBy('sales.invoice_date', 'desc')
+                ->get();
 
-            if ($request->has('from_date') && $request->has('to_date')) {
-                $items->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
-            }
+            $items->each(function ($item) use ($product) {
+                $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
+            });
 
-            $items = $items->get();
-            $items->each->append(['sale_quantity', 'sale_unit', 'sale_rate', 'sale_discount_amount']);
         }
         return response()->json($items);
     }

@@ -304,6 +304,10 @@ class ReportController extends Controller
                 $items->whereMonth('invoice_date', $request->input('month'));
             }
 
+            if ($request->has('year')) {
+                $items->whereYear('invoice_date', $request->input('year'));
+            }
+
             $items = $items->get();
         } else if ($request->type === "purchase_return") {
             $items = DB::table('purchase_product_returns as ppr')
@@ -353,6 +357,7 @@ class ReportController extends Controller
                     'c.party_name as supplier_name',
                     'c.pan_number as supplier_pan',
                     'ppr.product_name as product_service_name',
+                    'ppr.product_id as product_id',
                     DB::raw('SUM(ppr.quantity) as product_quantity'),
                     DB::raw('SUM(ppr.price) as total_sales'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.price ELSE 0 END) as non_taxable'),
@@ -369,6 +374,7 @@ class ReportController extends Controller
                     'c.party_name',
                     'c.pan_number',
                     'ppr.product_name',
+                    'ppr.product_id',
                 ])
                 ->orderBy('pr.invoice_date')
                 ->get();

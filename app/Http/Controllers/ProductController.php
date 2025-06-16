@@ -831,11 +831,9 @@ class ProductController extends Controller
             }
             fclose($handle);
             DB::commit();
-            //   return response()->json(['message' => 'Product deleted!!']);
             return response()->json(['success' => 'CSV Imported Successfully!']);
         } catch (\Exception $e) {
             DB::rollBack();
-            // return response()->json(['message' => 'Product deleted!!']);
             return response()->json(['error' => 'Import failed: ' . $e->getMessage()]);
         }
     }

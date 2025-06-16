@@ -795,7 +795,7 @@ class ProductController extends Controller
                     'category_id' => $data['category_id'],
                     'sub_category_id' => $data['sub_category_id'],
                     'brand_id' => $data['brand_id'],
-                    'measure_unit_id' => $data['measure_unit_id'],
+                    'measure_unit_id' =>1,// $data['measure_unit_id'],
                     'purchase_rate' => $data['purchase_rate'],
                     'purchase_rate_vat' => $data['purchase_rate_vat'],
                     'retail_sales_price' => Helper::castToDouble($data['retail_sales_price']),
@@ -816,7 +816,7 @@ class ProductController extends Controller
                 ProductList::create([
                     'product_unique_id' => $productID,
                     'product_id' => $product->id,
-                    'measure_unit_id' => $data['measure_unit_id'],
+                   'measure_unit_id' => 1,//$data['measure_unit_id'],
                     'company_id' => $request->company_id,
                     'quantity' => $data['quantity'] ?? 1,
                     'barcode' => $data['barcode'] ?? null,
@@ -825,7 +825,7 @@ class ProductController extends Controller
                     'discount' => $data['discount'] ?? null,
                     'final_price' => $data['retail_sales_price_vat'] ?? null,
                     'is_primary' => 1,
-                    'primary_measure_unit_id' => $data['primary_measure_unit_id'] ?? $data['measure_unit_id'],
+                    'primary_measure_unit_id' =>1// $data['primary_measure_unit_id'] ?? $data['measure_unit_id'],
                 ]);
                 //  }
             }

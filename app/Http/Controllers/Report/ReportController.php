@@ -117,7 +117,6 @@ class ReportController extends Controller
         $validator = Validator::make($request->all(), [
             'type' => 'required|string|in:purchase,sales',
             'product_id' => 'required|numeric',
-
         ]);
 
         if ($validator->fails()) {
@@ -144,6 +143,9 @@ class ReportController extends Controller
                 ->when(isset($request->customer_id), function ($query) use ($request) {
                     $query->where('purchases.customer_id', $request->customer_id);
                 })
+                ->when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
+                    $query->whereBetween('purchases.invoice_date', [$request->from_date, $request->to_date]);
+                })
                 ->orderBy('purchases.invoice_date', 'desc')
                 ->get();
             $items->each(function ($item) use ($product) {
@@ -166,6 +168,9 @@ class ReportController extends Controller
                 ])
                 ->when(isset($request->customer_id), function ($query) use ($request) {
                     $query->where('sales.customer_id', $request->customer_id);
+                })
+                ->when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
+                    $query->whereBetween('sales.invoice_date', [$request->from_date, $request->to_date]);
                 })
                 ->orderBy('sales.invoice_date', 'desc')
                 ->get();

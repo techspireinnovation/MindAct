@@ -17,6 +17,8 @@ use Illuminate\Validation\Rule;
 
 class PurchaseController extends Controller
 {
+
+
     public function generateUniquePurchaseBillNumber(Request $request)
     {
         // Validate the request
@@ -34,29 +36,43 @@ class PurchaseController extends Controller
 
         try {
             $prefix = 'PB';
-            $date = now()->format('Ymd'); // e.g., 20250523
+            $date = now()->format('Ymd'); // e.g., 20250615
             $currentYear = now()->format('Y'); // e.g., 2025
             $companyId = $request->input('company_id');
+            $maxAttempts = 100; // Prevent infinite loops
 
-            // Fetch the latest bill for the company with the given prefix and current year
-            $latestBill = Purchase::where('company_id', $companyId)
-                ->where('purchase_bill_number', 'like', "{$prefix}-{$currentYear}%")
-                ->orderByDesc('created_at')
-                ->first();
+            // Start a database transaction
+            return DB::transaction(function () use ($prefix, $date, $currentYear, $companyId, $maxAttempts) {
+                // Fetch the latest bill for the company with the given prefix and current year
+                $latestBill = Purchase::where('company_id', $companyId)
+                    ->where('purchase_bill_number', 'like', "{$prefix}-{$currentYear}%")
+                    ->orderByDesc('created_at')
+                    ->lockForUpdate() // Lock the rows to prevent concurrent access
+                    ->first();
 
-            if ($latestBill && preg_match("/^PB-\d{8}-(\d{6})$/", $latestBill->purchase_bill_number, $matches)) {
-                $lastSequence = (int) $matches[1];
-                $nextSequence = str_pad($lastSequence + 1, 6, '0', STR_PAD_LEFT);
-            } else {
-                $nextSequence = '000001'; // First bill for this company in this year
-            }
+                $nextSequence = '000001'; // Default sequence if no bill exists
+                if ($latestBill && preg_match("/^PB-\d{8}-(\d{6})$/", $latestBill->purchase_bill_number, $matches)) {
+                    $lastSequence = (int) $matches[1];
+                    $nextSequence = str_pad($lastSequence + 1, 6, '0', STR_PAD_LEFT);
+                }
 
-            $billNumber = "{$prefix}-{$date}-{$nextSequence}";
+                $attempt = 0;
+                do {
+                    $billNumber = "{$prefix}-{$date}-{$nextSequence}";
+                    $existingBill = Purchase::where('purchase_bill_number', $billNumber)->exists();
+                    if (!$existingBill) {
+                        return response()->json([
+                            'status' => 'success',
+                            'purchase_bill_number' => $billNumber
+                        ], 200);
+                    }
+                    // Increment sequence for the next attempt
+                    $nextSequence = str_pad((int) $nextSequence + 1, 6, '0', STR_PAD_LEFT);
+                    $attempt++;
+                } while ($existingBill && $attempt < $maxAttempts);
 
-            return response()->json([
-                'status' => 'success',
-                'purchase_bill_number' => $billNumber
-            ], 200);
+                throw new \Exception('Unable to generate a unique bill number after multiple attempts');
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -426,7 +442,7 @@ class PurchaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        
+
 
         $validated = $request->validate([
             'ref_bill_number' => [
@@ -466,7 +482,7 @@ class PurchaseController extends Controller
 
                     ->where(function ($query) use ($request) {
                         return $query->where('company_id', $request->input('company_id', $request->company_id))
-                        ->whereNull('deleted_at');
+                            ->whereNull('deleted_at');
                     }),
             ],
             'discount_type' => 'nullable|in:percent,amount',
@@ -611,7 +627,7 @@ class PurchaseController extends Controller
     }
 
 
-    
+
 
 
 

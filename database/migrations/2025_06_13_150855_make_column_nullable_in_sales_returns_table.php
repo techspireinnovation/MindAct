@@ -8,50 +8,56 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Run the migrations (make nullable + set null on delete).
      */
     public function up(): void
     {
-        // Drop foreign keys safely before changing columns
+        // Drop existing foreign keys if they exist
         try {
             DB::statement('ALTER TABLE sales_returns DROP FOREIGN KEY sales_returns_location_id_foreign');
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Foreign key might not exist yet – ignore
-        }
+        } catch (\Illuminate\Database\QueryException $e) {}
 
         try {
             DB::statement('ALTER TABLE sales_returns DROP FOREIGN KEY sales_returns_store_id_foreign');
-        } catch (\Illuminate\Database\QueryException $e) {
-            // Foreign key might not exist yet – ignore
-        }
+        } catch (\Illuminate\Database\QueryException $e) {}
 
+        // Modify columns to be nullable
         Schema::table('sales_returns', function (Blueprint $table) {
-            // Change columns to nullable
             $table->unsignedBigInteger('location_id')->nullable()->change();
             $table->unsignedBigInteger('store_id')->nullable()->change();
+        });
 
-            // Recreate foreign keys
+        // Re-add foreign keys with ON DELETE SET NULL
+        Schema::table('sales_returns', function (Blueprint $table) {
             $table->foreign('location_id')->references('id')->on('locations')->onDelete('set null');
             $table->foreign('store_id')->references('id')->on('stores')->onDelete('set null');
         });
     }
 
     /**
-     * Reverse the migrations.
+     * Reverse the migrations (make NOT NULL + restore keys).
      */
     public function down(): void
     {
+        // Drop foreign keys
         Schema::table('sales_returns', function (Blueprint $table) {
             $table->dropForeign(['location_id']);
             $table->dropForeign(['store_id']);
         });
 
+        // Ensure there are no NULLs before setting NOT NULL constraint
+        // Replace with a valid default ID from your `locations` and `stores` tables
+        DB::statement('UPDATE sales_returns SET location_id = 1 WHERE location_id IS NULL');
+        DB::statement('UPDATE sales_returns SET store_id = 1 WHERE store_id IS NULL');
+
+        // Change back to NOT NULL
         Schema::table('sales_returns', function (Blueprint $table) {
-            // Change columns back to not nullable
             $table->unsignedBigInteger('location_id')->nullable(false)->change();
             $table->unsignedBigInteger('store_id')->nullable(false)->change();
+        });
 
-            // Re-add foreign keys without onDelete('set null')
+        // Re-add original foreign keys
+        Schema::table('sales_returns', function (Blueprint $table) {
             $table->foreign('location_id')->references('id')->on('locations');
             $table->foreign('store_id')->references('id')->on('stores');
         });

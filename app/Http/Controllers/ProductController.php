@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 
 use App\Events\ProductUpdated;
+use App\Helpers\Helper;
 use App\Models\Product;
 use App\Models\ProductField;
 use App\Models\ProductFieldValue;
@@ -737,4 +738,110 @@ class ProductController extends Controller
             'data' => $latestProduct,
         ]);
     }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'csv_file' => 'required|file|mimes:csv'
+        ]);
+
+        $file = $request->file('csv_file');
+        $handle = fopen($file, 'r');
+        $header = fgetcsv($handle); // Read the header row
+
+        DB::beginTransaction();
+        try {
+            while (($row = fgetcsv($handle, 1000, ',')) !== FALSE) {
+
+                // Get the latest product for the given company (including soft-deleted ones)
+
+                $companyId = $request->company_id;
+                $latestProduct = Product::withTrashed()
+                    ->where('company_id', $companyId)
+                    ->orderBy('id', 'desc')
+                    ->first();
+
+                // Determine the next number
+                $nextNumber = ($latestProduct && preg_match('/PID-(\d+)/', $latestProduct->product_unique_id, $matches)) ? (int) $matches[1] + 1 : 1;
+
+
+                // Generate the unique ID string
+                $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+                // Ensure uniqueness within the same company
+                while (
+                    Product::withTrashed()
+                        ->where('company_id', $companyId)
+                        ->where('product_unique_id', $productID)
+                        ->exists()
+                ) {
+                    $nextNumber++;
+                    $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+                }
+
+                foreach ($row as &$field) {
+                    $field = mb_convert_encoding($field, 'UTF-8', 'auto');
+                }
+                unset($field);
+
+                $data = array_combine($header, $row);
+
+
+                // Insert into products table
+                $product = Product::create([
+                    'name' => $data['name'],
+                    'product_unique_id' => $productID,
+                    'company_id' => $request->company_id,
+                    'category_id' => $data['category_id'],
+                    'sub_category_id' => $data['sub_category_id'],
+                    'brand_id' => $data['brand_id'],
+                    'measure_unit_id' => $data['measure_unit_id'],
+                    'purchase_rate' => $data['purchase_rate'],
+                    'purchase_rate_vat' => $data['purchase_rate_vat'],
+                    'retail_sales_price' => Helper::castToDouble($data['retail_sales_price']),
+                    'retail_sales_price_vat' => Helper::castToDouble($data['retail_sales_price_vat']),
+                    'retail_sales_price_profit_percent' => Helper::castToDouble($data['retail_sales_price_profit_percent']),
+                    'wholesales_price' => $data['wholesales_price'],
+                    'wholesales_price_vat' => $data['wholesales_price_vat'],
+                    'wholesales_price_profit_percent' => $data['wholesales_price_profit_percent'],
+                    'is_vatable' => $data['is_vatable'],
+                    'product_type_id' => $data['product_type_id'],
+                    'location_id' => $data['location_id'],
+                    'is_active' => $data['is_active'] ? true : false,
+                ]);
+
+                // Optionally insert into product_lists table
+                // (Assuming your CSV has these fields, otherwise skip or adjust)
+                //   if (isset($data['quantity'])) {
+                ProductList::create([
+                    'product_unique_id' => $productID,
+                    'product_id' => $product->id,
+                    'measure_unit_id' => $data['measure_unit_id'],
+                    'company_id' => $request->company_id,
+                    'quantity' => $data['quantity'] ?? 1,
+                    'barcode' => $data['barcode'] ?? null,
+                    'hs_code' => $data['hs_code'] ?? null,
+                    'price' => $data['retail_sales_price_vat'] ?? null,
+                    'discount' => $data['discount'] ?? null,
+                    'final_price' => $data['retail_sales_price_vat'] ?? null,
+                    'is_primary' => 1,
+                    'primary_measure_unit_id' => $data['primary_measure_unit_id'] ?? $data['measure_unit_id'],
+                ]);
+                //  }
+            }
+            fclose($handle);
+            DB::commit();
+            //   return response()->json(['message' => 'Product deleted!!']);
+            return response()->json(['success' => 'CSV Imported Successfully!']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // return response()->json(['message' => 'Product deleted!!']);
+            return response()->json(['error' => 'Import failed: ' . $e->getMessage()]);
+        }
+    }
+    private function castToDouble($value)
+    {
+        return is_numeric($value) ? (double) $value : null;
+    }
+
 }

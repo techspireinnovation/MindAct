@@ -115,6 +115,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
+
 
     Route::prefix('reports')->group(function () {
         //Route::middleware(['can:print'])->group(function () {
@@ -241,3 +243,6 @@ Route::post('/send-message', function (Request $request) {
 // forget password
 Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+
+
+

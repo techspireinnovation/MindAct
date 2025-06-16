@@ -84,13 +84,8 @@ class ReportController extends Controller
     }
     public function stockRegisterDetails(Request $request): JsonResponse
     {
-
-        //  try {
-
         $validator = Validator::make($request->all(), [
             'method' => 'required|string|in:fifo,average',
-            //  'product_id' => 'required|numeric',
-
         ]);
 
         if ($validator->fails()) {
@@ -113,23 +108,8 @@ class ReportController extends Controller
 
         $items = $items->get();
         $items->each->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
-
-        // $items = $items->map(function ($item) {
-        //$item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
-        //$item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
-        //   return $item;
-
-        //});
-
-        //$date = Carbon::now();
-        //Excel::store(new ProductListDetailsReport($items), "product-list-{$date}.xlsx");
         return response()->json($items);
 
-        // } catch (\Exception $e) {
-        //      \Log::error($e);
-        //return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-
-        //}
     }
 
     public function productPriceListDetails(Request $request): JsonResponse
@@ -137,7 +117,6 @@ class ReportController extends Controller
         $validator = Validator::make($request->all(), [
             'type' => 'required|string|in:purchase,sales',
             'product_id' => 'required|numeric',
-
         ]);
 
         if ($validator->fails()) {
@@ -164,6 +143,9 @@ class ReportController extends Controller
                 ->when(isset($request->customer_id), function ($query) use ($request) {
                     $query->where('purchases.customer_id', $request->customer_id);
                 })
+                ->when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
+                    $query->whereBetween('purchases.invoice_date', [$request->from_date, $request->to_date]);
+                })
                 ->orderBy('purchases.invoice_date', 'desc')
                 ->get();
             $items->each(function ($item) use ($product) {
@@ -186,6 +168,9 @@ class ReportController extends Controller
                 ])
                 ->when(isset($request->customer_id), function ($query) use ($request) {
                     $query->where('sales.customer_id', $request->customer_id);
+                })
+                ->when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
+                    $query->whereBetween('sales.invoice_date', [$request->from_date, $request->to_date]);
                 })
                 ->orderBy('sales.invoice_date', 'desc')
                 ->get();
@@ -324,6 +309,10 @@ class ReportController extends Controller
                 $items->whereMonth('invoice_date', $request->input('month'));
             }
 
+            if ($request->has('year')) {
+                $items->whereYear('invoice_date', $request->input('year'));
+            }
+
             $items = $items->get();
         } else if ($request->type === "purchase_return") {
             $items = DB::table('purchase_product_returns as ppr')
@@ -373,6 +362,7 @@ class ReportController extends Controller
                     'c.party_name as supplier_name',
                     'c.pan_number as supplier_pan',
                     'ppr.product_name as product_service_name',
+                    'ppr.product_id as product_id',
                     DB::raw('SUM(ppr.quantity) as product_quantity'),
                     DB::raw('SUM(ppr.price) as total_sales'),
                     DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.price ELSE 0 END) as non_taxable'),
@@ -389,6 +379,7 @@ class ReportController extends Controller
                     'c.party_name',
                     'c.pan_number',
                     'ppr.product_name',
+                    'ppr.product_id',
                 ])
                 ->orderBy('pr.invoice_date')
                 ->get();

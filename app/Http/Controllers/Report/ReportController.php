@@ -50,7 +50,7 @@ class ReportController extends Controller
             ProductListExportJob::dispatch($request->all());
             return response()->json([
                 'message' => 'Export started. You will receive a download link when it is ready.',
-                'download_link' => "sdf",
+
             ]);
 
         }

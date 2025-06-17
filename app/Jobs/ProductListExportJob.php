@@ -8,6 +8,7 @@ use App\Reports\ProductReport;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Rap2hpoutre\FastExcel\FastExcel;
+use Storage;
 
 class ProductListExportJob implements ShouldQueue
 {
@@ -27,8 +28,8 @@ class ProductListExportJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $filename = storage_path("app/public/exports/product_list_{$this->request['company_id']}_" . now()->timestamp . ".xlsx");
-        dd($filename);
+        $filename = "product_list_{$this->request['company_id']}_" . now()->timestamp . ".xlsx";
+
         $items = ProductReport::productListDetails($this->request);
 
         $sn = 1;
@@ -53,8 +54,10 @@ class ProductListExportJob implements ShouldQueue
             ];
         })->collect();
 
-        (new FastExcel($rows))->export(($filename));
-        event(new ReportEvent($this->request['company_id'], ["productListExportJobCompleted" => true]));
+
+        (new FastExcel($rows))->export(Storage::disk('company')->path($filename));
+
+        event(new ReportEvent($this->request['company_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("download-file/$filename")]]));
 
     }
 }

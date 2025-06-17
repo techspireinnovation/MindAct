@@ -54,6 +54,11 @@ class SaleProduct extends Model
         return $this->belongsTo(Product::class);
     }
 
+    public function measureUnit()
+    {
+        return $this->belongsTo(MeasureUnit::class);
+    }
+
     public function fieldValues()
     {
         return $this->hasMany(SalesProductFieldValue::class, 'sale_product_id');

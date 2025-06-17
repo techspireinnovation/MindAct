@@ -51,7 +51,7 @@ class PurchaseProduct extends Model
     }
 
     public function measureUnit(){
-        return $this->hasMany(MeasureUnit::class, 'id');
+        return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
     }
 
     public function fieldValues()

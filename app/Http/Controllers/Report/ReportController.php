@@ -68,9 +68,8 @@ class ReportController extends Controller
             }
 
             $items = $items->paginate(250);
-            //$items->each->append('product_stock_quantity');
 
-            $items = $items->map(function ($item) {
+            $items->getCollection()->transform(function ($item) {
                 $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
                 $item->append('product_stock_quantity');

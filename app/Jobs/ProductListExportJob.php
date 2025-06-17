@@ -27,7 +27,8 @@ class ProductListExportJob implements ShouldQueue
      */
     public function handle(): void
     {
-        $filename = "app/public/exports/product_list_{$this->request['company_id']}_" . now()->timestamp . ".xlsx";
+        $filename = storage_path("app/public/exports/product_list_{$this->request['company_id']}_" . now()->timestamp . ".xlsx");
+        dd($filename);
         $items = ProductReport::productListDetails($this->request);
 
         $sn = 1;
@@ -52,8 +53,8 @@ class ProductListExportJob implements ShouldQueue
             ];
         })->collect();
 
-        (new FastExcel($rows))->export(storage_path($filename));
-        event(new ReportEvent($this->request['company_id']));
+        (new FastExcel($rows))->export(($filename));
+        event(new ReportEvent($this->request['company_id'], ["productListExportJobCompleted" => true]));
 
     }
 }

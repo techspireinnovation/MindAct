@@ -2,22 +2,34 @@
 
 namespace App\Events;
 
-use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
 class ReportEvent implements ShouldBroadcast
 {
-    use Dispatchable, InteractsWithSockets, SerializesModels;
+    use Dispatchable, SerializesModels;
     public $companyId;
+    public $item;
     /**
      * Create a new event instance.
      */
-    public function __construct($companyId)
+    public function __construct($companyId, $item)
     {
         $this->companyId = $companyId;
+        $this->item = $item;
     }
+
+    /**
+     * Get the data to broadcast.
+     *
+     * @return array<string, mixed>
+     */
+    public function broadcastWith(): array
+    {
+        return $this->item;
+    }
+
 
     /**
      * Get the channels the event should broadcast on.
@@ -26,8 +38,6 @@ class ReportEvent implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return [
-            new ("report-channel-{$this->companyId}"),
-        ];
+        return ["accessPipe_{$this->companyId}"];
     }
 }

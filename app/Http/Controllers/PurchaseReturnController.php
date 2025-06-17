@@ -803,6 +803,7 @@ public function getPurchaseByRefBillNumber(Request $request)
             $productName = trim(strtolower($request->input('product_name')));
             $barcode = $request->input('barcode');
             $purchaseBillNumber = $request->input('purchase_bill_number');
+          
 
             Log::debug('Input parameters', [
                 'company_id' => $companyId,
@@ -845,7 +846,8 @@ public function getPurchaseByRefBillNumber(Request $request)
                 ->where('purchase_measure_units.company_id', $companyId)
                 ->whereNull('purchase_measure_units.deleted_at');
 
-            // Apply filters with proper bindings
+            // Apply filters with proper bindings\
+           
             if ($productCode) {
                 $purchaseSubQuery->where('purchase_products.product_code', $productCode);
             }
@@ -1790,7 +1792,7 @@ public function getPurchaseByRefBillNumber(Request $request)
 
 
 
-    public function store(Request $request): JsonResponse
+   public function store(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
@@ -1863,6 +1865,10 @@ public function getPurchaseByRefBillNumber(Request $request)
             }
 
             $validated = $validator->validated();
+            Log::debug('Validated purchase return data', [
+                'purchase_id' => $validated['purchase_id'],
+                'purchase_return_products' => $validated['purchase_return_products'] ?? [],
+            ]);
 
             // Fetch purchase
             $purchase = Purchase::findOrFail($validated['purchase_id']);
@@ -1877,13 +1883,15 @@ public function getPurchaseByRefBillNumber(Request $request)
             // Auto-fetch products for entire batch
             if ($validated['return_entire_batch'] ?? false) {
                 $validated['purchase_return_products'] = $purchase->purchaseProducts()->get()->map(function ($product) {
-                    $totalReturned = PurchaseProductReturn::where('purchase_product_id', $product->id)
+                    $measureUnit = MeasureUnit::findOrFail($product->measure_unit_id);
+                    $purchasedQuantityInPieces = ($product->quantity + ($product->free_quantity ?? 0)) * ($measureUnit->quantity ?? 1);
+                    $totalReturnedInPieces = PurchaseProductReturn::where('purchase_product_id', $product->id)
                         ->whereNull('deleted_at')
-                        ->sum('quantity');
-                    $totalFreeReturned = PurchaseProductReturn::where('purchase_product_id', $product->id)
-                        ->whereNull('deleted_at')
-                        ->sum('free_quantity');
-                    $quantityToReturn = $product->quantity - $totalReturned;
+                        ->join('measure_units', 'purchase_product_returns.measure_unit_id', '=', 'measure_units.id')
+                        ->sum(DB::raw('(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
+                    $availableQuantityInPieces = $purchasedQuantityInPieces - $totalReturnedInPieces;
+                    $quantityToReturnInUOM = floor($availableQuantityInPieces / ($measureUnit->quantity ?? 1));
+                    $freeQuantityInUOM = ($availableQuantityInPieces % ($measureUnit->quantity ?? 1)) / ($measureUnit->quantity ?? 1);
                     $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
                         return $group->map(function ($field) {
                             return [
@@ -1893,8 +1901,8 @@ public function getPurchaseByRefBillNumber(Request $request)
                             ];
                         })->toArray();
                     })->values()->toArray();
-                    // Only include field_values for available units
-                    $fieldValues = array_slice($fieldValues, 0, $quantityToReturn);
+                    // Limit field_values to available units
+                    $fieldValues = array_slice($fieldValues, 0, ceil($quantityToReturnInUOM));
                     return [
                         'purchase_product_id' => $product->id,
                         'product_id' => $product->product_id,
@@ -1902,8 +1910,8 @@ public function getPurchaseByRefBillNumber(Request $request)
                         'purchase_product_code' => $product->product_code,
                         'mfd' => $product->mfd,
                         'customer_id' => $product->customer_id,
-                        'quantity' => $quantityToReturn,
-                        'free_quantity' => $product->free_quantity - $totalFreeReturned,
+                        'quantity' => $quantityToReturnInUOM,
+                        'free_quantity' => $freeQuantityInUOM,
                         'price' => $product->price,
                         'discount_percent' => $product->discount_percent,
                         'discount_amount' => $product->discount_amount,
@@ -1914,45 +1922,57 @@ public function getPurchaseByRefBillNumber(Request $request)
                         'field_values' => $fieldValues
                     ];
                 })->filter(function ($product) {
-                    return $product['quantity'] > 0 || $product['free_quantity'] > 0;
+                    return $product['quantity'] > 0 || ($product['free_quantity'] ?? 0) > 0;
                 })->toArray();
             }
 
-            // Validate quantities and field_values
+            // Validate quantities, measure units, and field_values
             foreach ($validated['purchase_return_products'] as $index => $productData) {
                 $originalProduct = PurchaseProduct::where('id', $productData['purchase_product_id'])
                     ->where('purchase_id', $validated['purchase_id'])
+                    ->with(['measureUnit', 'fieldValues'])
                     ->firstOrFail();
 
-                // Check available quantity
-                $totalReturned = PurchaseProductReturn::where('purchase_product_id', $productData['purchase_product_id'])
-                    ->whereNull('deleted_at')
-                    ->sum('quantity');
-                $availableQuantity = $originalProduct->quantity - $totalReturned;
-                if ($productData['quantity'] > $availableQuantity) {
+                // Validate measure unit
+                $measureUnit = MeasureUnit::find($productData['measure_unit_id']);
+                if (!$measureUnit) {
                     return response()->json([
-                        'error' => "Return quantity {$productData['quantity']} exceeds available quantity {$availableQuantity} for product ID {$productData['product_id']} at index {$index}"
+                        'error' => "Measure unit not found for ID {$productData['measure_unit_id']} at index {$index}"
+                    ], 404);
+                }
+                if ($productData['measure_unit_id'] != $originalProduct->measure_unit_id) {
+                    return response()->json([
+                        'error' => "Measure unit ID {$productData['measure_unit_id']} does not match purchase product ID {$productData['purchase_product_id']} at index {$index}"
                     ], 422);
                 }
 
-                // Check available free quantity
-                $totalFreeReturned = PurchaseProductReturn::where('purchase_product_id', $productData['purchase_product_id'])
+                // Convert quantities to primary unit (Pieces)
+                $requestedQuantityInPieces = $productData['quantity'] * ($measureUnit->quantity ?? 1);
+                $requestedFreeQuantityInPieces = ($productData['free_quantity'] ?? 0) * ($measureUnit->quantity ?? 1);
+                $totalRequestedInPieces = $requestedQuantityInPieces + $requestedFreeQuantityInPieces;
+
+                // Calculate available quantity in Pieces
+                $purchasedQuantityInPieces = ($originalProduct->quantity + ($originalProduct->free_quantity ?? 0)) * ($originalProduct->measureUnit->quantity ?? 1);
+                $totalReturnedInPieces = PurchaseProductReturn::where('purchase_product_id', $productData['purchase_product_id'])
                     ->whereNull('deleted_at')
-                    ->sum('free_quantity');
-                $availableFreeQuantity = $originalProduct->free_quantity - $totalFreeReturned;
-                if (($productData['free_quantity'] ?? 0) > $availableFreeQuantity) {
+                    ->join('measure_units', 'purchase_product_returns.measure_unit_id', '=', 'measure_units.id')
+                    ->sum(DB::raw('(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
+                $availableQuantityInPieces = $purchasedQuantityInPieces - $totalReturnedInPieces;
+
+                if ($totalRequestedInPieces > $availableQuantityInPieces) {
+                    $availableQuantityInUOM = floor($availableQuantityInPieces / ($measureUnit->quantity ?? 1));
                     return response()->json([
-                        'error' => "Free return quantity {$productData['free_quantity']} exceeds available free quantity {$availableFreeQuantity} for product ID {$productData['product_id']} at index {$index}"
+                        'error' => "Requested quantity {$productData['quantity']} + free quantity " . ($productData['free_quantity'] ?? 0) . " exceeds available quantity {$availableQuantityInUOM} for product ID {$productData['product_id']} at index {$index}"
                     ], 422);
                 }
 
-                // Validate field_values count
+                // Validate field_values
                 if (!($validated['return_entire_batch'] ?? false)) {
                     $hasFieldValues = $originalProduct->fieldValues()->exists();
-                    $requiredFieldValues = $hasFieldValues ? $productData['quantity'] : 0;
+                    $requiredFieldValues = $hasFieldValues ? ceil($requestedQuantityInPieces) : 0; // Count in Pieces for batch tracking
                     if ($hasFieldValues && (!isset($productData['field_values']) || count($productData['field_values']) !== $requiredFieldValues)) {
                         return response()->json([
-                            'error' => "Field values count (" . (isset($productData['field_values']) ? count($productData['field_values']) : 0) . ") must match quantity ({$productData['quantity']}) for product ID {$productData['product_id']} at index {$index}"
+                            'error' => "Field values count (" . (isset($productData['field_values']) ? count($productData['field_values']) : 0) . ") must match quantity in primary unit ({$requiredFieldValues}) for product ID {$productData['product_id']} at index {$index}"
                         ], 422);
                     }
 
@@ -1985,7 +2005,6 @@ public function getPurchaseByRefBillNumber(Request $request)
                                     'error' => "Field values for quantity_index {$quantityIndex} do not match existing values for product ID {$productData['product_id']} at index {$index}"
                                 ], 422);
                             }
-                            // Ensure consistent quantity_index within set
                             foreach ($fieldValueSet as $fieldValue) {
                                 if (isset($fieldValue['quantity_index']) && $fieldValue['quantity_index'] !== $quantityIndex) {
                                     return response()->json([
@@ -2010,11 +2029,6 @@ public function getPurchaseByRefBillNumber(Request $request)
                 }
             }
 
-            Log::debug('Validated purchase return data', [
-                'purchase_id' => $validated['purchase_id'],
-                'purchase_return_products' => $validated['purchase_return_products'] ?? [],
-            ]);
-
             $item = DB::transaction(function () use ($validated) {
                 $purchaseReturnData = array_filter($validated, function ($key) {
                     return !in_array($key, ['purchase_return_products', 'return_entire_batch']);
@@ -2027,6 +2041,13 @@ public function getPurchaseByRefBillNumber(Request $request)
                     $productDataFiltered = array_filter($productData, function ($key) {
                         return $key !== 'field_values';
                     }, ARRAY_FILTER_USE_KEY);
+
+                    // Adjust quantity for storage
+                    $measureUnit = MeasureUnit::findOrFail($productData['measure_unit_id']);
+                    $quantityInUOM = floor($productData['quantity']);
+                    $freeQuantityInUOM = $productData['quantity'] - $quantityInUOM + ($productData['free_quantity'] ?? 0);
+                    $productDataFiltered['quantity'] = $quantityInUOM;
+                    $productDataFiltered['free_quantity'] = $freeQuantityInUOM;
 
                     $purchaseProductReturn = $item->purchaseReturnProducts()->create(
                         array_merge($productDataFiltered, [
@@ -2082,6 +2103,9 @@ public function getPurchaseByRefBillNumber(Request $request)
         } catch (ModelNotFoundException $e) {
             Log::error('Purchase or related record not found: ' . $e->getMessage());
             return response()->json(['error' => 'Purchase or related record not found'], 404);
+        } catch (QueryException $e) {
+            Log::error('Database error creating purchase return: ' . $e->getMessage());
+            return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
             Log::error('Error creating purchase return: ' . $e->getMessage());
             return response()->json(['error' => $e->getMessage()], 422);
@@ -2531,8 +2555,6 @@ public function getPurchaseByRefBillNumber(Request $request)
             return response()->json(['error' => $e->getMessage()], 422);
         }
     }
-
-
 
     public function show($id): JsonResponse
     {

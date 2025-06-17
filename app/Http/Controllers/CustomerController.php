@@ -6,6 +6,7 @@ use App\Models\Customer;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -87,7 +88,16 @@ class CustomerController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'party_name' => 'required|string|max:255|unique:customers,party_name',
+                'party_name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('customers')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
+                        ->whereNull('deleted_at');
+
+                }),
+            ],
                 'pan_number' => 'nullable|string|unique:customers,pan_number',
                 'billing_address' => 'nullable|string',
                 'opening_balance' => 'nullable|string|max:255',

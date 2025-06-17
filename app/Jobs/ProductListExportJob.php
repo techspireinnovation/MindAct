@@ -53,8 +53,6 @@ class ProductListExportJob implements ShouldQueue
                 'Product Type' => optional($item->productType)->name,
             ];
         })->collect();
-
-
         (new FastExcel($rows))->export(Storage::disk('company')->path($filename));
 
         event(new ReportEvent($this->request['company_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("download-file/$filename")]]));

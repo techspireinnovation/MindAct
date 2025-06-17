@@ -17,7 +17,7 @@ class DownloadController extends Controller
 
         $url = $disk->temporaryUrl(
             $filename,
-            now()->addMinutes(5)
+            now()->addMinutes(2)
         );
 
         return response()->json(['url' => $url]);

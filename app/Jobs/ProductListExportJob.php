@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Helpers\Helper;
 use App\Reports\ProductReport;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -30,13 +31,8 @@ class ProductListExportJob implements ShouldQueue
 
         $sn = 1;
         $rows = $items->cursor()->map(function ($item) use (&$sn) {
-
-            // $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
-            // $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
-
-
+            $last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
             return [
-
                 'SN' => $sn++,
                 'Product Id' => $item->product_unique_id,
                 'Product Name' => $item->name,
@@ -44,8 +40,8 @@ class ProductListExportJob implements ShouldQueue
                 'Bar Code' => optional($item->primaryProductItem)->barcode,
                 'UOM' => optional($item->primaryProductItem)->measureUnit->name,
                 'Quantity' => $item->product_stock_quantity,
-                // 'Rate With Vat',
-                // 'Rate Without Vat',
+                'Rate With Vat' => round(Helper::getProductVatableAmount($item->id, $last_purchase_rate_amount ?? 0), 2),
+                'Rate Without Vat' => round($last_purchase_rate_amount, 2),
                 'Location' => optional($item->location)->name,
                 'Category' => optional($item->category)->name,
                 'Sub Category' => optional($item->subCategory)->name,
@@ -55,7 +51,7 @@ class ProductListExportJob implements ShouldQueue
             ];
         })->collect();
 
-        (new FastExcel($rows))->export(storage_path($filename));
+        event((new FastExcel($rows))->export(storage_path($filename)));
 
 
     }

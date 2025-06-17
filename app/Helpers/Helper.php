@@ -193,6 +193,11 @@ class Helper
 
     }
 
+    public static function castToDouble($value)
+    {
+        return is_numeric($value) ? (double) $value : null;
+    }
+
     public static function convertToPrimaryUnitRate(int $productId, int $fromMeasureUnit, float $rate): mixed
     {
         // get product primary measure unit

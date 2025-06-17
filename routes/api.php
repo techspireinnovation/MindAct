@@ -1,6 +1,5 @@
 <?php
 
-use App\Events\MessageSent;
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
@@ -12,6 +11,7 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\FixedAssetAccountController;
@@ -51,7 +51,6 @@ use App\Http\Controllers\StockReconciliationController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
-use Illuminate\Http\Request;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -115,6 +114,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
+
 
     Route::prefix('reports')->group(function () {
         //Route::middleware(['can:print'])->group(function () {
@@ -224,6 +225,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('brand-list', [BrandController::class, 'subCategoryList']);
     Route::get('brand-details', [BrandController::class, 'subCategoryDetails']);
 
+
+    Route::get('download-file/{filename}', [DownloadController::class, 'download']);
+
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(
@@ -233,11 +237,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
 });
 
-Route::post('/send-message', function (Request $request) {
-    $message = $request->input('message');
-    event(new MessageSent($message));
-    return response()->json(['status' => 'Message sent']);
-});
 // forget password
 Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+
+
+

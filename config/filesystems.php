@@ -56,7 +56,9 @@ return [
         'company' => [
             'driver' => 'local',
             'url' => env('APP_URL') . '/company-files',
-            'root' => storage_path('app/companies'), // Files stored in storage/app/private
+            'root' => storage_path('app/companies'),
+            'serve' => true, // Add this line if missing
+            'throw' => false,
         ],
 
         's3' => [

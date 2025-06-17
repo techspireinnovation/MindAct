@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exports\Exports;
+namespace App\Exports;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;

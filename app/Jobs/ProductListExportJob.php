@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Events\ReportEvent;
 use App\Helpers\Helper;
 use App\Reports\ProductReport;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,8 +52,8 @@ class ProductListExportJob implements ShouldQueue
             ];
         })->collect();
 
-        event((new FastExcel($rows))->export(storage_path($filename)));
-
+        (new FastExcel($rows))->export(storage_path($filename));
+        event(new ReportEvent($this->request['company_id']));
 
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Report;
 
+use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Product;
@@ -66,9 +67,15 @@ class ReportController extends Controller
                 $items->where('location_id', $request->input('location_id'));
             }
 
+            $items = $items->paginate(250);
+            //$items->each->append('product_stock_quantity');
 
-            //  $items->each->append('product_stock_quantity');
-            $items = $items->paginate(300);
+            $items = $items->map(function ($item) {
+                $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+                $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
+                $item->append('product_stock_quantity');
+                return $item;
+            });
 
             return response()->json($items);
         } catch (\Exception $e) {

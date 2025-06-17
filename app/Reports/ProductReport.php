@@ -1,15 +1,14 @@
 <?php
 
-namespace App\Helpers;
+namespace App\Reports;
 
 use App\Models\Product;
-use Request;
-
+use Illuminate\Database\Eloquent\Builder;
 
 
 class ProductReport
 {
-    public static function productListDetails(Request $request)
+    public static function productListDetails(array $request): Builder
     {
         $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
             'location' => function ($query) {
@@ -27,24 +26,26 @@ class ProductReport
             'productType' => function ($query) {
                 return $query->select('product_types.id', 'name')->get();
             },
+            'primaryProductItem'
         ]);
 
-        if ($request->has('product_id')) {
-            $items->where('id', $request->input('product_id'));
+        if (isset($request['product_id'])) {
+            $items->where('id', operator: $request['product_id']);
         }
-        if ($request->has('brand_id')) {
-            $items->where('brand_id', $request->input('brand_id'));
+        if (isset($request['brand_id'])) {
+            $items->where('brand_id', $request['brand_id']);
+        }
+        if (isset($request['product_type_id'])) {
+            $items->where('product_type_id', $request['product_type_id']);
         }
 
-        if ($request->has('product_type_id')) {
-            $items->where('product_type_id', $request->input('product_type_id'));
+        if (isset($request['sub_category_id'])) {
+            $items->where('sub_category_id', $request['sub_category_id']);
+        }
+        if (isset($request['location_id'])) {
+            $items->where('location_id', $request['location_id']);
         }
 
-        if ($request->has('sub_category_id')) {
-            $items->where('sub_category_id', $request->input('sub_category_id'));
-        }
-        if ($request->has('location_id')) {
-            $items->where('location_id', $request->input('location_id'));
-        }
+        return $items;
     }
 }

@@ -1,36 +1,49 @@
 <?php
 
 namespace App\Exports\Exports;
-
 use App\Models\User;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+use Rap2hpoutre\FastExcel\FastExcel;
 
-class ProductListDetailsReport implements FromCollection, WithMapping, WithHeadings
+
+class ProductListDetailsReport implements ShouldQueue
 {
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    protected $companyId;
     protected $data;
-    public function __construct($data)
+
+    public function __construct($companyId, $data)
     {
         $this->data = $data;
+        $this->companyId = $companyId;
     }
-    public function collection()
+    public function handle()
     {
-        return collect($this->data);
-    }
 
-    public function map($item): array
-    {
-        return [
-            $item->id,
-            $item->quantity,
-            $item->is_vatable === 1 ? "Vatable" : "Non-Vatable",
-            $item->primary_measure_unit ? $item->primary_measure_unit->name : "",
+        $filename = "exports/product_list_{$this->companyId}__" . now()->timestamp . ".csv";
+
+        // Prepare data with headings
+        $headings = [
+            ['ID', 'Name', 'Email']
         ];
-    }
+        $rows = User::cursor()->map(function ($user) {
+            return [
+                $user->id,
+                $user->name,
+                $user->email,
+            ];
+        });
 
-    public function headings(): array
-    {
-        return ['ID', 'quantity', 'vatable', 'Measure Unit'];
+        // Combine headings and rows
+        $data = collect($headings)->concat($rows);
+
+        (new FastExcel($data))->export(storage_path($filename));
+
+        // Optionally notify user here
     }
 }

@@ -631,8 +631,21 @@ class SaleController extends Controller
                 ->get()
                 ->groupBy('purchase_product_id');
 
-            $result = $products->map(function ($product) use ($purchaseProducts, $fieldValues, $soldQuantityIndexes, $returnedQuantityIndexes) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $fieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId) {
                 $productId = $product->product_id;
+                $salesPrice = SaleProduct::where('product_id', $productId)
+                    ->where('company_id', $companyId)
+                    ->whereNull('deleted_at')
+                    ->pluck('price');
+                $lastSalesPrice = SaleProduct::where('product_id', $productId)
+                    ->whereNull('deleted_at')
+                    ->orderByDesc('created_at')
+                    ->value('price'); 
+                 
+                $averageSalesPrice = round($salesPrice->avg(),2);  
+                $minSalesPrice = round($salesPrice->min(),2);   
+                $latesrSalesPrice =round($lastSalesPrice,2);
+
                 $productFieldValues = collect();
                 $productPurchaseProducts = $purchaseProducts->filter(function ($pp) use ($productId) {
                     return $pp->product_id == $productId;
@@ -688,7 +701,9 @@ class SaleController extends Controller
                     'min_price' => $product->min_price,
                     'is_vatable' => (bool) $product->is_vatable,
                     'measure_unit_id' => $product->measure_unit_id,
-
+                    'avg_sales_price' => $averageSalesPrice,
+                    'min_sales_price' => $minSalesPrice,
+                    'latest_sales_price' => $latesrSalesPrice,
                     'measure_unit_name' => $product->measure_unit_name,
                     'measure_unit_quantity' => $product->measure_unit_quantity,
                     'purchased_quantity' => $product->purchased_quantity,
@@ -792,8 +807,8 @@ class SaleController extends Controller
                 'sale_products.*.product_name' => 'required_without:sale_products.*.product_id|string|max:255',
                 'sale_products.*.product_id' => 'nullable|exists:products,id',
                 'sale_products.*.purchase_product_id' => 'nullable|exists:purchase_products,id',
-                'sale_products.*.quantity' => 'required|numeric|min:0',
-                'sale_products.*.free_quantity' => 'nullable|numeric|min:0',
+                'sale_products.*.quantity' => 'required|numeric',
+                'sale_products.*.free_quantity' => 'nullable|numeric',
                 'sale_products.*.price' => 'required|numeric|min:0',
                 'sale_products.*.discount_percent' => 'nullable|numeric|min:0|max:100',
                 'sale_products.*.discount_amount' => 'nullable|numeric|min:0',

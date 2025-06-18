@@ -283,6 +283,7 @@ class Helper
                 'product_field_id' => $fieldValue->product_field_id,
                 'product_id' => $fieldValue->product_id,
                 'value' => $fieldValue->value,
+                'name' => $fieldValue->productField->name ?? null,
                 'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
                 'values' => $fieldValue->productField->values ?? null,
                 'deleted_at' => $fieldValue->deleted_at,
@@ -290,6 +291,23 @@ class Helper
                 'updated_at' => $fieldValue->updated_at,
             ];
         })->toArray();
+
+
+        $purchasePrices = PurchaseProduct::where('product_id', $productDetail->id)
+            ->where('company_id', $company)
+            ->whereNull('deleted_at')
+            ->pluck('price');
+
+        $productData['average_price'] = round($purchasePrices->avg(), 2);
+        $productData['min_price'] = round($purchasePrices->min(), 2);
+        $productData['last_purchase_price'] = round(
+            PurchaseProduct::where('product_id', $productDetail->id)
+                ->where('company_id', $company)
+                ->whereNull('deleted_at')
+                ->orderBy('created_at', 'desc')
+                ->value('price') ?? 0
+        );
+
 
         return [
             'message' => 'Successful!!', // Fixed typo: "Sucessfull" to "Successful"

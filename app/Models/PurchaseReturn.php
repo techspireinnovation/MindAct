@@ -24,6 +24,7 @@ class PurchaseReturn extends Model
         'purchase_id',
         'customer_id',
         'customer_name',
+        'invoice_number',
         'customer_contact',
         'purchase_return_type',
         'pan_number',

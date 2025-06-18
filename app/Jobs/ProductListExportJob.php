@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Rap2hpoutre\FastExcel\FastExcel;
 use Storage;
+use Str;
 
 class ProductListExportJob implements ShouldQueue
 {
@@ -30,7 +31,8 @@ class ProductListExportJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $filename = "product_list_{$this->request['company_id']}_" . now()->timestamp . ".xlsx";
+            $randomString = Str::random(5);
+            $filename = "product_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
 
             $items = ProductReport::productListDetails($this->request);
 

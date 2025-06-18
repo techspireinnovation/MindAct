@@ -9,6 +9,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Rap2hpoutre\FastExcel\FastExcel;
 use Storage;
+use Str;
 
 class StockRegisterListExportJob implements ShouldQueue
 {
@@ -30,9 +31,10 @@ class StockRegisterListExportJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $filename = "stock_register_list_{$this->request['company_id']}_" . now()->timestamp . ".xlsx";
+            $randomString = Str::random(5);
+            $filename = "stock_register_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
 
-            $items = ProductReport::productListDetails($this->request);
+            $items = ProductReport::stockRegisterListDetails($this->request);
 
             $sn = 1;
             $rows = $items->cursor()->map(function ($item) use (&$sn) {
@@ -55,8 +57,10 @@ class StockRegisterListExportJob implements ShouldQueue
                     'Product Type' => optional($item->productType)->name,
                 ];
             })->collect();
+
             (new FastExcel($rows))->export(Storage::disk('company')->path($filename));
             event(new ReportEvent($this->request['company_id'], ["stockRegisterListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+
         } catch (\Exception $e) {
             \Log::error("---->> StockRegisterListExportJob Error <---");
             \Log::error($e->getMessage());

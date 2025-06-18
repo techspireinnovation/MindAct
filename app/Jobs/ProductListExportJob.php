@@ -14,6 +14,7 @@ class ProductListExportJob implements ShouldQueue
 {
     use Queueable;
     protected $request;
+    public $timeout = 300; // 5 minutes
 
     /**
      * Create a new job instance.
@@ -41,7 +42,7 @@ class ProductListExportJob implements ShouldQueue
                 'Product Name' => $item->name,
                 'HS Code' => optional($item->primaryProductItem)->hs_code,
                 'Bar Code' => optional($item->primaryProductItem)->barcode,
-                'UOM' => optional($item->primaryProductItem)->measureUnit->name,
+                'UOM' => optional($item->primaryProductItem->measureUnit)->name,
                 'Quantity' => $item->product_stock_quantity,
                 'Rate With Vat' => round(Helper::getProductVatableAmount($item->id, $last_purchase_rate_amount ?? 0), 2),
                 'Rate Without Vat' => round($last_purchase_rate_amount, 2),
@@ -54,8 +55,7 @@ class ProductListExportJob implements ShouldQueue
             ];
         })->collect();
         (new FastExcel($rows))->export(Storage::disk('company')->path($filename));
-
-        event(new ReportEvent($this->request['company_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("download-file/$filename")]]));
+        event(new ReportEvent($this->request['company_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
 
     }
 }

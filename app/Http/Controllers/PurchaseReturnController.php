@@ -791,6 +791,7 @@ class PurchaseReturnController extends Controller
                     'measure_unit_id' => $unitData['id'] ?? 0,
                     'measure_unit_quantity' => $unitData['quantity'] ?? 1,
                     'measure_unit_name' => $unitData['name'] ?? 'null',
+                    'amount'=> $product['amount'] ?? 0,
                     'free_quantity' => $product['free_quantity'] ?? 0,
                     'purchased_quantity' => $totalPurchaseQuantityInPieces,
                     'returned_quantity' => $totalReturnedInPieces,

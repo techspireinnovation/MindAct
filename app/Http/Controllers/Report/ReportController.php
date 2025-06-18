@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Report;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProductListExportJob;
+use App\Jobs\StockRegisterListExportJob;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -62,11 +63,26 @@ class ReportController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'method' => 'required|string|in:fifo,average',
+            'type' => 'required|string|in:list,download',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
+        if ($request->type === "list") {
+            $items = ProductReport::productListDetails($request->all());
+            $items = $items->paginate(400);
+            return response()->json($items);
+
+        } else if ($request->type === "download") {
+            StockRegisterListExportJob::dispatch($request->all());
+            return response()->json([
+                'message' => 'Stock Register List Export started. You will receive a download link when it is ready.',
+
+            ]);
+
+        }
+        return response()->json([]);
 
         $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
             'lastPurchase',

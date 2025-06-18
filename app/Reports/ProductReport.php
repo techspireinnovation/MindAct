@@ -48,4 +48,9 @@ class ProductReport
 
         return $items;
     }
+
+    public static function stockRegisterListDetails(array $request): Builder
+    {
+
+    }
 }

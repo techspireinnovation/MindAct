@@ -5,10 +5,13 @@ ERP stands for Enterprise Resource Planning, and it's a type of software that he
 # Running Project
 
 -   git pull origin main
+-   composer install
 -   php artisan migrate
 -   composer run dev
 
 # Usefull Cmds
+
+1. Import Database mysql
 
 ```
 mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql

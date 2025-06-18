@@ -441,7 +441,7 @@ class ProductController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('product_lists')
-                        ->ignore('product_id',$id)
+                        ->ignore('product_id', $id)
                         ->where(function ($query) use ($request, $item) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');

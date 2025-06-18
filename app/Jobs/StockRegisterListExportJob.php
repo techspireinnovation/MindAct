@@ -11,7 +11,7 @@ use Rap2hpoutre\FastExcel\FastExcel;
 use Storage;
 use Str;
 
-class ProductListExportJob implements ShouldQueue
+class StockRegisterListExportJob implements ShouldQueue
 {
     use Queueable;
     protected $request;
@@ -32,9 +32,9 @@ class ProductListExportJob implements ShouldQueue
     {
         try {
             $randomString = Str::random(5);
-            $filename = "product_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
+            $filename = "stock_register_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
 
-            $items = ProductReport::productListDetails($this->request);
+            $items = ProductReport::stockRegisterListDetails($this->request);
 
             $sn = 1;
             $rows = $items->cursor()->map(function ($item) use (&$sn) {
@@ -57,12 +57,14 @@ class ProductListExportJob implements ShouldQueue
                     'Product Type' => optional($item->productType)->name,
                 ];
             })->collect();
+
             (new FastExcel($rows))->export(Storage::disk('company')->path($filename));
-            event(new ReportEvent($this->request['company_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+            event(new ReportEvent($this->request['company_id'], ["stockRegisterListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+
         } catch (\Exception $e) {
-            \Log::error("---->> ProductListExportJob Error <---");
+            \Log::error("---->> StockRegisterListExportJob Error <---");
             \Log::error($e->getMessage());
-            \Log::error("---->> ProductListExportJob Error End <---");
+            \Log::error("---->> StockRegisterListExportJob Error End <---");
         }
     }
 }

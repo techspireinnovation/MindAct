@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Report;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Jobs\ProductListExportJob;
+use App\Jobs\StockRegisterListExportJob;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -62,33 +63,31 @@ class ReportController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'method' => 'required|string|in:fifo,average',
+            'type' => 'required|string|in:list,download',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
+        if ($request->type === "list") {
+            $items = ProductReport::stockRegisterListDetails($request->all());
+            $items = $items->paginate(300);
 
-        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
-            'lastPurchase',
-            'primaryProductItem',
-            'category:id,name',
-            'location:id,name',
-            'subCategory:id,name',
-            'brand:id,name',
-            'productType:id,name',
-        ]);
+            $items->getCollection()->transform(function ($item) {
+                $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
+                return $item;
+            });
+            return response()->json($items);
 
-        if ($request->has('from_date') && $request->has('to_date')) {
-            $items->whereDate('products.created_at', '>=', $request->from_date)->whereDate('products.created_at', '<=', $request->to_date);
+        } else if ($request->type === "download") {
+            StockRegisterListExportJob::dispatch($request->all());
+            return response()->json([
+                'message' => 'Stock Register List Export started. You will receive a download link when it is ready.',
+
+            ]);
+
         }
-
-        $items = $items->get();
-        $items->each->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
-
-
-
-        return response()->json($items);
-
+        return response()->json([]);
     }
 
     public function productPriceListDetails(Request $request): JsonResponse

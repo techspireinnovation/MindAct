@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
 use App\Models\Purchase;
+use App\Models\Product;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -116,7 +117,8 @@ class PurchaseController extends Controller
             return response()->json($productDetails);
         } catch (ModelNotFoundEXception $e) {
             return response()->json(['errors' => 'Item Not Found!!'], 422);
-        } catch (QueryNotFoundException $e) {
+        } catch (QueryException $e) {
+            dd($e->getMessage());
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
 
@@ -512,7 +514,7 @@ class PurchaseController extends Controller
             'purchase_products.*.product_code' => 'nullable|string|max:255',
             'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'purchase_products.*.mfd' => 'nullable|string|max:255',
-            'purchase_products.*.quantity' => 'required|integer|min:1',
+            'purchase_products.*.quantity' => 'required|numeric',
             'purchase_products.*.free_quantity' => 'nullable|numeric',
             'purchase_products.*.expiry_date' => 'nullable|string|max:255',
             'purchase_products.*.price' => 'nullable|numeric',
@@ -566,9 +568,23 @@ class PurchaseController extends Controller
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
                 ]);
 
+
                 // Create Purchase Products
                 if (isset($validated['purchase_products'])) {
+
+
                     foreach ($validated['purchase_products'] as $purchaseProductData) {
+
+                        $purchasedProduct = PurchaseProduct::where('product_id', $purchaseProductData['product_id'])
+                            ->where('company_id', $validated['company_id'])
+                            ->first();
+                        if (!$purchasedProduct) {
+                            $product = Product::find($purchaseProductData['product_id']);
+                            if ($product) {
+                                $product->purchase_status = 'purchased';
+                                $product->save();
+                            }
+                        }
                         // Create PurchaseProduct using static create method
                         $purchaseProduct = PurchaseProduct::create([
                             'purchase_id' => $item->id, // Manually set the foreign key
@@ -606,8 +622,11 @@ class PurchaseController extends Controller
                             }
                             PurchaseProductFieldValue::insert($fieldValues);
                         }
+
                     }
                 }
+
+
 
                 return $item;
             });
@@ -624,10 +643,6 @@ class PurchaseController extends Controller
             ], 500);
         }
     }
-
-
-
-
 
 
 

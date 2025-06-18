@@ -436,7 +436,17 @@ class ProductController extends Controller
                 'product_list.*.product_unique_id' => 'nullable',
                 'product_list.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
                 'product_list.*.quantity' => 'nullable|integer',
-                'product_list.*.barcode' => 'nullable|string|max:255', // Removed unique rule
+                'product_list.*.barcode' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('product_lists')
+                        ->ignore('product_id',$id)
+                        ->where(function ($query) use ($request, $item) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'product_list.*.is_primary' => 'boolean',
                 'product_list.*.hs_code' => 'nullable|string|max:255',
                 'product_list.*.price' => 'nullable|numeric',
@@ -604,7 +614,16 @@ class ProductController extends Controller
             'product_list.*.product_unique_id' => 'nullable',
             'product_list.*.measure_unit_id' => 'nullable||integer|exists:measure_units,id',
             'product_list.*.quantity' => 'nullable|integer',
-            'product_list.*.barcode' => 'nullable|string|max:255|unique:product_lists,barcode',
+            'product_list.*.barcode' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('product_lists')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
+                        ->whereNull('deleted_at');
+
+                }),
+            ],
             'product_list.*.is_primary' => 'boolean|nullable|',
             'product_list.*.hs_code' => 'nullable|string|max:255',
             'product_list.*.price' => 'nullable|numeric',

@@ -37,6 +37,7 @@ class Product extends Model
         'category_id',
         'sub_category_id',
         'brand_id',
+        'purchase_status',
         'measure_unit_id',
         'purchase_rate',
         'purchase_rate_vat',

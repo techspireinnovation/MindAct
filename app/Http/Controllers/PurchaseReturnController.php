@@ -98,10 +98,12 @@ class PurchaseReturnController extends Controller
                 ->pluck('ref_bill_number');
 
             if ($billNumbers->isEmpty()) {
-                return response()->jsonjson(['data'=>'Successfull !!',
-                                    'message' => 'No purchases with available products found'], 200);
+                return response()->jsonjson([
+                    'data' => 'Successfull !!',
+                    'message' => 'No purchases with available products found'
+                ], 200);
             }
-            
+
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
@@ -115,8 +117,8 @@ class PurchaseReturnController extends Controller
 
 
 
-   
-  
+
+
     public function getPurchaseBillNumber(Request $request): JsonResponse
     {
         try {
@@ -394,8 +396,8 @@ class PurchaseReturnController extends Controller
                             foreach ($fieldValuesForIndex as $fieldId => $value) {
                                 $returnMatch = $purchaseReturnFieldValuesForProduct->firstWhere(function ($rfv) use ($fieldId, $value, $quantityIndex) {
                                     return $rfv->product_field_id == $fieldId &&
-                                           $rfv->value == $value &&
-                                           $rfv->quantity_index == $quantityIndex;
+                                        $rfv->value == $value &&
+                                        $rfv->quantity_index == $quantityIndex;
                                 });
                                 if (!$returnMatch) {
                                     $isReturned = false;
@@ -411,8 +413,8 @@ class PurchaseReturnController extends Controller
                             foreach ($fieldValuesForIndex as $fieldId => $value) {
                                 $saleMatch = $saleFieldValuesForProduct->firstWhere(function ($sfv) use ($fieldId, $value, $quantityIndex) {
                                     return $sfv->product_field_id == $fieldId &&
-                                           $sfv->value == $value &&
-                                           $sfv->quantity_index == $quantityIndex;
+                                        $sfv->value == $value &&
+                                        $sfv->quantity_index == $quantityIndex;
                                 });
                                 if (!$saleMatch) {
                                     $isSold = false;
@@ -425,8 +427,8 @@ class PurchaseReturnController extends Controller
                                 foreach ($fieldValuesForIndex as $fieldId => $value) {
                                     $salesReturnMatch = $salesReturnFieldValuesForProduct->firstWhere(function ($srfv) use ($fieldId, $value, $quantityIndex) {
                                         return $srfv->product_field_id == $fieldId &&
-                                               $srfv->value == $value &&
-                                               $srfv->quantity_index == $quantityIndex;
+                                            $srfv->value == $value &&
+                                            $srfv->quantity_index == $quantityIndex;
                                     });
                                     if (!$salesReturnMatch) {
                                         $isSalesReturned = false;
@@ -791,7 +793,7 @@ class PurchaseReturnController extends Controller
                     'measure_unit_id' => $unitData['id'] ?? 0,
                     'measure_unit_quantity' => $unitData['quantity'] ?? 1,
                     'measure_unit_name' => $unitData['name'] ?? 'null',
-                    'amount'=> $product['amount'] ?? 0,
+                    'amount' => $product['amount'] ?? 0,
                     'free_quantity' => $product['free_quantity'] ?? 0,
                     'purchased_quantity' => $totalPurchaseQuantityInPieces,
                     'returned_quantity' => $totalReturnedInPieces,
@@ -1828,7 +1830,7 @@ class PurchaseReturnController extends Controller
                 'customer_name' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
                 'invoice_number' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('purchase_returns')->where(function ($query) use ($request) {
@@ -2332,8 +2334,8 @@ class PurchaseReturnController extends Controller
                 'purchase_id' => 'nullable|integer|exists:purchases,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
-                 'invoice_number' => [
-                    'required',
+                'invoice_number' => [
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('purchase_returns')->where(function ($query) use ($request) {
@@ -2921,12 +2923,12 @@ class PurchaseReturnController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('purchase_returns')
-                            ->ignore($id)
-                            ->where(function ($query) use ($request) {
-                                return $query->where('company_id', $request->company_id)
-                                    ->whereNull('deleted_at');
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->company_id)
+                                ->whereNull('deleted_at');
 
-                    }),
+                        }),
                 ],
                 'customer_contact' => 'nullable|string|max:255',
                 'purchase_return_type' => 'nullable|string|max:255',

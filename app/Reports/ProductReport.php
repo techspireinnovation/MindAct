@@ -51,6 +51,22 @@ class ProductReport
 
     public static function stockRegisterListDetails(array $request): Builder
     {
+        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
+            'lastPurchase',
+            'primaryProductItem',
+            'category:id,name',
+            'location:id,name',
+            'subCategory:id,name',
+            'brand:id,name',
+            'productType:id,name',
+        ]);
+
+        if (isset($request['from_date']) && isset($request['to_date'])) {
+            $items->whereDate('products.created_at', '>=', $request['from_date'])->whereDate('products.created_at', '<=', $request['to_date']);
+        }
+        return $items;
+
+        $items->each->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
 
     }
 }

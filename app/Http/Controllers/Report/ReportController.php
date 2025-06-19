@@ -51,8 +51,7 @@ class ReportController extends Controller
             $user = $request->user();
             $tokenId = $user->currentAccessToken()->id;
             $requestAll = $request->all();
-            $requestAll['token_id'] = $tokenId;
-            ProductListExportJob::dispatch($requestAll);
+            ProductListExportJob::dispatch($tokenId, $requestAll);
             return response()->json([
                 'message' => 'Export started. You will receive a download link when it is ready.',
 

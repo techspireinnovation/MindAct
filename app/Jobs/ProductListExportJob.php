@@ -79,7 +79,7 @@ class ProductListExportJob implements ShouldQueue
 
             (new FastExcel($rows))->export(Storage::disk(name: 'company')->path($filename));
 
-            //create notificiation to the user 
+            //create notifications to the user 
             $notification = [
                 'user_id' => (int) $this->tokenId,
                 'type' => "DOWNLOAD",

@@ -38,14 +38,20 @@ class ReportController extends Controller
         }
 
         if ($request->type === "list") {
+            if (Helper::checkDataInCache($request->all())) {
+                return response()->json(Helper::getDataFromCache($request->all()));
+            }
+
             $items = ProductReport::productListDetails($request->all());
-            $items = $items->paginate(250);
+            $items = $items->paginate(400);
             $items->getCollection()->transform(function ($item) {
                 $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
                 $item->append('product_stock_quantity');
                 return $item;
             });
+            Helper::applyCache($request->all(), $items);
+
             return response()->json($items);
         } else if ($request->type === "download") {
             $user = $request->user();

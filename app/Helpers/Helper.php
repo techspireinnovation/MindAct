@@ -11,6 +11,7 @@ use App\Models\Sale;
 use App\Models\SaleProduct;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
+use Cache;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 
@@ -457,6 +458,44 @@ class Helper
         ];
     }
 
+    /**
+     * Buld Cache Key 
+     */
+    public static function buildCacheKey(array $requestOfClient)
+    {
+        $queryParams = $requestOfClient;
+        ksort($requestOfClient); // Sort parameters for consistency
+        $queryString = http_build_query($queryParams);
+        $fullUrl = "{$queryString}";
+        return sha1($fullUrl); // Hash to avoid long keys
+    }
+
+
+    public static function checkDataInCache(array $requestParams)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        if (Cache::has($cacheKey)) {
+            $compressed = Cache::get($cacheKey);
+            return unserialize(gzuncompress($compressed));
+        }
+    }
+
+    public static function applyCache(array $requestParams, mixed $rows)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        $compressed = gzcompress(serialize($rows));
+        Cache::remember($cacheKey, 3600, function () use ($compressed) {
+            return $compressed;
+        });
+    }
+
+    public static function getDataFromCache(array $requestParams)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        $compressed = Cache::get($cacheKey);
+        return unserialize(gzuncompress($compressed));
+
+    }
     public static function getPurchaseProductDetails($name, $company)
     {
         // Find product(s) with the given name

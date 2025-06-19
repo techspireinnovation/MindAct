@@ -36,11 +36,7 @@ class ProductListExportJob implements ShouldQueue
     {
         try {
 
-            $queryParams = $this->request;
-            ksort($this->request); // Sort parameters for consistency
-            $queryString = http_build_query($queryParams);
-            $fullUrl = "{$queryString}";
-            $cacheKey = sha1($fullUrl); // Hash to avoid long keys
+            $cacheKey = Helper::buildCacheKey($this->request);
 
             $randomString = Str::random(5);
             $filename = "product_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";

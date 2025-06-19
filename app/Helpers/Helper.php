@@ -461,17 +461,13 @@ class Helper
     /**
      * Buld Cache Key 
      */
-    public static function buildCacheKey(array $requestOfClient)
+    public static function buildCacheKey(string $requestOfClient)
     {
-        $queryParams = $requestOfClient;
-        ksort($requestOfClient); // Sort parameters for consistency
-        $queryString = http_build_query($queryParams);
-        $fullUrl = "{$queryString}";
-        return sha1($fullUrl); // Hash to avoid long keys
+        return sha1($requestOfClient); // Hash to avoid long keys
     }
 
 
-    public static function checkDataInCache(array $requestParams)
+    public static function checkDataInCache(string $requestParams)
     {
         $cacheKey = self::buildCacheKey($requestParams);
         if (Cache::has($cacheKey)) {
@@ -480,7 +476,7 @@ class Helper
         }
     }
 
-    public static function applyCache(array $requestParams, mixed $rows)
+    public static function applyCache(string $requestParams, mixed $rows)
     {
         $cacheKey = self::buildCacheKey($requestParams);
         $compressed = gzcompress(serialize($rows));
@@ -489,7 +485,7 @@ class Helper
         });
     }
 
-    public static function getDataFromCache(array $requestParams)
+    public static function getDataFromCache(string $requestParams)
     {
         $cacheKey = self::buildCacheKey($requestParams);
         $compressed = Cache::get($cacheKey);

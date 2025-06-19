@@ -38,8 +38,8 @@ class ReportController extends Controller
         }
 
         if ($request->type === "list") {
-            if (Helper::checkDataInCache($request->all())) {
-                return response()->json(Helper::getDataFromCache($request->all()));
+            if (Helper::checkDataInCache($request->fullUrl())) {
+                return response()->json(Helper::getDataFromCache($request->fullUrl()));
             }
 
             $items = ProductReport::productListDetails($request->all());
@@ -50,7 +50,7 @@ class ReportController extends Controller
                 $item->append('product_stock_quantity');
                 return $item;
             });
-            Helper::applyCache($request->all(), $items);
+            Helper::applyCache($request->fullUrl(), $items);
 
             return response()->json($items);
         } else if ($request->type === "download") {

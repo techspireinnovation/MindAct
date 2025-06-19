@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Events\ReportEvent;
 use App\Helpers\Helper;
+use App\Models\Notification;
 use App\Reports\ProductReport;
 use Cache;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -77,7 +78,25 @@ class ProductListExportJob implements ShouldQueue
             }
 
             (new FastExcel($rows))->export(Storage::disk(name: 'company')->path($filename));
+
+            //create notificiation to the user 
+            $notification = [
+                'user_id' => (int) $this->tokenId,
+                'type' => "DOWNLOAD",
+                "data" => [
+                    'message' => 'Product List Export is completed. ',
+                    'url' => url("api/company/download-file/$filename"),
+                    'icon' => 'bell'
+                ]
+            ];
+            Notification::create($notification);
+
+
             event(new ReportEvent($this->tokenId, ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+
+
+
+
         } catch (\Exception $e) {
             \Log::error("---->> ProductListExportJob Error <---");
             \Log::error($e);

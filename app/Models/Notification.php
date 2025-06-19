@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Notification extends Model
 {
     protected $casts = ['data' => 'array'];
-    protected $fillable = ['read_at'];
+    protected $fillable = ['read_at', 'user_id', 'data', 'type'];
 
     public function markAsRead()
     {

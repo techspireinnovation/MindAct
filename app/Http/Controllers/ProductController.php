@@ -437,7 +437,7 @@ class ProductController extends Controller
                 'product_list.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
                 'product_list.*.quantity' => 'nullable|integer',
                 'product_list.*.barcode' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('product_lists')

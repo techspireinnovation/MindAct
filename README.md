@@ -35,4 +35,5 @@ mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql
 
 # Check Services
 
--   ps aux | grep artisan
+-   sudo ps aux | grep artisan
+-   sudo supervisorctl restart all

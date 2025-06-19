@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id');
+            $table->foreignId('user_id')->constrained('personal_access_tokens')->onDelete('cascade');
             $table->string('type', length: 20);
             $table->text('data');
             $table->timestamp('read_at')->nullable();

@@ -39,7 +39,7 @@ class ReportController extends Controller
 
         if ($request->type === "list") {
             $items = ProductReport::productListDetails($request->all());
-            $items = $items->paginate(300);
+            $items = $items->paginate(250);
             $items->getCollection()->transform(function ($item) {
                 $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
@@ -48,7 +48,11 @@ class ReportController extends Controller
             });
             return response()->json($items);
         } else if ($request->type === "download") {
-            ProductListExportJob::dispatch($request->all());
+            $user = $request->user();
+            $tokenId = $user->currentAccessToken()->id;
+            $requestAll = $request->all();
+            $requestAll['token_id'] = $tokenId;
+            ProductListExportJob::dispatch($requestAll);
             return response()->json([
                 'message' => 'Export started. You will receive a download link when it is ready.',
 

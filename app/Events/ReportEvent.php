@@ -9,14 +9,14 @@ use Illuminate\Queue\SerializesModels;
 class ReportEvent implements ShouldBroadcast
 {
     use Dispatchable, SerializesModels;
-    public $companyId;
+    public $token_id;
     public $item;
     /**
      * Create a new event instance.
      */
-    public function __construct($companyId, $item)
+    public function __construct($token_id, $item)
     {
-        $this->companyId = $companyId;
+        $this->token_id = $token_id;
         $this->item = $item;
     }
 
@@ -38,6 +38,6 @@ class ReportEvent implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        return ["accessPipe_{$this->companyId}"];
+        return ["accessPipe_{$this->token_id}"];
     }
 }

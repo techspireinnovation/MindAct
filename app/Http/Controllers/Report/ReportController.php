@@ -38,8 +38,8 @@ class ReportController extends Controller
         }
 
         if ($request->type === "list") {
-            $items = ProductReport::productListDetails($request->all());
-            $items = $items->paginate(250);
+            $items = ProductReport::productListDetails($request);
+            $items = $items->paginate(200);
             $items->getCollection()->transform(function ($item) {
                 $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
@@ -50,9 +50,7 @@ class ReportController extends Controller
         } else if ($request->type === "download") {
             $user = $request->user();
             $tokenId = $user->currentAccessToken()->id;
-            $requestAll = $request->all();
-            $requestAll['token_id'] = $tokenId;
-            ProductListExportJob::dispatch($requestAll);
+            ProductListExportJob::dispatch($tokenId);
             return response()->json([
                 'message' => 'Export started. You will receive a download link when it is ready.',
 
@@ -84,7 +82,11 @@ class ReportController extends Controller
             return response()->json($items);
 
         } else if ($request->type === "download") {
-            StockRegisterListExportJob::dispatch($request->all());
+            $user = $request->user();
+            $tokenId = $user->currentAccessToken()->id;
+            $requestAll = $request->all();
+            $requestAll['token_id'] = $tokenId;
+            StockRegisterListExportJob::dispatch($requestAll);
             return response()->json([
                 'message' => 'Stock Register List Export started. You will receive a download link when it is ready.',
 

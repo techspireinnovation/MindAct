@@ -4,31 +4,21 @@ namespace App\Reports;
 
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 
 
 class ProductReport
 {
-    public static function productListDetails(array $request): Builder
+    public static function productListDetails(Request $request): mixed
     {
-        $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
-            'location' => function ($query) {
-                return $query->select('locations.id', 'name')->get();
-            },
-            'category' => function ($query) {
-                return $query->select('product_categories.id', 'name')->get();
-            },
-            'subCategory' => function ($query) {
-                return $query->select('product_sub_categories.id', 'name')->get();
-            },
-            'brand' => function ($query) {
-                return $query->select('brands.id', 'name')->get();
-            },
-            'productType' => function ($query) {
-                return $query->select('product_types.id', 'name')->get();
-            },
-            'primaryProductItem'
-        ]);
+        $params = $request->query();
+        ksort($params);
+        $queryString = http_build_query($params);
+        $cacheKey = 'productList.' . sha1($queryString);
+        $products = Product::cache()->get($cacheKey);
+        return $products;
 
+        /*
         if (isset($request['product_id'])) {
             $items->where('id', operator: $request['product_id']);
         }
@@ -45,8 +35,8 @@ class ProductReport
         if (isset($request['location_id'])) {
             $items->where('location_id', $request['location_id']);
         }
+*/
 
-        return $items;
     }
 
     public static function stockRegisterListDetails(array $request): Builder

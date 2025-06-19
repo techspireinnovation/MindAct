@@ -15,10 +15,15 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Http\Request;
+use Mostafaznv\LaraCache\CacheEntity;
+use Mostafaznv\LaraCache\Traits\LaraCache;
 
 class Product extends Model
 {
     use SoftDeletes, HasFactory;
+    use LaraCache;
+
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -59,6 +64,45 @@ class Product extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public static function cacheEntities(): array
+    {
+        $request = app(Request::class);
+        $params = $request->query();
+        ksort($params); // Ensure consistent order
+        $queryString = http_build_query($params);
+        $cacheKey = 'productList.' . sha1($queryString);
+
+        return [
+            CacheEntity::make($cacheKey)
+                ->cache(function () use ($request) {
+                    return Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
+                        'location' => function ($query) {
+                            return $query->select('locations.id', 'name')->get();
+                        },
+                        'category' => function ($query) {
+                            return $query->select('product_categories.id', 'name')->get();
+                        },
+                        'subCategory' => function ($query) {
+                            return $query->select('product_sub_categories.id', 'name')->get();
+                        },
+                        'brand' => function ($query) {
+                            return $query->select('brands.id', 'name')->get();
+                        },
+                        'productType' => function ($query) {
+                            return $query->select('product_types.id', 'name')->get();
+                        },
+                        'primaryProductItem'
+                    ])
+                        ->when(isset($request->brand_id), function ($query) use ($request) {
+                            $query->where('brand_id', $request->brand_id);
+                        })
+
+                        ->get();
+                })
+                ->ttl(600) // 10 minutes
+        ];
     }
 
     public function category()

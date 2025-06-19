@@ -59,7 +59,7 @@ class StockRegisterListExportJob implements ShouldQueue
             })->collect();
 
             (new FastExcel($rows))->export(Storage::disk('company')->path($filename));
-            event(new ReportEvent($this->request['company_id'], ["stockRegisterListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+            event(new ReportEvent($this->request['token_id'], ["stockRegisterListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
 
         } catch (\Exception $e) {
             \Log::error("---->> StockRegisterListExportJob Error <---");

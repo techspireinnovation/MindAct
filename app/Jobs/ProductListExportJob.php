@@ -7,6 +7,7 @@ use App\Helpers\Helper;
 use App\Reports\ProductReport;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Request;
 use Rap2hpoutre\FastExcel\FastExcel;
 use Storage;
 use Str;
@@ -14,15 +15,17 @@ use Str;
 class ProductListExportJob implements ShouldQueue
 {
     use Queueable;
-    protected $request;
+
+    protected $tokenId;
     public $timeout = 300; // 5 minutes
 
     /**
      * Create a new job instance.
      */
-    public function __construct(array $request)
+    public function __construct(int $tokenId)
     {
-        $this->request = $request;
+        $this->tokenId = $tokenId;
+
     }
 
     /**
@@ -31,13 +34,15 @@ class ProductListExportJob implements ShouldQueue
     public function handle(): void
     {
         try {
-            $randomString = Str::random(5);
-            $filename = "product_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
+            $request = app(Request::class);
 
-            $items = ProductReport::productListDetails($this->request);
+            $randomString = Str::random(5);
+            $filename = "product_list_{$request->company_id}_{$randomString}_" . now()->timestamp . ".xlsx";
+
+            $items = ProductReport::productListDetails($request);
 
             $sn = 1;
-            $rows = $items->cursor()->map(function ($item) use (&$sn) {
+            $rows = $items->map(function ($item) use (&$sn) {
                 $last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 return [
                     'SN' => $sn++,
@@ -53,12 +58,13 @@ class ProductListExportJob implements ShouldQueue
                     'Category' => optional($item->category)->name,
                     'Sub Category' => optional($item->subCategory)->name,
                     'Brand' => optional($item->brand)->name,
-                    'Vat Type' => ($item->is_vatable) ? "Yes" : "No",
+                    'Vat Type' => $item->is_vatable ? "Yes" : "No",
                     'Product Type' => optional($item->productType)->name,
                 ];
             })->collect();
             (new FastExcel($rows))->export(Storage::disk(name: 'company')->path($filename));
-            event(new ReportEvent($this->request['token_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+            event(new ReportEvent($this->tokenId, ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+
         } catch (\Exception $e) {
             \Log::error("---->> ProductListExportJob Error <---");
             \Log::error($e->getMessage());

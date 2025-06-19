@@ -3,49 +3,63 @@
 namespace App\Reports;
 
 use App\Models\Product;
+use Cache;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\Request;
 
 
 class ProductReport
 {
-    public static function productListDetails(array $request): Builder
+    public static function productListDetails(): mixed
     {
-        $items = Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
-            'location' => function ($query) {
-                return $query->select('locations.id', 'name')->get();
-            },
-            'category' => function ($query) {
-                return $query->select('product_categories.id', 'name')->get();
-            },
-            'subCategory' => function ($query) {
-                return $query->select('product_sub_categories.id', 'name')->get();
-            },
-            'brand' => function ($query) {
-                return $query->select('brands.id', 'name')->get();
-            },
-            'productType' => function ($query) {
-                return $query->select('product_types.id', 'name')->get();
-            },
-            'primaryProductItem'
-        ]);
+        $request = app(Request::class);
 
-        if (isset($request['product_id'])) {
-            $items->where('id', operator: $request['product_id']);
-        }
-        if (isset($request['brand_id'])) {
-            $items->where('brand_id', $request['brand_id']);
-        }
-        if (isset($request['product_type_id'])) {
-            $items->where('product_type_id', $request['product_type_id']);
-        }
+        $url = $request->url();
+        $queryParams = request()->query();
+        ksort($queryParams); // Sort parameters for consistency
+        $queryString = http_build_query($queryParams);
+        $fullUrl = "{$url}?{$queryString}";
+        $cacheKey = sha1($fullUrl); // Hash to avoid long keys
+        echo $cacheKey;
 
-        if (isset($request['sub_category_id'])) {
-            $items->where('sub_category_id', $request['sub_category_id']);
-        }
-        if (isset($request['location_id'])) {
-            $items->where('location_id', $request['location_id']);
-        }
+        $items = Cache::remember($cacheKey, $minutes = 30, function () {
+            return Product::select("products.id", "is_vatable", "brand_id", "product_type_id", "products.product_unique_id", "sub_category_id", "location_id", "category_id", "products.name")->with([
+                'location' => function ($query) {
+                    return $query->select('locations.id', 'name')->get();
+                },
+                'category' => function ($query) {
+                    return $query->select('product_categories.id', 'name')->get();
+                },
+                'subCategory' => function ($query) {
+                    return $query->select('product_sub_categories.id', 'name')->get();
+                },
+                'brand' => function ($query) {
+                    return $query->select('brands.id', 'name')->get();
+                },
+                'productType' => function ($query) {
+                    return $query->select('product_types.id', 'name')->get();
+                },
+                'primaryProductItem'
+            ])->get();
 
+            if (isset($request['product_id'])) {
+                $items->where('id', operator: $request['product_id']);
+            }
+            if (isset($request['brand_id'])) {
+                $items->where('brand_id', $request['brand_id']);
+            }
+            if (isset($request['product_type_id'])) {
+                $items->where('product_type_id', $request['product_type_id']);
+            }
+
+            if (isset($request['sub_category_id'])) {
+                $items->where('sub_category_id', $request['sub_category_id']);
+            }
+            if (isset($request['location_id'])) {
+                $items->where('location_id', $request['location_id']);
+            }
+
+        });
         return $items;
     }
 

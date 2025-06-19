@@ -34,10 +34,10 @@ class ProductListExportJob implements ShouldQueue
             $randomString = Str::random(5);
             $filename = "product_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
 
-            $items = ProductReport::productListDetails($this->request);
+            $items = ProductReport::productListDetails();
 
             $sn = 1;
-            $rows = $items->cursor()->map(function ($item) use (&$sn) {
+            $rows = $items->map(function ($item) use (&$sn) {
                 $last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 return [
                     'SN' => $sn++,
@@ -61,7 +61,7 @@ class ProductListExportJob implements ShouldQueue
             event(new ReportEvent($this->request['token_id'], ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
         } catch (\Exception $e) {
             \Log::error("---->> ProductListExportJob Error <---");
-            \Log::error($e->getMessage());
+            \Log::error($e);
             \Log::error("---->> ProductListExportJob Error End <---");
         }
     }

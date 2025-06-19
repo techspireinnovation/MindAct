@@ -32,3 +32,8 @@ ERP stands for Enterprise Resource Planning, and it's a type of software that he
 mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql
 
 ```
+
+# Check Services
+
+-   sudo ps aux | grep artisan
+-   sudo supervisorctl restart all

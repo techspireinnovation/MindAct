@@ -64,7 +64,7 @@ class ProductReport
             'subCategory:id,name',
             'brand:id,name',
             'productType:id,name',
-        ]);
+        ])->where('products.id', '<', 100);
 
         if (isset($request['company_id'])) {
             $items->where('company_id', operator: $request['company_id']);

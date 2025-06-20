@@ -54,7 +54,11 @@ class StockRegisterListExportJob implements ShouldQueue
                 $items = ProductReport::stockRegisterListDetails($params);
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {
-                    $last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
+
+                    $closingRate = ($item->opening_rate ?? 0) + (($item->product_purchase_rate ?? 0) + ($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0) + ($item->sale_return_rate ?? 0)) / 4;
+
+                    $closingQty = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) - ($item->sale_quantity ?? 0) - ($item->purchase_return_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
+
                     return [
                         'S.N' => $sn++,
                         'Product Id' => $item->product_unique_id,
@@ -99,9 +103,10 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Production Rate" => 0,
                         "Production Quantity" => 0,
 
-                        "Closing Qty" => $item->sale_return_quantity ?? 0,
-                        "Closing Rate" => $item->sale_return_rate ?? 0,
-                        "Closing Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
+                        "Closing Qty" => $closingQty,
+                        "Closing Rate" => round($closingRate, 2),
+
+                        "Closing Amount" => round($closingRate * $closingQty, 2),
 
                         'Category' => optional($item->category)->name,
                         'Sub Category' => optional($item->subCategory)->name,
@@ -114,7 +119,7 @@ class StockRegisterListExportJob implements ShouldQueue
 
                 // compress and cached it
                 $compressed = gzcompress(serialize($rows));
-                Cache::remember($cacheKey, 2600, function () use ($compressed) {
+                Cache::remember($cacheKey, 3600, function () use ($compressed) {
                     return $compressed;
                 });
             }

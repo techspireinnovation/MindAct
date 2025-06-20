@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 
-use App\Events\ProductUpdated;
 use App\Helpers\Helper;
 use App\Models\Product;
 use App\Models\ProductField;
@@ -199,7 +198,7 @@ class ProductController extends Controller
 
 
             // Broadcast event
-            broadcast(new ProductUpdated($products, 'listed'));
+            //broadcast(new ProductUpdated($products, 'listed'));
 
             // Return paginated response with transformed data
             return response()->json([

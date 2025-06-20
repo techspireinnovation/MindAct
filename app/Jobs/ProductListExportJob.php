@@ -16,7 +16,7 @@ use Str;
 class ProductListExportJob implements ShouldQueue
 {
     use Queueable;
-    protected $request;
+    protected $requestUrl;
     protected $tokenId;
 
     public $timeout = 300; // 5 minutes
@@ -24,10 +24,10 @@ class ProductListExportJob implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(string $tokenId, array $request)
+    public function __construct(string $tokenId, string $requestUrl)
     {
         $this->tokenId = $tokenId;
-        $this->request = $request;
+        $this->requestUrl = $requestUrl;
     }
 
     /**
@@ -37,17 +37,20 @@ class ProductListExportJob implements ShouldQueue
     {
         try {
 
-            $cacheKey = Helper::buildCacheKey($this->request);
+            $cacheKey = Helper::buildCacheKey($this->requestUrl);
 
+            $query = parse_url($this->requestUrl, PHP_URL_QUERY); // 'user=42&sort=asc'
+            parse_str($query, $params);
+            $companyId = (int) $params['company_id'];
             $randomString = Str::random(5);
-            $filename = "product_list_{$this->request['company_id']}_{$randomString}_" . now()->timestamp . ".xlsx";
+            $filename = "product_list_{$companyId}_{$randomString}_" . now()->timestamp . ".xlsx";
 
 
             if (Cache::has($cacheKey)) {
                 $compressed = Cache::get($cacheKey);
                 $rows = unserialize(gzuncompress($compressed));
             } else {
-                $items = ProductReport::productListDetails($this->request);
+                $items = ProductReport::productListDetails($params);
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {
                     $last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
@@ -90,11 +93,7 @@ class ProductListExportJob implements ShouldQueue
                 ]
             ];
             Notification::create($notification);
-
-
             event(new ReportEvent($this->tokenId, ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
-
-
 
 
         } catch (\Exception $e) {

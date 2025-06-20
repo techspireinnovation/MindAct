@@ -32,6 +32,11 @@ class ProductReport
         if (isset($request['product_id'])) {
             $items->where('id', operator: $request['product_id']);
         }
+
+        if (isset($request['company_id'])) {
+            $items->where('company_id', operator: $request['company_id']);
+        }
+
         if (isset($request['brand_id'])) {
             $items->where('brand_id', $request['brand_id']);
         }

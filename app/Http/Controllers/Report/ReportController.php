@@ -38,8 +38,9 @@ class ReportController extends Controller
         }
 
         if ($request->type === "list") {
-            if (Helper::checkDataInCache($request->fullUrl())) {
-                return response()->json(Helper::getDataFromCache($request->fullUrl()));
+
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
             }
 
             $items = ProductReport::productListDetails($request->all());
@@ -50,14 +51,14 @@ class ReportController extends Controller
                 $item->append('product_stock_quantity');
                 return $item;
             });
-            Helper::applyCache($request->fullUrl(), $items);
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
 
             return response()->json($items);
         } else if ($request->type === "download") {
             $user = $request->user();
             $tokenId = $user->currentAccessToken()->id;
             $requestAll = $request->all();
-            ProductListExportJob::dispatch($tokenId, $requestAll);
+            ProductListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
             return response()->json([
                 'message' => 'Export started. You will receive a download link when it is ready.',
 

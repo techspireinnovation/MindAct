@@ -39,7 +39,7 @@ class ProductListExportJob implements ShouldQueue
 
             $cacheKey = Helper::buildCacheKey($this->requestUrl);
 
-            $query = parse_url($this->requestUrl, PHP_URL_QUERY); // 'user=42&sort=asc'
+            $query = parse_url($this->requestUrl, PHP_URL_QUERY);
             parse_str($query, $params);
             $companyId = (int) $params['company_id'];
             $randomString = Str::random(5);
@@ -87,7 +87,8 @@ class ProductListExportJob implements ShouldQueue
                 'user_id' => (int) $this->tokenId,
                 'type' => "DOWNLOAD",
                 "data" => [
-                    'message' => 'Product List Export is completed. ',
+                    'title' => 'Product List Export is completed.',
+                    'message' => 'Please download from the button',
                     'url' => url("api/company/download-file/$filename"),
                     'icon' => 'bell'
                 ]

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 
-use App\Events\ProductUpdated;
 use App\Helpers\Helper;
 use App\Models\Product;
 use App\Models\ProductField;
@@ -199,7 +198,7 @@ class ProductController extends Controller
 
 
             // Broadcast event
-            broadcast(new ProductUpdated($products, 'listed'));
+            //broadcast(new ProductUpdated($products, 'listed'));
 
             // Return paginated response with transformed data
             return response()->json([
@@ -441,7 +440,7 @@ class ProductController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('product_lists')
-                        ->ignore($id,'product_id')
+                        ->ignore($id, 'product_id')
                         ->where(function ($query) use ($request, $item) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
@@ -551,7 +550,7 @@ class ProductController extends Controller
                 ProductList::whereIn('id', $productListToDelete)->delete();
             });
 
-            broadcast(new ProductUpdated($product, 'updated'));
+            //broadcast(new ProductUpdated($product, 'updated'));
 
             return response()->json(['message' => 'Product Updated', 'product' => $product->load(['productFieldValues', 'productLists'])]);
         } catch (ModelNotFoundException $e) {
@@ -645,7 +644,7 @@ class ProductController extends Controller
         }
         $broadcast_status = 'initiated';
         try {
-            $data = broadcast(new ProductUpdated($item, 'created'));
+            //$data = broadcast(new ProductUpdated($item, 'created'));
             \Log::info('ProductUpdated event broadcast initiated', ['product_id' => $item->id]);
         } catch (\Exception $e) {
             $broadcast_status = 'failed';
@@ -737,7 +736,7 @@ class ProductController extends Controller
 
             }
             $item->delete();
-            broadcast(new ProductUpdated($item, 'deleted'));
+            //broadcast(new ProductUpdated($item, 'deleted'));
             return response()->json(['message' => 'Product deleted!!']);
 
         } catch (ModelNotFoundException $e) {

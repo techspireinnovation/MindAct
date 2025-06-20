@@ -44,7 +44,7 @@ class GrossProfitListExportJob implements ShouldQueue
             $companyId = (int) $params['company_id'];
             $randomString = Str::random(5);
 
-            $filename = "stock_register_list_{$companyId}_{$randomString}_" . now()->timestamp . ".xlsx";
+            $filename = "gross_profit_list_{$companyId}_{$randomString}_" . now()->timestamp . ".xlsx";
 
             if (Cache::has($cacheKey)) {
                 $compressed = Cache::get($cacheKey);
@@ -70,7 +70,7 @@ class GrossProfitListExportJob implements ShouldQueue
                         'Product Name' => $item->name,
 
                         "Opening Qty" => $item->opening_quantity ?? 0,
-                        "Opening Amount" => round(($item->opening_rate ?? 0) * ($item->opening_quantity), 2),
+                        "Opening Amount" => round(($item->opening_rate ?? 0) * $item->opening_quantity, 2),
 
                         "Qty In" => $item->qtyIn ?? 0,
                         "Amount In" => round($qtyInRate * $qtyIn, 2),
@@ -82,7 +82,7 @@ class GrossProfitListExportJob implements ShouldQueue
                         "Closing Amount" => round($closingAmount, 2),
 
                         "Gross Profit" => round($qtyOutRate * $qtyOut - $qtyInRate * $qtyIn, 2),
-                        "Gp Ratio Profit" => round(($qtyOutRate * $qtyOut - $qtyInRate * $qtyIn) / $qtyOutRate * $qtyOut, 2),
+                        "Gp Ratio Profit" => $qtyOutRate * $qtyOut > 0 ? round(($qtyOutRate * $qtyOut - $qtyInRate * $qtyIn) / ($qtyOutRate * $qtyOut), 2) : 0,
 
                     ];
                 })->collect();

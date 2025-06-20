@@ -84,10 +84,8 @@ class ReportController extends Controller
             if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
                 return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
             }
-
             $items = ProductReport::stockRegisterListDetails($request->all());
-            $items = $items->paginate(250);
-
+            $items = $items->get();
             $items->getCollection()->transform(function ($item) {
                 $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
                 return $item;
@@ -238,26 +236,32 @@ class ReportController extends Controller
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
             }
+        })->whereHas('purchase', function ($query) {
+            $query->whereNull('deleted_at');
         })->get();
-
-        //$purchaseItems->each->append(['primary_unit_name']);
 
         $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "purchase_product_returns.quantity AS purchase_return_qty", DB::raw('0 AS sale_qty'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_product_returns.created_at', '>=', $request->from_date)->whereDate('purchase_product_returns.created_at', '<=', $request->to_date);
             }
+        })->whereHas('purchaseReturn', function ($query) {
+            $query->whereNull('deleted_at');
         })->get();
 
         $saleItems = SaleProduct::select("sale_products.id AS id", "sale_products.quantity AS sale_qty", "sales.invoice_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS purchase_qty'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
             }
+        })->whereHas('sale', function ($query) {
+            $query->whereNull('deleted_at');
         })->get();
 
         $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_qty", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sales_return_products.created_at', '>=', $request->from_date)->whereDate('sales_return_products.created_at', '<=', $request->to_date);
             }
+        })->whereHas('saleReturn', function ($query) {
+            $query->whereNull('deleted_at');
         })->get();
 
         $merged = $saleItems->concat($purchaseItems);
@@ -455,7 +459,8 @@ class ReportController extends Controller
             }
 
             $items = ProductReport::stockRegisterListDetails($request->all());
-            $items = $items->paginate(10);
+            $items = $items->paginate(250);
+
 
             $items->getCollection()->transform(function ($item) {
                 return $item->append([
@@ -468,7 +473,6 @@ class ReportController extends Controller
             Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);
         } else if ($request->type === "download") {
-            GrossProfitListExportJob::dispatch($request->all());
             $user = $request->user();
             $tokenId = $user->currentAccessToken()->id;
             GrossProfitListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));

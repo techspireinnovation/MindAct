@@ -105,7 +105,7 @@ class StockRegisterListExportJob implements ShouldQueue
 
                 // compress and cached it
                 $compressed = gzcompress(serialize($rows));
-                Cache::remember($cacheKey, 10, function () use ($compressed) {
+                Cache::remember($cacheKey, 2600, function () use ($compressed) {
                     return $compressed;
                 });
             }

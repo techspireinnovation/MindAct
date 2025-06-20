@@ -55,45 +55,31 @@ class GrossProfitListExportJob implements ShouldQueue
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {
 
+                    $qtyIn = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
+                    $qtyOut = ($item->sale_quantity ?? 0) + ($item->purchase_return_quantity ?? 0);
+
+                    $qtyInRate = (($item->opening_rate ?? 0) + ($item->purchase_quantity ?? 0) + ($item->sale_return_quantity ?? 0)) / 3;
+                    $qtyOutRate = (($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0)) / 2;
+
                     $closingRate = ($item->opening_rate ?? 0) + (($item->product_purchase_rate ?? 0) + ($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0) + ($item->sale_return_rate ?? 0)) / 4;
 
-                    $closingQty = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) - ($item->sale_quantity ?? 0) - ($item->purchase_return_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
+                    $closingQty = $qtyIn - $qtyOut;
 
                     return [
                         'S.N' => $sn++,
                         'Product Id' => $item->product_unique_id,
                         'Product Name' => $item->name,
+
                         "Opening Qty" => $item->opening_quantity ?? 0,
-                        "Opening Rate" => $item->opening_rate ?? 0,
+                        "Opening Amount" => round(($item->opening_rate ?? 0) * ($item->opening_quantity), 2),
 
-                        "Purchase Qty" => $item->purchase_quantity ?? 0,
-                        "Purchase Rate" => $item->product_purchase_rate ?? 0,
-                        "Purchase Amount" => round(($item->purchase_quantity ?? 0) * ($item->product_purchase_rate ?? 0), 2),
-                        "Debit Note" => "",
-                        "Additional Pur. Cost" => "",
-                        "Per Qty" => "",
-                        "Total Per Qty" => "",
-                        "Total" => "",
-                        "Purchase Return Qty" => $item->purchase_return_quantity ?? 0,
-                        "Purchase Return Rate" => $item->purchase_return_rate ?? 0,
-                        "Purchase Return Amount" => round(($item->purchase_return_quantity ?? 0) * ($item->purchase_return_rate ?? 0), 2),
+                        "Qty In" => $item->qtyIn ?? 0,
+                        "Amount In" => round($qtyInRate * $qtyIn, 2),
 
-                        "Sales Qty" => $item->sale_quantity ?? 0,
-                        "Sales Rate" => $item->sale_rate ?? 0,
-                        "Sales Amount" => round(($item->sale_quantity ?? 0) * ($item->sale_rate ?? 0), 2),
-
-                        "Credit Note" => "",
-
-                        "Sales Return Qty" => $item->sale_return_quantity ?? 0,
-                        "Sales Return Rate" => $item->sale_return_rate ?? 0,
-                        "Sales Return Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
-
-
-
+                        "Qty Out" => $item->$qtyOut ?? 0,
+                        "Amount Out" => round($qtyOutRate * $qtyOut, 2),
 
                         "Closing Qty" => $closingQty,
-                        "Closing Rate" => round($closingRate, 2),
-
                         "Closing Amount" => round($closingRate * $closingQty, 2),
 
                     ];

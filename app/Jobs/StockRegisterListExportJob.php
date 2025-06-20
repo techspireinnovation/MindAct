@@ -147,7 +147,7 @@ class StockRegisterListExportJob implements ShouldQueue
         }
     }
 
-    public function failed(\Throwable $exception)
+    public function failed()
     {
         event(new ReportEvent($this->tokenId, ["exportJob" => ['downloadCompleted' => false, 'jobType' => 'productListExport']]));
     }

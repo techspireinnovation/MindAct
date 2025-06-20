@@ -455,10 +455,10 @@ class ReportController extends Controller
             }
 
             $items = ProductReport::stockRegisterListDetails($request->all());
-            $items = $items->paginate(250);
+            $items = $items->paginate(10);
 
             $items->getCollection()->transform(function ($item) {
-                $item->append([
+                return $item->append([
                     'stock_opening',
                     'purchase_detail',
                     'sale_detail'

@@ -44,7 +44,7 @@ class GrossProfitListExportJob implements ShouldQueue
             $companyId = (int) $params['company_id'];
             $randomString = Str::random(5);
 
-            $filename = "stock_register_list_{$companyId}_{$randomString}_" . now()->timestamp . ".xlsx";
+            $filename = "gross_profit_list_{$companyId}_{$randomString}_" . now()->timestamp . ".xlsx";
 
             if (Cache::has($cacheKey)) {
                 $compressed = Cache::get($cacheKey);

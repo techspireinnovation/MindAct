@@ -84,19 +84,12 @@ class ReportController extends Controller
             if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
                 return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
             }
-
-            \DB::connection()->enableQueryLog();
-
             $items = ProductReport::stockRegisterListDetails($request->all());
             $items = $items->get();
-
-            $queries = \DB::getQueryLog();
-            dd($queries);
-
-            // $items->getCollection()->transform(function ($item) {
-            //   $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', /////'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
-            // return $item;
-            //});
+            $items->getCollection()->transform(function ($item) {
+                $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
+                return $item;
+            });
             Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);
 
@@ -466,7 +459,7 @@ class ReportController extends Controller
             }
 
             $items = ProductReport::stockRegisterListDetails($request->all());
-            $items = $items->paginate(10);
+            $items = $items->paginate(250);
 
 
             $items->getCollection()->transform(function ($item) {
@@ -480,7 +473,6 @@ class ReportController extends Controller
             Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);
         } else if ($request->type === "download") {
-            GrossProfitListExportJob::dispatch($request->all());
             $user = $request->user();
             $tokenId = $user->currentAccessToken()->id;
             GrossProfitListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));

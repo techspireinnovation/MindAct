@@ -88,7 +88,7 @@ class ProductListExportJob implements ShouldQueue
                 'type' => "DOWNLOAD",
                 "data" => [
                     'title' => 'Product List Export is completed.',
-                    'message' => 'Please download from the button',
+                    'message' => 'Your product list has been successfully exported and is ready for download.',
                     'url' => url("api/company/download-file/$filename"),
                     'icon' => 'bell'
                 ]

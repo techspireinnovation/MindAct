@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Report;
 
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
+use App\Jobs\GrossProfitListExportJob;
 use App\Jobs\ProductListExportJob;
 use App\Jobs\StockRegisterListExportJob;
 use App\Models\Customer;
@@ -433,18 +434,43 @@ class ReportController extends Controller
         $validator = Validator::make($request->all(), [
             'from_date' => 'required',
             'to_date' => 'required',
+            'type' => 'required|string|in:list,download',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $products = Product::when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
-            $query->whereBetween('created_at', [$request->from_date, $request->to_date]);
-        })->get();
+        if ($request->type === "list") {
 
-        $products->each->append(['stock_opening', 'purchase_detail', 'sale_detail']);
-        return response()->json($products);
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+            }
+
+            $items = ProductReport::stockRegisterListDetails($request->all());
+            $items = $items->paginate(250);
+
+            $items->getCollection()->transform(function ($item) {
+                $item->append([
+                    'stock_opening',
+                    'purchase_detail',
+                    'sale_detail'
+                ]);
+
+            });
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
+            return response()->json($items);
+        } else if ($request->type === "download") {
+            GrossProfitListExportJob::dispatch($request->all());
+            $user = $request->user();
+            $tokenId = $user->currentAccessToken()->id;
+            GrossProfitListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
+            return response()->json([
+                'message' => 'Gross Profit List export started. You will receive a download link when it is ready.',
+            ]);
+
+        }
+        return response()->json([]);
     }
 
 

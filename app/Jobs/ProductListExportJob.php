@@ -94,7 +94,7 @@ class ProductListExportJob implements ShouldQueue
                 ]
             ];
             Notification::create($notification);
-            event(new ReportEvent($this->tokenId, ["productListExportJob" => ['downloadCompleted' => true, 'fileUrl' => url("api/company/download-file/$filename")]]));
+            event(new ReportEvent($this->tokenId, ["exportJob" => ['downloadCompleted' => true, 'jobType' => 'productListExport', 'fileUrl' => url("api/company/download-file/$filename")]]));
 
 
         } catch (\Exception $e) {

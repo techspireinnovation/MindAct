@@ -54,9 +54,9 @@ class StockRegisterListExportJob implements ShouldQueue
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {
 
-                    $closingRate = ($item->opening_rate ?? 0) + (($item->product_purchase_rate ?? 0) + ($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0) + ($item->sale_return_rate ?? 0)) / 4;
+                    //  $closingRate = ($item->opening_rate ?? 0) + (($item->product_purchase_rate ?? 0) + ($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0) + ($item->sale_return_rate ?? 0)) / 4;
 
-                    $closingQty = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) - ($item->sale_quantity ?? 0) - ($item->purchase_return_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
+                    // $closingQty = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) - ($item->sale_quantity ?? 0) - ($item->purchase_return_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
 
                     return [
                         'S.N' => $sn++,
@@ -72,19 +72,19 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Per Qty" => "",
                         "Total Per Qty" => "",
                         "Total" => "",
-                        "Purchase Return Qty" => $item->purchase_return_quantity ?? 0,
-                        "Purchase Return Rate" => $item->purchase_return_rate ?? 0,
-                        "Purchase Return Amount" => round(($item->purchase_return_quantity ?? 0) * ($item->purchase_return_rate ?? 0), 2),
+                        //   "Purchase Return Qty" => $item->purchase_return_quantity ?? 0,
+                        //  "Purchase Return Rate" => $item->purchase_return_rate ?? 0,
+                        // "Purchase Return Amount" => round(($item->purchase_return_quantity ?? 0) * ($item->purchase_return_rate ?? 0), 2),
 
-                        "Sales Qty" => $item->sale_quantity ?? 0,
-                        "Sales Rate" => $item->sale_rate ?? 0,
-                        "Sales Amount" => round(($item->sale_quantity ?? 0) * ($item->sale_rate ?? 0), 2),
+                        //    "Sales Qty" => $item->sale_quantity ?? 0,
+                        //   "Sales Rate" => $item->sale_rate ?? 0,
+                        //  "Sales Amount" => round(($item->sale_quantity ?? 0) * ($item->sale_rate ?? 0), 2),
 
                         "Credit Note" => "",
 
-                        "Sales Return Qty" => $item->sale_return_quantity ?? 0,
-                        "Sales Return Rate" => $item->sale_return_rate ?? 0,
-                        "Sales Return Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
+                        //"Sales Return Qty" => $item->sale_return_quantity ?? 0,
+                        //"Sales Return Rate" => $item->sale_return_rate ?? 0,
+                        //"Sales Return Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
 
                         "Adj. Qty" => 0,
                         "Adj. Qty Rate" => 0,
@@ -102,10 +102,10 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Production Rate" => 0,
                         "Production Quantity" => 0,
 
-                        "Closing Qty" => $closingQty,
-                        "Closing Rate" => round($closingRate, 2),
+                        // "Closing Qty" => $closingQty,
+                        // "Closing Rate" => round($closingRate, 2),
 
-                        "Closing Amount" => round($closingRate * $closingQty, 2),
+                        // "Closing Amount" => round($closingRate * $closingQty, 2),
 
                         'Category' => optional($item->category)->name,
                         'Sub Category' => optional($item->subCategory)->name,

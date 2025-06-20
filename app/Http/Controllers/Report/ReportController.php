@@ -264,9 +264,9 @@ class ReportController extends Controller
             $query->whereNull('deleted_at');
         })->get();
 
-        $merged = $saleItems->concat($purchaseItems);
+        $merged = $purchaseItems->concat($saleReturnItems);
+        $merged = $merged->concat($saleItems);
         $merged = $merged->concat($purchaseReturnItems);
-        $merged = $merged->concat($saleReturnItems);
         $merged = $merged->concat($stockAdjustments);
         $transactions = $merged->concat($openingItems);
 

@@ -137,9 +137,9 @@ class StockRegisterListExportJob implements ShouldQueue
             event(new ReportEvent($this->tokenId, ["exportJob" => ['downloadCompleted' => true, 'jobType' => 'productListExport', 'fileUrl' => url("api/company/download-file/$filename")]]));
 
         } catch (\Exception $e) {
-            \Log::error("---->> StockRegisterListExportJob Error <---");
-            \Log::error($e->getMessage());
-            \Log::error("---->> StockRegisterListExportJob Error End <---");
+            Log::error("---->> StockRegisterListExportJob Error <---");
+            Log::error($e->getMessage());
+            Log::error("---->> StockRegisterListExportJob Error End <---");
         }
     }
 }

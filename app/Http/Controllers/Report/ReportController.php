@@ -232,13 +232,15 @@ class ReportController extends Controller
             }
         })->get();
 
-        $purchaseItems = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.quantity AS purchase_qty", "purchases.purchase_bill_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "purchase_products.product_id AS product_id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $purchaseItems = PurchaseProduct::select("purchase_products.id AS id", "purchase_products.quantity AS purchase_qty", "purchase_products.measure_unit_id AS measure_unit_id", "measure_units.name AS measure_unit_name", "purchases.purchase_bill_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "purchase_products.product_id AS product_id", "purchase_products.customer_id AS customer_id", "purchases.invoice_date AS date")->leftJoin("measure_units", "measure_units.id", "=", "purchase_products.measure_unit_id")->leftJoin("purchases", "purchases.id", "=", "purchase_products.purchase_id")->leftJoin("customers", "customers.id", "=", "purchases.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_products.created_at', '>=', $request->from_date)->whereDate('purchase_products.created_at', '<=', $request->to_date);
             }
         })->whereHas('purchase', function ($query) {
             $query->whereNull('deleted_at');
         })->get();
+
+        $purchaseItems->each->append('primary_unit_qty');
 
         $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "purchase_product_returns.quantity AS purchase_return_qty", DB::raw('0 AS sale_qty'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
@@ -272,8 +274,7 @@ class ReportController extends Controller
 
         $balance = 0;
         $transactions->sortBy('date')->each(function ($transaction) use (&$balance, $product) {
-
-            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['purchase_qty'] ?? 0) - ($transaction['purchase_return_qty'] ?? 0) - ($transaction['sale_qty'] ?? 0) + ($transaction['sale_return_qty'] ?? 0);
+            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['primary_unit_qty'] ?? 0) - ($transaction['purchase_return_qty'] ?? 0) - ($transaction['sale_qty'] ?? 0) + ($transaction['sale_return_qty'] ?? 0);
             $transaction['total_quantity'] = $balance;
             $transaction['primary_unit_name'] = $product->getPrimaryMeasureUnitAttribute()->name;
         });

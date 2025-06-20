@@ -72,13 +72,13 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Per Qty" => "",
                         "Total Per Qty" => "",
                         "Total" => "",
-                        //   "Purchase Return Qty" => $item->purchase_return_quantity ?? 0,
-                        //  "Purchase Return Rate" => $item->purchase_return_rate ?? 0,
-                        // "Purchase Return Amount" => round(($item->purchase_return_quantity ?? 0) * ($item->purchase_return_rate ?? 0), 2),
+                        "Purchase Return Qty" => $item->purchase_return_quantity ?? 0,
+                        "Purchase Return Rate" => $item->purchase_return_rate ?? 0,
+                        "Purchase Return Amount" => round(($item->purchase_return_quantity ?? 0) * ($item->purchase_return_rate ?? 0), 2),
 
-                        //    "Sales Qty" => $item->sale_quantity ?? 0,
-                        //   "Sales Rate" => $item->sale_rate ?? 0,
-                        //  "Sales Amount" => round(($item->sale_quantity ?? 0) * ($item->sale_rate ?? 0), 2),
+                        "Sales Qty" => $item->sale_quantity ?? 0,
+                        "Sales Rate" => $item->sale_rate ?? 0,
+                        "Sales Amount" => round(($item->sale_quantity ?? 0) * ($item->sale_rate ?? 0), 2),
 
                         "Credit Note" => "",
 

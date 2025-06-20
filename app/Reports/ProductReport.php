@@ -32,6 +32,11 @@ class ProductReport
         if (isset($request['product_id'])) {
             $items->where('id', operator: $request['product_id']);
         }
+
+        if (isset($request['company_id'])) {
+            $items->where('company_id', operator: $request['company_id']);
+        }
+
         if (isset($request['brand_id'])) {
             $items->where('brand_id', $request['brand_id']);
         }
@@ -59,7 +64,11 @@ class ProductReport
             'subCategory:id,name',
             'brand:id,name',
             'productType:id,name',
-        ]);
+        ])->where('products.id', '<', 100);
+
+        if (isset($request['company_id'])) {
+            $items->where('company_id', operator: $request['company_id']);
+        }
 
         if (isset($request['from_date']) && isset($request['to_date'])) {
             $items->whereDate('products.created_at', '>=', $request['from_date'])->whereDate('products.created_at', '<=', $request['to_date']);

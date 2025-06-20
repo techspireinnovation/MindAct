@@ -37,3 +37,8 @@ mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql
 
 -   sudo ps aux | grep artisan
 -   sudo supervisorctl restart all
+-   sudo supervisorctl status
+
+# Supervisor Path
+
+-   sudo nano /etc/supervisor/conf.d/laravel-worker.conf

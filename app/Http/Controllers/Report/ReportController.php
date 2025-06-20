@@ -38,26 +38,26 @@ class ReportController extends Controller
         }
 
         if ($request->type === "list") {
-            if (Helper::checkDataInCache($request->all())) {
-                return response()->json(Helper::getDataFromCache($request->all()));
+
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
             }
 
             $items = ProductReport::productListDetails($request->all());
-            $items = $items->paginate(400);
+            $items = $items->paginate(250);
             $items->getCollection()->transform(function ($item) {
                 $item->last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                 $item->last_purchase_rate_amount_vat = Helper::getProductVatableAmount($item->id, $item->last_purchase_rate_amount ?? 0);
                 $item->append('product_stock_quantity');
                 return $item;
             });
-            Helper::applyCache($request->all(), $items);
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
 
             return response()->json($items);
         } else if ($request->type === "download") {
             $user = $request->user();
             $tokenId = $user->currentAccessToken()->id;
-            $requestAll = $request->all();
-            ProductListExportJob::dispatch($tokenId, $requestAll);
+            ProductListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
             return response()->json([
                 'message' => 'Export started. You will receive a download link when it is ready.',
 
@@ -79,20 +79,27 @@ class ReportController extends Controller
             return response()->json($validator->errors(), 422);
         }
         if ($request->type === "list") {
+
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+            }
+
             $items = ProductReport::stockRegisterListDetails($request->all());
-            $items = $items->paginate(300);
+            $items = $items->paginate(250);
 
             $items->getCollection()->transform(function ($item) {
                 $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
                 return $item;
             });
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);
 
         } else if ($request->type === "download") {
-            StockRegisterListExportJob::dispatch($request->all());
+            $user = $request->user();
+            $tokenId = $user->currentAccessToken()->id;
+            StockRegisterListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
             return response()->json([
-                'message' => 'Stock Register List Export started. You will receive a download link when it is ready.',
-
+                'message' => 'Stock Register List export started. You will receive a download link when it is ready.',
             ]);
 
         }

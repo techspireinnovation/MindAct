@@ -13,11 +13,13 @@ class NotificationController extends Controller
      */
     public function index(Request $request)
     {
+        $tokenId = auth()->user()->currentAccessToken()->id;
+
         return response()->json([
-            'unread' => $request->user()->notifications()
+            'unread' => Notification::whereUserId($tokenId)
                 ->whereNull('read_at')->latest()->get(),
-            'read' => $request->user()->notifications()
-                ->whereNotNull('read_at')->latest()->get()
+            'read' => Notification::whereUserId($tokenId)
+                ->whereNotNull('read_at')->latest()->take(5)->get()
         ]);
     }
 

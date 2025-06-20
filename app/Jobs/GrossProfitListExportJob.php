@@ -117,4 +117,9 @@ class GrossProfitListExportJob implements ShouldQueue
             Log::error("---->> GrossProfitListExportJob Error End <---");
         }
     }
+
+    public function failed(\Throwable $exception)
+    {
+        event(new ReportEvent($this->tokenId, ["exportJob" => ['downloadCompleted' => false, 'jobType' => 'grossProfitListExport']]));
+    }
 }

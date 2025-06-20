@@ -50,7 +50,6 @@ class StockRegisterListExportJob implements ShouldQueue
                 $compressed = Cache::get($cacheKey);
                 $rows = unserialize(gzuncompress($compressed));
             } else {
-
                 $items = ProductReport::stockRegisterListDetails($params);
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {

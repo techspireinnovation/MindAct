@@ -9,6 +9,7 @@ use App\Reports\ProductReport;
 use Cache;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Log;
 use Rap2hpoutre\FastExcel\FastExcel;
 use Storage;
 use Str;
@@ -51,32 +52,60 @@ class StockRegisterListExportJob implements ShouldQueue
             } else {
 
                 $items = ProductReport::stockRegisterListDetails($params);
-
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {
                     $last_purchase_rate_amount = Helper::getPrimaryRateAmount($item->id, $item->lastPurchase->id ?? 0);
                     return [
-                        'SN' => $sn++,
+                        'S.N' => $sn++,
                         'Product Id' => $item->product_unique_id,
                         'Product Name' => $item->name,
-                        'HS Code' => optional($item->primaryProductItem)->hs_code,
-                        'Bar Code' => optional($item->primaryProductItem)->barcode,
-                        'UOM' => optional($item->primaryProductItem->measureUnit)->name,
-                        'Quantity' => $item->product_stock_quantity,
-                        'Rate With Vat' => round(Helper::getProductVatableAmount($item->id, $last_purchase_rate_amount ?? 0), 2),
-                        'Rate Without Vat' => round($last_purchase_rate_amount, 2),
-                        'Location' => optional($item->location)->name,
-                        'Category' => optional($item->category)->name,
-                        'Sub Category' => optional($item->subCategory)->name,
-                        'Brand' => optional($item->brand)->name,
-                        'Vat Type' => ($item->is_vatable) ? "Yes" : "No",
-                        'Product Type' => optional($item->productType)->name,
+                        'UOM' => optional($item->primary_measure_unit)->name,
+                        "Opening Qty" => $item->opening_quantity ?? 0,
+                        "Purchase Qty" => $item->purchase_quantity ?? 0,
+                        "Purchase Rate" => $item->product_purchase_rate ?? 0,
+                        "Purchase Amount" => round(($item->purchase_quantity ?? 0) * ($item->product_purchase_rate ?? 0), 2),
+                        "Debit Note" => "",
+                        "Additional Pur. Cost" => "",
+                        "Per Qty" => "",
+                        "Total Per Qty" => "",
+                        "Total" => "",
+                        "Purchase Return Qty" => $item->purchase_return_quantity ?? 0,
+                        "Purchase Return Rate" => $item->purchase_return_rate ?? 0,
+                        "Purchase Return Amount" => round(($item->purchase_return_quantity ?? 0) * ($item->purchase_return_rate ?? 0), 2),
+
+                        "Sales Qty" => $item->sale_quantity ?? 0,
+                        "Sales Rate" => $item->sale_rate ?? 0,
+                        "Sales Amount" => round(($item->sale_quantity ?? 0) * ($item->sale_rate ?? 0), 2),
+
+                        "Credit Note" => "",
+
+                        "Sales Return Qty" => $item->sale_return_quantity ?? 0,
+                        "Sales Return Rate" => $item->sale_return_rate ?? 0,
+                        "Sales Return Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
+
+                        "Adj. Qty" => 0,
+                        "Adj. Qty Rate" => 0,
+                        "Adj. Qty Quantity" => 0,
+
+                        "Stock In" => 0,
+                        "Stock In Rate" => 0,
+                        "Stock In Quantity" => 0,
+
+                        "Stock Out" => 0,
+                        "Stock Out Rate" => 0,
+                        "Stock Out Quantity" => 0,
+
+                        "Production" => 0,
+                        "Production Rate" => 0,
+                        "Production Quantity" => 0,
+
+
                     ];
                 })->collect();
 
                 // compress and cached it
                 $compressed = gzcompress(serialize($rows));
-                Cache::remember($cacheKey, 3600, function () use ($compressed) {
+                Cache::remember($cacheKey, 10, function () use ($compressed) {
                     return $compressed;
                 });
             }

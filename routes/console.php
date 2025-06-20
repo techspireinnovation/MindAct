@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('backup:run', ['--only-db'])->twiceDaily();
 Schedule::command('backup:clean')->weekly();
+Schedule::command('app:clear-old-file')->daily();

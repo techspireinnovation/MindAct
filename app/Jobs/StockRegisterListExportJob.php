@@ -99,7 +99,16 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Production Rate" => 0,
                         "Production Quantity" => 0,
 
+                        "Closing Qty" => $item->sale_return_quantity ?? 0,
+                        "Closing Rate" => $item->sale_return_rate ?? 0,
+                        "Closing Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
 
+                        'Category' => optional($item->category)->name,
+                        'Sub Category' => optional($item->subCategory)->name,
+                        'Brand' => optional($item->brand)->name,
+                        'Vat Type' => ($item->is_vatable) ? "Yes" : "No",
+                        'Product Type' => optional($item->productType)->name,
+                        'Location' => optional($item->location)->name,
                     ];
                 })->collect();
 

@@ -8,10 +8,12 @@ Route::get('/', function () {
 });
 
 Route::get('/phpinfo', function () {
+
     $tenant = Tenant::create([
-        'id' => 'company1234',
-        'data' => ['name' => 'Company 1234']
+        'id' => 'company12345',
+        'data' => ['name' => 'Company 12345']
     ]);
+    $tenant->domains()->create(['domain' => 'foo.localhost']);
 
     ob_start();
     phpinfo();

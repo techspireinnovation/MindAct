@@ -138,7 +138,7 @@ class PurchaseProduct extends Model
         return NepaliDate::create($this->created_at)->toBS();
     }
 
-    public function getPrimaryUnitQtyAttribute()
+    public function getPurchasedPrimaryUnitQtyAttribute()
     {
         $averagePrice = self::where(['id' => $this->id])->get()->map(function ($purchaseProduct) {
 

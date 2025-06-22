@@ -117,4 +117,24 @@ class SaleProduct extends Model
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }
 
+    public function getSoledPrimaryUnitQtyAttribute()
+    {
+        $averagePrice = self::where(['id' => $this->id])->get()->map(function ($item) {
+
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($item->product_id, $item->measure_unit_id ?? 0, $item->quantity ?? 0, $item->price));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $averagePrice['primary_units'];
+
+    }
+
 }

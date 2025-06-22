@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -78,5 +79,26 @@ class SalesReturnProduct extends Model
     public function getSaleReturnAverageRateAttribute()
     {
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
+    }
+
+
+    public function getSaleReturnedPrimaryUnitQtyAttribute()
+    {
+        $averagePrice = self::where(['id' => $this->id])->get()->map(function ($purchaseProduct) {
+
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id ?? 0, $purchaseProduct->quantity ?? 0, $purchaseProduct->price));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $averagePrice['primary_units'];
+
     }
 }

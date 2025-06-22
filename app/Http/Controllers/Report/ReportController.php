@@ -277,7 +277,7 @@ class ReportController extends Controller
 
         $balance = 0;
         $transactions->sortBy('date')->each(function ($transaction) use (&$balance, $product) {
-            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['primary_unit_qty'] ?? 0) - ($transaction['purchase_returned_primary_unit_qty'] ?? 0) - ($transaction['soled_primary_unit_qty'] ?? 0) + ($transaction['sale_returned_primary_unit_qty'] ?? 0);
+            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['purchased_primary_unit_qty'] ?? 0) - ($transaction['purchase_returned_primary_unit_qty'] ?? 0) - ($transaction['soled_primary_unit_qty'] ?? 0) + ($transaction['sale_returned_primary_unit_qty'] ?? 0);
             $transaction['total_quantity'] = $balance;
             $transaction['primary_unit_name'] = $product->getPrimaryMeasureUnitAttribute()->name;
         });

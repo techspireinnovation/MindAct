@@ -309,7 +309,9 @@ class Helper
                 ];
             });
 
-        $productData['product_field_values'] = $productDetail->productFieldValues->map(function ($fieldValue) {
+        $productData['product_field_values'] = $productDetail->productFieldValues->filter(function ($fieldValue) {
+            return $fieldValue->productField !== null;
+        })->map(function ($fieldValue) {
             return [
                 'id' => $fieldValue->id,
                 'company_id' => $fieldValue->company_id,
@@ -317,7 +319,7 @@ class Helper
                 'product_id' => $fieldValue->product_id,
                 'value' => $fieldValue->productField->name ?? null,
                 // 'name' => $fieldValue->productField->name ?? null,
-                
+
                 'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
                 'values' => $fieldValue->productField->values ?? null,
                 'deleted_at' => $fieldValue->deleted_at,

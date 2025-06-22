@@ -573,12 +573,20 @@ class SaleController extends Controller
             $purchaseProducts = $purchaseProductsQuery->get();
 
             // Fetch sold quantity indexes
+            // Fetch sold quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')
                 ->select([
                     'sale_products.purchase_product_id',
                     'sales_product_field_values.quantity_index'
                 ])
                 ->join('sale_products', 'sales_product_field_values.sale_product_id', '=', 'sale_products.id')
+                ->join('product_field_values', function ($join) use ($companyId, $productIds) {
+                    $join->on('sales_product_field_values.product_field_id', '=', 'product_field_values.product_field_id')
+                        ->on('sales_product_field_values.value', '=', 'product_field_values.value')
+                        ->where('product_field_values.company_id', $companyId)
+                        ->whereIn('product_field_values.product_id', $productIds)
+                        ->whereNull('product_field_values.deleted_at');
+                })
                 ->whereIn('sale_products.purchase_product_id', $purchaseProducts->pluck('purchase_product_id'))
                 ->where('sale_products.company_id', $companyId)
                 ->whereNull('sale_products.deleted_at')
@@ -620,9 +628,18 @@ class SaleController extends Controller
                     'purchase_product_field_values.value',
                     'purchase_product_field_values.quantity_index'
                 ])
-                ->leftJoin('product_fields', function ($join) use ($companyId) {
+                ->join('product_fields', function ($join) use ($companyId) {
                     $join->on('purchase_product_field_values.product_field_id', '=', 'product_fields.id')
-                        ->where('product_fields.company_id', $companyId);
+                        ->where('product_fields.company_id', $companyId)
+                        ->whereNUll('product_fields.deleted_at');
+                })
+                ->join('product_field_values', function ($join) use ($companyId, $productIds) {
+                    $join->on('purchase_product_field_values.product_field_id', '=', 'product_field_values.product_field_id')
+                        ->on('purchase_product_field_values.value', '=', 'product_field_values.value')
+                        ->where('product_field_values.company_id', $companyId)
+                        ->whereIn('product_field_values.product_id', $productIds)
+                        ->whereNull('product_field_values.deleted_at');
+
                 })
                 ->whereIn('purchase_product_field_values.purchase_product_id', $purchaseProducts->pluck('purchase_product_id'))
                 ->where('purchase_product_field_values.company_id', $companyId)
@@ -640,11 +657,11 @@ class SaleController extends Controller
                 $lastSalesPrice = SaleProduct::where('product_id', $productId)
                     ->whereNull('deleted_at')
                     ->orderByDesc('created_at')
-                    ->value('price'); 
-                 
-                $averageSalesPrice = round($salesPrice->avg(),2);  
-                $minSalesPrice = round($salesPrice->min(),2);   
-                $latesrSalesPrice =round($lastSalesPrice,2);
+                    ->value('price');
+
+                $averageSalesPrice = round($salesPrice->avg(), 2);
+                $minSalesPrice = round($salesPrice->min(), 2);
+                $latesrSalesPrice = round($lastSalesPrice, 2);
 
                 $productFieldValues = collect();
                 $productPurchaseProducts = $purchaseProducts->filter(function ($pp) use ($productId) {

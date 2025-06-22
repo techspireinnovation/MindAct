@@ -267,7 +267,7 @@ class Product extends Model
     {
         $averagePrice = PurchaseProduct::where(['product_id' => $this->id])->get()->map(function ($purchase) {
 
-            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price));
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
 
             return [
                 'total_price' => $primaryEntities[1],

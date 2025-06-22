@@ -467,12 +467,7 @@ class ReportController extends Controller
 
 
             $items->getCollection()->transform(function ($item) {
-                return $item->append([
-                    'stock_opening',
-                    'purchase_detail',
-                    'sale_detail'
-                ]);
-
+                return $item->append(['opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate']);
             });
             Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);

@@ -47,6 +47,10 @@ class ProductReport
         if (isset($request['sub_category_id'])) {
             $items->where('sub_category_id', $request['sub_category_id']);
         }
+
+        if (isset($request['category_id'])) {
+            $items->where('category_id', $request['category_id']);
+        }
         if (isset($request['location_id'])) {
             $items->where('location_id', $request['location_id']);
         }

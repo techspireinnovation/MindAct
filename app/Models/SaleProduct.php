@@ -117,7 +117,7 @@ class SaleProduct extends Model
         return self::where('product_id', $this->product_id)->avg('price') ?? 0;
     }
 
-    public function getSoledPrimaryUnitQtyAttribute()
+    public function getSoldPrimaryUnitQtyAttribute()
     {
         $averagePrice = self::where(['id' => $this->id])->get()->map(function ($item) {
 

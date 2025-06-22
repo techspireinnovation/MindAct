@@ -258,7 +258,7 @@ class ReportController extends Controller
         })->whereHas('sale', function ($query) {
             $query->whereNull('deleted_at');
         })->get();
-        $saleItems->each->append('soled_primary_unit_qty');
+        $saleItems->each->append('sold_primary_unit_qty');
 
         $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_return_products.measure_unit_id AS measure_unit_id", "measure_units.name AS measure_unit_name", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_qty", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("measure_units", "measure_units.id", "=", "sales_return_products.measure_unit_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {

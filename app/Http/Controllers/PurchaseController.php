@@ -121,7 +121,7 @@ class PurchaseController extends Controller
             dd($e->getMessage());
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
-
+            dd($e->getMessage());
             return response()->json(['errors' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -135,7 +135,7 @@ class PurchaseController extends Controller
 
             $validated = $request->validate([
                 'ref_bill_number' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('purchases')
@@ -448,7 +448,7 @@ class PurchaseController extends Controller
 
         $validated = $request->validate([
             'ref_bill_number' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
                 Rule::unique('purchases')
@@ -527,6 +527,7 @@ class PurchaseController extends Controller
             'purchase_products.*.field_values.*' => 'array',
             'purchase_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
             'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
+            'purchase_products.*.field_values.*.*.quantity_type' => 'required|string|max:255',
         ]);
 
         try {
@@ -618,6 +619,7 @@ class PurchaseController extends Controller
                                         'company_id' => $purchaseProduct->company_id,
                                         'purchase_product_id' => $purchaseProduct->id,
                                         'quantity_index' => $quantityIndex,
+                                        'quantity_type' => $fieldValue['quantity_type'],
                                     ];
                                 }
                             }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,7 +18,7 @@ class PurchaseProductReturn extends Model
         'product_name',
         'customer_id',
         'company_id',
-        
+
         'product_id',
         'quantity',
         'mfd',
@@ -97,8 +98,27 @@ class PurchaseProductReturn extends Model
 
     public function getPurchaseReturnCustomerAttribute()
     {
-        //dd($this);
         return $this->belongsTo(PurchaseReturn::class, 'purchase_return_id', 'id');
+    }
+
+    public function getPurchaseReturnedPrimaryUnitQtyAttribute()
+    {
+        $averagePrice = self::where(['id' => $this->id])->get()->map(function ($purchaseProduct) {
+
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id ?? 0, $purchaseProduct->quantity ?? 0, $purchaseProduct->price));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $averagePrice['primary_units'];
+
     }
 
 }

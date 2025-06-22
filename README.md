@@ -29,7 +29,7 @@ ERP stands for Enterprise Resource Planning, and it's a type of software that he
 1. Import Database mysql
 
 ```
-mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql
+ mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql
 
 ```
 
@@ -42,3 +42,11 @@ mysql -u mantra1 -p mantraerp_prod1 < matraerp.sql
 # Supervisor Path
 
 -   sudo nano /etc/supervisor/conf.d/laravel-worker.conf
+
+# Redis
+
+1. Clear Cache
+
+```
+ redis-cli flushall
+```

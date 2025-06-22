@@ -64,6 +64,9 @@ class GrossProfitListExportJob implements ShouldQueue
                     $closingAmount = $qtyInRate * $qtyIn - $qtyOutRate * $qtyOut;
                     $closingQty = $qtyIn - $qtyOut;
 
+                    $grossProfit = $qtyOut > 0 ? $qtyIn - $qtyOut : 0;
+                    $grossProfitRatio = $qtyOutRate * $qtyOut > 0 ? ($grossProfit * 100 / $qtyOut) : 0;
+
                     return [
                         'S.N' => $sn++,
                         'Product Id' => $item->product_unique_id,
@@ -81,8 +84,8 @@ class GrossProfitListExportJob implements ShouldQueue
                         "Closing Qty" => $closingQty,
                         "Closing Amount" => round($closingAmount, 2),
 
-                        "Gross Profit" => round($qtyOutRate * $qtyOut - $qtyInRate * $qtyIn, 2),
-                        "Gp Ratio Profit" => $qtyOutRate * $qtyOut > 0 ? round(($qtyOutRate * $qtyOut - $qtyInRate * $qtyIn) / ($qtyOutRate * $qtyOut), 2) : 0,
+                        "Gross Profit" => round($grossProfit, 2),
+                        "Gp Ratio Profit" => round($grossProfitRatio, 2),
 
                     ];
                 })->collect();

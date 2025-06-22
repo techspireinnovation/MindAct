@@ -47,8 +47,16 @@ class ProductReport
         if (isset($request['sub_category_id'])) {
             $items->where('sub_category_id', $request['sub_category_id']);
         }
+
+        if (isset($request['category_id'])) {
+            $items->where('category_id', $request['category_id']);
+        }
         if (isset($request['location_id'])) {
             $items->where('location_id', $request['location_id']);
+        }
+
+        if (isset($request['is_vatable'])) {
+            $items->where('is_vatable', $request['is_vatable']);
         }
 
         return $items;
@@ -56,7 +64,7 @@ class ProductReport
 
     public static function stockRegisterListDetails(array $request): Builder
     {
-        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.category_id", "products.sub_category_id")->with([
+        $items = Product::select("products.id", "products.product_unique_id", "products.is_vatable", "products.name", "products.product_type_id", "products.location_id", "products.name", "products.brand_id", "products.is_vatable", "products.category_id", "products.sub_category_id")->with([
             'lastPurchase',
             'primaryProductItem',
             'category:id,name',
@@ -72,6 +80,32 @@ class ProductReport
 
         if (isset($request['from_date']) && isset($request['to_date'])) {
             $items->whereDate('products.created_at', '>=', $request['from_date'])->whereDate('products.created_at', '<=', $request['to_date']);
+        }
+
+        if (isset($request['product_id'])) {
+            $items->where('id', operator: $request['product_id']);
+        }
+
+        if (isset($request['brand_id'])) {
+            $items->where('brand_id', $request['brand_id']);
+        }
+        if (isset($request['product_type_id'])) {
+            $items->where('product_type_id', $request['product_type_id']);
+        }
+
+        if (isset($request['sub_category_id'])) {
+            $items->where('sub_category_id', $request['sub_category_id']);
+        }
+
+        if (isset($request['category_id'])) {
+            $items->where('category_id', $request['category_id']);
+        }
+        if (isset($request['location_id'])) {
+            $items->where('location_id', $request['location_id']);
+        }
+
+        if (isset($request['is_vatable'])) {
+            $items->where('is_vatable', $request['is_vatable']);
         }
         return $items;
 

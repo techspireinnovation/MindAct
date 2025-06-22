@@ -240,31 +240,34 @@ class ReportController extends Controller
             $query->whereNull('deleted_at');
         })->get();
 
-        $purchaseItems->each->append('primary_unit_qty');
+        $purchaseItems->each->append('purchased_primary_unit_qty');
 
-        $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "purchase_product_returns.quantity AS purchase_return_qty", DB::raw('0 AS sale_qty'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $purchaseReturnItems = PurchaseProductReturn::select("purchase_product_returns.id AS id", "purchase_product_returns.measure_unit_id AS measure_unit_id", "customers.party_name AS customer_name", "purchase_returns.purchase_bill_number AS bill_number", "measure_units.name AS measure_unit_name", "purchase_product_returns.quantity AS purchase_return_qty", DB::raw('0 AS sale_qty'), "purchase_product_returns.product_id AS product_id", "purchase_product_returns.customer_id AS customer_id", "purchase_returns.invoice_date AS date")->leftJoin("measure_units", "measure_units.id", "=", "purchase_product_returns.measure_unit_id")->leftJoin("purchase_returns", "purchase_returns.id", "=", "purchase_product_returns.purchase_return_id")->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('purchase_product_returns.created_at', '>=', $request->from_date)->whereDate('purchase_product_returns.created_at', '<=', $request->to_date);
             }
         })->whereHas('purchaseReturn', function ($query) {
             $query->whereNull('deleted_at');
         })->get();
+        $purchaseReturnItems->each->append('purchase_returned_primary_unit_qty');
 
-        $saleItems = SaleProduct::select("sale_products.id AS id", "sale_products.quantity AS sale_qty", "sales.invoice_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS purchase_qty'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $saleItems = SaleProduct::select("sale_products.id AS id", "measure_units.name AS measure_unit_name", "sale_products.measure_unit_id AS measure_unit_id", "sale_products.quantity AS sale_qty", "sales.invoice_number AS bill_number", "customers.party_name AS customer_name", DB::raw('0 AS purchase_qty'), "sale_products.product_id AS product_id", "sales.customer_id AS customer_id", "sales.invoice_date AS date")->leftJoin("measure_units", "measure_units.id", "=", "sale_products.measure_unit_id")->leftJoin("sales", "sales.id", "=", "sale_products.sale_id")->leftJoin("customers", "customers.id", "=", "sales.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sale_products.created_at', '>=', $request->from_date)->whereDate('sale_products.created_at', '<=', $request->to_date);
             }
         })->whereHas('sale', function ($query) {
             $query->whereNull('deleted_at');
         })->get();
+        $saleItems->each->append('sold_primary_unit_qty');
 
-        $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_qty", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
+        $saleReturnItems = SalesReturnProduct::select("sales_return_products.id AS id", "sales_return_products.measure_unit_id AS measure_unit_id", "measure_units.name AS measure_unit_name", "sales_returns.invoice_number AS bill_number", "sales_return_products.quantity AS sale_return_qty", "customers.party_name AS customer_name", DB::raw('0 AS sale_qty'), "sales_return_products.product_id AS product_id", "sales_returns.customer_id AS customer_id", "sales_returns.invoice_date AS date")->leftJoin("sales_returns", "sales_returns.id", "=", "sales_return_products.sales_return_id")->leftJoin("measure_units", "measure_units.id", "=", "sales_return_products.measure_unit_id")->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")->where('product_id', $request->product_id)->where(function ($where) use ($request) {
             if ($request->has('from_date') && $request->has('to_date')) {
                 $where->whereDate('sales_return_products.created_at', '>=', $request->from_date)->whereDate('sales_return_products.created_at', '<=', $request->to_date);
             }
         })->whereHas('saleReturn', function ($query) {
             $query->whereNull('deleted_at');
         })->get();
+        $saleReturnItems->each->append('sale_returned_primary_unit_qty');
 
         $merged = $purchaseItems->concat($saleReturnItems);
         $merged = $merged->concat($saleItems);
@@ -274,7 +277,7 @@ class ReportController extends Controller
 
         $balance = 0;
         $transactions->sortBy('date')->each(function ($transaction) use (&$balance, $product) {
-            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['primary_unit_qty'] ?? 0) - ($transaction['purchase_return_qty'] ?? 0) - ($transaction['sale_qty'] ?? 0) + ($transaction['sale_return_qty'] ?? 0);
+            $balance += ($transaction['adjustment_qty'] ?? 0) + ($transaction['opening_qty'] ?? 0) + ($transaction['purchased_primary_unit_qty'] ?? 0) - ($transaction['purchase_returned_primary_unit_qty'] ?? 0) - ($transaction['soled_primary_unit_qty'] ?? 0) + ($transaction['sale_returned_primary_unit_qty'] ?? 0);
             $transaction['total_quantity'] = $balance;
             $transaction['primary_unit_name'] = $product->getPrimaryMeasureUnitAttribute()->name;
         });
@@ -464,12 +467,7 @@ class ReportController extends Controller
 
 
             $items->getCollection()->transform(function ($item) {
-                return $item->append([
-                    'stock_opening',
-                    'purchase_detail',
-                    'sale_detail'
-                ]);
-
+                return $item->append(['opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate']);
             });
             Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);

@@ -225,6 +225,50 @@ class ProductController extends Controller
         }
     }
 
+    public function getProductsByName(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'filter_by' => 'nullable|string',
+                'search_name' => 'nullable|string|max:100',
+                'search_category' => 'nullable|string|max:100',
+                'search_sub_category' => 'nullable|string|max:100',
+                'search_brand' => 'nullable|string|max:100',
+                'search_measure_unit' => 'nullable|string|max:100',
+                'search_product_type' => 'nullable|string|max:100',
+                'search_location' => 'nullable|string|max:100',
+                'search_product_field' => 'nullable|string|max:100',
+                'search_product_field_value' => 'nullable|string|max:100',
+                'per_page' => 'nullable|integer|min:1|max:100',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => 'Validation failed',
+                    'messages' => $validator->errors()
+                ], 422);
+            }
+
+            // Query products
+            $query = Product::select("id", "name");
+
+            // Apply filters
+            $this->applyFilters($query, $request);
+            return response()->json($query->get());
+
+        } catch (\Exception $e) {
+            Log::error('Product search error: ' . $e->getMessage(), [
+                'exception' => $e,
+                'request' => $request->all()
+            ]);
+
+            return response()->json([
+                'error' => 'Server error occurred',
+                'details' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
     protected function applyFilters($query, Request $request): void
     {
         $filterBy = $request->input('filter_by', 'all');

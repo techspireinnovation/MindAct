@@ -580,16 +580,16 @@ class SaleController extends Controller
                     'sales_product_field_values.quantity_index'
                 ])
                 ->join('sale_products', 'sales_product_field_values.sale_product_id', '=', 'sale_products.id')
-                ->join('product_field_values', function ($join) use ($companyId, $productIds) {
+                ->leftJoin('product_field_values', function ($join) use ($companyId, $productIds) {
                     $join->on('sales_product_field_values.product_field_id', '=', 'product_field_values.product_field_id')
                         ->on('sales_product_field_values.value', '=', 'product_field_values.value')
                         ->where('product_field_values.company_id', $companyId)
-                        ->whereIn('product_field_values.product_id', $productIds)
-                        ->whereNull('product_field_values.deleted_at');
+                        ->whereIn('product_field_values.product_id', $productIds);
                 })
                 ->whereIn('sale_products.purchase_product_id', $purchaseProducts->pluck('purchase_product_id'))
                 ->where('sale_products.company_id', $companyId)
                 ->whereNull('sale_products.deleted_at')
+               
                 ->distinct()
                 ->get()
                 ->groupBy('purchase_product_id')
@@ -631,15 +631,14 @@ class SaleController extends Controller
                 ->join('product_fields', function ($join) use ($companyId) {
                     $join->on('purchase_product_field_values.product_field_id', '=', 'product_fields.id')
                         ->where('product_fields.company_id', $companyId)
-                        ->whereNUll('product_fields.deleted_at');
+                        ->whereNull('product_fields.deleted_at');
                 })
                 ->join('product_field_values', function ($join) use ($companyId, $productIds) {
                     $join->on('purchase_product_field_values.product_field_id', '=', 'product_field_values.product_field_id')
-                        ->on('purchase_product_field_values.value', '=', 'product_field_values.value')
+                      
                         ->where('product_field_values.company_id', $companyId)
                         ->whereIn('product_field_values.product_id', $productIds)
                         ->whereNull('product_field_values.deleted_at');
-
                 })
                 ->whereIn('purchase_product_field_values.purchase_product_id', $purchaseProducts->pluck('purchase_product_id'))
                 ->where('purchase_product_field_values.company_id', $companyId)

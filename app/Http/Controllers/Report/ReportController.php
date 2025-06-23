@@ -560,7 +560,7 @@ class ReportController extends Controller
             ])
             ->values(); // Re-index
 
-        //  Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
+        Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
         return response()->json($report);
 
 

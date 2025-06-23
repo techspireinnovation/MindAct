@@ -12,10 +12,17 @@ return new class extends Migration {
     {
         Schema::create('bank_vouchers', function (Blueprint $table) {
             $table->id();
-            $table->string('options');
-            $table->foreignID('company_id')->constrained();
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_primary')->default(false);
+            $table->foreignID('company_id')->constrained('companies');
+            $table->string('cash')->nullable();
+            $table->string('remarks')->nullable();
+            $table->string('date')->nullable();
+            $table->double('balance')->nullable();
+            $table->double('balance_dr')->nullable();
+            $table->string('voucher_number')->nullable();
+            $table->string('cheque_number')->nullable();
+            $table->double('amount')->nullable();
+            $table->enum('options', ['deposit', 'withdrawal', 'transfer'])->nullable();
+            $table->foreignID('bank_id')->constrained('banks')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

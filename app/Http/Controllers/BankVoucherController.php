@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 
 class BankVoucherController extends Controller
 {
-    
+
     public function index(Request $request): JsonResponse
     {
         $query = BankVoucher::query();
@@ -89,33 +89,18 @@ class BankVoucherController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('banks')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->input('company_id', $request->company_id))
-                        ->whereNull('deleted_at');
-
-                }),
-            ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'address' => 'string|max:255',
-            'class' => 'string|max:255',
-            'number' => 'string|max:255',
-            'swift' => 'string|max:255',
+            'balance' => 'numeric',
+            'balance_dr' => 'numeric',
+            'voucher_number' => 'string|max:255',
+            'cheque_number' => 'string|max:255',
+            'cash' => 'string|max:255',
+            'bank_id' => 'nullable|integer|exists:banks,id',
+            'amount' => 'numeric',
+            'remarks' => 'string|max:255',
+            'date' => 'required|string|max:255',
+            'options' => 'string|in:deposit,withdrawal,transfer',
             'company_id' => 'required|integer|exists:companies,id'
         ]);
-
-        if (!empty($validated['is_primary'])) {
-            BankVoucher::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
-        }
-
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-        $validated['is_active'] = $validated['is_active'] ?? true;
 
         $item = BankVoucher::create($validated);
         return response()->json($item, 201);
@@ -148,5 +133,5 @@ class BankVoucherController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-    }-
+    }
 }

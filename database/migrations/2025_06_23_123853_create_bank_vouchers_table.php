@@ -22,7 +22,7 @@ return new class extends Migration {
             $table->string('cheque_number')->nullable();
             $table->double('amount')->nullable();
             $table->enum('options', ['deposit', 'withdrawal', 'transfer'])->nullable();
-            $table->foreignID('bank_id')->constrained('banks')->nullable();
+            $table->foreignID('bank_id')->constrained('banks')->default(0)->nullable();
             $table->softDeletes();
             $table->timestamps();
         });

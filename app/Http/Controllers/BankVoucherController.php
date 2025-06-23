@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use Validator;
 
 class BankVoucherController extends Controller
 {
@@ -28,50 +28,25 @@ class BankVoucherController extends Controller
         try {
             $item = BankVoucher::findOrFail($id);
             $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('banks')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
-                'address' => 'string|max:255',
-                'class' => 'string|max:255',
-                'number' => 'string|max:255',
-                'swift' => 'string|max:255',
+                'balance' => 'numeric',
+                'balance_dr' => 'numeric',
+                'voucher_number' => 'string|max:255',
+                'cheque_number' => 'string|max:255',
+                'cash' => 'string|max:255',
+                'bank_id' => 'nullable|integer|exists:banks,id',
+                'amount' => 'numeric',
+                'remarks' => 'string|max:255',
+                'date' => 'required|string|max:255',
+                'options' => 'string|in:deposit,withdrawal,transfer',
                 'company_id' => 'required|integer|exists:companies,id'
             ]);
+
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
             }
             $validated = $validator->validated();
 
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                Bank::where('company_id', $item->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            // Explicit boolean handling (optional, since validation ensures boolean)
-            if ($request->has('is_active')) {
-                $validated['is_active'] = (bool) $request->input('is_active');
-            }
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-
-
             $item->update($validated);
-            $item->refresh();
-
-
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);

@@ -460,6 +460,23 @@ class ReportController extends Controller
             return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
         }
 
+        $fromDate = $request->input('from_date');
+        $toDate = $request->input('to_date');
+        $customerId = $request->input('customer_id');
+
+        // Helper function to apply filters
+        $applyFilters = function ($query) use ($fromDate, $toDate, $customerId) {
+            if ($fromDate) {
+                $query->where('invoice_date', '>=', $fromDate);
+            }
+            if ($toDate) {
+                $query->where('invoice_date', '<=', $toDate);
+            }
+            if ($customerId) {
+                $query->where('customer_id', $customerId);
+            }
+        };
+
         // Purchases
         $purchases = DB::table('purchases')
             ->selectRaw('invoice_date as tr_date,
@@ -475,6 +492,7 @@ class ReportController extends Controller
         customers.party_name as party_name,
         "Purchase" as type')->leftJoin("customers", "customers.id", "=", "purchases.customer_id")
             ->whereNull('purchases.deleted_at')
+            ->tap($applyFilters)
             ->where("purchases.company_id", $request->company_id)
             ->get();
 
@@ -494,7 +512,7 @@ class ReportController extends Controller
          customers.party_name as party_name,
         "Sales" as type
     ')->leftJoin("customers", "customers.id", "=", "sales.customer_id")
-            ->whereNull('sales.deleted_at')
+            ->whereNull('sales.deleted_at')->tap($applyFilters)
             ->where("sales.company_id", $request->company_id)
             ->get();
 
@@ -504,17 +522,17 @@ class ReportController extends Controller
         invoice_date as tr_date,
         MONTHNAME(invoice_date) as month_name,
         purchase_bill_number as bill_number,
-        -1 * sub_total_before_discount as before_vat_amt,
-        -1 * IFNULL(taxable_amount * (IFNULL(vat_percent, 0) / 100), 0) as vat_amount,
-        -1 * total_amount as total_amount,
+        sub_total_before_discount as before_vat_amt,
+        IFNULL(taxable_amount * (IFNULL(vat_percent, 0) / 100), 0) as vat_amount,
+        total_amount as total_amount,
         customers.pan_number as pan,
-        -1 * taxable_amount as taxable_sales,
-        -1 * non_taxable_amount as non_taxable_sales,
+        taxable_amount as taxable_sales,
+        non_taxable_amount as non_taxable_sales,
         remarks as voucher_number,
         customers.party_name as party_name,
         "Purchase Return" as type
     ')->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")
-            ->whereNull('purchase_returns.deleted_at')
+            ->whereNull('purchase_returns.deleted_at')->tap($applyFilters)
             ->where("purchase_returns.company_id", $request->company_id)
             ->get();
 
@@ -524,17 +542,17 @@ class ReportController extends Controller
         invoice_date as tr_date,
         MONTHNAME(invoice_date) as month_name,
         invoice_number as bill_number,
-        -1 * sub_total_before_discount as before_vat_amt,
-        -1 * IFNULL(taxable_amount * 0.13, 0) as vat_amount,
-        -1 * total_amount as total_amount,
+        sub_total_before_discount as before_vat_amt,
+        IFNULL(taxable_amount * 0.13, 0) as vat_amount,
+        total_amount as total_amount,
         customers.pan_number as pan,
-        -1 * taxable_amount as taxable_sales,
-        -1 * non_taxable_amount as non_taxable_sales,
+        taxable_amount as taxable_sales,
+        non_taxable_amount as non_taxable_sales,
         document_number as voucher_number,
          customers.party_name as party_name,
         "Sales Return" as type
     ')->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")
-            ->whereNull('sales_returns.deleted_at')
+            ->whereNull('sales_returns.deleted_at')->tap($applyFilters)
             ->where("sales_returns.company_id", $request->company_id)
             ->get();
 

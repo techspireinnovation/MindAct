@@ -61,7 +61,7 @@ class CustomerController extends Controller
 
             $customers = Customer::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')->tap($applyFilters)
-                ->pluck('party_name', 'id');
+                ->select('party_name', 'id')->get();
             return response()->json([
                 "message" => "Customer List Received !!",
                 "data" => $customers

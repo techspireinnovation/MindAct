@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
+use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
@@ -104,6 +105,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
     Route::apiResource('banks', BankController::class);
+    Route::apiResource('bank-vouchers', BankVoucherController::class);
     Route::apiResource('projects', ProjectController::class);
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::resource('customers', CustomerController::class);
@@ -127,6 +129,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
         Route::get('/vat-return-data-list', [ReportController::class, 'vatReturnDataListDetails']);
         Route::get('/gross-profit-ratio-list', [ReportController::class, 'grossProfitRatioListDetails']);
+        Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
         //});
     });
 
@@ -200,6 +203,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
     //List and Details
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
+    Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
 
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);

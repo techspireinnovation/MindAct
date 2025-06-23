@@ -127,6 +127,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
         Route::get('/vat-return-data-list', [ReportController::class, 'vatReturnDataListDetails']);
         Route::get('/gross-profit-ratio-list', [ReportController::class, 'grossProfitRatioListDetails']);
+        Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
         //});
     });
 

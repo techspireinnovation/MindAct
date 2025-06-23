@@ -449,7 +449,7 @@ class ReportController extends Controller
         $validator = Validator::make($request->all(), [
             'from_date' => 'required',
             'to_date' => 'required',
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'nullable|exists:customers,id',
         ]);
 
         if ($validator->fails()) {

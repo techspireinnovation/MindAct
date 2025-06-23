@@ -53,20 +53,18 @@ class CustomerController extends Controller
         try {
             $customer_name = $request->input('customer_name');
 
-            // Helper function to apply filters
             $applyFilters = function ($query) use ($customer_name) {
-
                 if ($customer_name) {
                     $query->where('party_name', 'LIKE', "%$customer_name%");
                 }
             };
 
-            $customer = Customer::where('company_id', $request->company_id)
+            $customers = Customer::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')->tap($applyFilters)
                 ->pluck('id', 'party_name');
             return response()->json([
                 "message" => "Customer List Received !!",
-                "data" => $customer
+                "data" => $customers
             ]);
 
         } catch (ModelNotFoundException $e) {

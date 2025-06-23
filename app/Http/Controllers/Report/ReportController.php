@@ -449,6 +449,7 @@ class ReportController extends Controller
         $validator = Validator::make($request->all(), [
             'from_date' => 'required',
             'to_date' => 'required',
+            'type' => 'required|in:sales,sales_return,purchase,purchase_return',
             'customer_id' => 'nullable|exists:customers,id',
         ]);
 
@@ -477,28 +478,43 @@ class ReportController extends Controller
             }
         };
 
-        // Purchases
-        $purchases = DB::table('purchases')
-            ->selectRaw('invoice_date as tr_date,
-        MONTHNAME(invoice_date) as month_name,
-        purchase_bill_number as bill_number,
-        sub_total_before_discount as before_vat_amt,
-        IFNULL(taxable_amount * (IFNULL(vat_percent, 0) / 100), 0) as vat_amount,
-        total_amount,
-        customers.pan_number as pan,
-        taxable_amount as taxable_sales,
-        non_taxable_amount as non_taxable_sales,
-        document_number as voucher_number,
-        customers.party_name as party_name,
+        $items = match ($request->type) {
+            'purchase' => DB::table('purchases')
+                ->selectRaw('invoice_date as tr_date,
+                            MONTHNAME(invoice_date) as month_name,
+                            purchase_bill_number as bill_number,
+                            sub_total_before_discount as before_vat_amt,
+                            IFNULL(taxable_amount * (IFNULL(vat_percent, 0) / 100), 0) as vat_amount,
+                            total_amount,
+                            customers.pan_number as pan,
+                            taxable_amount as taxable_sales,
+                            non_taxable_amount as non_taxable_sales,
+                            document_number as voucher_number,
+                            customers.party_name as party_name,
         "Purchase" as type')->leftJoin("customers", "customers.id", "=", "purchases.customer_id")
-            ->whereNull('purchases.deleted_at')
-            ->tap($applyFilters)
-            ->where("purchases.company_id", $request->company_id)
-            ->get();
-
-        // Sales
-        $sales = DB::table('sales')
-            ->selectRaw('
+                ->whereNull('purchases.deleted_at')
+                ->tap($applyFilters)
+                ->where("purchases.company_id", $request->company_id)
+                ->get(),
+            'purchase_return' => DB::table('purchase_returns')->selectRaw('
+                                        invoice_date as tr_date,
+                                        MONTHNAME(invoice_date) as month_name,
+                                        purchase_bill_number as bill_number,
+                                        sub_total_before_discount as before_vat_amt,
+                                        IFNULL(taxable_amount * (IFNULL(vat_percent, 0) / 100), 0) as vat_amount,
+                                        total_amount as total_amount,
+                                        customers.pan_number as pan,
+                                        taxable_amount as taxable_sales,
+                                        non_taxable_amount as non_taxable_sales,
+                                        remarks as voucher_number,
+                                        customers.party_name as party_name,
+                                        "Purchase Return" as type
+                                ')->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")
+                ->whereNull('purchase_returns.deleted_at')->tap($applyFilters)
+                ->where("purchase_returns.company_id", $request->company_id)
+                ->get(),
+            'sales' => DB::table('sales')
+                ->selectRaw('
         invoice_date as tr_date,
         MONTHNAME(invoice_date) as month_name,
         invoice_number as bill_number,
@@ -512,33 +528,11 @@ class ReportController extends Controller
          customers.party_name as party_name,
         "Sales" as type
     ')->leftJoin("customers", "customers.id", "=", "sales.customer_id")
-            ->whereNull('sales.deleted_at')->tap($applyFilters)
-            ->where("sales.company_id", $request->company_id)
-            ->get();
-
-        // Purchase Returns (negative values)
-        $purchaseReturns = DB::table('purchase_returns')
-            ->selectRaw('
-        invoice_date as tr_date,
-        MONTHNAME(invoice_date) as month_name,
-        purchase_bill_number as bill_number,
-        sub_total_before_discount as before_vat_amt,
-        IFNULL(taxable_amount * (IFNULL(vat_percent, 0) / 100), 0) as vat_amount,
-        total_amount as total_amount,
-        customers.pan_number as pan,
-        taxable_amount as taxable_sales,
-        non_taxable_amount as non_taxable_sales,
-        remarks as voucher_number,
-        customers.party_name as party_name,
-        "Purchase Return" as type
-    ')->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")
-            ->whereNull('purchase_returns.deleted_at')->tap($applyFilters)
-            ->where("purchase_returns.company_id", $request->company_id)
-            ->get();
-
-        // Sales Returns (negative values)
-        $salesReturns = DB::table('sales_returns')
-            ->selectRaw('
+                ->whereNull('sales.deleted_at')->tap($applyFilters)
+                ->where("sales.company_id", $request->company_id)
+                ->get(),
+            'sales_return' => DB::table('sales_returns')
+                ->selectRaw('
         invoice_date as tr_date,
         MONTHNAME(invoice_date) as month_name,
         invoice_number as bill_number,
@@ -552,16 +546,14 @@ class ReportController extends Controller
          customers.party_name as party_name,
         "Sales Return" as type
     ')->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")
-            ->whereNull('sales_returns.deleted_at')->tap($applyFilters)
-            ->where("sales_returns.company_id", $request->company_id)
-            ->get();
+                ->whereNull('sales_returns.deleted_at')->tap($applyFilters)
+                ->where("sales_returns.company_id", $request->company_id)
+                ->get(),
+        };
 
         // Merge all collections
         $report = collect()
-            ->merge($purchases)
-            ->merge($sales)
-            ->merge($purchaseReturns)
-            ->merge($salesReturns)
+            ->merge($items)
             ->sortBy([
                 ['tr_date', 'asc'],
                 ['bill_number', 'asc'],
@@ -570,7 +562,6 @@ class ReportController extends Controller
 
         //  Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
         return response()->json($report);
-
 
 
     }

@@ -201,6 +201,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
     //List and Details
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
+    Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
 
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);

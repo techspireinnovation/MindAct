@@ -55,11 +55,16 @@ class GrossProfitListExportJob implements ShouldQueue
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn) {
 
-                    $qtyIn = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
-                    $qtyOut = ($item->sale_quantity ?? 0) + ($item->purchase_return_quantity ?? 0);
+                    $purchase_detail = $item->purchase_detail;
+                    $sale_detail = $item->sale_detail;
+                    $sale_return_detail = $item->sale_return_detail;
+                    $purchase_return_detail = $item->purchase_return_detail;
 
-                    $qtyInRate = (($item->opening_rate ?? 0) + ($item->purchase_quantity ?? 0) + ($item->sale_return_quantity ?? 0)) / 3;
-                    $qtyOutRate = (($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0)) / 2;
+                    $qtyIn = ($item->opening_quantity ?? 0) + ($purchase_detail['qty'] ?? 0) + ($sale_return_detail['qty'] ?? 0);
+                    $qtyOut = ($sale_detail['qty'] ?? 0) + ($purchase_return_detail['qty'] ?? 0);
+
+                    $qtyInRate = (($item->opening_rate ?? 0) + ($purchase_detail['avg_price'] ?? 0) + ($sale_return_detail['avg_price'] ?? 0)) / 3;
+                    $qtyOutRate = ($sale_detail['avg_price'] ?? 0) + ($purchase_return_detail['avg_price'] ?? 0);
 
                     $closingAmount = $qtyInRate * $qtyIn - $qtyOutRate * $qtyOut;
                     $closingQty = $qtyIn - $qtyOut;
@@ -75,10 +80,10 @@ class GrossProfitListExportJob implements ShouldQueue
                         "Opening Qty" => $item->opening_quantity ?? 0,
                         "Opening Amount" => round(($item->opening_rate ?? 0) * $item->opening_quantity, 2),
 
-                        "Qty In" => $item->qtyIn ?? 0,
+                        "Qty In" => $qtyIn ?? 0,
                         "Amount In" => round($qtyInRate * $qtyIn, 2),
 
-                        "Qty Out" => $item->$qtyOut ?? 0,
+                        "Qty Out" => $qtyOut ?? 0,
                         "Amount Out" => round($qtyOutRate * $qtyOut, 2),
 
                         "Closing Qty" => $closingQty,

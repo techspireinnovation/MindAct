@@ -124,7 +124,6 @@ class ReportController extends Controller
                 $items = Purchase::
                     join('purchase_products', 'purchases.id', '=', 'purchase_products.purchase_id')
                     ->join('customers', 'purchases.customer_id', '=', 'customers.id')
-                    ->join('measure_units', 'purchases.measure_unit_id', '=', 'measure_units.id')
                     ->groupBy('purchases.id', 'purchases.purchase_bill_number', 'purchases.customer_name', 'purchases.invoice_date')
                     ->where('purchase_products.product_id', $request->product_id)
                     ->select([

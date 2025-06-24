@@ -93,7 +93,7 @@ class PurchaseController extends Controller
         return response()->json($query->paginate(50));
     }
 
-     public function getRefBillNumber(Request $request)
+    public function getRefBillNumber(Request $request)
     {
         try {
             if (!$request->has('company_id')) {
@@ -106,7 +106,8 @@ class PurchaseController extends Controller
             // Accounts for purchase quantity and free_quantity, minus returns and sales (including free quantities)
             // Adds back quantities from non-deleted sale product returns
             $billNumbers = Purchase::where('company_id', $companyId)
-                                ->pluck('ref_bill_number');
+                ->whereNull('deleted_at')
+                ->pluck('ref_bill_number');
 
             if ($billNumbers->isEmpty()) {
                 return response()->json([]);
@@ -122,7 +123,7 @@ class PurchaseController extends Controller
         }
     }
 
-        
+
 
     public function getProducts(Request $request): JsonResponse
     {
@@ -238,7 +239,7 @@ class PurchaseController extends Controller
                         $query->where('purchase_id', $id);
                     }),
                 ],
-              
+
 
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',

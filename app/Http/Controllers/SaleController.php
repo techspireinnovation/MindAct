@@ -8,6 +8,7 @@ use App\Models\SaleProduct;
 use App\Models\MeasureUnit;
 use App\Models\SaleAdditional;
 use App\Models\SalesReturnProduct;
+use App\Models\SaleReturnProductFieldValue;
 use App\Models\SalesProductFieldValue;
 use App\Models\PurchaseProductFieldValue;
 use Illuminate\Support\Facades\DB;
@@ -764,14 +765,14 @@ class SaleController extends Controller
     }
 
 
-
     public function store(Request $request): JsonResponse
     {
         try {
+            // Define validation rules
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
-                'customer_id' => 'nullable|exists:customers,id',
-                'salesman_id' => 'nullable|exists:salesmen,id',
+                'company_id' => 'required|integer|exists:companies,id',
+                'customer_id' => 'nullable|integer|exists:customers,id',
+                'salesman_id' => 'nullable|integer|exists:salesmen,id',
                 'customer_name' => 'required|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'contact_number' => 'nullable|string|max:255',
@@ -793,8 +794,8 @@ class SaleController extends Controller
                 ],
                 'invoice_date' => 'nullable|date',
                 'invoice_date_bs' => 'nullable|string|max:255',
-                'store_id' => 'nullable|exists:stores,id',
-                'location_id' => 'nullable|exists:locations,id',
+                'store_id' => 'nullable|integer|exists:stores,id',
+                'location_id' => 'nullable|integer|exists:locations,id',
                 'sub_total_before_discount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'discount_after_vat' => 'nullable|numeric|min:0',
@@ -821,27 +822,28 @@ class SaleController extends Controller
                     'min:1',
                 ],
                 'sale_products.*.product_name' => 'required_without:sale_products.*.product_id|string|max:255',
-                'sale_products.*.product_id' => 'nullable|exists:products,id',
-                'sale_products.*.purchase_product_id' => 'nullable|exists:purchase_products,id',
-                'sale_products.*.quantity' => 'required|numeric',
-                'sale_products.*.free_quantity' => 'nullable|numeric',
+                'sale_products.*.product_id' => 'nullable|integer|exists:products,id',
+                'sale_products.*.purchase_product_id' => 'nullable|integer|exists:purchase_products,id',
+                'sale_products.*.quantity' => 'required|numeric|min:0', // Allow decimals for pints
+                'sale_products.*.free_quantity' => 'nullable|numeric|min:0', // Allow decimals
                 'sale_products.*.price' => 'required|numeric|min:0',
                 'sale_products.*.discount_percent' => 'nullable|numeric|min:0|max:100',
                 'sale_products.*.discount_amount' => 'nullable|numeric|min:0',
                 'sale_products.*.is_vatable' => 'nullable|boolean',
-                'sale_products.*.measure_unit_id' => 'required|exists:measure_units,id',
+                'sale_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'sale_products.*.batch_no' => 'nullable|string|max:255',
                 'sale_products.*.amount' => 'nullable|numeric|min:0',
                 'sale_products.*.mfd' => 'nullable|string|max:255',
                 'sale_products.*.expiry_date' => 'nullable|string|max:255',
-                'sale_products.*.field_values' => 'nullable|array',
-                'sale_products.*.field_values.*' => 'array',
-                'sale_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
-                'sale_products.*.field_values.*.*.value' => 'required|string|max:255',
-                'sale_products.*.field_values.*.*.quantity_index' => 'required|integer|min:0',
-                'sale_products.*.field_values.*.*.purchase_product_id' => 'required|integer|exists:purchase_products,id',
+                'sale_products.*.field_values' => 'present|array',
+                'sale_products.*.field_values.*' => 'array|min:1',
+                'sale_products.*.field_values.*.*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
+                'sale_products.*.field_values.*.*.value' => 'required_if:field_values,array|string|max:255',
+                'sale_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
+                'sale_products.*.field_values.*.*.quantity_type' => 'nullable|string|in:regular,free',
+                'sale_products.*.field_values.*.*.purchase_product_id' => 'required_if:field_values,array|integer|exists:purchase_products,id',
                 'sale_additionals' => 'nullable|array',
-                'sale_additionals.company_id' => 'nullable|string|exists:companies,id',
+                'sale_additionals.company_id' => 'nullable|integer|exists:companies,id',
                 'sale_additionals.sale_id' => 'nullable|string|max:255',
                 'sale_additionals.place' => 'nullable|string|max:255',
                 'sale_additionals.transport' => 'nullable|string|max:255',
@@ -917,31 +919,18 @@ class SaleController extends Controller
                         $productModel = Product::find($product->product_id);
                         $measureUnit = MeasureUnit::find($product->measure_unit_id);
 
-                        $purchasedQuantityInPieces = ($product->quantity + ($product->free_quantity ?? 0)) * ($measureUnit->quantity ?? 1);
-                        $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $product->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(DB::raw('(quantity + COALESCE(free_quantity, 0)) * COALESCE((SELECT quantity FROM measure_units WHERE id = purchase_product_returns.measure_unit_id), 1)'));
-                        $soldQuantity = SaleProduct::where('purchase_product_id', $product->id)
-                            ->where('sale_products.company_id', $validated['company_id'])
-                            ->whereNull('sale_products.deleted_at')
-                            ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
-                            ->sum(DB::raw('(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-                        $salesReturnedQuantity = SalesReturnProduct::where('product_id', $product->product_id)
-                            ->where('sales_return_products.company_id', $validated['company_id'])
-                            ->whereNull('sales_return_products.deleted_at')
-                            ->join('measure_units', 'sales_return_products.measure_unit_id', '=', 'sales_return_products.id')
-                            ->sum(DB::raw('(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-
-                        $availableQuantityInPieces = $purchasedQuantityInPieces - $purchaseReturnedQuantity - $soldQuantity + $salesReturnedQuantity;
-
-                        if ($availableQuantityInPieces <= 0) {
+                        if (!$measureUnit) {
                             return null;
                         }
 
-                        $availableQuantityInUOM = $availableQuantityInPieces / ($measureUnit->quantity ?? 1);
-                        $quantityInUOM = floor($availableQuantityInUOM);
-                        $freeQuantityInUOM = $availableQuantityInUOM - $quantityInUOM;
+                        $measureUnitQuantity = $measureUnit->quantity ?? 1;
+                        $totalAvailablePieces = $this->calculateAvailablePieces($product, $measureUnitQuantity, $validated['company_id']);
+
+                        if ($totalAvailablePieces <= 0) {
+                            return null;
+                        }
+
+                        [$quantityInUOM, $freeQuantityInUOM] = $this->convertToTargetMeasureUnit($totalAvailablePieces, 0, $measureUnitQuantity);
 
                         $fieldValues = DB::table('purchase_product_field_values')
                             ->where('purchase_product_id', $product->id)
@@ -955,6 +944,7 @@ class SaleController extends Controller
                                     'product_field_id' => $fv->product_field_id,
                                     'value' => $fv->value,
                                     'quantity_index' => $fv->quantity_index,
+                                    'quantity_type' => 'regular',
                                     'purchase_product_id' => $product->id
                                 ];
                             })->toArray();
@@ -1004,24 +994,23 @@ class SaleController extends Controller
                     'freight_amount' => $validated['freight_amount'] ?? 0,
                     'excise_duty' => $validated['excise_duty'] ?? 0,
                     'health_insurance' => $validated['health_insurance'] ?? 0,
-                    'balance' => $validated['health_insurance'] ?? 0,
+                    'balance' => $validated['balance'] ?? 0,
                     'taxable_amount' => $validated['taxable_amount'] ?? 0,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? 0,
-                    'ref_bill_number' => $validated['ref_bill_number'] ?? 0,
+                    'ref_bill_number' => $validated['ref_bill_number'] ?? null,
                     'roundoff_amount' => $validated['roundoff_amount'] ?? 0,
-                    'roundoff_type' => $validated['roundoff_type'] ?? 0,
+                    'roundoff_type' => $validated['roundoff_type'] ?? null,
                     'remarks' => $validated['remarks'] ?? null,
-                    'abvt' => $validated['abvt'] ?? 0,
+                    'abvt' => $validated['abvt'] ?? false,
                     'cash' => $validated['payment']['cash'] ?? 0,
                     'credit' => $validated['payment']['credit'] ?? 0,
                     'bank' => $validated['payment']['bank'] ?? 0,
-                    'is_vatable' => $validated['is_vatable'] ?? 0,
+                    'is_vatable' => $validated['is_vatable'] ?? false,
                     'total_amount' => $validated['total_amount'] ?? 0,
                     'purchase_id' => $validated['purchase_id'] ?? null,
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 
-                // Create SaleAdditional if provided
                 if (isset($validated['sale_additionals']) && !empty($validated['sale_additionals'])) {
                     SaleAdditional::create([
                         'company_id' => $validated['company_id'],
@@ -1037,6 +1026,8 @@ class SaleController extends Controller
                         'delivery_time' => $validated['sale_additionals']['delivery_time'] ?? null,
                     ]);
                 }
+
+                $purchases = collect();
 
                 foreach ($validated['sale_products'] as $index => $productData) {
                     $productId = $productData['product_id'] ?? null;
@@ -1066,179 +1057,245 @@ class SaleController extends Controller
                         throw new \Exception("Either product_id or product_name must be provided at index {$index}");
                     }
 
-                    $measureUnit = MeasureUnit::find($productData['measure_unit_id']);
-                    if (!$measureUnit) {
+                    $targetMeasureUnit = MeasureUnit::find($productData['measure_unit_id']);
+                    if (!$targetMeasureUnit) {
                         throw new \Exception("Measure unit not found for ID {$productData['measure_unit_id']} at index {$index}");
                     }
-                    $quantityInPieces = ($productData['quantity'] + ($productData['free_quantity'] ?? 0)) * ($measureUnit->quantity ?? 1);
 
-                    if (!empty($productData['field_values'])) {
-                        // Normalize field_values to a flat array
-                        $fieldValuesFlat = collect($productData['field_values'])->flatMap(function ($item) {
-                            // If item is an array of field values, return it; otherwise, wrap it
-                            return is_array($item) && isset($item[0]['product_field_id']) ? $item : [$item];
+                    $targetMeasureUnitQuantity = $targetMeasureUnit->quantity ?? 1;
+                    $regularQuantity = $productData['quantity'] ?? 0;
+                    $freeQuantity = $productData['free_quantity'] ?? 0;
+                    $regularPieces = $this->calculatePieces($regularQuantity, $targetMeasureUnitQuantity);
+                    $freePieces = $this->calculatePieces($freeQuantity, $targetMeasureUnitQuantity);
+                    $totalRequestedPieces = $regularPieces + $freePieces;
+
+                    $fieldValuesFlat = $this->flattenFieldValues($productData['field_values'], $index);
+
+                    $groupedFieldValues = collect($fieldValuesFlat)
+                        ->groupBy('purchase_product_id')
+                        ->map(function ($group) {
+                            return $group->groupBy('quantity_index')->map(function ($fvGroup) {
+                                return collect($fvGroup)->map(function ($fv) {
+                                    return [
+                                        'product_field_id' => $fv['product_field_id'],
+                                        'value' => $fv['value'],
+                                        'quantity_index' => $fv['quantity_index'],
+                                        'quantity_type' => $fv['quantity_type'] ?? 'regular',
+                                        'purchase_product_id' => $fv['purchase_product_id'],
+                                    ];
+                                })->unique(function ($fv) {
+                                    return "{$fv['product_field_id']}:{$fv['value']}:{$fv['quantity_type']}";
+                                })->values()->toArray();
+                            })->toArray();
                         })->toArray();
 
-                        // Group by purchase_product_id and quantity_index
-                        $groupedFieldValues = collect($fieldValuesFlat)
-                            ->groupBy('purchase_product_id')
-                            ->map(function ($group) {
-                                return $group->groupBy('quantity_index')->map(function ($fvGroup) {
-                                    return $fvGroup->map(function ($fv) {
-                                        return [
-                                            'product_field_id' => $fv['product_field_id'],
-                                            'value' => $fv['value'],
-                                            'quantity_index' => $fv['quantity_index'],
-                                            'purchase_product_id' => $fv['purchase_product_id'],
-                                        ];
-                                    })->values()->toArray();
-                                })->toArray();
-                            })->toArray();
+                    $regularFieldValueSets = collect($fieldValuesFlat)
+                        ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
+                        ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                        ->unique()
+                        ->count();
+                    $freeFieldValueSets = collect($fieldValuesFlat)
+                        ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'free')
+                        ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                        ->unique()
+                        ->count();
 
-                        $totalQuantity = $productData['quantity'];
-                        $fieldValueSets = collect($groupedFieldValues)->flatMap(function ($fvByIndex) {
-                            return array_keys($fvByIndex);
-                        })->count();
+                    $hasFieldValues = !empty($fieldValuesFlat);
+                    $purchaseProductIds = array_keys($groupedFieldValues);
+                    $requiresFieldValues = !empty($purchaseProductIds) && DB::table('purchase_product_field_values')
+                        ->whereIn('purchase_product_id', $purchaseProductIds)
+                        ->where('company_id', $validated['company_id'])
+                        ->whereNull('deleted_at')
+                        ->exists();
 
-                        if ($fieldValueSets != $totalQuantity) {
-                            throw new \Exception("Number of field_values sets ({$fieldValueSets}) must equal quantity ({$totalQuantity}) at index {$index}");
-                        }
+                    if (!$hasFieldValues && $requiresFieldValues) {
+                        throw new \Exception("Field values required for product ID {$productId} at index {$index}.");
+                    }
+                    if ($hasFieldValues && !$requiresFieldValues) {
+                        throw new \Exception("Field values provided for product ID {$productId} at index {$index}, but none required.");
+                    }
+                    if ($hasFieldValues && ($regularFieldValueSets != $regularPieces || $freeFieldValueSets != $freePieces)) {
+                        throw new \Exception("Field value sets (Regular: {$regularFieldValueSets}, Free: {$freeFieldValueSets}) must match pieces (Regular: {$regularPieces}, Free: {$freePieces}) at index {$index}.");
+                    }
 
-                        $remainingQuantity = $totalQuantity;
-                        $allocations = [];
-                        $usedQuantityIndexes = [];
+                    $remainingRegularPieces = $regularPieces;
+                    $remainingFreePieces = $freePieces;
+                    $allocations = [];
+                    $usedQuantityIndexes = [];
 
-                        if (isset($productData['purchase_product_id'])) {
-                            $purchaseProductId = $productData['purchase_product_id'];
-                            if (!isset($groupedFieldValues[$purchaseProductId])) {
-                                throw new \Exception("Field values for purchase_product_id {$purchaseProductId} not provided at index {$index}");
-                            }
-                            $groupedFieldValues = [$purchaseProductId => $groupedFieldValues[$purchaseProductId]];
-                        }
+                    $query = PurchaseProduct::where('product_id', $productId)
+                        ->where('company_id', $validated['company_id'])
+                        ->whereNull('deleted_at')
+                        ->with([
+                            'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
+                            'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with('measureUnit'),
+                            'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
+                            'saleProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with(['saleProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']), 'measureUnit'])
+                        ]);
 
+                    if ($hasFieldValues) {
+                        $query->whereIn('id', $purchaseProductIds);
+                    } elseif (isset($productData['purchase_product_id'])) {
+                        $query->where('id', $productData['purchase_product_id']);
+                    } else {
+                        $query->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))
+                            ->from('purchase_product_field_values')
+                            ->whereColumn('purchase_product_id', 'purchase_products.id')
+                            ->where('company_id', $validated['company_id'])
+                            ->whereNull('deleted_at'));
+                    }
+
+                    $purchaseProducts = $query->orderBy('created_at')->distinct()->get();
+
+                    if ($purchaseProducts->isEmpty()) {
+                        throw new \Exception("No valid purchase products found for product ID {$productId} at index {$index}.");
+                    }
+
+                    if ($hasFieldValues) {
                         foreach ($groupedFieldValues as $purchaseProductId => $fvByIndex) {
-                            $purchaseProduct = PurchaseProduct::where('id', $purchaseProductId)
-                                ->where('company_id', $validated['company_id'])
+                            $purchaseProduct = $purchaseProducts->firstWhere('id', $purchaseProductId) ?? throw new \Exception("Purchase product ID {$purchaseProductId} not found at index {$index}.");
+                            $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
+
+                            $purchaseMeasureUnit = MeasureUnit::findOrFail($purchaseProduct->measure_unit_id);
+                            $purchaseMeasureUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
+
+                            $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id']);
+
+                            $existingFieldValues = $purchaseProduct->fieldValues->groupBy('quantity_index')->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
+                            $unavailableQuantityIndices = $this->getUnavailableQuantityIndices($purchaseProduct, $validated['company_id']);
+                            $salesReturnedIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $purchaseProduct->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns->pluck('id')))
                                 ->whereNull('deleted_at')
-                                ->where('product_id', $productId)
-                                ->first();
-                            if (!$purchaseProduct) {
-                                throw new \Exception("Purchase product ID {$purchaseProductId} not found or does not match product ID {$productId} at index {$index}");
-                            }
-
-                            if ($productData['measure_unit_id'] != $purchaseProduct->measure_unit_id) {
-                                throw new \Exception("Measure unit ID {$productData['measure_unit_id']} does not match purchase product ID {$purchaseProductId} at index {$index}");
-                            }
-
-                            $fieldValues = DB::table('purchase_product_field_values')
-                                ->where('purchase_product_id', $purchaseProductId)
-                                ->where('company_id', $validated['company_id'])
-                                ->whereNull('deleted_at')
-                                ->select('product_field_id', 'value', 'quantity_index')
-                                ->orderBy('quantity_index', 'asc')
-                                ->get()
-                                ->groupBy('quantity_index');
-
-                            $soldQuantityIndexes = DB::table('sales_product_field_values')
-                                ->join('sale_products', 'sales_product_field_values.sale_product_id', '=', 'sale_products.id')
-                                ->where('sale_products.purchase_product_id', $purchaseProductId)
-                                ->where('sale_products.company_id', $validated['company_id'])
-                                ->whereNull('sale_products.deleted_at')
-                                ->pluck('sales_product_field_values.quantity_index')
+                                ->pluck('quantity_index')
                                 ->toArray();
-
-                            $usedQuantityIndexes[$purchaseProductId] = array_unique(array_merge($soldQuantityIndexes, array_keys($usedQuantityIndexes[$purchaseProductId] ?? [])));
+                            $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
 
                             foreach ($fvByIndex as $quantityIndex => $fvSet) {
-                                if (in_array($quantityIndex, $usedQuantityIndexes[$purchaseProductId])) {
-                                    throw new \Exception("Quantity index {$quantityIndex} for purchase_product_id {$purchaseProductId} is already sold or used at index {$index}");
+                                if (in_array($quantityIndex, $unavailableQuantityIndices) || !isset($existingFieldValues[$quantityIndex])) {
+                                    throw new \Exception("Invalid quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}.");
                                 }
-
-                                if (!isset($fieldValues[$quantityIndex])) {
-                                    throw new \Exception("No field values found for quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}");
+                                if (in_array($quantityIndex, $usedQuantityIndexes[$purchaseProductId] ?? [])) {
+                                    throw new \Exception("Duplicate quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}.");
                                 }
-
-                                $expectedFieldValues = $fieldValues[$quantityIndex]->pluck('value', 'product_field_id')->toArray();
-                                $providedFieldValues = collect($fvSet)->pluck('value', 'product_field_id')->toArray();
-
-                                if ($expectedFieldValues != $providedFieldValues) {
-                                    throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} do not match at index {$index}. Expected: " . json_encode($expectedFieldValues) . ", Provided: " . json_encode($providedFieldValues));
+                                if (collect($fvSet)->pluck('value', 'product_field_id')->toArray() != $existingFieldValues[$quantityIndex]) {
+                                    throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} do not match at index {$index}.");
                                 }
-
                                 $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
                             }
 
-                            $purchaseMeasureUnit = MeasureUnit::find($purchaseProduct->measure_unit_id);
-                            if (!$purchaseMeasureUnit) {
-                                throw new \Exception("Measure unit not found for purchase product ID {$purchaseProductId} at index {$index}");
+                            $regularFvByIndex = collect($fvByIndex)->filter(fn($fvSet) => collect($fvSet)->first()['quantity_type'] === 'regular')->toArray();
+                            $freeFvByIndex = collect($fvByIndex)->filter(fn($fvSet) => collect($fvSet)->first()['quantity_type'] === 'free')->toArray();
+
+                            $totalRequestedForThisProduct = count($regularFvByIndex) + count($freeFvByIndex);
+                            $allocatePieces = min($totalRequestedForThisProduct, $totalAvailablePieces);
+
+                            if ($allocatePieces > 0) {
+                                $allocateRegularPieces = min(count($regularFvByIndex), $allocatePieces);
+                                $allocateFreePieces = min(count($freeFvByIndex), $allocatePieces - $allocateRegularPieces);
+
+                                [$allocateRegularQuantity, $allocateFreeQuantity] = $this->convertToTargetMeasureUnit($allocateRegularPieces, $allocateFreePieces, $targetMeasureUnitQuantity);
+
+                                $allocations[] = [
+                                    'purchase_product_id' => $purchaseProductId,
+                                    'quantity' => $allocateRegularQuantity,
+                                    'free_quantity' => $allocateFreeQuantity,
+                                    'field_values' => array_merge(
+                                        array_values(array_slice($regularFvByIndex, 0, $allocateRegularPieces)),
+                                        array_values(array_slice($freeFvByIndex, 0, $allocateFreePieces))
+                                    ),
+                                    'mfd' => $productData['mfd'] ?? $purchaseProduct->mfd,
+                                    'expiry_date' => $productData['expiry_date'] ?? $purchaseProduct->expiry_date,
+                                ];
+
+                                $remainingRegularPieces -= $allocateRegularPieces;
+                                $remainingFreePieces -= $allocateFreePieces;
                             }
-                            $purchasedQuantityInPieces = ($purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0)) * ($purchaseMeasureUnit->quantity ?? 1);
-                            $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $purchaseProductId)
-                                ->where('company_id', $validated['company_id'])
-                                ->whereNull('deleted_at')
-                                ->sum(DB::raw('(quantity + COALESCE(free_quantity, 0)) * COALESCE((SELECT quantity FROM measure_units WHERE id = purchase_product_returns.measure_unit_id), 1)'));
-                            $soldQuantity = SaleProduct::where('purchase_product_id', $purchaseProductId)
-                                ->where('sale_products.company_id', $validated['company_id'])
-                                ->whereNull('sale_products.deleted_at')
-                                ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
-                                ->sum(DB::raw('(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-                            $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
-                                ->where('sales_return_products.company_id', $validated['company_id'])
-                                ->whereNull('sales_return_products.deleted_at')
-                                ->join('measure_units', 'sales_return_products.measure_unit_id', '=', 'sales_return_products.id')
-                                ->sum(DB::raw('(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
+                        }
+                    }
 
-                            $availableQuantityInPieces = $purchasedQuantityInPieces - $purchaseReturnedQuantity - $soldQuantity + $salesReturnedQuantity;
-                            $availableQuantityInUOM = floor($availableQuantityInPieces / ($purchaseMeasureUnit->quantity ?? 1));
-                            $allocateQuantity = min($remainingQuantity, $availableQuantityInUOM, count($fvByIndex));
+                    if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
+                        $purchaseProduct = isset($productData['purchase_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
 
-                            if ($allocateQuantity <= 0) {
+                        if ($purchaseProduct) {
+                            if ($purchaseProduct->fieldValues->isNotEmpty()) {
+                                throw new \Exception("Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}.");
+                            }
+                            $purchaseProducts = collect([$purchaseProduct]);
+                        }
+
+                        foreach ($purchaseProducts as $purchaseProduct) {
+                            if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) {
+                                break;
+                            }
+
+                            $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
+                            $purchaseMeasureUnit = MeasureUnit::findOrFail($purchaseProduct->measure_unit_id);
+                            $purchaseMeasureUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
+
+                            $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id']);
+
+                            if ($totalAvailablePieces <= 0) {
                                 continue;
                             }
 
-                            $allocations[] = [
-                                'purchase_product_id' => $purchaseProductId,
-                                'quantity' => $allocateQuantity,
-                                'field_values' => collect($fvByIndex)->take($allocateQuantity)->toArray(),
-                                'mfd' => $purchaseProduct->mfd ?? $productData['mfd'],
-                                'expiry_date' => $purchaseProduct->expiry_date ?? ($productData['expiry_date'] ?? null),
-                            ];
+                            $totalRemainingPieces = $remainingRegularPieces + $remainingFreePieces;
+                            $allocatePieces = min($totalRemainingPieces, $totalAvailablePieces);
 
-                            $remainingQuantity -= $allocateQuantity;
+                            $allocateRegularPieces = min($remainingRegularPieces, $allocatePieces);
+                            $allocateFreePieces = min($remainingFreePieces, $allocatePieces - $allocateRegularPieces);
+
+                            if ($allocateRegularPieces > 0 || $allocateFreePieces > 0) {
+                                [$allocateRegularQuantity, $allocateFreeQuantity] = $this->convertToTargetMeasureUnit($allocateRegularPieces, $allocateFreePieces, $targetMeasureUnitQuantity);
+
+                                $allocations[] = [
+                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'quantity' => $allocateRegularQuantity,
+                                    'free_quantity' => $allocateFreeQuantity,
+                                    'field_values' => [],
+                                    'mfd' => $productData['mfd'] ?? $purchaseProduct->mfd,
+                                    'expiry_date' => $productData['expiry_date'] ?? $purchaseProduct->expiry_date,
+                                ];
+
+                                $remainingRegularPieces -= $allocateRegularPieces;
+                                $remainingFreePieces -= $allocateFreePieces;
+                            }
                         }
+                    }
 
-                        if ($remainingQuantity > 0) {
-                            throw new \Exception("Insufficient stock across purchase products for product ID {$productId} at index {$index}. Requested: {$totalQuantity}, Allocated: " . ($totalQuantity - $remainingQuantity));
-                        }
+                    if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
+                        throw new \Exception("Insufficient stock for product ID {$productId} at index {$index}. Requested: {$totalRequestedPieces} pieces (Regular: {$regularPieces}, Free: {$freePieces}), Allocated: " . ($totalRequestedPieces - ($remainingRegularPieces + $remainingFreePieces)) . " pieces.");
+                    }
 
-                        foreach ($allocations as $allocation) {
-                            $saleProduct = $sale->saleProducts()->create([
-                                'company_id' => $validated['company_id'],
-                                'sale_id' => $sale->id,
-                                'product_id' => $productId,
-                                'purchase_product_id' => $allocation['purchase_product_id'],
-                                'quantity' => $allocation['quantity'],
-                                'amount' => $productData['amount'],
-                                'free_quantity' => $productData['free_quantity'] ?? 0,
-                                'price' => $productData['price'],
-                                'discount_percent' => $productData['discount_percent'] ?? 0,
-                                'discount_amount' => $productData['discount_amount'] ?? 0,
-                                'is_vatable' => $productData['is_vatable'] ?? false,
-                                'measure_unit_id' => $productData['measure_unit_id'],
-                                'mfd' => $allocation['mfd'],
-                                'batch_no' => $productData['batch_no'],
-                                'expiry_date' => $allocation['expiry_date'] ?? null,
-                                'name' => $productModel->name,
-                            ]);
+                    foreach ($allocations as $allocation) {
+                        $purchaseProduct = PurchaseProduct::findOrFail($allocation['purchase_product_id']);
+                        $saleProduct = $sale->saleProducts()->create([
+                            'company_id' => $validated['company_id'],
+                            'sale_id' => $sale->id,
+                            'product_id' => $productId,
+                            'purchase_product_id' => $allocation['purchase_product_id'],
+                            'quantity' => $allocation['quantity'],
+                            'free_quantity' => $allocation['free_quantity'],
+                            'price' => $productData['price'],
+                            'discount_percent' => $productData['discount_percent'] ?? 0,
+                            'discount_amount' => $productData['discount_amount'] ?? 0,
+                            'amount' => ($productData['price'] * $allocation['quantity']) - ($productData['discount_amount'] ?? 0),
+                            'is_vatable' => $productData['is_vatable'] ?? false,
+                            'measure_unit_id' => $productData['measure_unit_id'],
+                            'mfd' => $allocation['mfd'],
+                            'batch_no' => $productData['batch_no'] ?? 'BATCH-' . $purchaseProduct->id . '-' . now()->format('Ymd'),
+                            'expiry_date' => $allocation['expiry_date'] ?? null,
+                            'name' => $productModel->name,
+                        ]);
 
-                            foreach ($allocation['field_values'] as $quantityIndex => $fvSet) {
+                        if (!empty($allocation['field_values'])) {
+                            foreach ($allocation['field_values'] as $fvSet) {
                                 foreach ($fvSet as $fv) {
                                     DB::table('sales_product_field_values')->insert([
                                         'sale_product_id' => $saleProduct->id,
                                         'product_id' => $productId,
                                         'product_field_id' => $fv['product_field_id'],
                                         'value' => $fv['value'],
-                                        'quantity_index' => $quantityIndex,
+                                        'quantity_index' => $fv['quantity_index'],
+                                        'quantity_type' => $fv['quantity_type'],
                                         'company_id' => $validated['company_id'],
                                         'created_at' => now(),
                                         'updated_at' => now(),
@@ -1246,167 +1303,6 @@ class SaleController extends Controller
                                 }
                             }
                         }
-                        continue;
-                    }
-
-                    if (isset($productData['purchase_product_id'])) {
-                        $purchaseProduct = PurchaseProduct::where('id', $productData['purchase_product_id'])
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->first();
-                        if (!$purchaseProduct) {
-                            throw new \Exception("Purchase product ID {$productData['purchase_product_id']} not found at index {$index}");
-                        }
-
-                        if ($productData['measure_unit_id'] != $purchaseProduct->measure_unit_id) {
-                            throw new \Exception("Measure unit ID {$productData['measure_unit_id']} does not match purchase product ID {$purchaseProduct->id} at index {$index}");
-                        }
-
-                        $hasFieldValues = DB::table('purchase_product_field_values')
-                            ->where('purchase_product_id', $purchaseProduct->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->exists();
-                        if ($hasFieldValues) {
-                            throw new \Exception("Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}");
-                        }
-
-                        $purchaseMeasureUnit = MeasureUnit::find($purchaseProduct->measure_unit_id);
-                        $purchasedQuantityInPieces = ($purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0)) * ($purchaseMeasureUnit->quantity ?? 1);
-                        $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $purchaseProduct->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(DB::raw('(quantity + COALESCE(free_quantity, 0)) * COALESCE((SELECT quantity FROM measure_units WHERE id = purchase_product_returns.measure_unit_id), 1)'));
-                        $soldQuantity = SaleProduct::where('purchase_product_id', $purchaseProduct->id)
-                            ->where('sale_products.company_id', $validated['company_id'])
-                            ->whereNull('sale_products.deleted_at')
-                            ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
-                            ->sum(DB::raw('(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-                        $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
-                            ->where('sales_return_products.company_id', $validated['company_id'])
-                            ->whereNull('sales_return_products.deleted_at')
-                            ->join('measure_units', 'sales_return_products.measure_unit_id', '=', 'sales_return_products.id')
-                            ->sum(DB::raw('(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-
-                        $availableQuantityInPieces = $purchasedQuantityInPieces - $purchaseReturnedQuantity - $soldQuantity + $salesReturnedQuantity;
-
-                        if ($quantityInPieces > $availableQuantityInPieces) {
-                            throw new \Exception("Insufficient stock for purchase product ID {$purchaseProduct->id} at index {$index}. Available: {$availableQuantityInPieces}, Requested: {$quantityInPieces}");
-                        }
-
-                        $product = [
-                            'company_id' => $validated['company_id'],
-                            'sale_id' => $sale->id,
-                            'product_id' => $productId,
-                            'purchase_product_id' => $purchaseProduct->id,
-                            'quantity' => $productData['quantity'],
-                            'free_quantity' => $productData['free_quantity'] ?? 0,
-                            'price' => $productData['price'],
-                            'discount_percent' => $productData['discount_percent'] ?? 0,
-                            'discount_amount' => $productData['discount_amount'] ?? 0,
-                            'is_vatable' => $productData['is_vatable'] ?? false,
-                            'measure_unit_id' => $productData['measure_unit_id'],
-                            'mfd' => $productData['mfd'],
-                            'batch_no' => $productData['batch_no'],
-                            'expiry_date' => $productData['expiry_date'] ?? null,
-                            'name' => $productModel->name,
-                        ];
-
-                        $sale->saleProducts()->create($product);
-                        continue;
-                    }
-
-                    $purchaseProducts = PurchaseProduct::where('purchase_products.product_id', $productId)
-                        ->where('purchase_products.company_id', $validated['company_id'])
-                        ->whereNull('purchase_products.deleted_at')
-                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                        ->leftJoin('purchase_product_field_values', 'purchase_products.id', '=', 'purchase_product_field_values.purchase_product_id')
-                        ->whereNull('purchase_product_field_values.id')
-                        ->select('purchase_products.*')
-                        ->distinct()
-                        ->get();
-
-                    if ($purchaseProducts->isEmpty()) {
-                        throw new \Exception("No purchase products without field values found for product ID {$productId} at index {$index}");
-                    }
-
-                    $remainingQuantityInPieces = $quantityInPieces;
-                    $allocations = [];
-
-                    foreach ($purchaseProducts as $purchaseProduct) {
-                        if ($remainingQuantityInPieces <= 0) {
-                            break;
-                        }
-
-                        $purchaseMeasureUnit = MeasureUnit::find($purchaseProduct->measure_unit_id);
-                        if (!$purchaseMeasureUnit) {
-                            throw new \Exception("Measure unit not found for purchase product ID {$purchaseProduct->id} at index {$index}");
-                        }
-
-                        $purchasedQuantityInPieces = ($purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0)) * ($purchaseMeasureUnit->quantity ?? 1);
-                        $purchaseReturnedQuantity = PurchaseProductReturn::where('purchase_product_id', $purchaseProduct->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(DB::raw('(quantity + COALESCE(free_quantity, 0)) * COALESCE((SELECT quantity FROM measure_units WHERE id = purchase_product_returns.measure_unit_id), 1)'));
-                        $soldQuantity = SaleProduct::where('purchase_product_id', $purchaseProduct->id)
-                            ->where('sale_products.company_id', $validated['company_id'])
-                            ->whereNull('sale_products.deleted_at')
-                            ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
-                            ->sum(DB::raw('(sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-                        $salesReturnedQuantity = SalesReturnProduct::where('product_id', $productId)
-                            ->where('sales_return_products.company_id', $validated['company_id'])
-                            ->whereNull('sales_return_products.deleted_at')
-                            ->join('measure_units', 'sales_return_products.measure_unit_id', '=', 'sales_return_products.id')
-                            ->sum(DB::raw('(sales_return_products.quantity + COALESCE(sales_return_products.free_quantity, 0)) * COALESCE(measure_units.quantity, 1)'));
-
-                        $availableQuantityInPieces = $purchasedQuantityInPieces - $purchaseReturnedQuantity - $soldQuantity + $salesReturnedQuantity;
-
-                        if ($availableQuantityInPieces <= 0) {
-                            continue;
-                        }
-
-                        $allocateQuantityInPieces = min($remainingQuantityInPieces, $availableQuantityInPieces);
-                        $allocateQuantityInUOM = $allocateQuantityInPieces / ($measureUnit->quantity ?? 1);
-                        $quantityInUOM = floor($allocateQuantityInUOM);
-                        $freeQuantityInUOM = $allocateQuantityInUOM - $quantityInUOM;
-
-                        $allocations[] = [
-                            'purchase_product_id' => $purchaseProduct->id,
-                            'quantity_in_pieces' => $allocateQuantityInPieces,
-                            'quantity_in_uom' => $quantityInUOM,
-                            'free_quantity_in_uom' => $freeQuantityInUOM,
-                            'mfd' => $purchaseProduct->mfd ?? $productData['mfd'],
-                            'batch_no' => $productData['batch_no'],
-                            'expiry_date' => $purchaseProduct->expiry_date ?? ($productData['expiry_date'] ?? null),
-                        ];
-
-                        $remainingQuantityInPieces -= $allocateQuantityInPieces;
-                    }
-
-                    if ($remainingQuantityInPieces > 0) {
-                        throw new \Exception("Insufficient stock for product ID {$productId} at index {$index}. Available: " . ($quantityInPieces - $remainingQuantityInPieces) . " pieces, Requested: {$quantityInPieces} pieces");
-                    }
-
-                    foreach ($allocations as $allocation) {
-                        $product = [
-                            'company_id' => $validated['company_id'],
-                            'sale_id' => $sale->id,
-                            'product_id' => $productId,
-                            'purchase_product_id' => $allocation['purchase_product_id'],
-                            'quantity' => $allocation['quantity_in_uom'],
-                            'free_quantity' => $allocation['free_quantity_in_uom'],
-                            'price' => $productData['price'],
-                            'discount_percent' => $productData['discount_percent'] ?? 0,
-                            'discount_amount' => $productData['discount_amount'] ?? 0,
-                            'is_vatable' => $productData['is_vatable'] ?? false,
-                            'measure_unit_id' => $productData['measure_unit_id'],
-                            'mfd' => $allocation['mfd'],
-                            'batch_no' => $allocation['batch_no'],
-                            'expiry_date' => $allocation['expiry_date'] ?? null,
-                            'name' => $productModel->name,
-                        ];
-
-                        $sale->saleProducts()->create($product);
                     }
                 }
 
@@ -1419,7 +1315,7 @@ class SaleController extends Controller
                     'saleProducts.fieldValues' => function ($query) {
                         $query->orderBy('quantity_index', 'asc')->orderBy('product_field_id', 'asc');
                     },
-                    'saleAdditionals' // Added to load SaleAdditional relationship
+                    'saleAdditionals'
                 ])
             ], 201);
         } catch (ModelNotFoundException $e) {
@@ -1432,6 +1328,101 @@ class SaleController extends Controller
             Log::error('Unexpected error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
+    }
+
+    private function flattenFieldValues($fieldValues, $index): array
+    {
+        $flattened = [];
+        $flattenRecursive = function ($items, $depth = 0) use (&$flattenRecursive, &$flattened, $index) {
+            if ($depth > 5) {
+                throw new \Exception("Excessive nesting in field_values at index {$index}");
+            }
+            foreach ($items as $item) {
+                if (is_array($item)) {
+                    if (isset($item['purchase_product_id'], $item['product_field_id'], $item['value'], $item['quantity_index'])) {
+                        $flattened[] = [
+                            'purchase_product_id' => $item['purchase_product_id'],
+                            'product_field_id' => $item['product_field_id'],
+                            'value' => $item['value'],
+                            'quantity_index' => $item['quantity_index'],
+                            'quantity_type' => $item['quantity_type'] ?? 'regular',
+                        ];
+                    } else {
+                        $flattenRecursive($item, $depth + 1);
+                    }
+                }
+            }
+        };
+        $flattenRecursive($fieldValues);
+        return $flattened;
+    }
+
+    private function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    {
+        $integerPart = floor($quantity);
+        $decimalPart = $quantity - $integerPart;
+        $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
+        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+    }
+
+    private function calculateAvailablePieces($purchaseProduct, float $measureUnitQuantity, int $companyId): float
+    {
+        $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQuantity);
+        $freePieces = $this->calculatePieces($purchaseProduct->free_quantity ?? 0, $measureUnitQuantity);
+
+        $purchaseReturnedPieces = $purchaseProduct->purchaseProductReturns->reduce(
+            fn($carry, $return) => $carry + $this->calculatePieces($return->quantity ?? 0, $return->measureUnit->quantity ?? 1) + $this->calculatePieces($return->free_quantity ?? 0, $return->measureUnit->quantity ?? 1),
+            0
+        );
+
+        $soldPieces = $purchaseProduct->saleProducts->reduce(
+            fn($carry, $sale) => $carry + $this->calculatePieces($sale->quantity ?? 0, $sale->measureUnit->quantity ?? 1) + $this->calculatePieces($sale->free_quantity ?? 0, $sale->measureUnit->quantity ?? 1),
+            0
+        );
+
+        $salesReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $return) => $carry + $this->calculatePieces($return->quantity ?? 0, $return->measureUnit->quantity ?? 1) + $this->calculatePieces($return->free_quantity ?? 0, $return->measureUnit->quantity ?? 1),
+                0
+            );
+
+        return max(0, ($regularPieces + $freePieces) - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces);
+    }
+
+    private function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
+    {
+        $regularUnits = $regularPieces / $targetMeasureUnitQuantity;
+        $regularIntegerUnits = floor($regularUnits);
+        $regularRemainingPieces = $regularPieces - ($regularIntegerUnits * $targetMeasureUnitQuantity);
+        $regularQuantity = $regularIntegerUnits + ($regularRemainingPieces * 0.1);
+
+        $freeUnits = $freePieces / $targetMeasureUnitQuantity;
+        $freeIntegerUnits = floor($freeUnits);
+        $freeRemainingPieces = $freePieces - ($freeIntegerUnits * $targetMeasureUnitQuantity);
+        $freeQuantity = $freeIntegerUnits + ($freeRemainingPieces * 0.1);
+
+        return [$regularQuantity, $freeQuantity];
+    }
+
+    private function getUnavailableQuantityIndices($purchaseProduct, int $companyId): array
+    {
+        $returnIndices = $purchaseProduct->purchaseProductReturns->isNotEmpty()
+            ? PurchaseReturnProductFieldValue::whereIn('purchase_return_product_id', $purchaseProduct->purchaseProductReturns->pluck('id'))
+                ->whereNull('deleted_at')
+                ->pluck('quantity_index')
+                ->toArray()
+            : [];
+        $soldIndices = $purchaseProduct->saleProducts->isNotEmpty()
+            ? SalesProductFieldValue::whereIn('sale_product_id', $purchaseProduct->saleProducts->pluck('id'))
+                ->whereNull('deleted_at')
+                ->pluck('quantity_index')
+                ->toArray()
+            : [];
+        return array_merge($returnIndices, $soldIndices);
     }
 
 

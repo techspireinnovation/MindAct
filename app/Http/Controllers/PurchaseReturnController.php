@@ -2053,7 +2053,7 @@ class PurchaseReturnController extends Controller
                             })->toArray();
                         })
                         ->toArray();
-
+                        
 
                     Log::debug('Grouped field values', [
                         'product_id' => $productData['product_id'],
@@ -2190,7 +2190,7 @@ class PurchaseReturnController extends Controller
                             $regularFvByIndex = collect($fvByIndex)->filter(function ($fvSet) {
                                 return collect($fvSet)->first()['quantity_type'] === 'regular';
                             })->toArray();
-
+                          
                             $freeFvByIndex = collect($fvByIndex)->filter(function ($fvSet) {
                                 return collect($fvSet)->first()['quantity_type'] === 'free';
                             })->toArray();

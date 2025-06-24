@@ -134,13 +134,13 @@ class Product extends Model
 
     public function getProductStockQuantityAttribute()
     {
-        $purchases = $this->getPurchaseQuantityAttribute();
-        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
-        $sale = SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
-        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $purchases = $this->getPurchaseDetailAttribute();
+        $purchaseReturn = $this->getPurchaseReturnDetailAttribute();
+        $sale = $this->getSaleDetailAttribute();
+        $saleReturn = $this->getSaleReturnDetailAttribute();
         $openQty = $this->getOpeningQuantityAttribute();
-        $stock = $purchases - $purchaseReturn - $sale + $saleReturn + $openQty;
-        return ($stock) >= 0 ? $stock : 0;
+        $stock = $purchases['qty'] - $purchaseReturn['qty'] - $sale['qty'] + $saleReturn['qty'] + $openQty;
+        return $stock >= 0 ? $stock : 0;
     }
 
     public function getOpeningQuantityAttribute()
@@ -266,14 +266,11 @@ class Product extends Model
     public function getPurchaseDetailAttribute()
     {
         $averagePrice = PurchaseProduct::where(['product_id' => $this->id])->get()->map(function ($purchase) {
-
             $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
-
             return [
                 'total_price' => $primaryEntities[1],
                 'primary_units' => $primaryEntities[0],
             ];
-
         })->reduce(function ($carry, $item) {
             $carry['total_price'] += $item['total_price'];
             $carry['primary_units'] += $item['primary_units'];
@@ -281,6 +278,40 @@ class Product extends Model
         }, ['total_price' => 0, 'primary_units' => 0]);
         return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
     }
+
+    public function getPurchaseReturnDetailAttribute()
+    {
+        $averagePrice = PurchaseProductReturn::where(['product_id' => $this->id])->get()->map(function ($purchase) {
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+    }
+
+    public function getSaleReturnDetailAttribute()
+    {
+        $averagePrice = SalesReturnProduct::where(['product_id' => $this->id])->get()->map(function ($purchase) {
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+    }
+
+
 
     public function getSaleDetailAttribute()
     {

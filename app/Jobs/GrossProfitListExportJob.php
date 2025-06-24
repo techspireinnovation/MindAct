@@ -65,9 +65,6 @@ class GrossProfitListExportJob implements ShouldQueue
                     $qtyIn = ($item->opening_quantity ?? 0) + ($purchase_detail['qty'] ?? 0) + ($sale_return_detail['qty'] ?? 0);
                     $qtyOut = ($sale_detail['qty'] ?? 0) + ($purchase_return_detail['qty'] ?? 0);
 
-                    $qtyInRate = (($item->opening_rate ?? 0) + ($purchase_detail['avg_price'] ?? 0) + ($sale_return_detail['avg_price'] ?? 0)) / 3;
-                    $qtyOutRate = (($sale_detail['avg_price'] ?? 0) + ($purchase_return_detail['avg_price'] ?? 0)) / 3;
-
                     $qtyInAmt = $item->opening_rate * $item->opening_quantity + $purchase_detail['avg_price'] * $purchase_detail['qty'] + $sale_return_detail['avg_price'] * $sale_return_detail['qty'];
 
                     $qtyOutAmt = $sale_detail['avg_price'] * $sale_detail['qty'] + $purchase_return_detail['avg_price'] * $purchase_return_detail['qty'];

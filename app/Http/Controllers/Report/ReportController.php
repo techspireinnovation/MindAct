@@ -124,14 +124,13 @@ class ReportController extends Controller
                 $items = Purchase::
                     join('purchase_products', 'purchases.id', '=', 'purchase_products.purchase_id')
                     ->join('customers', 'purchases.customer_id', '=', 'customers.id')
-                    ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
-                    ->groupBy('purchases.id', 'measure_units.name', 'purchases.purchase_bill_number', 'purchases.customer_name', 'purchases.invoice_date')
+                    ->join('measure_units', 'purchases.measure_unit_id', '=', 'measure_units.id')
+                    ->groupBy('purchases.id', 'purchases.purchase_bill_number', 'purchases.customer_name', 'purchases.invoice_date')
                     ->where('purchase_products.product_id', $request->product_id)
                     ->select([
                         'purchases.invoice_date as date',
                         'customers.party_name as party_name',
                         'purchases.purchase_bill_number as invoice_number',
-                        'measure_units.name as primary_unit_name',
                         'purchases.ref_bill_number as ref_no',
                         DB::raw('SUM(purchase_products.quantity) as quantity'),
                         DB::raw('SUM(purchase_products.discount_amount) as discount_amount'),
@@ -145,20 +144,20 @@ class ReportController extends Controller
                     })
                     ->orderBy('purchases.invoice_date', 'desc')
                     ->get();
-
+                $items->each(function ($item) use ($product) {
+                    $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
+                });
             } else {
                 $items = Sale::
                     join('sale_products', 'sales.id', '=', 'sale_products.sale_id')
                     ->join('customers', 'sales.customer_id', '=', 'customers.id')
-                    ->join('measure_units', 'sale_products.measure_unit_id', '=', 'measure_units.id')
-                    ->groupBy('sales.id', 'measure_units.name', 'sales.invoice_date', 'sales.customer_name', 'sales.invoice_number')
+                    ->groupBy('sales.id', 'sales.invoice_date', 'sales.customer_name', 'sales.invoice_number')
                     ->where('sale_products.product_id', $request->product_id)
                     ->select([
                         'sales.invoice_date as date',
                         'customers.party_name as party_name',
                         'sales.invoice_number as invoice_number',
                         'sales.ref_number as ref_no',
-                        'measure_units.name as primary_unit_name',
                         DB::raw('SUM(sale_products.quantity) as quantity'),
                         DB::raw('SUM(sale_products.discount_amount) as discount_amount'),
                         DB::raw('AVG(sale_products.price) as rate')

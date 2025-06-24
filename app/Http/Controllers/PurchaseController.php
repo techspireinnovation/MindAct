@@ -93,6 +93,37 @@ class PurchaseController extends Controller
         return response()->json($query->paginate(50));
     }
 
+     public function getRefBillNumber(Request $request)
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            $companyId = $request->company_id;
+
+            // Get reference bill numbers where at least one product has remaining quantity
+            // Accounts for purchase quantity and free_quantity, minus returns and sales (including free quantities)
+            // Adds back quantities from non-deleted sale product returns
+            $billNumbers = Purchase::where('company_id', $companyId)
+                                ->pluck('ref_bill_number');
+
+            if ($billNumbers->isEmpty()) {
+                return response()->json([]);
+            }
+
+            return response()->json($billNumbers);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+        
+
     public function getProducts(Request $request): JsonResponse
     {
 

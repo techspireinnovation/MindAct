@@ -205,7 +205,7 @@ class PurchaseController extends Controller
                         $query->where('purchase_id', $id);
                     }),
                 ],
-                'purchase_products.*.customer_id' => 'required|integer|exists:customers,id',
+              
 
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',

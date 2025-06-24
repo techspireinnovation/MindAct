@@ -93,6 +93,44 @@ class PurchaseController extends Controller
         return response()->json($query->paginate(50));
     }
 
+
+
+    public function getRefBillNumber(Request $request)
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            $companyId = $request->company_id;
+
+
+            $billNumbers = Purchase::where('company_id', $companyId)
+                ->pluck('ref_bill_number');
+
+            if ($billNumbers->isEmpty()) {
+                return response()->json(
+
+                    []
+
+                , 200);
+            }
+
+
+            return response()->json($billNumbers);
+        } catch (ModelNotFoundException $e) {
+            \Log::error('Item not Found: ' . $e->getMessage());
+            return response()->json(['error' => 'Item  not Found'], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+
+            \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
     public function getProducts(Request $request): JsonResponse
     {
 

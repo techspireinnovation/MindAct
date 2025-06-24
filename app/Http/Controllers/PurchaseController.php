@@ -77,7 +77,7 @@ class PurchaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to generate bill number: ' . $e->getMessage()
+                'message' => 'Failed to generate a bill number: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -207,7 +207,7 @@ class PurchaseController extends Controller
                         $query->where('purchase_id', $id);
                     }),
                 ],
-                'purchase_products.*.customer_id' => 'required|integer|exists:customers,id',
+              
 
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',

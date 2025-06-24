@@ -14,6 +14,8 @@ use Rap2hpoutre\FastExcel\FastExcel;
 use Storage;
 use Str;
 
+use function PHPUnit\Framework\isFinite;
+
 class GrossProfitListExportJob implements ShouldQueue
 {
     use Queueable;
@@ -64,13 +66,21 @@ class GrossProfitListExportJob implements ShouldQueue
                     $qtyOut = ($sale_detail['qty'] ?? 0) + ($purchase_return_detail['qty'] ?? 0);
 
                     $qtyInRate = (($item->opening_rate ?? 0) + ($purchase_detail['avg_price'] ?? 0) + ($sale_return_detail['avg_price'] ?? 0)) / 3;
-                    $qtyOutRate = ($sale_detail['avg_price'] ?? 0) + ($purchase_return_detail['avg_price'] ?? 0);
+                    $qtyOutRate = (($sale_detail['avg_price'] ?? 0) + ($purchase_return_detail['avg_price'] ?? 0)) / 3;
 
-                    $closingAmount = $qtyInRate * $qtyIn - $qtyOutRate * $qtyOut;
+                    $qtyInAmt = $item->opening_rate * $item->opening_quantity + $purchase_detail['avg_price'] * $purchase_detail['qty'] + $sale_return_detail['avg_price'] * $sale_return_detail['qty'];
+
+                    $qtyOutAmt = $sale_detail['avg_price'] * $sale_detail['qty'] + $purchase_return_detail['avg_price'] * $purchase_return_detail['qty'];
+
                     $closingQty = $qtyIn - $qtyOut;
+                    $avgCost = $qtyIn !== 0 ? $qtyInAmt / $qtyIn : 0;
+                    $closingAmount = $closingQty === 0 ? 0 : $closingQty * $avgCost;
+                    $saleAmt = $sale_detail['avg_price'] * $sale_detail['qty'];
+                    $cogs = $qtyInAmt - $qtyOutAmt;
 
-                    $grossProfit = $qtyOut > 0 ? $qtyIn - $qtyOut : 0;
-                    $grossProfitRatio = $qtyOutRate * $qtyOut > 0 ? ($grossProfit * 100 / $qtyOut) : 0;
+                    $grossProfit = $saleAmt - $cogs;
+
+                    $grossProfitRatio = $saleAmt > 0 && isFinite($grossProfit) ? ($grossProfit / $saleAmt) * 100 : 0;
 
                     return [
                         'S.N' => $sn++,
@@ -81,10 +91,10 @@ class GrossProfitListExportJob implements ShouldQueue
                         "Opening Amount" => round(($item->opening_rate ?? 0) * $item->opening_quantity, 2),
 
                         "Qty In" => $qtyIn ?? 0,
-                        "Amount In" => round($qtyInRate * $qtyIn, 2),
+                        "Amount In" => round($qtyInAmt, 2),
 
                         "Qty Out" => $qtyOut ?? 0,
-                        "Amount Out" => round($qtyOutRate * $qtyOut, 2),
+                        "Amount Out" => round($qtyOutAmt, 2),
 
                         "Closing Qty" => $closingQty,
                         "Closing Amount" => round($closingAmount, 2),

@@ -76,7 +76,7 @@ class PurchaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to generate bill number: ' . $e->getMessage()
+                'message' => 'Failed to generate a bill number: ' . $e->getMessage()
             ], 500);
         }
     }

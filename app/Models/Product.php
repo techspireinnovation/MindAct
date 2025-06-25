@@ -155,10 +155,8 @@ class Product extends Model
 
     public function getPurchaseQuantityAttribute()
     {
-
         $request = request();
         return PurchaseProduct::where('product_id', $this->id)
-
             ->whereHas('purchase', function ($query) use ($request) {
                 $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                     $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
@@ -168,38 +166,73 @@ class Product extends Model
 
     public function getProductPurchaseRateAttribute()
     {
-        return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
 
     public function getSaleQuantityAttribute()
     {
-        return SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('quantity') ?? 0;
     }
 
     public function getSaleRateAttribute()
     {
-        return SaleProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
     public function getPurchaseReturnQuantityAttribute()
     {
-        return PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('quantity') ?? 0;
     }
 
     public function getPurchaseReturnRateAttribute()
     {
-        return PurchaseProductReturn::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
     public function getSaleReturnQuantityAttribute()
     {
-        return SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('quantity') ?? 0;
     }
 
     public function getSaleReturnRateAttribute()
     {
-        return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
     public function getStockAdjustmentDetailAttribute()

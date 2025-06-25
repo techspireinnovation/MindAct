@@ -82,9 +82,9 @@ class StockRegisterListExportJob implements ShouldQueue
 
                         "Credit Note" => "",
 
-                        //"Sales Return Qty" => $item->sale_return_quantity ?? 0,
-                        //"Sales Return Rate" => $item->sale_return_rate ?? 0,
-                        //"Sales Return Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
+                        "Sales Return Qty" => $item->sale_return_quantity ?? 0,
+                        "Sales Return Rate" => $item->sale_return_rate ?? 0,
+                        "Sales Return Amount" => round(($item->sale_return_quantity ?? 0) * ($item->sale_return_rate ?? 0), 2),
 
                         "Adj. Qty" => 0,
                         "Adj. Qty Rate" => 0,

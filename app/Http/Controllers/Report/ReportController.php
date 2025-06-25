@@ -460,34 +460,43 @@ class ReportController extends Controller
                 return response()->json($validator->errors(), 422);
             }
 
-            $sale_taxable_amount = Sale::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('taxable_amount');
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+            }
 
-            $purchase_taxable_amount = Purchase::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('taxable_amount');
+            $applyFilters = function ($query) use ($request) {
+                $query->when(isset($request->month) && isset($request->year), function ($query1) use ($request) {
+                    $query1->whereRaw(' CAST(SUBSTRING(invoice_date_bs, 6, 2) AS UNSIGNED) = ?', $request->input('month'))->whereRaw('SUBSTRING(invoice_date_bs, 1, 4) = ?', $request->input('year'));
+                });
+            };
 
-            $sale_return_amount = SalesReturn::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('taxable_amount');
+            $sale_taxable_amount = Sale::tap($applyFilters)->sum('taxable_amount');
 
+            $purchase_taxable_amount = Purchase::tap($applyFilters)->sum('taxable_amount');
 
-            return response()->json([
+            $sale_return_amount = SalesReturn::tap($applyFilters)->sum('taxable_amount');
+
+            $report = [
                 'sales' => [
                     'vatable' => round($sale_taxable_amount, 2),
-                    'non_vatable' => round(Sale::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('non_taxable_amount'), 2),
+                    'non_vatable' => round(Sale::tap($applyFilters)->sum('non_taxable_amount'), 2),
                     'export' => 0,
                     'vat' => round($sale_taxable_amount * 0.13, 2),
                 ],
                 'purchase' => [
                     'vatable' => round($purchase_taxable_amount, 2),
-                    'non_vatable' => round(Purchase::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('non_taxable_amount'), 2),
+                    'non_vatable' => round(Purchase::tap($applyFilters)->sum('non_taxable_amount'), 2),
                     'vatable_import' => round(0 * 0.13, 2),
                     'non_vatable_import' => round(0 * 0.13, 2),
                     'vat' => round($purchase_taxable_amount * 0.13, 2),
                 ],
                 'bill' => [
-                    'purchase' => Purchase::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
-                    'purchase_return' => PurchaseReturn::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
-                    'sale_return' => SalesReturn::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
+                    'purchase' => Purchase::tap($applyFilters)->count('id'),
+                    'purchase_return' => PurchaseReturn::tap($applyFilters)->count('id'),
+                    'sale_return' => SalesReturn::tap($applyFilters)->count('id'),
                     'sale_return_advice' => round(0 * 0.13, 2),
                     'purchase_return_advice' => round(0 * 0.13, 2),
-                    'sale' => Sale::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
+                    'sale' => Sale::tap($applyFilters)->count('id'),
                 ],
                 'other' => [
                     'purchase_return_vat' => round(0 * 0.13, 2),
@@ -495,7 +504,9 @@ class ReportController extends Controller
                     'customer_return_vat' => round(0 * 0.13, 2),
                 ],
                 'net_payable_amount' => round(($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13), 2),
-            ]);
+            ];
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
+            return response()->json($report);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);

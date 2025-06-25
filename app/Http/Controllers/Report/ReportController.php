@@ -477,21 +477,20 @@ class ReportController extends Controller
 
         // Helper function to apply filters
         $applyFilters = function ($query) use ($fromDate, $toDate, $customerId) {
+
             if ($fromDate) {
-                $query->where('invoice_date', '>=', $fromDate);
+                $query->where("{$query->from}.invoice_date_bs", '>=', $fromDate);
             }
             if ($toDate) {
-                $query->where('invoice_date', '<=', $toDate);
+                $query->where("{$query->from}.invoice_date_bs", '<=', $toDate);
             }
             if ($customerId) {
-                $query->where('customer_id', $customerId);
+                $query->where("{$query->from}.customer_id", $customerId);
             }
         };
 
         $items = match ($request->type) {
-            'purchase' => DB::table('purchases')
-                ->selectRaw('invoice_date as tr_date,
-                            MONTHNAME(invoice_date) as month_name,
+            'purchase' => Purchase::selectRaw('invoice_date_bs as tr_date,
                             purchase_bill_number as bill_number,
                             sub_total_before_discount as before_vat_amt,
                             vat_percent as vat_amount,
@@ -502,13 +501,10 @@ class ReportController extends Controller
                             document_number as voucher_number,
                             customers.party_name as party_name,
         "Purchase" as type')->leftJoin("customers", "customers.id", "=", "purchases.customer_id")
-                ->whereNull('purchases.deleted_at')
                 ->tap($applyFilters)
-                ->where("purchases.company_id", $request->company_id)
                 ->get(),
-            'purchase_return' => DB::table('purchase_returns')->selectRaw('
-                                        invoice_date as tr_date,
-                                        MONTHNAME(invoice_date) as month_name,
+            'purchase_return' => PurchaseReturn::selectRaw('
+                                        invoice_date_bs as tr_date,
                                         purchase_bill_number as bill_number,
                                         sub_total_before_discount as before_vat_amt,
                                         vat_percent AS vat_amount,
@@ -520,13 +516,9 @@ class ReportController extends Controller
                                         customers.party_name as party_name,
                                         "Purchase Return" as type
                                 ')->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")
-                ->whereNull('purchase_returns.deleted_at')->tap($applyFilters)
-                ->where("purchase_returns.company_id", $request->company_id)
                 ->get(),
-            'sales' => DB::table('sales')
-                ->selectRaw('
-        invoice_date as tr_date,
-        MONTHNAME(invoice_date) as month_name,
+            'sales' => Sale::selectRaw('
+        invoice_date_bs as tr_date,
         invoice_number as bill_number,
         sub_total_before_discount as before_vat_amt,
         IFNULL(taxable_amount * 0.13, 0) as vat_amount, -- Adjust VAT rate as needed
@@ -538,13 +530,9 @@ class ReportController extends Controller
          customers.party_name as party_name,
         "Sales" as type
     ')->leftJoin("customers", "customers.id", "=", "sales.customer_id")
-                ->whereNull('sales.deleted_at')->tap($applyFilters)
-                ->where("sales.company_id", $request->company_id)
                 ->get(),
-            'sales_return' => DB::table('sales_returns')
-                ->selectRaw('
-        invoice_date as tr_date,
-        MONTHNAME(invoice_date) as month_name,
+            'sales_return' => SalesReturn::selectRaw('
+        invoice_date_bs as tr_date,
         invoice_number as bill_number,
         sub_total_before_discount as before_vat_amt,
         IFNULL(taxable_amount * 0.13, 0) as vat_amount,
@@ -570,7 +558,7 @@ class ReportController extends Controller
             ])
             ->values(); // Re-index
 
-        Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
+        // Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
         return response()->json($report);
 
 

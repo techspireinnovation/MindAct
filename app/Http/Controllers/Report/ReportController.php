@@ -119,15 +119,18 @@ class ReportController extends Controller
             }
             $product = Product::findOrFail($request->product_id);
 
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+            }
 
             if ($request->type === "purchase") {
                 $items = Purchase::
                     join('purchase_products', 'purchases.id', '=', 'purchase_products.purchase_id')
                     ->join('customers', 'purchases.customer_id', '=', 'customers.id')
-                    ->groupBy('purchases.id', 'purchases.purchase_bill_number', 'purchases.customer_name', 'purchases.invoice_date')
+                    ->groupBy('purchases.id', 'purchases.purchase_bill_number', 'purchases.customer_name', 'purchases.invoice_date_bs')
                     ->where('purchase_products.product_id', $request->product_id)
                     ->select([
-                        'purchases.invoice_date as date',
+                        'purchases.invoice_date_bs as date',
                         'customers.party_name as party_name',
                         'purchases.purchase_bill_number as invoice_number',
                         'purchases.ref_bill_number as ref_no',
@@ -139,9 +142,9 @@ class ReportController extends Controller
                         $query->where('purchases.customer_id', $request->customer_id);
                     })
                     ->when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
-                        $query->whereBetween('purchases.invoice_date', [$request->from_date, $request->to_date]);
+                        $query->whereBetween('purchases.invoice_date_bs', [$request->from_date, $request->to_date]);
                     })
-                    ->orderBy('purchases.invoice_date', 'desc')
+                    ->orderBy('purchases.invoice_date_bs', 'desc')
                     ->get();
                 $items->each(function ($item) use ($product) {
                     $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
@@ -150,10 +153,10 @@ class ReportController extends Controller
                 $items = Sale::
                     join('sale_products', 'sales.id', '=', 'sale_products.sale_id')
                     ->join('customers', 'sales.customer_id', '=', 'customers.id')
-                    ->groupBy('sales.id', 'sales.invoice_date', 'sales.customer_name', 'sales.invoice_number')
+                    ->groupBy('sales.id', 'sales.invoice_date_bs', 'sales.customer_name', 'sales.invoice_number')
                     ->where('sale_products.product_id', $request->product_id)
                     ->select([
-                        'sales.invoice_date as date',
+                        'sales.invoice_date_bs as date',
                         'customers.party_name as party_name',
                         'sales.invoice_number as invoice_number',
                         'sales.ref_number as ref_no',
@@ -165,9 +168,9 @@ class ReportController extends Controller
                         $query->where('sales.customer_id', $request->customer_id);
                     })
                     ->when(isset($request->from_date) && isset($request->to_date), function ($query) use ($request) {
-                        $query->whereBetween('sales.invoice_date', [$request->from_date, $request->to_date]);
+                        $query->whereBetween('sales.invoice_date_bs', [$request->from_date, $request->to_date]);
                     })
-                    ->orderBy('sales.invoice_date', 'desc')
+                    ->orderBy('sales.invoice_date_bs', 'desc')
                     ->get();
 
                 $items->each(function ($item) use ($product) {
@@ -175,6 +178,8 @@ class ReportController extends Controller
                 });
 
             }
+
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
             return response()->json($items);
 
         } catch (ModelNotFoundException $e) {

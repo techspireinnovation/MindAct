@@ -302,200 +302,212 @@ class ReportController extends Controller
 
     public function cbmsVatReturnListDetails(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'type' => 'required|string|in:sales,sales_return,purchases,purchase_return',
-            'month' => 'required|numeric',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'type' => 'required|string|in:sales,sales_return,purchases,purchase_return',
+                'month' => 'required|numeric',
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
+            }
+
+            if ($request->type === "purchases") {
+
+                $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.sub_total_before_discount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('COALESCE(ROUND(purchases.vat_percent,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+
+                if ($request->has('month')) {
+                    $items->whereMonth('invoice_date', $request->input('month'));
+                }
+                $items = $items->get();
+
+            } else if ($request->type === "sales") {
+                $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.sub_total_before_discount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('COALESCE(ROUND(sales.taxable_amount * .13,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+
+                if ($request->has('month')) {
+                    $items->whereMonth('invoice_date', $request->input('month'));
+                }
+
+                if ($request->has('year')) {
+                    $items->whereYear('invoice_date', $request->input('year'));
+                }
+
+                $items = $items->get();
+            } else if ($request->type === "purchase_return") {
+                $items = DB::table('purchase_product_returns as ppr')
+                    ->join('purchase_returns as pr', 'ppr.purchase_return_id', '=', 'pr.id')
+                    ->join('customers as c', 'pr.customer_id', '=', 'c.id')
+                    ->select([
+                        'pr.invoice_date as date',
+                        'pr.purchase_bill_number as bill_number',
+                        'c.party_name as supplier_name',
+                        'c.pan_number as supplier_pan',
+                        'ppr.product_name as product_service_name',
+                        'ppr.product_id as product_id',
+                        DB::raw('SUM(ppr.quantity) as product_quantity'),
+                        DB::raw('SUM(ppr.amount) as total_purchase'),
+                        DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.amount ELSE 0 END) as non_taxable'),
+                        DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.amount ELSE 0 END) as taxable'),
+                        DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.amount * .13,2) ELSE 0 END) as vat_amount'),
+                    ])
+                    ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
+                        $query->whereMonth('pr.invoice_date', $request->month)
+                            ->whereYear('pr.invoice_date', $request->year);
+                    })
+                    ->where('ppr.company_id', $request->company_id)
+                    ->groupBy([
+                        'pr.invoice_date',
+                        'pr.purchase_bill_number',
+                        'c.party_name',
+                        'c.pan_number',
+                        'ppr.product_name',
+                        'ppr.product_id',
+                    ])
+                    ->orderBy('pr.invoice_date')
+                    ->get();
+
+                $items->each(function ($item) {
+                    $product = Product::findOrFail($item->product_id);
+                    $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
+                });
+
+            } else if ($request->type === "sales_return") {
+                $items = DB::table('sales_return_products as ppr')
+                    ->join('sales_returns as pr', 'ppr.sales_return_id', '=', 'pr.id')
+                    ->join('customers as c', 'pr.customer_id', '=', 'c.id')
+                    ->select([
+                        'pr.invoice_date as date',
+                        'pr.invoice_number as bill_number',
+                        'c.party_name as supplier_name',
+                        'c.pan_number as supplier_pan',
+                        'ppr.product_name as product_service_name',
+                        'ppr.product_id as product_id',
+                        DB::raw('SUM(ppr.quantity) as product_quantity'),
+                        DB::raw('SUM(ppr.price) as total_sales'),
+                        DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.price ELSE 0 END) as non_taxable'),
+                        DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.price ELSE 0 END) as taxable'),
+                        DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.price * .13,2) ELSE 0 END) as vat_amount'),
+                    ])->where('ppr.company_id', $request->company_id)
+                    ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
+                        $query->whereMonth('pr.invoice_date', $request->month)
+                            ->whereYear('pr.invoice_date', $request->year);
+                    })
+                    ->groupBy([
+                        'pr.invoice_date',
+                        'pr.invoice_number',
+                        'c.party_name',
+                        'c.pan_number',
+                        'ppr.product_name',
+                        'ppr.product_id',
+                    ])
+                    ->orderBy('pr.invoice_date')
+                    ->get();
+                $items->each(function ($item) {
+                    $product = Product::findOrFail($item->product_id);
+                    $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
+                });
+            }
+            return response()->json($items);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+
         }
-
-        if ($request->type === "purchases") {
-
-            $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.sub_total_before_discount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('COALESCE(ROUND(purchases.vat_percent,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
-
-            if ($request->has('month')) {
-                $items->whereMonth('invoice_date', $request->input('month'));
-            }
-            $items = $items->get();
-
-        } else if ($request->type === "sales") {
-            $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.sub_total_before_discount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('COALESCE(ROUND(sales.taxable_amount * .13,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
-
-            if ($request->has('month')) {
-                $items->whereMonth('invoice_date', $request->input('month'));
-            }
-
-            if ($request->has('year')) {
-                $items->whereYear('invoice_date', $request->input('year'));
-            }
-
-            $items = $items->get();
-        } else if ($request->type === "purchase_return") {
-            $items = DB::table('purchase_product_returns as ppr')
-                ->join('purchase_returns as pr', 'ppr.purchase_return_id', '=', 'pr.id')
-                ->join('customers as c', 'pr.customer_id', '=', 'c.id')
-                ->select([
-                    'pr.invoice_date as date',
-                    'pr.purchase_bill_number as bill_number',
-                    'c.party_name as supplier_name',
-                    'c.pan_number as supplier_pan',
-                    'ppr.product_name as product_service_name',
-                    'ppr.product_id as product_id',
-                    DB::raw('SUM(ppr.quantity) as product_quantity'),
-                    DB::raw('SUM(ppr.amount) as total_purchase'),
-                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.amount ELSE 0 END) as non_taxable'),
-                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.amount ELSE 0 END) as taxable'),
-                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.amount * .13,2) ELSE 0 END) as vat_amount'),
-                ])
-                ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
-                    $query->whereMonth('pr.invoice_date', $request->month)
-                        ->whereYear('pr.invoice_date', $request->year);
-                })
-                ->where('ppr.company_id', $request->company_id)
-                ->groupBy([
-                    'pr.invoice_date',
-                    'pr.purchase_bill_number',
-                    'c.party_name',
-                    'c.pan_number',
-                    'ppr.product_name',
-                    'ppr.product_id',
-                ])
-                ->orderBy('pr.invoice_date')
-                ->get();
-
-            $items->each(function ($item) {
-                $product = Product::findOrFail($item->product_id);
-                $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
-            });
-
-        } else if ($request->type === "sales_return") {
-            $items = DB::table('sales_return_products as ppr')
-                ->join('sales_returns as pr', 'ppr.sales_return_id', '=', 'pr.id')
-                ->join('customers as c', 'pr.customer_id', '=', 'c.id')
-                ->select([
-                    'pr.invoice_date as date',
-                    'pr.invoice_number as bill_number',
-                    'c.party_name as supplier_name',
-                    'c.pan_number as supplier_pan',
-                    'ppr.product_name as product_service_name',
-                    'ppr.product_id as product_id',
-                    DB::raw('SUM(ppr.quantity) as product_quantity'),
-                    DB::raw('SUM(ppr.price) as total_sales'),
-                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 0 THEN ppr.price ELSE 0 END) as non_taxable'),
-                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ppr.price ELSE 0 END) as taxable'),
-                    DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.price * .13,2) ELSE 0 END) as vat_amount'),
-                ])->where('ppr.company_id', $request->company_id)
-                ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
-                    $query->whereMonth('pr.invoice_date', $request->month)
-                        ->whereYear('pr.invoice_date', $request->year);
-                })
-                ->groupBy([
-                    'pr.invoice_date',
-                    'pr.invoice_number',
-                    'c.party_name',
-                    'c.pan_number',
-                    'ppr.product_name',
-                    'ppr.product_id',
-                ])
-                ->orderBy('pr.invoice_date')
-                ->get();
-            $items->each(function ($item) {
-                $product = Product::findOrFail($item->product_id);
-                $item->primary_unit_name = $product->getPrimaryMeasureUnitAttribute()->name;
-            });
-        }
-        return response()->json($items);
     }
 
     public function vatReturnDataListDetails(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'month' => 'required|numeric',
-            'year' => 'required|numeric',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'month' => 'required|numeric',
+                'year' => 'required|numeric',
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
+            }
+
+            $sale_taxable_amount = Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+
+            $purchase_taxable_amount = Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+
+            $sale_return_amount = SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+
+
+            return response()->json([
+                'sales' => [
+                    'vatable' => round($sale_taxable_amount, 2),
+                    'non_vatable' => round(Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
+                    'export' => 0,
+                    'vat' => round($sale_taxable_amount * 0.13, 2),
+                ],
+                'purchase' => [
+                    'vatable' => round($purchase_taxable_amount, 2),
+                    'non_vatable' => round(Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
+                    'vatable_import' => round(0 * 0.13, 2),
+                    'non_vatable_import' => round(0 * 0.13, 2),
+                    'vat' => round($purchase_taxable_amount * 0.13, 2),
+                ],
+                'bill' => [
+                    'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                    'purchase_return' => PurchaseReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                    'sale_return' => SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                    'sale_return_advice' => round(0 * 0.13, 2),
+                    'purchase_return_advice' => round(0 * 0.13, 2),
+                    'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                ],
+                'other' => [
+                    'purchase_return_vat' => round(0 * 0.13, 2),
+                    'sale_return_vat' => round($sale_return_amount * 0.13, 2),
+                    'customer_return_vat' => round(0 * 0.13, 2),
+                ],
+                'net_payable_amount' => round(($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13), 2),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+
         }
-
-        $sale_taxable_amount = Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
-
-        $purchase_taxable_amount = Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
-
-        $sale_return_amount = SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
-
-
-        return response()->json([
-            'sales' => [
-                'vatable' => round($sale_taxable_amount, 2),
-                'non_vatable' => round(Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
-                'export' => 0,
-                'vat' => round($sale_taxable_amount * 0.13, 2),
-            ],
-            'purchase' => [
-                'vatable' => round($purchase_taxable_amount, 2),
-                'non_vatable' => round(Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
-                'vatable_import' => round(0 * 0.13, 2),
-                'non_vatable_import' => round(0 * 0.13, 2),
-                'vat' => round($purchase_taxable_amount * 0.13, 2),
-            ],
-            'bill' => [
-                'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                'purchase_return' => PurchaseReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                'sale_return' => SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                'sale_return_advice' => round(0 * 0.13, 2),
-                'purchase_return_advice' => round(0 * 0.13, 2),
-                'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-            ],
-            'other' => [
-                'purchase_return_vat' => round(0 * 0.13, 2),
-                'sale_return_vat' => round($sale_return_amount * 0.13, 2),
-                'customer_return_vat' => round(0 * 0.13, 2),
-            ],
-            'net_payable_amount' => round(($sale_taxable_amount * 0.13) - ($purchase_taxable_amount * 0.13) - ($sale_return_amount * 0.13), 2),
-        ]);
-
     }
 
     public function purchaseSalesBookListDetail(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'from_date' => 'required',
-            'to_date' => 'required',
-            'type' => 'required|in:sales,sales_return,purchase,purchase_return',
-            'customer_id' => 'nullable|exists:customers,id',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'from_date' => 'required',
+                'to_date' => 'required',
+                'type' => 'required|in:sales,sales_return,purchase,purchase_return',
+                'customer_id' => 'nullable|exists:customers,id',
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
-
-        if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
-            return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
-        }
-
-        $fromDate = $request->input('from_date');
-        $toDate = $request->input('to_date');
-        $customerId = $request->input('customer_id');
-
-        // Helper function to apply filters
-        $applyFilters = function ($query) use ($fromDate, $toDate, $customerId) {
-
-            if ($fromDate) {
-                $query->where("{$query->from}.invoice_date_bs", '>=', $fromDate);
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
             }
-            if ($toDate) {
-                $query->where("{$query->from}.invoice_date_bs", '<=', $toDate);
-            }
-            if ($customerId) {
-                $query->where("{$query->from}.customer_id", $customerId);
-            }
-        };
 
-        $items = match ($request->type) {
-            'purchase' => Purchase::selectRaw('invoice_date_bs as tr_date,
+            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+            }
+
+            $fromDate = $request->input('from_date');
+            $toDate = $request->input('to_date');
+            $customerId = $request->input('customer_id');
+
+            // Helper function to apply filters
+            $applyFilters = function ($query) use ($fromDate, $toDate, $customerId) {
+
+                if ($fromDate) {
+                    $query->where("{$query->from}.invoice_date_bs", '>=', $fromDate);
+                }
+                if ($toDate) {
+                    $query->where("{$query->from}.invoice_date_bs", '<=', $toDate);
+                }
+                if ($customerId) {
+                    $query->where("{$query->from}.customer_id", $customerId);
+                }
+            };
+
+            $items = match ($request->type) {
+                'purchase' => Purchase::selectRaw('invoice_date_bs as tr_date,
                             purchase_bill_number as bill_number,
                             sub_total_before_discount as before_vat_amt,
                             vat_percent as vat_amount,
@@ -506,9 +518,9 @@ class ReportController extends Controller
                             document_number as voucher_number,
                             customers.party_name as party_name,
         "Purchase" as type')->leftJoin("customers", "customers.id", "=", "purchases.customer_id")
-                ->tap($applyFilters)
-                ->get(),
-            'purchase_return' => PurchaseReturn::selectRaw('
+                    ->tap($applyFilters)
+                    ->get(),
+                'purchase_return' => PurchaseReturn::selectRaw('
                                         invoice_date_bs as tr_date,
                                         purchase_bill_number as bill_number,
                                         sub_total_before_discount as before_vat_amt,
@@ -521,8 +533,8 @@ class ReportController extends Controller
                                         customers.party_name as party_name,
                                         "Purchase Return" as type
                                 ')->leftJoin("customers", "customers.id", "=", "purchase_returns.customer_id")
-                ->get(),
-            'sales' => Sale::selectRaw('
+                    ->get(),
+                'sales' => Sale::selectRaw('
         invoice_date_bs as tr_date,
         invoice_number as bill_number,
         sub_total_before_discount as before_vat_amt,
@@ -535,8 +547,8 @@ class ReportController extends Controller
          customers.party_name as party_name,
         "Sales" as type
     ')->leftJoin("customers", "customers.id", "=", "sales.customer_id")
-                ->get(),
-            'sales_return' => SalesReturn::selectRaw('
+                    ->get(),
+                'sales_return' => SalesReturn::selectRaw('
         invoice_date_bs as tr_date,
         invoice_number as bill_number,
         sub_total_before_discount as before_vat_amt,
@@ -549,60 +561,73 @@ class ReportController extends Controller
          customers.party_name as party_name,
         "Sales Return" as type
     ')->leftJoin("customers", "customers.id", "=", "sales_returns.customer_id")
-                ->whereNull('sales_returns.deleted_at')->tap($applyFilters)
-                ->where("sales_returns.company_id", $request->company_id)
-                ->get(),
-        };
+                    ->whereNull('sales_returns.deleted_at')->tap($applyFilters)
+                    ->where("sales_returns.company_id", $request->company_id)
+                    ->get(),
+            };
 
-        // Merge all collections
-        $report = collect()
-            ->merge($items)
-            ->sortBy([
-                ['tr_date', 'asc'],
-                ['bill_number', 'asc'],
-            ])
-            ->values(); // Re-index
+            // Merge all collections
+            $report = collect()
+                ->merge($items)
+                ->sortBy([
+                    ['tr_date', 'asc'],
+                    ['bill_number', 'asc'],
+                ])
+                ->values(); // Re-index
 
-        Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
-        return response()->json($report);
+            Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
+            return response()->json($report);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+
+        }
 
 
     }
 
     public function grossProfitRatioListDetails(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'from_date' => 'required',
-            'to_date' => 'required',
-            'type' => 'required|string|in:list,download',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
-        }
-
-        if ($request->type === "list") {
-
-            if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
-                return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
-            }
-            $items = ProductReport::stockRegisterListDetails($request->all());
-            $items = $items->paginate(250);
-            $items->getCollection()->transform(function ($item) {
-                return $item->append(['opening_quantity', 'opening_rate', 'purchase_detail', 'sale_detail', 'purchase_return_detail', 'sale_return_detail']);
-            });
-            Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
-            return response()->json($items);
-        } else if ($request->type === "download") {
-            $user = $request->user();
-            $tokenId = $user->currentAccessToken()->id;
-            GrossProfitListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
-            return response()->json([
-                'message' => 'Gross Profit List export started. You will receive a download link when it is ready.',
+        try {
+            $validator = Validator::make($request->all(), [
+                'from_date' => 'required',
+                'to_date' => 'required',
+                'type' => 'required|string|in:list,download',
             ]);
 
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
+            }
+
+            if ($request->type === "list") {
+
+                if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                    return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+                }
+                $items = ProductReport::stockRegisterListDetails($request->all());
+                $items = $items->paginate(250);
+                $items->getCollection()->transform(function ($item) {
+                    return $item->append(['opening_quantity', 'opening_rate', 'purchase_detail', 'sale_detail', 'purchase_return_detail', 'sale_return_detail']);
+                });
+                Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
+                return response()->json($items);
+            } else if ($request->type === "download") {
+                $user = $request->user();
+                $tokenId = $user->currentAccessToken()->id;
+                GrossProfitListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
+                return response()->json([
+                    'message' => 'Gross Profit List export started. You will receive a download link when it is ready.',
+                ]);
+
+            }
+            return response()->json([]);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+
         }
-        return response()->json([]);
     }
 
 

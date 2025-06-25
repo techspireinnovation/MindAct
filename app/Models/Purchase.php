@@ -6,12 +6,10 @@ namespace App\Models;
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
 use App\Traits\ConvertsAdToBsDate;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Pratiksh\Nepalidate\Services\NepaliDate;
 
 class Purchase extends Model
 {
@@ -98,13 +96,5 @@ class Purchase extends Model
     {
         return PurchaseReturn::where('purchase_id', $this->id)->sum('discount_value') ?? 0;
     }
-
-    public function getDateBsMonthAttribute()
-    {
-        if ($this->invoice_date)
-            return NepaliDate::create(Carbon::parse(time: $this->invoice_date))->getBSMonthInEnglish(substr($this->invoice_date_bs, 6, 2));
-        return "23";
-    }
-
 
 }

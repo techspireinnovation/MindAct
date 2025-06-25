@@ -4,6 +4,7 @@ namespace App\Reports;
 
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Builder;
+use Pratiksh\Nepalidate\Services\EnglishDate;
 
 
 class ProductReport
@@ -103,6 +104,14 @@ class ProductReport
         if (isset($request['is_vatable'])) {
             $items->where('is_vatable', $request['is_vatable']);
         }
+
+        if (isset($request['from_date']) && isset($request['to_date'])) {
+            // Convert to English date
+            $englishDateFrom = EnglishDate::create($request['from_date'])->toAD();
+            $englishDateTo = EnglishDate::create($request['to_date'])->toAD();
+            $items->whereDate('created_at', '>=', $englishDateFrom)->whereDate('created_at', '<=', $englishDateTo);
+        }
+
         return $items;
 
     }

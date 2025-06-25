@@ -145,12 +145,18 @@ class Product extends Model
 
     public function getOpeningQuantityAttribute()
     {
-        return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return StockEntry::where('product_id', $this->id)->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query1->whereDate('stock_entries.created_at', '>=', $request->from_date)->whereDate('stock_entries.created_at', '<=', $request->to_date);
+        })->sum('quantity') ?? 0;
     }
 
     public function getOpeningRateAttribute()
     {
-        return StockEntry::where('product_id', $this->id)->avg('rate') ?? 0;
+        $request = request();
+        return StockEntry::where('product_id', $this->id)->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query1->whereDate('stock_entries.created_at', '>=', $request->from_date)->whereDate('stock_entries.created_at', '<=', $request->to_date);
+        })->avg('rate') ?? 0;
     }
 
     public function getPurchaseQuantityAttribute()
@@ -274,7 +280,6 @@ class Product extends Model
 
     }
 
-
     public function getStockInQuantityAttribute()
     {
         return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) > 0')->sum('diff_stock') ?? 0;
@@ -306,7 +311,12 @@ class Product extends Model
 
     public function getPurchaseDetailAttribute()
     {
-        $averagePrice = PurchaseProduct::where(['product_id' => $this->id])->get()->map(function ($purchase) {
+        $request = request();
+        $averagePrice = PurchaseProduct::where(['product_id' => $this->id])->whereHas('purchase', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($purchase) {
             $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
             return [
                 'total_price' => $primaryEntities[1],
@@ -322,7 +332,12 @@ class Product extends Model
 
     public function getPurchaseReturnDetailAttribute()
     {
-        $averagePrice = PurchaseProductReturn::where(['product_id' => $this->id])->get()->map(function ($purchase) {
+        $request = request();
+        $averagePrice = PurchaseProductReturn::where(['product_id' => $this->id])->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($purchase) {
             $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
             return [
                 'total_price' => $primaryEntities[1],
@@ -338,7 +353,12 @@ class Product extends Model
 
     public function getSaleReturnDetailAttribute()
     {
-        $averagePrice = SalesReturnProduct::where(['product_id' => $this->id])->get()->map(function ($purchase) {
+        $request = request();
+        $averagePrice = SalesReturnProduct::where(['product_id' => $this->id])->whereHas('saleReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($purchase) {
             $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
             return [
                 'total_price' => $primaryEntities[1],
@@ -356,9 +376,14 @@ class Product extends Model
 
     public function getSaleDetailAttribute()
     {
-        $averagePrice = SaleProduct::where(['product_id' => $this->id])->get()->map(function ($sale) {
+        $request = request();
+        $averagePrice = SaleProduct::where(['product_id' => $this->id])->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($sale) {
 
-            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($sale->product_id, $sale->measure_unit_id ?? 0, $sale->quantity ?? 0, $sale->price));
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($sale->product_id, $sale->measure_unit_id ?? 0, $sale->quantity ?? 0, $sale->price);
 
             return [
                 'total_price' => $primaryEntities[1],

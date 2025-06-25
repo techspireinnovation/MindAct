@@ -155,7 +155,15 @@ class Product extends Model
 
     public function getPurchaseQuantityAttribute()
     {
-        return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+
+        $request = request();
+        return PurchaseProduct::where('product_id', $this->id)
+
+            ->whereHas('purchase', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->sum('quantity') ?? 0;
     }
 
     public function getProductPurchaseRateAttribute()

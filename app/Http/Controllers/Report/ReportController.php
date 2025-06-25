@@ -337,7 +337,7 @@ class ReportController extends Controller
             $validator = Validator::make($request->all(), [
                 'type' => 'required|string|in:sales,sales_return,purchases,purchase_return',
                 'month' => 'required|numeric',
-                'month' => 'required|numeric',
+                'year' => 'required|numeric',
             ]);
 
             if ($validator->fails()) {
@@ -349,7 +349,10 @@ class ReportController extends Controller
                 $items = Purchase::select("purchases.id", "purchases.invoice_date_bs AS date", "purchases.sub_total_before_discount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('COALESCE(ROUND(purchases.vat_percent,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
                 if ($request->has('month')) {
-                    $items->whereMonth('invoice_date_bs', $request->input('month'));
+                    $items->whereRaw(' CAST(SUBSTRING(invoice_date_bs, 6, 2) AS UNSIGNED) = ?', $request->input('month'));
+                }
+                if ($request->has('year')) {
+                    $items->whereRaw('SUBSTRING(invoice_date_bs, 1, 4) = ?', $request->input('year'));
                 }
                 $items = $items->get();
 
@@ -357,14 +360,14 @@ class ReportController extends Controller
                 $items = Sale::select("sales.id", "sales.invoice_date_bs AS date", "sales.sub_total_before_discount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('COALESCE(ROUND(sales.taxable_amount * .13,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
                 if ($request->has('month')) {
-                    $items->whereMonth('invoice_date_bs', $request->input('month'));
+                    $items->whereRaw(' CAST(SUBSTRING(invoice_date_bs, 6, 2) AS UNSIGNED) = ?', $request->input('month'));
                 }
-
                 if ($request->has('year')) {
-                    $items->whereYear('invoice_date_bs', $request->input('year'));
+                    $items->whereRaw('SUBSTRING(invoice_date_bs, 1, 4) = ?', $request->input('year'));
                 }
 
                 $items = $items->get();
+
             } else if ($request->type === "purchase_return") {
                 $items = DB::table('purchase_product_returns as ppr')
                     ->join('purchase_returns as pr', 'ppr.purchase_return_id', '=', 'pr.id')
@@ -383,8 +386,7 @@ class ReportController extends Controller
                         DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.amount * .13,2) ELSE 0 END) as vat_amount'),
                     ])
                     ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
-                        $query->whereMonth('pr.invoice_date_bs', $request->month)
-                            ->whereYear('pr.invoice_date_bs', $request->year);
+                        $query->whereRaw(' CAST(SUBSTRING(invoice_date_bs, 6, 2) AS UNSIGNED) = ?', $request->input('month'))->whereRaw('SUBSTRING(invoice_date_bs, 1, 4) = ?', $request->input('year'));
                     })
                     ->where('ppr.company_id', $request->company_id)
                     ->groupBy([
@@ -421,8 +423,7 @@ class ReportController extends Controller
                         DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.price * .13,2) ELSE 0 END) as vat_amount'),
                     ])->where('ppr.company_id', $request->company_id)
                     ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
-                        $query->whereMonth('pr.invoice_date_bs', $request->month)
-                            ->whereYear('pr.invoice_date_bs', $request->year);
+                        $query->whereRaw(' CAST(SUBSTRING(invoice_date_bs, 6, 2) AS UNSIGNED) = ?', $request->input('month'))->whereRaw('SUBSTRING(invoice_date_bs, 1, 4) = ?', $request->input('year'));
                     })
                     ->groupBy([
                         'pr.invoice_date_bs',

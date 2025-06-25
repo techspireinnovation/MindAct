@@ -337,6 +337,7 @@ class ReportController extends Controller
             $validator = Validator::make($request->all(), [
                 'type' => 'required|string|in:sales,sales_return,purchases,purchase_return',
                 'month' => 'required|numeric',
+                'month' => 'required|numeric',
             ]);
 
             if ($validator->fails()) {
@@ -345,22 +346,22 @@ class ReportController extends Controller
 
             if ($request->type === "purchases") {
 
-                $items = Purchase::select("purchases.id", "purchases.invoice_date AS date", "purchases.sub_total_before_discount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('COALESCE(ROUND(purchases.vat_percent,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+                $items = Purchase::select("purchases.id", "purchases.invoice_date_bs AS date", "purchases.sub_total_before_discount as total_amount", "purchases.taxable_amount as taxable_amount", "purchases.purchase_bill_number as bill_number", "purchases.non_taxable_amount as non_taxable_amount", "purchases.customer_id", DB::raw('COALESCE(ROUND(purchases.vat_percent,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
                 if ($request->has('month')) {
-                    $items->whereMonth('invoice_date', $request->input('month'));
+                    $items->whereMonth('invoice_date_bs', $request->input('month'));
                 }
                 $items = $items->get();
 
             } else if ($request->type === "sales") {
-                $items = Sale::select("sales.id", "sales.invoice_date AS date", "sales.sub_total_before_discount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('COALESCE(ROUND(sales.taxable_amount * .13,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
+                $items = Sale::select("sales.id", "sales.invoice_date_bs AS date", "sales.sub_total_before_discount as total_amount", "sales.taxable_amount as taxable_amount", "sales.invoice_number as bill_number", "sales.non_taxable_amount as non_taxable_amount", "sales.customer_id", DB::raw('COALESCE(ROUND(sales.taxable_amount * .13,2),0) as vat_amount'))->with(relations: 'customer:id,party_name,pan_number')->orderBy('id', 'asc');
 
                 if ($request->has('month')) {
-                    $items->whereMonth('invoice_date', $request->input('month'));
+                    $items->whereMonth('invoice_date_bs', $request->input('month'));
                 }
 
                 if ($request->has('year')) {
-                    $items->whereYear('invoice_date', $request->input('year'));
+                    $items->whereYear('invoice_date_bs', $request->input('year'));
                 }
 
                 $items = $items->get();
@@ -369,7 +370,7 @@ class ReportController extends Controller
                     ->join('purchase_returns as pr', 'ppr.purchase_return_id', '=', 'pr.id')
                     ->join('customers as c', 'pr.customer_id', '=', 'c.id')
                     ->select([
-                        'pr.invoice_date as date',
+                        'pr.invoice_date_bs as date',
                         'pr.purchase_bill_number as bill_number',
                         'c.party_name as supplier_name',
                         'c.pan_number as supplier_pan',
@@ -382,19 +383,19 @@ class ReportController extends Controller
                         DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.amount * .13,2) ELSE 0 END) as vat_amount'),
                     ])
                     ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
-                        $query->whereMonth('pr.invoice_date', $request->month)
-                            ->whereYear('pr.invoice_date', $request->year);
+                        $query->whereMonth('pr.invoice_date_bs', $request->month)
+                            ->whereYear('pr.invoice_date_bs', $request->year);
                     })
                     ->where('ppr.company_id', $request->company_id)
                     ->groupBy([
-                        'pr.invoice_date',
+                        'pr.invoice_date_bs',
                         'pr.purchase_bill_number',
                         'c.party_name',
                         'c.pan_number',
                         'ppr.product_name',
                         'ppr.product_id',
                     ])
-                    ->orderBy('pr.invoice_date')
+                    ->orderBy('pr.invoice_date_bs')
                     ->get();
 
                 $items->each(function ($item) {
@@ -407,7 +408,7 @@ class ReportController extends Controller
                     ->join('sales_returns as pr', 'ppr.sales_return_id', '=', 'pr.id')
                     ->join('customers as c', 'pr.customer_id', '=', 'c.id')
                     ->select([
-                        'pr.invoice_date as date',
+                        'pr.invoice_date_bs as date',
                         'pr.invoice_number as bill_number',
                         'c.party_name as supplier_name',
                         'c.pan_number as supplier_pan',
@@ -420,18 +421,18 @@ class ReportController extends Controller
                         DB::raw('SUM(CASE WHEN ppr.is_vatable = 1 THEN ROUND(ppr.price * .13,2) ELSE 0 END) as vat_amount'),
                     ])->where('ppr.company_id', $request->company_id)
                     ->when(isset($request->month) && isset($request->year), function ($query) use ($request) {
-                        $query->whereMonth('pr.invoice_date', $request->month)
-                            ->whereYear('pr.invoice_date', $request->year);
+                        $query->whereMonth('pr.invoice_date_bs', $request->month)
+                            ->whereYear('pr.invoice_date_bs', $request->year);
                     })
                     ->groupBy([
-                        'pr.invoice_date',
+                        'pr.invoice_date_bs',
                         'pr.invoice_number',
                         'c.party_name',
                         'c.pan_number',
                         'ppr.product_name',
                         'ppr.product_id',
                     ])
-                    ->orderBy('pr.invoice_date')
+                    ->orderBy('pr.invoice_date_bs')
                     ->get();
                 $items->each(function ($item) {
                     $product = Product::findOrFail($item->product_id);
@@ -458,34 +459,34 @@ class ReportController extends Controller
                 return response()->json($validator->errors(), 422);
             }
 
-            $sale_taxable_amount = Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+            $sale_taxable_amount = Sale::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('taxable_amount');
 
-            $purchase_taxable_amount = Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+            $purchase_taxable_amount = Purchase::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('taxable_amount');
 
-            $sale_return_amount = SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('taxable_amount');
+            $sale_return_amount = SalesReturn::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('taxable_amount');
 
 
             return response()->json([
                 'sales' => [
                     'vatable' => round($sale_taxable_amount, 2),
-                    'non_vatable' => round(Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
+                    'non_vatable' => round(Sale::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('non_taxable_amount'), 2),
                     'export' => 0,
                     'vat' => round($sale_taxable_amount * 0.13, 2),
                 ],
                 'purchase' => [
                     'vatable' => round($purchase_taxable_amount, 2),
-                    'non_vatable' => round(Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->sum('non_taxable_amount'), 2),
+                    'non_vatable' => round(Purchase::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->sum('non_taxable_amount'), 2),
                     'vatable_import' => round(0 * 0.13, 2),
                     'non_vatable_import' => round(0 * 0.13, 2),
                     'vat' => round($purchase_taxable_amount * 0.13, 2),
                 ],
                 'bill' => [
-                    'purchase' => Purchase::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                    'purchase_return' => PurchaseReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
-                    'sale_return' => SalesReturn::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                    'purchase' => Purchase::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
+                    'purchase_return' => PurchaseReturn::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
+                    'sale_return' => SalesReturn::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
                     'sale_return_advice' => round(0 * 0.13, 2),
                     'purchase_return_advice' => round(0 * 0.13, 2),
-                    'sale' => Sale::whereYear('invoice_date', $request->year)->whereMonth('invoice_date', $request->month)->count('id'),
+                    'sale' => Sale::whereYear('invoice_date_bs', $request->year)->whereMonth('invoice_date_bs', $request->month)->count('id'),
                 ],
                 'other' => [
                     'purchase_return_vat' => round(0 * 0.13, 2),

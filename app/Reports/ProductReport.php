@@ -78,10 +78,6 @@ class ProductReport
             $items->where('company_id', operator: $request['company_id']);
         }
 
-        if (isset($request['from_date']) && isset($request['to_date'])) {
-            $items->whereDate('products.created_at', '>=', $request['from_date'])->whereDate('products.created_at', '<=', $request['to_date']);
-        }
-
         if (isset($request['product_id'])) {
             $items->where('id', operator: $request['product_id']);
         }

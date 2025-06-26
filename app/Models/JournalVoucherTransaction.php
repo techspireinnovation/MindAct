@@ -43,4 +43,25 @@ class JournalVoucherTransaction extends Model
             }
         });
     }
+
+    public function mainGroup()
+    {
+        return $this->hasOne(MainGroup::class, 'id', 'main_group_id');
+    }
+
+    public function accountGroup()
+    {
+        return $this->hasOne(AccountGroup::class, 'id', 'account_group_id');
+    }
+
+    public function accountHead()
+    {
+        return $this->hasOne(AccountHead::class, 'id', 'account_head_id');
+    }
+
+
+    public function subGroup()
+    {
+        return $this->hasOne(SubGroup::class, 'id', 'sub_group_id');
+    }
 }

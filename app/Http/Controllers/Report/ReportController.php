@@ -231,7 +231,7 @@ class ReportController extends Controller
 
                 $items = $items->get();
             } else {
-                $items = Purchase::select("purchases.id", "purchases.invoice_date", "purchases.sub_total_before_discount", "purchases.discount_value", "purchases.purchase_bill_number", "purchases.ref_bill_number", "purchases.customer_id")->with('customer:id,party_name,pan_number');
+                $items = Purchase::select("purchases.id", "purchases.invoice_date_bs", "purchases.sub_total_before_discount", "purchases.discount_value", "purchases.purchase_bill_number", "purchases.ref_bill_number", "purchases.customer_id")->with('customer:id,party_name,pan_number');
 
                 if ($request->has('customer_id')) {
                     $items->where('id', $request->input('customer_id'));

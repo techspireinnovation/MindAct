@@ -150,7 +150,7 @@ class PurchaseController extends Controller
         } catch (ModelNotFoundEXception $e) {
             return response()->json(['errors' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+          
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
 
@@ -167,7 +167,7 @@ class PurchaseController extends Controller
 
             $validated = $request->validate([
                 'ref_bill_number' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('purchases')
@@ -476,11 +476,9 @@ class PurchaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-
-
         $validated = $request->validate([
             'ref_bill_number' => [
-                'required',
+                'nullable',
                 'string',
                 'max:255',
                 Rule::unique('purchases')
@@ -667,7 +665,19 @@ class PurchaseController extends Controller
                 'message' => 'Purchase Created Successfully!!',
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
-        } catch (\Exception $e) {
+        } catch (QueryException $e) {
+            if ($e->getCode() == 23000) {
+                // Parse error message to identify the field causing the duplicate
+                $field = strpos($e->getMessage(), 'ref_bill_number_company_id_unique') !== false
+                    ? 'ref_bill_number'
+                    : (strpos($e->getMessage(), 'purchase_bill_number_company_id_unique') !== false
+                        ? 'purchase_bill_number'
+                        : 'unknown field');
+                return response()->json([
+                    'message' => "A purchase with this $field already exists for the company.",
+                    'error' => 'Duplicate entry.',
+                ], 422);
+            }
             \Log::error('Purchase creation failed: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to create purchase',
@@ -675,7 +685,6 @@ class PurchaseController extends Controller
             ], 500);
         }
     }
-
 
 
 

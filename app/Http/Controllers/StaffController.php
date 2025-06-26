@@ -56,7 +56,7 @@ class StaffController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'name' => 'required|string|max:255',
-                'email' => 'required|email|unique:users,email',
+                'email' => 'required|email',
                 'password' => 'required|string|min:8',
             ]);
 
@@ -151,7 +151,7 @@ class StaffController extends Controller
 
             $validator = Validator::make($request->all(), [
                 'name' => 'sometimes|required|string|max:255',
-                'email' => 'sometimes|required|email|unique:users,email,' . $staff->id,
+                'email' => 'sometimes|required|email',
                 'password' => 'sometimes|required|string|min:8',
             ]);
 
@@ -232,7 +232,7 @@ class StaffController extends Controller
         }
     }
 
-    public function destroy(): JsonResponse
+    public function destroy($id): JsonResponse
     {
         try {
             $staff = User::findOrFail($id);

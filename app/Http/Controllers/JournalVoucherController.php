@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Log;
+use Validator;
 
 class JournalVoucherController extends Controller
 {
@@ -23,6 +24,23 @@ class JournalVoucherController extends Controller
         }
 
         return response()->json($query->paginate(50));
+    }
+
+    public function print(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'from_date' => 'required',
+            'to_date' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $query = JournalVoucherTransaction::select('journal_voucher_transactions.id', 'journal_vouchers.date')->leftJoin("journal_vouchers", 'journal_vouchers.id', '=', 'journal_voucher_transactions.journal_voucher_id')->get();
+
+
+        return response()->json($query);
     }
 
     public function update(Request $request, $id): JsonResponse

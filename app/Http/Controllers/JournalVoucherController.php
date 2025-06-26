@@ -37,7 +37,9 @@ class JournalVoucherController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $query = JournalVoucherTransaction::select('journal_voucher_transactions.id', 'particulars', 'debit', 'credit', DB::raw('SUM((debit) - COALESCE(credit, 0)) OVER (ORDER BY id) as balance'), 'projects.name', 'reference_number', 'journal_vouchers.date')->leftJoin("journal_vouchers", 'journal_vouchers.id', '=', 'journal_voucher_transactions.journal_voucher_id')->leftJoin("projects", 'projects.id', '=', 'journal_vouchers.project_id')->get();
+        $query = JournalVoucherTransaction::select('journal_voucher_transactions.id', 'particulars', 'debit', 'credit', DB::raw('SUM((debit) - COALESCE(credit, 0)) OVER (ORDER BY id) as balance'), 'projects.name', 'reference_number', 'journal_vouchers.date')->leftJoin("journal_vouchers", 'journal_vouchers.id', '=', 'journal_voucher_transactions.journal_voucher_id')->leftJoin("projects", 'projects.id', '=', 'journal_vouchers.project_id')->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+            $query1->where('date', '>=', $request->from_date)->where('date', '<=', $request->to_date);
+        })->get();
 
 
         return response()->json($query);

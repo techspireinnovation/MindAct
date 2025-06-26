@@ -32,4 +32,14 @@ class JournalVoucher extends Model
     {
         return $this->hasMany(JournalVoucherTransaction::class, 'journal_voucher_id', 'id');
     }
+
+    public function project()
+    {
+        return $this->hasOne(Project::class, 'id', 'project_id');
+    }
+
+    public function salesman()
+    {
+        return $this->hasOne(Salesman::class, 'id', 'salesman_id');
+    }
 }

@@ -107,6 +107,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::apiResource('banks', BankController::class);
     Route::apiResource('bank-vouchers', BankVoucherController::class);
     Route::apiResource('projects', ProjectController::class);
+    Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);

@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Log;
+use Validator;
 
 class JournalVoucherController extends Controller
 {
@@ -23,6 +24,25 @@ class JournalVoucherController extends Controller
         }
 
         return response()->json($query->paginate(50));
+    }
+
+    public function print(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'from_date' => 'required',
+            'to_date' => 'required',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $query = JournalVoucherTransaction::select('journal_voucher_transactions.id', 'particulars', 'debit', 'credit', DB::raw('SUM((debit) - COALESCE(credit, 0)) OVER (ORDER BY id) as balance'), 'projects.name', 'reference_number', 'journal_vouchers.date')->leftJoin("journal_vouchers", 'journal_vouchers.id', '=', 'journal_voucher_transactions.journal_voucher_id')->leftJoin("projects", 'projects.id', '=', 'journal_vouchers.project_id')->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+            $query1->where('date', '>=', $request->from_date)->where('date', '<=', $request->to_date);
+        })->get();
+
+
+        return response()->json($query);
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -49,6 +69,7 @@ class JournalVoucherController extends Controller
 
                     }),
                 ],
+
                 'project_id' => 'integer|exists:projects,id',
                 'salesman_id' => 'integer|exists:salesmen,id',
                 'date' => 'nullable|string',
@@ -58,6 +79,7 @@ class JournalVoucherController extends Controller
                 'transactions.*.account_head_id' => 'nullable|integer|exists:account_heads,id',
                 'transactions.*.sub_group_id' => 'nullable|integer|exists:sub_groups,id',
                 'transactions.*.account_code' => 'nullable|string',
+
                 'transactions.*.particulars' => 'nullable|string|max:255',
                 'transactions.*.type' => 'nullable|string|max:255',
                 'transactions.*.debit' => 'nullable|numeric',
@@ -111,7 +133,6 @@ class JournalVoucherController extends Controller
                 Rule::unique('journal_vouchers')->where(function ($query) use ($request) {
                     return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
-
                 }),
             ],
             'reference_number' => [
@@ -121,9 +142,9 @@ class JournalVoucherController extends Controller
                 Rule::unique('journal_vouchers')->where(function ($query) use ($request) {
                     return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
-
                 }),
             ],
+
             'project_id' => 'integer|exists:projects,id',
             'salesman_id' => 'integer|exists:salesmen,id',
             'date' => 'nullable|string',
@@ -133,6 +154,7 @@ class JournalVoucherController extends Controller
             'transactions.*.account_head_id' => 'nullable|integer|exists:account_heads,id',
             'transactions.*.sub_group_id' => 'nullable|integer|exists:sub_groups,id',
             'transactions.*.account_code' => 'nullable|string',
+
             'transactions.*.particulars' => 'nullable|string|max:255',
             'transactions.*.type' => 'nullable|string|max:255',
             'transactions.*.debit' => 'nullable|numeric',
@@ -157,22 +179,26 @@ class JournalVoucherController extends Controller
         try {
             $product = JournalVoucher::where('company_id', $request->company_id)
                 ->with([
-                    'transactions',
+                    'transactions.mainGroup:id,name',
+                    'transactions.accountGroup:id,name',
+                    'transactions.accountHead:id,name',
+                    'transactions.subGroup:id,name',
+                    'project:id,name',
+                    'salesman:id,name',
+
                 ])
                 ->findOrFail($id);
-
-
             return response()->json([
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Journal Voucher not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }

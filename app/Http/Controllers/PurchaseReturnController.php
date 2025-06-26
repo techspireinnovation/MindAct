@@ -2053,7 +2053,7 @@ class PurchaseReturnController extends Controller
                             })->toArray();
                         })
                         ->toArray();
-                        
+
 
                     Log::debug('Grouped field values', [
                         'product_id' => $productData['product_id'],
@@ -2190,7 +2190,7 @@ class PurchaseReturnController extends Controller
                             $regularFvByIndex = collect($fvByIndex)->filter(function ($fvSet) {
                                 return collect($fvSet)->first()['quantity_type'] === 'regular';
                             })->toArray();
-                          
+
                             $freeFvByIndex = collect($fvByIndex)->filter(function ($fvSet) {
                                 return collect($fvSet)->first()['quantity_type'] === 'free';
                             })->toArray();
@@ -2469,15 +2469,24 @@ class PurchaseReturnController extends Controller
 
     private function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
     {
-        $regularUnits = $regularPieces / $targetMeasureUnitQuantity;
-        $regularIntegerUnits = floor($regularUnits);
-        $regularRemainingPieces = $regularPieces - ($regularIntegerUnits * $targetMeasureUnitQuantity);
-        $regularQuantity = $regularIntegerUnits + ($regularRemainingPieces * 0.1);
+        // Ensure targetMeasureUnitQuantity is not zero to prevent division by zero
+        if ($targetMeasureUnitQuantity <= 0) {
+            throw new \Exception('Target measure unit quantity must be greater than zero.');
+        }
 
-        $freeUnits = $freePieces / $targetMeasureUnitQuantity;
-        $freeIntegerUnits = floor($freeUnits);
+        // Calculate regular quantity
+        $regularIntegerUnits = floor($regularPieces / $targetMeasureUnitQuantity);
+        $regularRemainingPieces = $regularPieces - ($regularIntegerUnits * $targetMeasureUnitQuantity);
+        // Convert remaining pieces to decimal (e.g., 567 -> 0.567)
+        $regularDecimal = $regularRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+        $regularQuantity = $regularIntegerUnits + $regularDecimal;
+
+        // Calculate free quantity
+        $freeIntegerUnits = floor($freePieces / $targetMeasureUnitQuantity);
         $freeRemainingPieces = $freePieces - ($freeIntegerUnits * $targetMeasureUnitQuantity);
-        $freeQuantity = $freeIntegerUnits + ($freeRemainingPieces * 0.1);
+        // Convert remaining pieces to decimal (e.g., 567 -> 0.567)
+        $freeDecimal = $freeRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+        $freeQuantity = $freeIntegerUnits + $freeDecimal;
 
         return [$regularQuantity, $freeQuantity];
     }

@@ -176,21 +176,22 @@ class JournalVoucherController extends Controller
             $product = JournalVoucher::where('company_id', $request->company_id)
                 ->with([
                     'transactions',
+                    'project:id,name',
+                    'salesman:id,name',
+
                 ])
                 ->findOrFail($id);
-
-
             return response()->json([
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Journal Voucher not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }

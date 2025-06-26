@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
 use App\Models\Purchase;
+use App\Models\Product;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -76,7 +77,7 @@ class PurchaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to generate bill number: ' . $e->getMessage()
+                'message' => 'Failed to generate a bill number: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -91,6 +92,38 @@ class PurchaseController extends Controller
 
         return response()->json($query->paginate(50));
     }
+
+    public function getRefBillNumber(Request $request)
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            $companyId = $request->company_id;
+
+            // Get reference bill numbers where at least one product has remaining quantity
+            // Accounts for purchase quantity and free_quantity, minus returns and sales (including free quantities)
+            // Adds back quantities from non-deleted sale product returns
+            $billNumbers = Purchase::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->pluck('ref_bill_number');
+
+            if ($billNumbers->isEmpty()) {
+                return response()->json([]);
+            }
+
+            return response()->json($billNumbers);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
 
     public function getProducts(Request $request): JsonResponse
     {
@@ -116,7 +149,8 @@ class PurchaseController extends Controller
             return response()->json($productDetails);
         } catch (ModelNotFoundEXception $e) {
             return response()->json(['errors' => 'Item Not Found!!'], 422);
-        } catch (QueryNotFoundException $e) {
+        } catch (QueryException $e) {
+            dd($e->getMessage());
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
 
@@ -205,7 +239,7 @@ class PurchaseController extends Controller
                         $query->where('purchase_id', $id);
                     }),
                 ],
-                'purchase_products.*.customer_id' => 'required|integer|exists:customers,id',
+
 
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',
@@ -564,9 +598,23 @@ class PurchaseController extends Controller
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
                 ]);
 
+
                 // Create Purchase Products
                 if (isset($validated['purchase_products'])) {
+
+
                     foreach ($validated['purchase_products'] as $purchaseProductData) {
+
+                        $purchasedProduct = PurchaseProduct::where('product_id', $purchaseProductData['product_id'])
+                            ->where('company_id', $validated['company_id'])
+                            ->first();
+                        if (!$purchasedProduct) {
+                            $product = Product::find($purchaseProductData['product_id']);
+                            if ($product) {
+                                $product->purchase_status = 'purchased';
+                                $product->save();
+                            }
+                        }
                         // Create PurchaseProduct using static create method
                         $purchaseProduct = PurchaseProduct::create([
                             'purchase_id' => $item->id, // Manually set the foreign key
@@ -604,8 +652,11 @@ class PurchaseController extends Controller
                             }
                             PurchaseProductFieldValue::insert($fieldValues);
                         }
+
                     }
                 }
+
+
 
                 return $item;
             });

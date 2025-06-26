@@ -11,6 +11,7 @@ use App\Models\Sale;
 use App\Models\SaleProduct;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
+use Cache;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 
@@ -191,6 +192,11 @@ class Helper
             'primary_units' => $primaryEntities[0],
         ];
 
+    }
+
+    public static function castToDouble($value)
+    {
+        return is_numeric($value) ? (double) $value : null;
     }
 
     public static function convertToPrimaryUnitRate(int $productId, int $fromMeasureUnit, float $rate): mixed
@@ -402,6 +408,7 @@ class Helper
                 'product_field_id' => $fieldValue->product_field_id,
                 'product_id' => $fieldValue->product_id,
                 'value' => $fieldValue->value,
+                'name' => $fieldValue->productField->name ?? null,
                 'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
                 'values' => $fieldValue->productField->values ?? null,
                 'deleted_at' => $fieldValue->deleted_at,
@@ -409,6 +416,23 @@ class Helper
                 'updated_at' => $fieldValue->updated_at,
             ];
         })->toArray();
+
+
+        $purchasePrices = PurchaseProduct::where('product_id', $productDetail->id)
+            ->where('company_id', $company)
+            ->whereNull('deleted_at')
+            ->pluck('price');
+
+        $productData['average_price'] = round($purchasePrices->avg(), 2);
+        $productData['min_price'] = round($purchasePrices->min(), 2);
+        $productData['last_purchase_price'] = round(
+            PurchaseProduct::where('product_id', $productDetail->id)
+                ->where('company_id', $company)
+                ->whereNull('deleted_at')
+                ->orderBy('created_at', 'desc')
+                ->value('price') ?? 0
+        );
+
 
         return [
             'message' => 'Successful!!', // Fixed typo: "Sucessfull" to "Successful"
@@ -434,6 +458,40 @@ class Helper
         ];
     }
 
+    /**
+     * Buld Cache Key 
+     */
+    public static function buildCacheKey(string $requestOfClient)
+    {
+        return sha1($requestOfClient); // Hash to avoid long keys
+    }
+
+
+    public static function checkDataInCache(string $requestParams)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        if (Cache::has($cacheKey)) {
+            $compressed = Cache::get($cacheKey);
+            return unserialize(gzuncompress($compressed));
+        }
+    }
+
+    public static function applyCache(string $requestParams, mixed $rows)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        $compressed = gzcompress(serialize($rows));
+        Cache::remember($cacheKey, 3600, function () use ($compressed) {
+            return $compressed;
+        });
+    }
+
+    public static function getDataFromCache(string $requestParams)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        $compressed = Cache::get($cacheKey);
+        return unserialize(gzuncompress($compressed));
+
+    }
     public static function getPurchaseProductDetails($name, $company)
     {
         // Find product(s) with the given name

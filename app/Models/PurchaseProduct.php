@@ -50,8 +50,9 @@ class PurchaseProduct extends Model
         });
     }
 
-    public function measureUnit(){
-        return $this->hasMany(MeasureUnit::class, 'id');
+    public function measureUnit()
+    {
+        return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
     }
 
     public function fieldValues()
@@ -94,21 +95,6 @@ class PurchaseProduct extends Model
     public function getPurchaseRateAttribute()
     {
         return self::where(['product_id' => $this->product_id, 'purchase_id' => $this->purchase_id])->first()->price ?? 0;
-        /*
-        $averagePrice = self::where(['product_id' => $this->product_id])->get()->map(function ($purchaseProduct) {
-            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id ?? 0, $purchaseProduct->quantity, $purchaseProduct->price));
-
-            return [
-                'total_price' => $primaryEntities[1],
-                'primary_units' => $primaryEntities[0],
-            ];
-        })->reduce(function ($carry, $item) {
-            $carry['total_price'] += $item['total_price'];
-            $carry['primary_units'] += $item['primary_units'];
-            return $carry;
-        }, ['total_price' => 0, 'primary_units' => 0]);
-        return $averagePrice['total_price'] / $averagePrice['primary_units'];
-        */
     }
 
     public function getPurchaseDiscountAmountAttribute()
@@ -152,5 +138,23 @@ class PurchaseProduct extends Model
         return NepaliDate::create($this->created_at)->toBS();
     }
 
+    public function getPurchasedPrimaryUnitQtyAttribute()
+    {
+        $averagePrice = self::where(['id' => $this->id])->get()->map(function ($purchaseProduct) {
 
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($purchaseProduct->product_id, $purchaseProduct->measure_unit_id ?? 0, $purchaseProduct->quantity ?? 0, $purchaseProduct->price));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $averagePrice['primary_units'];
+
+    }
 }

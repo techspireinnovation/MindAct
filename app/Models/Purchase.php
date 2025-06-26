@@ -97,5 +97,4 @@ class Purchase extends Model
         return PurchaseReturn::where('purchase_id', $this->id)->sum('discount_value') ?? 0;
     }
 
-
 }

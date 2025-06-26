@@ -1,17 +1,18 @@
 <?php
 
-use App\Events\MessageSent;
 use App\Http\Controllers\AccountGroupController;
 use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
+use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\FixedAssetAccountController;
@@ -51,7 +52,6 @@ use App\Http\Controllers\StockReconciliationController;
 use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
-use Illuminate\Http\Request;
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -105,6 +105,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
     Route::apiResource('banks', BankController::class);
+    Route::apiResource('bank-vouchers', BankVoucherController::class);
     Route::apiResource('projects', ProjectController::class);
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::resource('customers', CustomerController::class);
@@ -115,6 +116,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
+
 
     Route::prefix('reports')->group(function () {
         //Route::middleware(['can:print'])->group(function () {
@@ -126,6 +129,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
         Route::get('/vat-return-data-list', [ReportController::class, 'vatReturnDataListDetails']);
         Route::get('/gross-profit-ratio-list', [ReportController::class, 'grossProfitRatioListDetails']);
+        Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
         //});
     });
 
@@ -155,6 +159,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
     Route::get('filter-barcode', [ProductController::class, 'filterbyBarcode']);
     Route::get('get-product-names', [ProductController::class, 'getProductNames']);
+    Route::get('get-products-by-name', [ProductController::class, 'getProductsByName']);
     Route::get('get-product-detail-by-name', [ProductController::class, 'getProductDetailsByNames']);
     Route::put('purchase-masters-update', [CompanyController::class, 'updatePurchaseMasterKey']);
     Route::get('get-purchase-masters', [CompanyController::class, 'getPurchaseMasterKey']);
@@ -162,7 +167,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
     Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
     Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);
-    Route::get('get-ref-bill-numbers', [PurchaseReturnController::class, 'getRefBillNumber']);
+    Route::get('get-ref-bill-numbers', [PurchaseController::class, 'getRefBillNumber']);
     Route::get('get-purchase-by-ref-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByRefBillNumber']);
     Route::get('get-purchase-product-names', [PurchaseReturnController::class, 'getProductNames']);
     Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
@@ -198,6 +203,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
     //List and Details
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
+    Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
 
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
@@ -224,6 +230,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('brand-list', [BrandController::class, 'subCategoryList']);
     Route::get('brand-details', [BrandController::class, 'subCategoryDetails']);
 
+
+    Route::get('download-file/{filename}', [DownloadController::class, 'download']);
+
     Route::apiResource('notifications', NotificationController::class)
         ->only(['index', 'update', 'destroy']);
     Route::patch(
@@ -233,11 +242,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
 
 });
 
-Route::post('/send-message', function (Request $request) {
-    $message = $request->input('message');
-    event(new MessageSent($message));
-    return response()->json(['status' => 'Message sent']);
-});
 // forget password
 Route::post('/forgot-password', [PasswordResetController::class, 'sendCode']);
 Route::post('/reset-password', [PasswordResetController::class, 'resetPassword']);
+
+
+

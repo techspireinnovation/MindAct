@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
@@ -40,7 +41,37 @@ class CustomerController extends Controller
 
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
+            return response()->json(["error" => "Item not Found !!"], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
 
+    public function searchCustomerList(Request $request)
+    {
+        try {
+            $customer_name = $request->input('customer_name');
+
+            $applyFilters = function ($query) use ($customer_name) {
+                if ($customer_name) {
+                    $query->where('party_name', 'LIKE', "%$customer_name%");
+                }
+            };
+
+            $customers = Customer::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')->tap($applyFilters)
+                ->select('party_name', 'id')->get();
+            return response()->json([
+                "message" => "Customer List Received !!",
+                "data" => $customers
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
 

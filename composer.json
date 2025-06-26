@@ -16,6 +16,8 @@
         "laravel/tinker": "^2.10.1",
         "maatwebsite/excel": "^3.1",
         "pratiksh/nepalidate": "^2.0",
+        "predis/predis": "^3.0",
+        "rap2hpoutre/fast-excel": "^5.6",
         "rollbar/rollbar-laravel": "^8.1",
         "sagautam5/local-states-nepal": "^2.0",
         "spatie/flysystem-dropbox": "^3.0",

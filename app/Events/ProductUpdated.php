@@ -19,7 +19,7 @@ class ProductUpdated implements ShouldBroadcast
         $this->products = $products;
 
         $this->action = $action;
-      
+
     }
 
     public function broadcastOn()

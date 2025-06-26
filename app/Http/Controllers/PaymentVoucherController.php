@@ -33,14 +33,30 @@ class PaymentVoucherController extends Controller
             'company_id' => 'integer|exists:companies,id',
             'date_ad' => 'nullable|date',
             'date_bs' => 'nullable|date',
-            'reference_number' => [
-                'string',
-                Rule::unique('payment_vouchers')->ignore($id),
-            ],
+            'reference_number' =>[
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('payment_vouchers')
+                    ->ignore($id)
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
             'payment_voucher_number' => [
-                'string',
-                Rule::unique('payment_vouchers')->ignore($id),
-            ],
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('payment_vouchers')
+                    ->ignore($id)
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
             'payment_voucher_list' => 'nullable|array',
             'payment_voucher_list.*.id' => 'nullable|integer|exists:payment_voucher_details,id',
             'payment_voucher_list.*.company_id' => 'nullable|integer|exists:companies,id',
@@ -116,8 +132,30 @@ class PaymentVoucherController extends Controller
             'company_id' => 'integer|exists:companies,id',
             'date_ad' => 'nullable|date',
             'date_bs' => 'nullable|date',
-            'reference_number' => 'nullable|string|unique:payment_vouchers,reference_number',
-            'payment_voucher_number' => 'string|unique:payment_vouchers,payment_voucher_number',
+            'reference_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('payment_vouchers')
+                   
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
+            'payment_voucher_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('payment_vouchers')
+                   
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
             'payment_voucher_list' => 'nullable|array',
             'payment_voucher_list.*.id' => 'nullable',
             'payment_voucher_list.*.company_id' => 'nullable|integer|exists:companies,id',

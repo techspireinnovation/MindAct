@@ -37,7 +37,8 @@ class StockReconciliationController extends Controller
                     'max:255',
                     Rule::unique('stock_reconciliations')
                         ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id'));
+                            return $query->where('company_id', $request->input('company_id'))
+                                ->whereNull('deleted_at');
                         })
                 ],
                 'document_no' => 'nullable|string|max:255',
@@ -121,9 +122,10 @@ class StockReconciliationController extends Controller
                     'max:255',
                     Rule::unique('stock_reconciliations')
                         ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id'));
+                            return $query->where('company_id', $request->input('company_id'))
+                                ->whereNull('deleted_at');
                         })
-                        ->whereNull('deleted_at')
+
                         ->ignore($id)
                 ],
                 'document_no' => 'nullable|string|max:255',

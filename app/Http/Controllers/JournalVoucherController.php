@@ -175,7 +175,10 @@ class JournalVoucherController extends Controller
         try {
             $product = JournalVoucher::where('company_id', $request->company_id)
                 ->with([
-                    'transactions',
+                    'transactions.mainGroup:id,name',
+                    'transactions.accountGroup:id,name',
+                    'transactions.accountHead:id,name',
+                    'transactions.subGroup:id,name',
                     'project:id,name',
                     'salesman:id,name',
 

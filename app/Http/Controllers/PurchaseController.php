@@ -150,7 +150,7 @@ class PurchaseController extends Controller
         } catch (ModelNotFoundEXception $e) {
             return response()->json(['errors' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+          
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
 

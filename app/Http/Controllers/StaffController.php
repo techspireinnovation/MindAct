@@ -232,7 +232,7 @@ class StaffController extends Controller
         }
     }
 
-    public function destroy(): JsonResponse
+    public function destroy($id): JsonResponse
     {
         try {
             $staff = User::findOrFail($id);

@@ -69,13 +69,13 @@ class JournalVoucherController extends Controller
 
                     }),
                 ],
-                'project_id' => 'integer|exists:projects,id',
-                'salesman_id' => 'integer|exists:salesmen,id',
+                'project_id' => 'required|integer|exists:projects,id',
+                'salesman_id' => 'required|integer|exists:salesmen,id',
                 'transactions' => 'nullable|array',
-                'transactions.*.main_group_id' => 'nullable|integer|exists:main_groups,id',
-                'transactions.*.account_group_id' => 'nullable|integer|exists:account_groups,id',
-                'transactions.*.account_head_id' => 'nullable|integer|exists:account_heads,id',
-                'transactions.*.sub_group_id' => 'nullable|integer|exists:sub_groups,id',
+                'transactions.*.main_group_id' => 'required|integer|exists:main_groups,id',
+                'transactions.*.account_group_id' => 'required|integer|exists:account_groups,id',
+                'transactions.*.account_head_id' => 'required|integer|exists:account_heads,id',
+                'transactions.*.sub_group_id' => 'required|integer|exists:sub_groups,id',
                 'transactions.*.account_code' => 'nullable|string|max:255',
                 'transactions.*.particulars' => 'nullable|string|max:255',
                 'transactions.*.type' => 'nullable|string|max:255',
@@ -130,7 +130,6 @@ class JournalVoucherController extends Controller
                 Rule::unique('journal_vouchers')->where(function ($query) use ($request) {
                     return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
-
                 }),
             ],
             'reference_number' => [
@@ -140,16 +139,15 @@ class JournalVoucherController extends Controller
                 Rule::unique('journal_vouchers')->where(function ($query) use ($request) {
                     return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
-
                 }),
             ],
-            'project_id' => 'integer|exists:projects,id',
-            'salesman_id' => 'integer|exists:salesmen,id',
+            'project_id' => 'required|integer|exists:projects,id',
+            'salesman_id' => 'required|integer|exists:salesmen,id',
             'transactions' => 'nullable|array',
-            'transactions.*.main_group_id' => 'nullable|integer|exists:main_groups,id',
-            'transactions.*.account_group_id' => 'nullable|integer|exists:account_groups,id',
-            'transactions.*.account_head_id' => 'nullable|integer|exists:account_heads,id',
-            'transactions.*.sub_group_id' => 'nullable|integer|exists:sub_groups,id',
+            'transactions.*.main_group_id' => 'required|integer|exists:main_groups,id',
+            'transactions.*.account_group_id' => 'required|integer|exists:account_groups,id',
+            'transactions.*.account_head_id' => 'required|integer|exists:account_heads,id',
+            'transactions.*.sub_group_id' => 'required|integer|exists:sub_groups,id',
             'transactions.*.account_code' => 'nullable|string|max:255',
             'transactions.*.particulars' => 'nullable|string|max:255',
             'transactions.*.type' => 'nullable|string|max:255',

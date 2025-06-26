@@ -77,7 +77,7 @@ class PurchaseController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Failed to generate bill number: ' . $e->getMessage()
+                'message' => 'Failed to generate a bill number: ' . $e->getMessage()
             ], 500);
         }
     }
@@ -92,6 +92,38 @@ class PurchaseController extends Controller
 
         return response()->json($query->paginate(50));
     }
+
+    public function getRefBillNumber(Request $request)
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+
+            $companyId = $request->company_id;
+
+            // Get reference bill numbers where at least one product has remaining quantity
+            // Accounts for purchase quantity and free_quantity, minus returns and sales (including free quantities)
+            // Adds back quantities from non-deleted sale product returns
+            $billNumbers = Purchase::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->pluck('ref_bill_number');
+
+            if ($billNumbers->isEmpty()) {
+                return response()->json([]);
+            }
+
+            return response()->json($billNumbers);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
 
     public function getProducts(Request $request): JsonResponse
     {
@@ -118,7 +150,7 @@ class PurchaseController extends Controller
         } catch (ModelNotFoundEXception $e) {
             return response()->json(['errors' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+          
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
             dd($e->getMessage());
@@ -207,7 +239,7 @@ class PurchaseController extends Controller
                         $query->where('purchase_id', $id);
                     }),
                 ],
-                'purchase_products.*.customer_id' => 'required|integer|exists:customers,id',
+
 
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',
@@ -444,8 +476,6 @@ class PurchaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-
-
         $validated = $request->validate([
             'ref_bill_number' => [
                 'nullable',
@@ -467,7 +497,6 @@ class PurchaseController extends Controller
             'remarks' => 'nullable|string|max:255',
             'invoice_date' => 'nullable|string|max:255',
             'invoice_date_bs' => 'nullable|string|max:255',
-
             'batch_no' => [
                 'nullable',
                 'string',
@@ -638,7 +667,19 @@ class PurchaseController extends Controller
                 'message' => 'Purchase Created Successfully!!',
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
-        } catch (\Exception $e) {
+        } catch (QueryException $e) {
+            if ($e->getCode() == 23000) {
+                // Parse error message to identify the field causing the duplicate
+                $field = strpos($e->getMessage(), 'ref_bill_number_company_id_unique') !== false
+                    ? 'ref_bill_number'
+                    : (strpos($e->getMessage(), 'purchase_bill_number_company_id_unique') !== false
+                        ? 'purchase_bill_number'
+                        : 'unknown field');
+                return response()->json([
+                    'message' => "A purchase with this $field already exists for the company.",
+                    'error' => 'Duplicate entry.',
+                ], 422);
+            }
             \Log::error('Purchase creation failed: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to create purchase',
@@ -646,7 +687,6 @@ class PurchaseController extends Controller
             ], 500);
         }
     }
-
 
 
 

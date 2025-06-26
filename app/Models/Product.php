@@ -3,6 +3,7 @@
 namespace App\Models;
 
 
+use App\Helpers\Helper;
 use App\Models\Brand;
 use App\Models\Location;
 use App\Models\MeasureUnit;
@@ -133,64 +134,150 @@ class Product extends Model
 
     public function getProductStockQuantityAttribute()
     {
-        $purchases = $this->getPurchaseQuantityAttribute();
-        $purchaseReturn = PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
-        $sale = SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
-        $saleReturn = SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $purchases = $this->getPurchaseDetailAttribute();
+        $purchaseReturn = $this->getPurchaseReturnDetailAttribute();
+        $sale = $this->getSaleDetailAttribute();
+        $saleReturn = $this->getSaleReturnDetailAttribute();
         $openQty = $this->getOpeningQuantityAttribute();
-        $stock = $purchases - $purchaseReturn - $sale + $saleReturn + $openQty;
-        return ($stock) >= 0 ? $stock : 0;
+        $stock = $purchases['qty'] - $purchaseReturn['qty'] - $sale['qty'] + $saleReturn['qty'] + $openQty;
+        return $stock >= 0 ? $stock : 0;
     }
 
     public function getOpeningQuantityAttribute()
     {
-        return StockEntry::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return StockEntry::where('product_id', $this->id)->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query1->whereDate('stock_entries.created_at', '>=', $request->from_date)->whereDate('stock_entries.created_at', '<=', $request->to_date);
+        })->sum('quantity') ?? 0;
+    }
+
+    public function getOpeningRateAttribute()
+    {
+        $request = request();
+        return StockEntry::where('product_id', $this->id)->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query1->whereDate('stock_entries.created_at', '>=', $request->from_date)->whereDate('stock_entries.created_at', '<=', $request->to_date);
+        })->avg('rate') ?? 0;
     }
 
     public function getPurchaseQuantityAttribute()
     {
-        return PurchaseProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return PurchaseProduct::where('product_id', $this->id)
+            ->whereHas('purchase', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->sum('quantity') ?? 0;
     }
 
     public function getProductPurchaseRateAttribute()
     {
-        return PurchaseProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
 
     public function getSaleQuantityAttribute()
     {
-        return SaleProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('quantity') ?? 0;
     }
 
     public function getSaleRateAttribute()
     {
-        return SaleProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
     public function getPurchaseReturnQuantityAttribute()
     {
-        return PurchaseProductReturn::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('quantity') ?? 0;
     }
 
     public function getPurchaseReturnRateAttribute()
     {
-        return PurchaseProductReturn::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
     public function getSaleReturnQuantityAttribute()
     {
-        return SalesReturnProduct::where('product_id', $this->id)->sum('quantity') ?? 0;
+        $request = request();
+        return SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('quantity') ?? 0;
     }
 
     public function getSaleReturnRateAttribute()
     {
-        return SalesReturnProduct::where('product_id', $this->id)->latest('id')->first()->price ?? 0;
+        $request = request();
+        return SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->latest('id')->first()->price ?? 0;
     }
 
-    public function getStockAdjustmentQuantityAttribute()
+    public function getStockAdjustmentDetailAttribute()
     {
-        return StockProductDetails::where('product_id', $this->id)->sum('diff_stock') ?? 0;
+        $averagePrice = StockProductDetails::where(['product_id' => $this->id])->get()->map(function ($stock) {
+            return Helper::getPrimaryUnitWithPrice($stock->product_id, $stock->measure_unit_id ?? 0, $stock->quantity ?? 0, $stock->price);
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+
+    }
+
+    public function getStockInDetailAttribute()
+    {
+        $averagePrice = StockProductDetails::where(['product_id' => $this->id])->get()->map(function ($stock) {
+            return Helper::getPrimaryUnitWithPrice($stock->product_id, $stock->measure_unit_id ?? 0, $stock->quantity ?? 0, $stock->price);
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+
+    }
+
+    public function getStockOutDetailAttribute()
+    {
+        $averagePrice = StockProductDetails::where(['product_id' => $this->id])->get()->map(function ($stock) {
+            return Helper::getPrimaryUnitWithPrice($stock->product_id, $stock->measure_unit_id ?? 0, $stock->quantity ?? 0, $stock->price);
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+
     }
 
     public function getStockInQuantityAttribute()
@@ -202,5 +289,115 @@ class Product extends Model
     {
         return StockProductDetails::where('product_id', $this->id)->whereRaw('CAST(diff_stock AS SIGNED) < 0')->sum('diff_stock') ?? 0;
     }
+
+    public function getStockOpeningAttribute()
+    {
+        $averagePrice = StockEntry::where(['product_id' => $this->id])->get()->map(function ($stockEntry) {
+
+            $primaryEntities = (Helper::convertToPrimaryUnitQuantityRate($stockEntry->product_id, $stockEntry->uom ?? 0, $stockEntry->quantity ?? 0, $stockEntry->rate));
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['opening_qty' => $averagePrice['primary_units'], 'opening_avg_price' => $averagePrice['primary_units'] > 0 ? $averagePrice['total_price'] / $averagePrice['primary_units'] : 0];
+    }
+
+    public function getPurchaseDetailAttribute()
+    {
+        $request = request();
+        $averagePrice = PurchaseProduct::where(['product_id' => $this->id])->whereHas('purchase', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($purchase) {
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+    }
+
+    public function getPurchaseReturnDetailAttribute()
+    {
+        $request = request();
+        $averagePrice = PurchaseProductReturn::where(['product_id' => $this->id])->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($purchase) {
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+    }
+
+    public function getSaleReturnDetailAttribute()
+    {
+        $request = request();
+        $averagePrice = SalesReturnProduct::where(['product_id' => $this->id])->whereHas('saleReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($purchase) {
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+    }
+
+
+
+    public function getSaleDetailAttribute()
+    {
+        $request = request();
+        $averagePrice = SaleProduct::where(['product_id' => $this->id])->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get()->map(function ($sale) {
+
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($sale->product_id, $sale->measure_unit_id ?? 0, $sale->quantity ?? 0, $sale->price);
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+    }
+
+
 
 }

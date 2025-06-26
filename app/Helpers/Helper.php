@@ -11,9 +11,9 @@ use App\Models\Sale;
 use App\Models\SaleProduct;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
+use Cache;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
-use PhpParser\Node\Expr\Cast\Double;
 
 class Helper
 {
@@ -147,6 +147,131 @@ class Helper
         return 0;
     }
 
+    public static function convertToPrimaryUnitQuantity(int $productId, int $fromMeasureUnit, int|null $qty): mixed
+    {
+        // get product primary measure unit
+        $primaryProductUnit = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
+
+        // if primary uom
+        if ($primaryProductUnit && $fromMeasureUnit) {
+
+            // if same uom then no conversion
+            if ($primaryProductUnit->measure_unit_id === $fromMeasureUnit)
+                return $qty;
+            else {
+                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
+                $purchaseProductMeasureUnit = MeasureUnit::find($fromMeasureUnit);
+
+                $fromQty = $purchaseProductMeasureUnit->quantity;
+                $toQty = $productMeasureUnit->quantity;
+
+                if ($toQty > $fromQty) {
+                    // Conversion is to a **larger unit** (e.g. grams → kilograms)
+                    // Quantity should **decrease**, so divide
+                    $factor = $fromQty / $toQty;
+                } elseif ($toQty < $fromQty) {
+                    // Conversion is to a **smaller unit** (e.g. grams → milligrams)
+                    // Quantity should **increase**, so multiply
+                    $factor = $fromQty * $toQty;
+                } else {
+                    // Same unit
+                    $factor = 1;
+                }
+                return $qty * $factor;
+
+            }
+        }
+        return 0;
+    }
+
+    public static function getPrimaryUnitWithPrice(int $productId, int $unitId, float $quantity, float $price)
+    {
+        $primaryEntities = self::convertToPrimaryUnitQuantityRate($productId, $unitId, $quantity, $price);
+        return [
+            'total_price' => $primaryEntities[1],
+            'primary_units' => $primaryEntities[0],
+        ];
+
+    }
+
+    public static function castToDouble($value)
+    {
+        return is_numeric($value) ? (double) $value : null;
+    }
+
+    public static function convertToPrimaryUnitRate(int $productId, int $fromMeasureUnit, float $rate): mixed
+    {
+        // get product primary measure unit
+        $primaryProductUnit = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
+
+        // if primary uom
+        if ($primaryProductUnit && $fromMeasureUnit) {
+
+            // if same uom then no conversion
+            if ($primaryProductUnit->measure_unit_id === $fromMeasureUnit)
+                return $rate;
+            else {
+                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
+                $purchaseProductMeasureUnit = MeasureUnit::find($fromMeasureUnit);
+
+                $fromQty = $purchaseProductMeasureUnit->quantity;
+                $toQty = $productMeasureUnit->quantity;
+
+                if ($toQty > $fromQty) {
+                    // Conversion is to a **larger unit** (e.g. grams → kilograms)
+                    // Quantity should **decrease**, so divide
+                    $factor = $fromQty / $toQty;
+                } elseif ($toQty < $fromQty) {
+                    // Conversion is to a **smaller unit** (e.g. grams → milligrams)
+                    // Quantity should **increase**, so multiply
+                    $factor = $fromQty * $toQty;
+                } else {
+                    // Same unit
+                    $factor = 1;
+                }
+                return $rate * $factor;
+
+            }
+        }
+        return 0;
+    }
+
+    public static function convertToPrimaryUnitQuantityRate(int $productId, int $fromMeasureUnit, mixed $qty, float $rate): array
+    {
+        // get product primary measure unit
+        $primaryProductUnit = ProductList::where(['product_id' => $productId, 'is_primary' => 1])->first();
+
+        // if primary uom
+        if ($primaryProductUnit && $fromMeasureUnit) {
+
+            // if same uom then no conversion
+            if ($primaryProductUnit->measure_unit_id === $fromMeasureUnit)
+                return [$qty, $rate];
+            else {
+                $productMeasureUnit = MeasureUnit::find($primaryProductUnit->measure_unit_id);
+                $purchaseProductMeasureUnit = MeasureUnit::find($fromMeasureUnit);
+
+                $fromQty = $purchaseProductMeasureUnit->quantity;
+                $toQty = $productMeasureUnit->quantity;
+
+                if ($toQty > $fromQty) {
+                    // Conversion is to a **larger unit** (e.g. grams → kilograms)
+                    // Quantity should **decrease**, so divide
+                    $factor = $fromQty / $toQty;
+                } elseif ($toQty < $fromQty) {
+                    // Conversion is to a **smaller unit** (e.g. grams → milligrams)
+                    // Quantity should **increase**, so multiply
+                    $factor = $fromQty * $toQty;
+                } else {
+                    // Same unit
+                    $factor = 1;
+                }
+                return [$qty * $factor, $rate * $factor];
+
+            }
+        }
+        return [0, 0];
+    }
     public static function getProductVatableAmount(int $productId, mixed $amount): mixed
     {
         $product = Product::where(['id' => $productId])->first();
@@ -369,6 +494,40 @@ class Helper
         ];
     }
 
+    /**
+     * Buld Cache Key 
+     */
+    public static function buildCacheKey(string $requestOfClient)
+    {
+        return sha1($requestOfClient); // Hash to avoid long keys
+    }
+
+
+    public static function checkDataInCache(string $requestParams)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        if (Cache::has($cacheKey)) {
+            $compressed = Cache::get($cacheKey);
+            return unserialize(gzuncompress($compressed));
+        }
+    }
+
+    public static function applyCache(string $requestParams, mixed $rows)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        $compressed = gzcompress(serialize($rows));
+        Cache::remember($cacheKey, 3600, function () use ($compressed) {
+            return $compressed;
+        });
+    }
+
+    public static function getDataFromCache(string $requestParams)
+    {
+        $cacheKey = self::buildCacheKey($requestParams);
+        $compressed = Cache::get($cacheKey);
+        return unserialize(gzuncompress($compressed));
+
+    }
     public static function getPurchaseProductDetails($name, $company)
     {
         // Find product(s) with the given name

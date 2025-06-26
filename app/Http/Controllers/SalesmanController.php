@@ -87,16 +87,27 @@ class SalesmanController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'salesman_id' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
-                    Rule::unique('salesmen')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
+                    Rule::unique('salesmen')
 
-                    }),
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
                 ],
-                'pan_number' => 'nullable|string|max:255|unique:salesmen,pan_number',
+                'pan_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('salesmen')
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'name' => 'required|string|max:255',
                 'address' => 'nullable|string',
                 'country' => 'nullable|string',
@@ -104,7 +115,17 @@ class SalesmanController extends Controller
                 'ward_no' => 'nullable|integer',
                 'area' => 'nullable|string',
                 'mobile' => 'required|string|max:20',
-                'email' => 'nullable|email|unique:salesmen,email|max:255',
+                'email' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('salesmen')
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'working_office' => 'nullable|string|max:255',
                 'joining_date' => 'nullable|date',
                 'designation' => 'nullable|string|max:255',
@@ -161,7 +182,7 @@ class SalesmanController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'salesman_id' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('salesmen')
@@ -171,7 +192,17 @@ class SalesmanController extends Controller
                                 ->whereNull('deleted_at');
                         }),
                 ],
-                'pan_number' => 'nullable|string|max:255|unique:salesmen,pan_number,' . $salesman->id,
+                'pan_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('salesmen')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'name' => 'sometimes|required|string|max:255',
                 'address' => 'nullable|string',
                 'country' => 'nullable|string',
@@ -179,7 +210,17 @@ class SalesmanController extends Controller
                 'ward_no' => 'nullable|integer',
                 'area' => 'nullable|string',
                 'mobile' => 'required|string|max:20',
-                'email' => 'nullable|email|unique:salesmen,email,' . $salesman->id . '|max:255',
+                'email' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('salesmen')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'working_office' => 'nullable|string|max:255',
                 'joining_date' => 'nullable|date',
                 'designation' => 'nullable|string|max:255',
@@ -205,7 +246,7 @@ class SalesmanController extends Controller
                 'data' => $salesman->fresh() // Reload the model to get the updated data
             ], 200);
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Salesman not found.'], 404);
         } catch (QueryException $e) {
             \Log::error($e);

@@ -6,9 +6,12 @@ use App\Models\Customer;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
+
+use Illuminate\Validation\Rule;
+
 use Illuminate\Support\Facades\Validator;
+
 
 class CustomerController extends Controller
 {
@@ -38,9 +41,39 @@ class CustomerController extends Controller
 
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-
             return response()->json(["error" => "Item not Found !!"], 404);
-        } catch (QueryExceptioon $e) {
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+
+    public function searchCustomerList(Request $request)
+    {
+        try {
+            $customer_name = $request->input('customer_name');
+
+            $applyFilters = function ($query) use ($customer_name) {
+                if ($customer_name) {
+                    $query->where('party_name', 'LIKE', "%$customer_name%");
+                }
+            };
+
+            $customers = Customer::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')->tap($applyFilters)
+                ->select('party_name', 'id')->get();
+            return response()->json([
+                "message" => "Customer List Received !!",
+                "data" => $customers
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Item not Found !!"], 404);
+        } catch (QueryException $e) {
 
             \Log::error($e);
             return response()->json(["error" => "Database error occurred !!"], 500);
@@ -89,23 +122,44 @@ class CustomerController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'party_name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('customers')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id)
-                        ->whereNull('deleted_at');
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('customers')
 
-                }),
-            ],
-                'pan_number' => 'nullable|string|unique:customers,pan_number',
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
+                'pan_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('customers')
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'billing_address' => 'nullable|string',
                 'opening_balance' => 'nullable|string|max:255',
                 'district' => 'nullable|string|max:255',
                 'ledger_type' => 'nullable|in:customer,vendor,both',
                 'address' => 'nullable|string',
                 'phone' => 'required|string|max:20',
-                'email' => 'nullable|email|unique:customers,email|max:255',
+                'email' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('customers')
+
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'contact_person' => 'nullable|string|max:255',
                 'contact_person_phone' => 'nullable|string|max:20',
                 'country' => 'nullable|string|max:100',
@@ -164,13 +218,43 @@ class CustomerController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
-                'party_name' => 'required|string|max:255|unique:customers,party_name,' . $id,
-                'pan_number' => 'nullable|string|unique:customers,pan_number,' . $id,
+                'party_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('customers')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
+                'pan_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('customers')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'billing_address' => 'nullable|string',
                 'ledger_type' => 'nullable|in:customer,vendor,both',
                 'address' => 'nullable|string',
                 'phone' => 'required|string|max:20',
-                'email' => 'nullable|email|unique:customers,email,' . $id,
+                'email' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('customers')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'contact_person' => 'nullable|string|max:255',
                 'contact_person_phone' => 'nullable|string|max:20',
                 'country' => 'nullable|string|max:100',

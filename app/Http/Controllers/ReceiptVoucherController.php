@@ -17,26 +17,41 @@ use Illuminate\Http\Request;
 
 class ReceiptVoucherController extends Controller
 {
-    public function index(Request $request){
+    public function index(Request $request)
+    {
 
-         $query = ReceiptVoucher::query();
-         return response()->json($query->paginate(10));  
+        $query = ReceiptVoucher::query();
+        return response()->json($query->paginate(10));
 
     }
 
-     public function update(Request $request, $id): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
                 'date_ad' => 'nullable|date',
-                'date_bs' => 'nullable|date',
+                'date_bs' => 'nullable|string',
                 'reference_number' => [
+                    'nullable',
                     'string',
-                    Rule::unique('receipt_vouchers')->ignore($id),
+                    'max:255',
+                    Rule::unique('receipt_vouchers')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
                 ],
                 'receipt_voucher_number' => [
+                    'nullable',
                     'string',
-                    Rule::unique('receipt_vouchers')->ignore($id),
+                    'max:255',
+                    Rule::unique('receipt_vouchers')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
                 ],
                 'receipt_voucher_list' => 'nullable|array',
                 'receipt_voucher_list.*.id' => 'nullable|integer|exists:receipt_voucher_details,id',
@@ -108,76 +123,98 @@ class ReceiptVoucherController extends Controller
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
-    
-        
+
+
 
 
 
     public function store(Request $request): JsonResponse
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'date_ad' => 'nullable|date',
-            'date_bs' => 'nullable|date',
-            'reference_number' => 'nullable|string|unique:receipt_vouchers,reference_number',
-            'receipt_voucher_number' => 'string|unique:receipt_vouchers,receipt_voucher_number',
-            'receipt_voucher_list' => 'nullable|array',
-            'receipt_voucher_list.*.id' => 'nullable',
-            'receipt_voucher_list.*.customer_id' => 'nullable|integer|exists:customers,id',
-            'receipt_voucher_list.*.party_name' => 'nullable|string',
-            'receipt_voucher_list.*.amount' => 'nullable|numeric',
-            'receipt_voucher_list.*.contra_acount' => 'nullable|string',
-            'receipt_voucher_list.*.remarks' => 'nullable|string',
-            'receipt_voucher_list.*.cheque_slip' => 'nullable|string',
-            'receipt_voucher_list.*.remaining_balance' => 'nullable|numeric',
-        ]);
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'date_ad' => 'nullable|date',
+                'date_bs' => 'nullable|string',
+                'reference_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('receipt_vouchers')
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
-            ], 422);
-        }
 
-        $validated = $validator->validated();
-        $companyId = $request->company_id; // Set by middleware
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
+                'receipt_voucher_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('receipt_vouchers')
 
-        $receiptVoucher = DB::transaction(function () use ($validated, $companyId) {
-            $validated['company_id'] = $companyId;
-            $receiptVoucher = ReceiptVoucher::create($validated);
 
-            if (isset($validated['receipt_voucher_list'])) {
-                $details = array_map(function ($detail) use ($companyId) {
-                    $detail['company_id'] = $companyId; // Override or set company_id
-                    return $detail;
-                }, $validated['receipt_voucher_list']);
-                $receiptVoucher->receiptVoucherDetails()->createMany($details);
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
+                'receipt_voucher_list' => 'nullable|array',
+                'receipt_voucher_list.*.id' => 'nullable',
+                'receipt_voucher_list.*.customer_id' => 'nullable|integer|exists:customers,id',
+                'receipt_voucher_list.*.party_name' => 'nullable|string',
+                'receipt_voucher_list.*.amount' => 'nullable|numeric',
+                'receipt_voucher_list.*.contra_acount' => 'nullable|string',
+                'receipt_voucher_list.*.remarks' => 'nullable|string',
+                'receipt_voucher_list.*.cheque_slip' => 'nullable|string',
+                'receipt_voucher_list.*.remaining_balance' => 'nullable|numeric',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
-            return $receiptVoucher;
-        });
+            $validated = $validator->validated();
+            $companyId = $request->company_id; // Set by middleware
 
-        return response()->json([
-            'message' => 'Receipt Voucher Created',
-            'item' => $receiptVoucher->load('receiptVoucherDetails'),
-        ], 201);
-    } catch (\Exception $e) {
-        Log::error($e);
-        return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
+            $receiptVoucher = DB::transaction(function () use ($validated, $companyId) {
+                $validated['company_id'] = $companyId;
+                $receiptVoucher = ReceiptVoucher::create($validated);
+
+                if (isset($validated['receipt_voucher_list'])) {
+                    $details = array_map(function ($detail) use ($companyId) {
+                        $detail['company_id'] = $companyId; // Override or set company_id
+                        return $detail;
+                    }, $validated['receipt_voucher_list']);
+                    $receiptVoucher->receiptVoucherDetails()->createMany($details);
+                }
+
+                return $receiptVoucher;
+            });
+
+            return response()->json([
+                'message' => 'Receipt Voucher Created',
+                'item' => $receiptVoucher->load('receiptVoucherDetails'),
+            ], 201);
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
+        }
     }
-}
 
-public function show(Request $request, $id): JsonResponse
-{
-    try {
-        $ReceiptVoucher = ReceiptVoucher::where('company_id', $request->company_id)
-            ->with([
-                'receiptVoucherDetails'
-                
-            ])
-            ->findOrFail($id);
+    public function show(Request $request, $id): JsonResponse
+    {
+        try {
+            $ReceiptVoucher = ReceiptVoucher::where('company_id', $request->company_id)
+                ->with([
+                    'receiptVoucherDetails'
 
-        
+                ])
+                ->findOrFail($id);
+
+
             return response()->json([
                 'ReceiptVoucher' => $ReceiptVoucher
             ]);
@@ -196,29 +233,28 @@ public function show(Request $request, $id): JsonResponse
     }
 
     public function destroy($id): JsonResponse
+    {
+        try {
+            $item = ReceiptVoucher::findOrFail($id);
+            $item->receiptVoucherDetails()->delete();
+            $item->delete();
 
-{
-    try {
-        $item = ReceiptVoucher::findOrFail($id);
-        $item->receiptVoucherDetails()->delete();
-        $item->delete();
-       
-        return response()->json(['message' => 'Receipt Voucher deleted!!']);
+            return response()->json(['message' => 'Receipt Voucher deleted!!']);
 
 
-    } catch (ModelNotFoundException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Item not found'], 404);
-    } catch (QueryException $e) {
-        
-        \Log::error($e);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
     }
-}
 
 
 }

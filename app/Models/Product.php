@@ -173,11 +173,27 @@ class Product extends Model
     public function getProductPurchaseRateAttribute()
     {
         $request = request();
-        return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+        $averagePrice = PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
             $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                 $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
             });
-        })->latest('id')->first()->price ?? 0;
+        })->get();
+
+        $count = $averagePrice->count();
+
+        $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
+            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+
+            return [
+                'total_price' => $primaryEntities[1],
+                'primary_units' => $primaryEntities[0],
+            ];
+        })->reduce(function ($carry, $item) {
+            $carry['total_price'] += $item['total_price'];
+            $carry['primary_units'] += $item['primary_units'];
+            return $carry;
+        }, ['total_price' => 0, 'primary_units' => 0]);
+        return $count > 0 ? round($averagePrice['total_price'] / $count, 2) : 0;
     }
 
 

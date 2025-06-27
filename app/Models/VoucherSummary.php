@@ -11,6 +11,7 @@ class VoucherSummary extends Model
     use SoftDeletes;
     protected $fillable = [
         'date',
+        'date_bs',
         'company_id',
         'voucher_number',
         'particulars',

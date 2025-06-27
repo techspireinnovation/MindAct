@@ -10,7 +10,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('voucher_summary', function (Blueprint $table) {
+        Schema::create('voucher_summaries', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
             $table->foreignId('branch_id')->constrained('branches')->nullable();

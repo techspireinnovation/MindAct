@@ -178,22 +178,25 @@ class Product extends Model
                 $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
             });
         })->get();
+        if ($request->method === 'fifo') {
+            return round($averagePrice->first()->price ?? 0, 2);
+        } else {
+            $count = $averagePrice->count();
+            $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
+                $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
 
-        $count = $averagePrice->count();
+                return [
+                    'total_price' => $primaryEntities[1],
+                    'primary_units' => $primaryEntities[0],
+                ];
+            })->reduce(function ($carry, $item) {
+                $carry['total_price'] += $item['total_price'];
+                $carry['primary_units'] += $item['primary_units'];
+                return $carry;
+            }, ['total_price' => 0, 'primary_units' => 0]);
+            return $count > 0 ? round($averagePrice['total_price'] / $count, 2) : 0;
+        }
 
-        $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
-            $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
-
-            return [
-                'total_price' => $primaryEntities[1],
-                'primary_units' => $primaryEntities[0],
-            ];
-        })->reduce(function ($carry, $item) {
-            $carry['total_price'] += $item['total_price'];
-            $carry['primary_units'] += $item['primary_units'];
-            return $carry;
-        }, ['total_price' => 0, 'primary_units' => 0]);
-        return $count > 0 ? round($averagePrice['total_price'] / $count, 2) : 0;
     }
 
 

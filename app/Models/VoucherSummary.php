@@ -13,13 +13,14 @@ class VoucherSummary extends Model
         'date',
         'date_bs',
         'company_id',
+        'branch_id',
         'voucher_number',
         'particulars',
         'debit',
         'account_head_id',
-        'account_head_id',
-        'account_head_id',
-        'pan_vat_number',
+        'cheque_number',
+        'tr_bill_number',
+        'type',
         'deleted_at'
     ];
 

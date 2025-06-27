@@ -5,6 +5,7 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\PurchaseObserver;
 use App\Traits\ConvertsAdToBsDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -59,6 +60,7 @@ class Purchase extends Model
 
     protected static function booted()
     {
+        self::observe(PurchaseObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

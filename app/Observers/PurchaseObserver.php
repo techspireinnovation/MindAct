@@ -18,7 +18,7 @@ class PurchaseObserver
             'company_id' => $purchase->company_id,
             'branch_id' => null,
             'voucher_number' => "asdfdsf",
-            'particulars' => "Product Purchased from- {$purchase->customer->party_name} from Bill No. {$purchase->purchase_bill_number}",
+            'particulars' => "Product Purchased from - {$purchase->customer->party_name} from Bill No. {$purchase->purchase_bill_number}",
             'debit' => 0,
             'credit' => 0,
             'tr_bill_number' => $purchase->purchase_bill_number,

@@ -7,6 +7,7 @@ use App\Models\CompanyUser;
 use App\Models\PurchaseMasterKey;
 use App\Models\SalesMasterKey;
 use App\Models\User;
+use App\Stubs\MainGroupStub;
 use DB;
 use Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -183,6 +184,8 @@ class CompanyController extends Controller
                     $query->withoutGlobalScopes();
                 }
             ]);
+
+            MainGroupStub::createMainGroups();
 
             return response()->json([
                 'success' => true,

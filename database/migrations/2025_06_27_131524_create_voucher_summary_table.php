@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('voucher_summary', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
+            $table->foreignId('branch_id')->constrained('branches')->nullable();
             $table->date('date');
             $table->string('date_bs');
             $table->string('voucher_number')->nullable();
@@ -20,6 +21,9 @@ return new class extends Migration {
             $table->double('debit')->nullable();
             $table->double('credit')->nullable();
             $table->foreignId('account_head_id')->nullable();
+            $table->string('tr_bill_number')->nullable();
+            $table->string('cheque_number')->nullable();
+            $table->char('type', 10)->nullable();
             $table->timestamps();
         });
     }

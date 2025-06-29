@@ -21,7 +21,7 @@ class VoucherSummaryController extends Controller
 
 
         $vouchers = VoucherSummary::selectRaw('
-                    @sn := @sn + 1 AS sn,
+                   
                     date_bs,
                     date,
                     voucher_number,
@@ -33,7 +33,7 @@ class VoucherSummaryController extends Controller
             ->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')
             //->where('v.type', 'your_voucher_type')
             ->orderBy('date', 'desc')
-            ->get();
+            ->paginate(200);
 
         return response()->json($vouchers);
 

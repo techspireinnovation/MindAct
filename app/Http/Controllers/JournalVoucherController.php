@@ -30,7 +30,7 @@ class JournalVoucherController extends Controller
         try {
             $validated = $request->validate([
                 'voucher_number' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('journal_vouchers')->where(function ($query) use ($request, $id) {
@@ -40,7 +40,7 @@ class JournalVoucherController extends Controller
                     }),
                 ],
                 'reference_number' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('journal_vouchers')->where(function ($query) use ($request, $id) {
@@ -52,11 +52,11 @@ class JournalVoucherController extends Controller
                 'project_id' => 'integer|exists:projects,id',
                 'salesman_id' => 'integer|exists:salesmen,id',
                 'transactions' => 'nullable|array',
-                'transactions.*.main_group_id' => 'nullable|integer|exists:measure_units,id',
-                'transactions.*.account_group_id' => 'nullable|integer|exists:measure_units,id',
-                'transactions.*.account_head_id' => 'nullable|integer|exists:measure_units,id',
-                'transactions.*.sub_group_id' => 'nullable|integer|exists:measure_units,id',
-                'transactions.*.account_code' => 'nullable|integer|exists:measure_units,id',
+                'transactions.*.main_group_id' => 'nullable|integer|exists:main_groups,id',
+                'transactions.*.account_group_id' => 'nullable|integer|exists:account_groups,id',
+                'transactions.*.account_head_id' => 'nullable|integer|exists:account_heads,id',
+                'transactions.*.sub_group_id' => 'nullable|integer|exists:sub_groups,id',
+                'transactions.*.account_code' => 'nullable|string',
                 'transactions.*.particulars' => 'nullable|string|max:255',
                 'transactions.*.type' => 'nullable|string|max:255',
                 'transactions.*.debit' => 'nullable|numeric',
@@ -126,11 +126,11 @@ class JournalVoucherController extends Controller
             'project_id' => 'integer|exists:projects,id',
             'salesman_id' => 'integer|exists:salesmen,id',
             'transactions' => 'nullable|array',
-            'transactions.*.main_group_id' => 'nullable|integer|exists:measure_units,id',
-            'transactions.*.account_group_id' => 'nullable|integer|exists:measure_units,id',
-            'transactions.*.account_head_id' => 'nullable|integer|exists:measure_units,id',
-            'transactions.*.sub_group_id' => 'nullable|integer|exists:measure_units,id',
-            'transactions.*.account_code' => 'nullable|integer|exists:measure_units,id',
+            'transactions.*.main_group_id' => 'nullable|integer|exists:main_groups,id',
+            'transactions.*.account_group_id' => 'nullable|integer|exists:account_groups,id',
+            'transactions.*.account_head_id' => 'nullable|integer|exists:account_heads,id',
+            'transactions.*.sub_group_id' => 'nullable|integer|exists:sub_groups,id',
+            'transactions.*.account_code' => 'nullable|string',
             'transactions.*.particulars' => 'nullable|string|max:255',
             'transactions.*.type' => 'nullable|string|max:255',
             'transactions.*.debit' => 'nullable|numeric',

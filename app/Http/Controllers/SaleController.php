@@ -637,8 +637,8 @@ class SaleController extends Controller
                     $join->on('purchase_product_field_values.product_field_id', '=', 'product_field_values.product_field_id')
                         ->on('purchase_product_field_values.value', '=', 'product_field_values.value')
                         ->where('product_field_values.company_id', $companyId)
-                        ->whereIn('product_field_values.product_id', $productIds)
-                        ->whereNull('product_field_values.deleted_at');
+                        ->whereIn('product_field_values.product_id', $productIds);
+                       // ->whereNull('product_field_values.deleted_at');
 
                 })
                 ->whereIn('purchase_product_field_values.purchase_product_id', $purchaseProducts->pluck('purchase_product_id'))
@@ -971,6 +971,7 @@ class SaleController extends Controller
                             'discount_amount' => $product->discount_amount ?? 0,
                             'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
                             'measure_unit_id' => $product->measure_unit_id,
+                            'amount' => $product->amount,
                             'mfd' => $product->mfd,
                             'batch_no' => 'BATCH-' . $product->id . '-' . now()->format('Ymd'),
                             'expiry_date' => $product->expiry_date,
@@ -1303,6 +1304,7 @@ class SaleController extends Controller
                             'quantity' => $productData['quantity'],
                             'free_quantity' => $productData['free_quantity'] ?? 0,
                             'price' => $productData['price'],
+                            'amount' => $productData['amount'],
                             'discount_percent' => $productData['discount_percent'] ?? 0,
                             'discount_amount' => $productData['discount_amount'] ?? 0,
                             'is_vatable' => $productData['is_vatable'] ?? false,
@@ -1397,6 +1399,7 @@ class SaleController extends Controller
                             'quantity' => $allocation['quantity_in_uom'],
                             'free_quantity' => $allocation['free_quantity_in_uom'],
                             'price' => $productData['price'],
+                            'amount' => $productData['amount'],
                             'discount_percent' => $productData['discount_percent'] ?? 0,
                             'discount_amount' => $productData['discount_amount'] ?? 0,
                             'is_vatable' => $productData['is_vatable'] ?? false,

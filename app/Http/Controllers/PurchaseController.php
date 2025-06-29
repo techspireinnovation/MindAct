@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
+use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -81,6 +82,39 @@ class PurchaseController extends Controller
             ], 500);
         }
     }
+
+    public function getRefBillNumber(Request $request)
+    {
+        try {
+            if (!$request->has('company_id')) {
+                return response()->json(['error' => 'Missing required parameter: company_id'], 422);
+            }
+            $companyId = $request->company_id;
+            $billNumbers = Purchase::where('company_id', $companyId)
+                            ->pluck('ref_bill_number');
+            if ($billNumbers->isEmpty()) {
+                return response()->json([
+                    'data' => 'Successfull !!',
+                    'message' => 'No purchases with available products found'
+                ], 200);
+            }
+            return response()->json($billNumbers);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+            dd(e->getMessage());
+            \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
+
+
+
+
+
 
     public function index(Request $request): JsonResponse
     {
@@ -527,7 +561,7 @@ class PurchaseController extends Controller
             'purchase_products.*.field_values.*' => 'array',
             'purchase_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
             'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
-            'purchase_products.*.field_values.*.*.quantity_type' => 'required|string|max:255',
+            'purchase_products.*.field_values.*.*.quantity_type' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -619,7 +653,7 @@ class PurchaseController extends Controller
                                         'company_id' => $purchaseProduct->company_id,
                                         'purchase_product_id' => $purchaseProduct->id,
                                         'quantity_index' => $quantityIndex,
-                                        'quantity_type' => $fieldValue['quantity_type'],
+                                        'quantity_type' => $fieldValue['quantity_type'] ?? null,
                                     ];
                                 }
                             }

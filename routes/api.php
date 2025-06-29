@@ -112,7 +112,6 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('customers', CustomerController::class);
     Route::resource('sales', SaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
-    Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
@@ -161,7 +160,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
     Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
     Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);
-    Route::get('get-ref-bill-numbers', [PurchaseReturnController::class, 'getRefBillNumber']);
+    Route::get('get-ref-bill-numbers', [PurchaseController::class, 'getRefBillNumber']);
     Route::get('get-purchase-by-ref-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByRefBillNumber']);
     Route::get('get-purchase-product-names', [PurchaseReturnController::class, 'getProductNames']);
     Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);

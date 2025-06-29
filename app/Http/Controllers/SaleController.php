@@ -2,31 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sale;
 use App\Helpers\Helper;
-use App\Models\SaleProduct;
 use App\Models\MeasureUnit;
-use App\Models\SaleAdditional;
-use App\Models\SalesReturnProduct;
-use App\Models\SalesProductFieldValue;
-use App\Models\PurchaseProductFieldValue;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Request;
 use App\Models\Product;
-use App\Models\ProductField;
 use App\Models\Purchase;
-use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseProduct;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
-
-
-use Illuminate\Support\Facades\Validator;
+use App\Models\PurchaseProductFieldValue;
+use App\Models\PurchaseProductReturn;
+use App\Models\Sale;
+use App\Models\SaleAdditional;
+use App\Models\SaleProduct;
+use App\Models\SalesProductFieldValue;
+use App\Models\SalesReturnProduct;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-
-use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 
 class SaleController extends Controller
@@ -640,11 +636,11 @@ class SaleController extends Controller
                 $lastSalesPrice = SaleProduct::where('product_id', $productId)
                     ->whereNull('deleted_at')
                     ->orderByDesc('created_at')
-                    ->value('price'); 
-                 
-                $averageSalesPrice = round($salesPrice->avg(),2);  
-                $minSalesPrice = round($salesPrice->min(),2);   
-                $latesrSalesPrice =round($lastSalesPrice,2);
+                    ->value('price');
+
+                $averageSalesPrice = round($salesPrice->avg(), 2);
+                $minSalesPrice = round($salesPrice->min(), 2);
+                $latesrSalesPrice = round($lastSalesPrice, 2);
 
                 $productFieldValues = collect();
                 $productPurchaseProducts = $purchaseProducts->filter(function ($pp) use ($productId) {
@@ -1936,7 +1932,7 @@ class SaleController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = Sale::with('saleProducts')->findOrFail($id);
+            $item = Sale::with('saleProducts.measureUnit:id,name')->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

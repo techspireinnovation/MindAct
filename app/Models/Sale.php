@@ -66,6 +66,7 @@ class Sale extends Model
         'is_vatable',
         'abvt',
         'is_whatsapp_notify',
+        'vat_amount'
     ];
 
     protected static function booted()

@@ -64,4 +64,9 @@ class JournalVoucherTransaction extends Model
     {
         return $this->hasOne(SubGroup::class, 'id', 'sub_group_id');
     }
+
+    public function journalVoucher()
+    {
+        return $this->belongsTo(JournalVoucher::class, 'id', 'journal_voucher_id');
+    }
 }

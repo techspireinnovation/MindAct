@@ -12,7 +12,7 @@ class VoucherSummaryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'nullable|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN',
+            'type' => 'nullable|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,JOURNAL_VOUCHER',
         ]);
 
         if ($validator->fails()) {

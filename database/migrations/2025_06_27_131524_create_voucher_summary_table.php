@@ -25,6 +25,7 @@ return new class extends Migration {
             $table->string('cheque_number')->nullable();
             $table->char('type', 10)->nullable();
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

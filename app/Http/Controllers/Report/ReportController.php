@@ -97,7 +97,7 @@ class ReportController extends Controller
                 $items = ProductReport::stockRegisterListDetails($request->all());
                 $items = $items->paginate(250);
                 $items->getCollection()->transform(function ($item) {
-                    $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail']);
+                    $item->append(['product_stock_quantity', 'opening_quantity', 'opening_rate', 'purchase_quantity', 'product_purchase_amount', 'product_purchase_rate', 'purchase_return_quantity', 'purchase_return_rate', 'sale_quantity', 'sale_rate', 'sale_return_quantity', 'sale_return_rate', 'stock_adjustment_detail', 'stock_in_detail', 'stock_out_detail',]);
                     return $item;
                 });
                 Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);

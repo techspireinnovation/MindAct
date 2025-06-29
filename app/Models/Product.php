@@ -180,7 +180,6 @@ class Product extends Model
         })->get();
         $count = $averagePrice->count();
         if ($request->method === 'fifo') {
-
             $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
                 $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
                 return [
@@ -206,7 +205,7 @@ class Product extends Model
                 $carry['primary_units'] += $item['primary_units'];
                 return $carry;
             }, ['total_price' => 0, 'primary_units' => 0]);
-            return $count > 0 ? round($averagePrice['total_price'] / $count, 2) : 0;
+            return $averagePrice['primary_units'] > 0 ? round($this->getProductPurchaseAmountAttribute() / $averagePrice['primary_units'], 2) : 0;
         }
 
     }

@@ -27,11 +27,13 @@ class VoucherSummaryController extends Controller
                     voucher_number,
                     a.name as account_head,
                     particulars,
-                    debit,
+                    debit, type,
                     credit
         ')
             ->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')
-            //->where('v.type', 'your_voucher_type')
+            ->when($request->has('type'), function ($rr) use ($request) {
+                $rr->where('type', $request->type);
+            })
             ->orderBy('date', 'desc')
             ->paginate(200);
 

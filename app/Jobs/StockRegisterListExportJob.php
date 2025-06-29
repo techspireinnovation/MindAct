@@ -66,7 +66,7 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Opening Qty" => $item->opening_quantity ?? 0,
                         "Purchase Qty" => $item->purchase_quantity ?? 0,
                         "Purchase Rate" => $item->product_purchase_rate ?? 0,
-                        "Purchase Amount" => round(($item->purchase_quantity ?? 0) * ($item->product_purchase_rate ?? 0), 2),
+                        "Purchase Amount" => round(($item->product_purchase_amount ?? 0), 2),
                         "Debit Note" => "",
                         "Additional Pur. Cost" => "",
                         "Per Qty" => "",

@@ -23,7 +23,7 @@ return new class extends Migration {
             $table->foreignId('account_head_id')->nullable();
             $table->string('tr_bill_number')->nullable();
             $table->string('cheque_number')->nullable();
-            $table->char('type', 10)->nullable();
+            $table->char('type', 50)->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

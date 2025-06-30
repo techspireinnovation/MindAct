@@ -231,14 +231,10 @@ class Product extends Model
             $purchaseQuantity = $purchases->sum('quantity');
             $salesQuantity = $sales->sum('quantity');
             $totalQuantity = $purchaseQuantity - $salesQuantity;
-            $WeightedAverageCostperUnit = $purchases->sum('amount') / $purchaseQuantity;
-
-            $totalCost = $purchases->sum(function ($item) {
-                return $item->quantity * $item->price;
-            });
 
             // Calculate closing rate (average cost per unit)
-            $closingRate = $totalQuantity > 0 ? $totalCost / $totalQuantity : 0;
+            $WeightedAverageCostperUnit = $purchases->sum('amount') / $purchaseQuantity;
+
             return ['closing_amount' => round($totalQuantity * $WeightedAverageCostperUnit), 'closing_quantity' => $totalQuantity, 'closing_rate' => round($WeightedAverageCostperUnit, 2)];
 
         } else if ($request->method === 'fifo') {
@@ -254,28 +250,48 @@ class Product extends Model
                     $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
                 });
             })->sum('quantity');
-            dd($sales);
-            $remaining = $sales;
+
+            $remainingSales = $sales;
             $closingBatches = [];
 
             foreach ($purchases as $purchase) {
-                if ($purchase->quantity > $remaining) {
-                    $closingBatches[] = [
-                        'quantity' => $purchase->quantity - $remaining,
-                        'unit_cost' => $purchase->unit_cost
-                    ];
-                    break;
+                if ($remainingSales >= $purchase->quantity) {
+                    // Entire batch is sold
+                    $remainingSales -= $purchase->quantity;
+                    continue;
                 } else {
-                    $remaining -= $purchase->quantity;
+                    // Partial batch remains (or all if no sales left)
+                    $remainingQty = $purchase->quantity - $remainingSales;
+                    $closingBatches[] = [
+                        'quantity' => $remainingQty,
+                        'rate' => $purchase->price,
+                        'amount' => $remainingQty * $purchase->price,
+                    ];
+                    $remainingSales = 0;
                 }
             }
 
-            // Calculate closing amount
-            $closingAmount = 0;
-            foreach ($closingBatches as $batch) {
-                $closingAmount += $batch['quantity'] * $batch['unit_cost'];
+            // If there were more purchases after all sales are consumed
+            if ($remainingSales == 0) {
+                foreach ($purchases->skip(count($closingBatches)) as $purchase) {
+                    $closingBatches[] = [
+                        'quantity' => $purchase->quantity,
+                        'rate' => $purchase->price,
+                        'amount' => $purchase->quantity * $purchase->price,
+                    ];
+                }
             }
-            return 0;
+
+            $closingAmount = array_sum(array_column($closingBatches, 'amount'));
+            $closingRate = $remainingQty > 0 ? $closingAmount / $remainingQty : 0;
+
+            return [
+                'closing_quantity' => $remainingQty,
+                'closing_amount' => $closingAmount,
+                'closing_rate' => round($closingRate, 2),
+
+            ];
+
         }
 
     }

@@ -18,7 +18,7 @@ class JournalVoucherTransactionObserver
             'date_bs' => $journalVoucherTransaction->journalVoucher->date,
             'company_id' => $journalVoucherTransaction->company_id,
             'branch_id' => null,
-            'voucher_number' => $journalVoucherTransaction->journalVoucher,
+            'voucher_number' => $journalVoucherTransaction->journalVoucher->voucher_number,
             'particulars' => $journalVoucherTransaction->particulars,
             'debit' => $journalVoucherTransaction->debit,
             'credit' => $journalVoucherTransaction->credit,

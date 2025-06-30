@@ -221,6 +221,13 @@ class Product extends Model
             })->get();
 
 
+            $purchaseReturns = PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
+
             $sales = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
                 $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                     $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
@@ -305,9 +312,9 @@ class Product extends Model
                 $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
             });
         })->get();
-        $count = $averagePrice->count();
+
         if ($request->method === 'fifo') {
-            $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
+            $averagePrice = $averagePrice->map(function ($purchase) {
                 $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
                 return [
                     'total_price' => $primaryEntities[1],
@@ -321,7 +328,7 @@ class Product extends Model
 
             return $averagePrice['primary_units'] > 0 ? round($this->getProductPurchaseAmountAttribute() / $averagePrice['primary_units'], 2) : 0;
         } else {
-            $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
+            $averagePrice = $averagePrice->map(function ($purchase) {
                 $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
                 return [
                     'total_price' => $primaryEntities[1],

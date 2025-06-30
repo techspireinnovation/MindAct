@@ -114,7 +114,7 @@ class CompanyController extends Controller
             ]);
 
             // Create the PurchaseMasterKey with default values
-            $purchaseMaster = $company->purchaseMasterKey()->withoutGlobalScopes()->create([
+            $company->purchaseMasterKey()->withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'product_code' => false,
                 'free' => false,
@@ -130,7 +130,7 @@ class CompanyController extends Controller
                 'mfd' => false,
             ]);
 
-            $saleMaster = $company->salesMasterKey()->withoutGlobalScopes()->create([
+            $company->salesMasterKey()->withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'salesman' => false,
                 'product_code' => false,
@@ -160,6 +160,8 @@ class CompanyController extends Controller
                 'name' => $validated['admin_name'],
                 'password' => Hash::make($validated['password']),
             ]);
+
+            MainGroupStub::createMainGroups($company->id);
 
             // Assign the company_admin role
             $role = Role::firstOrCreate([
@@ -754,6 +756,7 @@ class CompanyController extends Controller
             ]);
 
             $company->update($validated);
+            MainGroupStub::createMainGroups($company->id);
 
             $userUpdates = [];
             $newToken = null;

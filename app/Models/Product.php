@@ -253,6 +253,7 @@ class Product extends Model
 
             $remainingSales = $sales;
             $closingBatches = [];
+            $remainingQty = 0;
 
             foreach ($purchases as $purchase) {
                 if ($remainingSales >= $purchase->quantity) {

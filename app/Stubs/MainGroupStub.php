@@ -109,6 +109,7 @@ class MainGroupStub
 
             $newMainGroup = MainGroup::firstOrCreate([
                 'name' => $key,
+                'is_active' => true,
                 'company_id' => $companyId
             ]);
 
@@ -117,7 +118,7 @@ class MainGroupStub
                     'name' => $mainGroupKey1,
                     'company_id' => $companyId,
                     'main_group_id' => $newMainGroup->id,
-                    'code' => Str::upper($mainGroupKey1),
+                    'code' => Str::upper(Str::slug($mainGroupKey1, '_')),
                     'ranking_for_trial' => 1,
                     'is_active' => true,
                 ]);

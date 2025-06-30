@@ -167,7 +167,7 @@ class PurchaseController extends Controller
 
             $validated = $request->validate([
                 'ref_bill_number' => [
-                    'nullable',
+                    'required',
                     'string',
                     'max:255',
                     Rule::unique('purchases')
@@ -478,7 +478,7 @@ class PurchaseController extends Controller
     {
         $validated = $request->validate([
             'ref_bill_number' => [
-                'nullable',
+                'required',
                 'string',
                 'max:255',
                 Rule::unique('purchases')

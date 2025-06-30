@@ -483,16 +483,11 @@ class SaleController extends Controller
             $productSoldPrice = SaleProduct::where('product_id', $productForUnit)
                 ->orderByDesc('created_at')
                 ->get(['price', 'created_at']);
-            if ($productSoldPrice->isEmpty()) {
-                return response()->json(['message' => 'No sales data found for this product']);
-            }
+          
 
             $avgPrice = $productSoldPrice->avg('price');
             $minPrice = $productSoldPrice->min('price');
-            $latestSoldPrice = $productSoldPrice->first()->price;
-
-
-
+            $latestSoldPrice = $productSoldPrice->first()->price ?? 0;
 
 
 
@@ -682,7 +677,7 @@ class SaleController extends Controller
                             'mfd' => $pp->mfd,
                             'quantity' => $pp->quantity,
                             'free_quantity' => $pp->free_quantity ?? 0,
-                            'price' => $pp->price,
+                            'price' => $pp->price ?? 0,
                             'is_vatable' => (bool) $pp->is_vatable,
                             'measure_unit_id' => $pp->measure_unit_id,
                             'measure_unit_name' => isset($measureUnitsCalc[$pp->measure_unit_id]) ? $measureUnitsCalc[$pp->measure_unit_id]->name : null,
@@ -742,10 +737,10 @@ class SaleController extends Controller
                     // 'measure_unit_id' => null, // No specific measure unit for pieces
                     'measure_unit_name' => 'Piece', // Always Piece
                     'measure_unit_quantity' => 1, // 1 piece = 1 
-                    'retail_sale_price' => $retailSalePrice,
-                    'avg_price' => $avgPrice,
-                    'min_price' => $minPrice,
-                    'latest_price' => $latestSoldPrice,
+                    'retail_sale_price' => $retailSalePrice ?? 0,
+                    'avg_price' => $avgPrice ?? 0,
+                    'min_price' => $minPrice ?? 0,
+                    'latest_price' => $latestSoldPrice ?? 0,
                     'measure_units_used' => $measureUnitsUsed,
                     'avg_sales_price' => round($salesPrice->avg(), 2) ?: null,
                     'min_sales_price' => round($salesPrice->min(), 2) ?: null,

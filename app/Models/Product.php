@@ -231,14 +231,10 @@ class Product extends Model
             $purchaseQuantity = $purchases->sum('quantity');
             $salesQuantity = $sales->sum('quantity');
             $totalQuantity = $purchaseQuantity - $salesQuantity;
-            $WeightedAverageCostperUnit = $purchases->sum('amount') / $purchaseQuantity;
-
-            $totalCost = $purchases->sum(function ($item) {
-                return $item->quantity * $item->price;
-            });
 
             // Calculate closing rate (average cost per unit)
-            $closingRate = $totalQuantity > 0 ? $totalCost / $totalQuantity : 0;
+            $WeightedAverageCostperUnit = $purchases->sum('amount') / $purchaseQuantity;
+
             return ['closing_amount' => round($totalQuantity * $WeightedAverageCostperUnit), 'closing_quantity' => $totalQuantity, 'closing_rate' => round($WeightedAverageCostperUnit, 2)];
 
         } else if ($request->method === 'fifo') {

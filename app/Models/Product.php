@@ -233,7 +233,7 @@ class Product extends Model
             $totalQuantity = $purchaseQuantity - $salesQuantity;
 
             // Calculate closing rate (average cost per unit)
-            $WeightedAverageCostperUnit = $purchases->sum('amount') / $purchaseQuantity;
+            $WeightedAverageCostperUnit = $purchaseQuantity > 0 ? $purchases->sum('amount') / $purchaseQuantity : 0;
 
             return ['closing_amount' => round($totalQuantity * $WeightedAverageCostperUnit), 'closing_quantity' => $totalQuantity, 'closing_rate' => round($WeightedAverageCostperUnit, 2)];
 

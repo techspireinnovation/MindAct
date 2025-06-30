@@ -220,15 +220,26 @@ class Product extends Model
                 });
             })->get();
 
+
+            $sales = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
             // Calculate total quantity and total cost
-            $totalQuantity = $purchases->sum('quantity');
+            $purchaseQuantity = $purchases->sum('quantity');
+            $salesQuantity = $sales->sum('quantity');
+            $totalQuantity = $purchaseQuantity - $salesQuantity;
+            $WeightedAverageCostperUnit = $purchases->sum('amount') / $purchaseQuantity;
+
             $totalCost = $purchases->sum(function ($item) {
                 return $item->quantity * $item->price;
             });
 
             // Calculate closing rate (average cost per unit)
             $closingRate = $totalQuantity > 0 ? $totalCost / $totalQuantity : 0;
-            return ['closing_amount' => round($totalQuantity * $closingRate), 'closing_quantity' => $totalQuantity, 'closing_rate' => round($closingRate, 2)];
+            return ['closing_amount' => round($totalQuantity * $WeightedAverageCostperUnit), 'closing_quantity' => $totalQuantity, 'closing_rate' => round($WeightedAverageCostperUnit, 2)];
 
         } else if ($request->method === 'fifo') {
 

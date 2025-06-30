@@ -355,6 +355,17 @@ class Product extends Model
     }
 
 
+    public function getPurchaseReturnAmountAttribute()
+    {
+        $request = request();
+        return round(PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('amount') ?? 0, 2);
+    }
+
+
 
     public function getProductSaleAmountAttribute()
     {

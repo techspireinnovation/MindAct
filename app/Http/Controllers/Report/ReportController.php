@@ -92,7 +92,7 @@ class ReportController extends Controller
             if ($request->type === "list") {
 
                 if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
-                    // return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+                    return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
                 }
                 $items = ProductReport::stockRegisterListDetails($request->all());
                 $items = $items->paginate(250);

@@ -161,6 +161,8 @@ class CompanyController extends Controller
                 'password' => Hash::make($validated['password']),
             ]);
 
+            MainGroupStub::createMainGroups($company->id);
+
             // Assign the company_admin role
             $role = Role::firstOrCreate([
                 'name' => 'company_admin',

@@ -170,6 +170,105 @@ class Product extends Model
             })->sum('quantity') ?? 0;
     }
 
+    public function getProductSaleRateAttribute()
+    {
+        $request = request();
+        $averagePrice = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->get();
+        $count = $averagePrice->count();
+        if ($request->method === 'fifo') {
+            $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
+                $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+                return [
+                    'total_price' => $primaryEntities[1],
+                    'primary_units' => $primaryEntities[0],
+                ];
+            })->reduce(function ($carry, $item) {
+                $carry['total_price'] += $item['total_price'];
+                $carry['primary_units'] += $item['primary_units'];
+                return $carry;
+            }, ['total_price' => 0, 'primary_units' => 0]);
+
+            return $averagePrice['primary_units'] > 0 ? round($this->getProductSaleAmountAttribute() / $averagePrice['primary_units'], 2) : 0;
+        } else {
+            $averagePrice = $averagePrice->map(function ($purchase) use ($count) {
+                $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+                return [
+                    'total_price' => $primaryEntities[1],
+                    'primary_units' => $primaryEntities[0],
+                ];
+            })->reduce(function ($carry, $item) {
+                $carry['total_price'] += $item['total_price'];
+                $carry['primary_units'] += $item['primary_units'];
+                return $carry;
+            }, ['total_price' => 0, 'primary_units' => 0]);
+            return $averagePrice['primary_units'] > 0 ? round($this->getProductSaleAmountAttribute() / $averagePrice['primary_units'], 2) : 0;
+        }
+
+    }
+
+    public function getProductClosingDetailAttribute()
+    {
+        $request = request();
+        if ($request->method === 'average') {
+            $purchases = PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
+            // Calculate total quantity and total cost
+            $totalQuantity = $purchases->sum('quantity');
+            $totalCost = $purchases->sum(function ($item) {
+                return $item->quantity * $item->price;
+            });
+
+            // Calculate closing rate (average cost per unit)
+            $closingRate = $totalQuantity > 0 ? $totalCost / $totalQuantity : 0;
+            return ['closing_amount' => round($totalQuantity * $closingRate), 'closing_quantity' => $totalQuantity, 'closing_rate' => round($closingRate, 2)];
+
+        } else if ($request->method === 'fifo') {
+
+            $purchases = PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
+            $sales = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->sum('quantity');
+            dd($sales);
+            $remaining = $sales;
+            $closingBatches = [];
+
+            foreach ($purchases as $purchase) {
+                if ($purchase->quantity > $remaining) {
+                    $closingBatches[] = [
+                        'quantity' => $purchase->quantity - $remaining,
+                        'unit_cost' => $purchase->unit_cost
+                    ];
+                    break;
+                } else {
+                    $remaining -= $purchase->quantity;
+                }
+            }
+
+            // Calculate closing amount
+            $closingAmount = 0;
+            foreach ($closingBatches as $batch) {
+                $closingAmount += $batch['quantity'] * $batch['unit_cost'];
+            }
+            return 0;
+        }
+
+    }
+
     public function getProductPurchaseRateAttribute()
     {
         $request = request();
@@ -216,6 +315,18 @@ class Product extends Model
         return round(PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
             $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                 $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+            });
+        })->sum('amount') ?? 0, 2);
+    }
+
+
+
+    public function getProductSaleAmountAttribute()
+    {
+        $request = request();
+        return round(SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
             });
         })->sum('amount') ?? 0, 2);
     }

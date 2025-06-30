@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\JournalVoucherTransactionObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -33,6 +34,7 @@ class JournalVoucherTransaction extends Model
 
     protected static function booted()
     {
+        self::observe(JournalVoucherTransactionObserver::class);
         static::addGlobalScope(new CompanyIdScope());
         static::creating(function ($model) {
             // Only set if not already set
@@ -63,5 +65,10 @@ class JournalVoucherTransaction extends Model
     public function subGroup()
     {
         return $this->hasOne(SubGroup::class, 'id', 'sub_group_id');
+    }
+
+    public function journalVoucher()
+    {
+        return $this->belongsTo(JournalVoucher::class, 'journal_voucher_id', 'id');
     }
 }

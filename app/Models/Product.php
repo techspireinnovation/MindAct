@@ -268,45 +268,105 @@ class Product extends Model
                 $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                     $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
                 });
-            })->sum('quantity');
+            })->get();
 
-            $remainingSales = $sales;
-            $closingBatches = [];
-            $remainingQty = 0;
 
+            $purchaseReturns = PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
+
+            $salesReturns = SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
+            // 1. Add purchases as inventory layers
+            $layers = [];
             foreach ($purchases as $purchase) {
-                if ($remainingSales >= $purchase->quantity) {
-                    // Entire batch is sold
-                    $remainingSales -= $purchase->quantity;
-                    continue;
-                } else {
-                    // Partial batch remains (or all if no sales left)
-                    $remainingQty = $purchase->quantity - $remainingSales;
-                    $closingBatches[] = [
-                        'quantity' => $remainingQty,
-                        'rate' => $purchase->price,
-                        'amount' => $remainingQty * $purchase->price,
-                    ];
-                    $remainingSales = 0;
+                $layers[] = [
+                    'quantity' => $purchase->quantity,
+                    'price' => $purchase->price,
+                    'created_at' => $purchase->created_at,
+                ];
+            }
+            // 2. Apply purchase returns (LIFO: most recent layers first)
+            foreach ($purchaseReturns as $return) {
+                $qtyToReturn = $return->quantity;
+                for ($i = count($layers) - 1; $i >= 0 && $qtyToReturn > 0; $i--) {
+                    if ($layers[$i]['quantity'] <= $qtyToReturn) {
+                        $qtyToReturn -= $layers[$i]['quantity'];
+                        unset($layers[$i]);
+                    } else {
+                        $layers[$i]['quantity'] -= $qtyToReturn;
+                        $qtyToReturn = 0;
+                    }
                 }
+                $layers = array_values($layers); // Reindex
             }
 
-            // If there were more purchases after all sales are consumed
-            if ($remainingSales == 0) {
-                foreach ($purchases->skip(count($closingBatches)) as $purchase) {
-                    $closingBatches[] = [
-                        'quantity' => $purchase->quantity,
-                        'rate' => $purchase->price,
-                        'amount' => $purchase->quantity * $purchase->price,
-                    ];
+            $soldLayers = []; // To track which batches are sold (for sale returns)
+
+            foreach ($sales as $sale) {
+                $qtyToSell = $sale->quantity;
+                for ($i = 0; $i < count($layers) && $qtyToSell > 0; $i++) {
+                    if ($layers[$i]['quantity'] == 0)
+                        continue;
+                    if ($layers[$i]['quantity'] <= $qtyToSell) {
+                        $soldLayers[] = [
+                            'quantity' => $layers[$i]['quantity'],
+                            'price' => $layers[$i]['price'],
+                            'created_at' => $layers[$i]['created_at'],
+                        ];
+                        $qtyToSell -= $layers[$i]['quantity'];
+                        $layers[$i]['quantity'] = 0;
+                    } else {
+                        $soldLayers[] = [
+                            'quantity' => $qtyToSell,
+                            'price' => $layers[$i]['price'],
+                            'created_at' => $layers[$i]['created_at'],
+                        ];
+                        $layers[$i]['quantity'] -= $qtyToSell;
+                        $qtyToSell = 0;
+                    }
                 }
+                $layers = array_filter($layers, fn($l) => $l['quantity'] > 0);
+                $layers = array_values($layers);
             }
 
-            $closingAmount = array_sum(array_column($closingBatches, 'amount'));
-            $closingRate = $remainingQty > 0 ? $closingAmount / $remainingQty : 0;
+            foreach ($salesReturns as $return) {
+                $qtyToReturn = $return->quantity;
+                for ($i = count($soldLayers) - 1; $i >= 0 && $qtyToReturn > 0; $i--) {
+                    if ($soldLayers[$i]['quantity'] == 0)
+                        continue;
+                    $returnQty = min($qtyToReturn, $soldLayers[$i]['quantity']);
+                    // Add back to inventory as a new layer (or merge if same rate/date)
+                    $layers[] = [
+                        'quantity' => $returnQty,
+                        'price' => $soldLayers[$i]['price'],
+                        'created_at' => $soldLayers[$i]['created_at'],
+                    ];
+                    $soldLayers[$i]['quantity'] -= $returnQty;
+                    $qtyToReturn -= $returnQty;
+                }
+                $soldLayers = array_filter($soldLayers, fn($l) => $l['quantity'] > 0);
+                $soldLayers = array_values($soldLayers);
+            }
+
+            $closingQuantity = array_sum(array_column($layers, 'quantity'));
+            $closingAmount = array_sum(array_map(
+                fn($l) => $l['quantity'] * $l['price'],
+                $layers
+            ));
+            $closingRate = $closingQuantity > 0 ? $closingAmount / $closingQuantity : 0;
+
+
 
             return [
-                'closing_quantity' => $remainingQty,
+                'closing_quantity' => $closingQuantity,
                 'closing_amount' => $closingAmount,
                 'closing_rate' => round($closingRate, 2),
 

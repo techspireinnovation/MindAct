@@ -30,6 +30,7 @@ class SalesReturnProduct extends Model
         'product_name',
         'expiry_date',
         'mfd',
+        'amount',
         'quantity',
         'free_quantity',
         'price',

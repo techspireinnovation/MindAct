@@ -48,7 +48,18 @@ class AccountGroupController extends Controller
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
-                'code' => 'string|max:255',
+                'code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('account_groups')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $group) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+
+                        }),
+                ],
 
             ]);
             if ($validator->fails()) {
@@ -98,7 +109,17 @@ class AccountGroupController extends Controller
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
-                'code' => 'string|max:255'
+                'code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('account_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+
+                    }),
+
+                ],
             ]);
 
             if ($validator->fails()) {

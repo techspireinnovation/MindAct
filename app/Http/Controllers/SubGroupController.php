@@ -51,7 +51,18 @@ class SubGroupController extends Controller
 
                     }),
                 ],
-                'code' => 'string|max:255',
+                'code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sub_groups')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $group) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+
+                        }),
+                ],
                 'ranking_for_trial' => 'integer|max:255'
             ]);
             if ($validator->fails()) {
@@ -100,7 +111,17 @@ class SubGroupController extends Controller
                         return $query->where('company_id', $request->input('company_id'));
                     }),
                 ],
-                'code' => 'string|max:255',
+                'code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+
+                    }),
+
+                ],
                 'ranking_for_trial' => 'string|max:255'
             ]);
             if ($validator->fails()) {

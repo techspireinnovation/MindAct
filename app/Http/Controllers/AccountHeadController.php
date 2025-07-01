@@ -54,21 +54,7 @@ class AccountHeadController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
-
             $validated = $validator->validated();
-
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                AccountHead::where('company_id', $account_head->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-
             $account_head->update($validated);
             return response()->json($account_head);
         } catch (ModelNotFoundException $e) {

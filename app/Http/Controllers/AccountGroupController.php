@@ -57,18 +57,6 @@ class AccountGroupController extends Controller
                 ], 422);
             }
             $validated = $validator->validated();
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                AccountGroup::where('company_id', $group->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-
             $group->update($validated);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {

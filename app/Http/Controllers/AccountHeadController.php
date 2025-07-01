@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AccountHead;
+use App\Models\VoucherSummary;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -55,7 +56,12 @@ class AccountHeadController extends Controller
                 ], 422);
             }
             $validated = $validator->validated();
+
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
             $account_head->update($validated);
+
             return response()->json($account_head);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
@@ -99,18 +105,7 @@ class AccountHeadController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
-
             $validated = $validator->validated();
-
-            if (!empty($validated['is_primary'])) {
-                AccountHead::where('company_id', $validated['company_id'])
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            $validated['is_primary'] = $validated['is_primary'] ?? false;
-
-
             $account_head = AccountHead::create($validated);
             return response()->json($account_head, 201);
         } catch (ModelNotFoundException $e) {
@@ -142,6 +137,9 @@ class AccountHeadController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
             $account_head = AccountHead::findOrFail($id);
             $account_head->delete();
             return response()->json(['message' => 'Account Head deleted!!']);
@@ -152,5 +150,14 @@ class AccountHeadController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
+    }
+
+    private function checkIfUsed($id): bool
+    {
+        if (VoucherSummary::where('account_head_id', $id)->first()) {
+            return true;
+        }
+        return false;
+
     }
 }

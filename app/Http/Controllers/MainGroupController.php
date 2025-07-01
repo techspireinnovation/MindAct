@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountGroup;
 use App\Models\MainGroup;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -44,7 +45,6 @@ class MainGroupController extends Controller
 
                 ],
                 'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id'
             ]);
             if ($validator->fails()) {
@@ -55,6 +55,10 @@ class MainGroupController extends Controller
             }
 
             $validated = $validator->validated();
+
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
             $group->update($validated);
             return response()->json($group, 200);
         } catch (ModelNotFoundException $e) {
@@ -103,7 +107,6 @@ class MainGroupController extends Controller
                     ->update(['is_primary' => false]);
             }
             $validated['is_primary'] = $validated['is_primary'] ?? false;
-
             $group = MainGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {
@@ -135,6 +138,10 @@ class MainGroupController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
+
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
             $group = MainGroup::findOrFail($id);
             $group->delete();
             return response()->json(['message' => 'Main Group deleted!!']);
@@ -145,5 +152,14 @@ class MainGroupController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
+    }
+
+    private function checkIfUsed($id): bool
+    {
+        if (AccountGroup::where('main_group_id', $id)->first()) {
+            return true;
+        }
+        return false;
+
     }
 }

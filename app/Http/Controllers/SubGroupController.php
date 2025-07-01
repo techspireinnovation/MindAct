@@ -2,22 +2,22 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountGroup;
 use App\Models\SubGroup;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Http\Request;
-
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SubGroupController extends Controller
 {
 
     public function index(Request $request): JsonResponse
     {
-         $query = SubGroup::query();
-    
+        $query = SubGroup::query();
+
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
@@ -29,30 +29,32 @@ class SubGroupController extends Controller
     {
         try {
             $group = SubGroup::findOrFail($id);
-            $validator = Validator::make($request->all(),[
-                'name' => ['required',
-                           'string',
-                           'max:255',
-                        Rule::unique('sub_groups')
+            $validator = Validator::make($request->all(), [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sub_groups')
                         ->ignore($id)
-                        ->where(function ($query) use ($request, $group){
-                            return $query->where('company_id',$request->input('company_id',$request->company_id))
-                            ->whereNull('deleted_at');
+                        ->where(function ($query) use ($request, $group) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
 
                         }),
-                    ],
+                ],
                 'is_active' => 'boolean|required',
                 'company_id' => 'integer|exists:companies,id',
-                'main_group_id' => ['integer',
-                                   Rule::exists('main_groups','id')->where(function ($query) use ($request){
-                                    return $query->where('company_id',$request->company_id);
+                'main_group_id' => [
+                    'integer',
+                    Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id);
 
-                                   }),
-                                   ],
+                    }),
+                ],
                 'code' => 'string|max:255',
                 'ranking_for_trial' => 'integer|max:255'
             ]);
-            if($validator->fails()){
+            if ($validator->fails()) {
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -60,6 +62,10 @@ class SubGroupController extends Controller
             }
 
             $validated = $validator->validated();
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
+
             $group->update($validated);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
@@ -71,58 +77,49 @@ class SubGroupController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        try{
-        $validator = Validator::make($request->all(),[
-            'name' => ['required',
-                       'string',
-                       'max:255',
-                    Rule::unique('sub_groups')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id)
-                        ->whereNull('deleted_at');
+        try {
+            $validator = Validator::make($request->all(), [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
 
                     }),
-                    
+
                 ],
-            'is_active' => 'boolean|required',
-            'is_primary' =>'boolean',
-            'company_id' => 'integer|exists:companies,id',
-            'main_group_id' => [
-                'required',
-                'integer',
-                Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->input('company_id'));
-                }),
-            ],
-            'code' => 'string|max:255',
-            'ranking_for_trial' => 'string|max:255'
-        ]);
-        if($validator->fails()){
-            return response()->json([
+                'is_active' => 'boolean|required',
+                'is_primary' => 'boolean',
+                'company_id' => 'integer|exists:companies,id',
+                'main_group_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->input('company_id'));
+                    }),
+                ],
+                'code' => 'string|max:255',
+                'ranking_for_trial' => 'string|max:255'
+            ]);
+            if ($validator->fails()) {
+                return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
                 ], 422);
+            }
+
+            $validated = $validator->validated();
+            $group = SubGroup::create($validated);
+            return response()->json($group, 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Sub Group not found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
-
-        $validated = $validator->validated();
-
-        if (!empty($validated['is_primary'])) {
-            SubGroup::where('company_id', $validated['company_id'])
-            ->where('is_primary', true)
-            ->update(['is_primary' => false]);
-        }
-            
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-        
-
-        $group = SubGroup::create($validated);
-        return response()->json($group, 201);
-    }catch (ModelNotFoundException $e) {
-        return response()->json(['error' => 'Sub Group not found!!'], 404);
-    } catch (QueryException $e) {
-        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-    }catch(\Exception $e){
-        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-    }
     }
 
     public function show($id): JsonResponse
@@ -140,6 +137,9 @@ class SubGroupController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
             $group = SubGroup::findOrFail($id);
             $group->delete();
             return response()->json(['message' => 'Sub Group deleted!!']);
@@ -148,5 +148,14 @@ class SubGroupController extends Controller
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
+    }
+
+    private function checkIfUsed($id): bool
+    {
+        if (AccountGroup::where('sub_group_id', $id)->first()) {
+            return true;
+        }
+        return false;
+
     }
 }

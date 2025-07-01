@@ -565,7 +565,7 @@ class Product extends Model
             return [
                 'total_price' => $primaryEntities[1],
                 'primary_units' => $primaryEntities[0],
-                'total_amount' => $primaryEntities[1] * $primaryEntities[0],
+                'total_amount' => $purchase->amount,
             ];
         })->reduce(function ($carry, $item) {
             $carry['total_price'] += $item['total_price'];

@@ -549,7 +549,7 @@ class Product extends Model
             $carry['primary_units'] += $item['primary_units'];
             $carry['total_amount'] += $item['total_amount'];
             return $carry;
-        }, ['total_price' => 0, 'primary_units' => 0]);
+        }, ['total_price' => 0, 'primary_units' => 0, 'total_amount' => 0]);
         return ['qty' => $averagePrice['primary_units'], 'total_price' => round($averagePrice['total_amount'], 2), 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
     }
 
@@ -598,6 +598,7 @@ class Product extends Model
         })->reduce(function ($carry, $item) {
             $carry['total_price'] += $item['total_price'];
             $carry['primary_units'] += $item['primary_units'];
+            $carry['total_amount'] += $item['total_amount'];
             return $carry;
         }, ['total_price' => 0, 'primary_units' => 0, 'total_amount' => 0]);
         return ['qty' => $averagePrice['primary_units'], 'total_price' => round($averagePrice['total_amount'], 2), 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];

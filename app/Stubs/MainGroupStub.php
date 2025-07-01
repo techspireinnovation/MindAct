@@ -110,7 +110,8 @@ class MainGroupStub
             $newMainGroup = MainGroup::firstOrCreate([
                 'name' => $key,
                 'is_active' => true,
-                'company_id' => $companyId
+                'company_id' => $companyId,
+                'is_primary' => true,
             ]);
 
             foreach ($mainGroup as $mainGroupKey1 => $accountGroups) {
@@ -121,6 +122,7 @@ class MainGroupStub
                     'code' => Str::upper(Str::slug($mainGroupKey1, '_')),
                     'ranking_for_trial' => 1,
                     'is_active' => true,
+                    'is_primary' => true,
                 ]);
 
                 foreach ($accountGroups as $accountGroupKey => $accountGroup) {
@@ -132,6 +134,7 @@ class MainGroupStub
                         'sub_group_id' => $subGroup->id,
                         'code' => $accountGroupKey,
                         'is_active' => true,
+                        'is_primary' => true,
 
                     ]);
                 }

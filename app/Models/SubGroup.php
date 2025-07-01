@@ -4,10 +4,9 @@ namespace App\Models;
 
 
 use App\Models\MainGroup;
-use Illuminate\Database\Eloquent\Model;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 class SubGroup extends Model
 {
@@ -17,14 +16,13 @@ class SubGroup extends Model
         'is_primary' => 'boolean'
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'main_group_id',
         'code',
         'ranking_for_trial',
         'is_active',
-        'is_primary',
         'deleted_at'
     ];
 
@@ -35,7 +33,8 @@ class SubGroup extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function mainGroup(){
+    public function mainGroup()
+    {
         return $this->belongsTo(MainGroup::class, 'main_group_id');
 
     }

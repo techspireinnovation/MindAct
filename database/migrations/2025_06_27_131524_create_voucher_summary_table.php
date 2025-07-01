@@ -20,7 +20,7 @@ return new class extends Migration {
             $table->string('particulars')->nullable();
             $table->double('debit')->nullable();
             $table->double('credit')->nullable();
-            $table->foreignId('account_head_id')->nullable();
+            $table->foreignId('account_head_id')->nullable()->constrained('account_heads');
             $table->string('tr_bill_number')->nullable();
             $table->string('cheque_number')->nullable();
             $table->char('type', 50)->nullable();

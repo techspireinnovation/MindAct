@@ -4,10 +4,9 @@ namespace App\Models;
 
 
 use App\Models\AccountGroup;
-use Illuminate\Database\Eloquent\Model;
-
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\softDeletes;
 
 class AccountHead extends Model
@@ -19,13 +18,12 @@ class AccountHead extends Model
         'is_primary' => 'boolean'
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'account_group_id',
         'code',
         'is_active',
-        'is_primary',
         'deleted_at'
     ];
     protected $dates = ['deleted_at'];
@@ -35,7 +33,8 @@ class AccountHead extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function accountGroup(){
-        return $this->belongsTo(AccountGroup::class,'account_group_id');
+    public function accountGroup()
+    {
+        return $this->belongsTo(AccountGroup::class, 'account_group_id');
     }
 }

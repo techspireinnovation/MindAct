@@ -625,10 +625,7 @@ class ReportController extends Controller
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
-
         }
-
-
     }
 
     public function grossProfitRatioListDetails(Request $request): JsonResponse

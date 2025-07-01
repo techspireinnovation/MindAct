@@ -515,16 +515,21 @@ class Product extends Model
             });
         })->get()->map(function ($purchase) {
             $primaryEntities = Helper::convertToPrimaryUnitQuantityRate($purchase->product_id, $purchase->measure_unit_id ?? 0, $purchase->quantity ?? 0, $purchase->price);
+
             return [
                 'total_price' => $primaryEntities[1],
                 'primary_units' => $primaryEntities[0],
+                'total_amount' => $purchase->amount,
             ];
+
+
         })->reduce(function ($carry, $item) {
             $carry['total_price'] += $item['total_price'];
             $carry['primary_units'] += $item['primary_units'];
+            $carry['total_amount'] += $item['total_amount'];
             return $carry;
-        }, ['total_price' => 0, 'primary_units' => 0]);
-        return ['qty' => $averagePrice['primary_units'], 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
+        }, ['total_price' => 0, 'primary_units' => 0, 'total_amount' => 0]);
+        return ['qty' => $averagePrice['primary_units'], 'total_price' => round($averagePrice['total_amount'], 2), 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
     }
 
     public function getPurchaseReturnDetailAttribute()

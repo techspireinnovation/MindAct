@@ -228,6 +228,13 @@ class Product extends Model
             })->get();
 
 
+            $salesReturns = SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
+                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                    $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->get();
+
+
             $sales = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
                 $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                     $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
@@ -236,8 +243,11 @@ class Product extends Model
 
             // Calculate total quantity and total cost
             $purchaseQuantity = $purchases->sum('quantity');
+            $purchaseReturnQuantity = $purchaseReturns->sum('quantity');
             $salesQuantity = $sales->sum('quantity');
-            $totalQuantity = $purchaseQuantity - $salesQuantity;
+            $salesReturnQuantity = $salesReturns->sum('quantity');
+
+            $totalQuantity = $purchaseQuantity - $purchaseReturnQuantity + $salesReturnQuantity - $salesQuantity;
 
             // Calculate closing rate (average cost per unit)
             $WeightedAverageCostperUnit = $purchaseQuantity > 0 ? $purchases->sum('amount') / $purchaseQuantity : 0;

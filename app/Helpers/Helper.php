@@ -442,8 +442,8 @@ class Helper
                 'company_id' => $fieldValue->company_id,
                 'product_field_id' => $fieldValue->product_field_id,
                 'product_id' => $fieldValue->product_id,
-                'value' => $fieldValue->productField->name ?? null,
-                // 'name' => $fieldValue->productField->name ?? null,
+                'value' => $fieldValue->value ?? null,
+                'name' => $fieldValue->productField->name ?? null,
 
                 'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
                 'values' => $fieldValue->productField->values ?? null,

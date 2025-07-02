@@ -25,6 +25,7 @@ class AccountGroup extends Model
         'main_group_id',
         'sub_group_id',
         'code',
+        'is_primary',
         'is_active',
         'deleted_at'
     ];

@@ -187,7 +187,7 @@ class CompanyController extends Controller
                 }
             ]);
 
-            MainGroupStub::createMainGroups();
+            MainGroupStub::createMainGroups($company->id);
 
             return response()->json([
                 'success' => true,
@@ -756,7 +756,7 @@ class CompanyController extends Controller
             ]);
 
             $company->update($validated);
-            //MainGroupStub::createMainGroups($company->id);
+            MainGroupStub::createMainGroups($company->id);
 
             $userUpdates = [];
             $newToken = null;

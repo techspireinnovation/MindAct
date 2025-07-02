@@ -52,12 +52,9 @@ class StockRegisterListExportJob implements ShouldQueue
             } else {
                 $items = ProductReport::stockRegisterListDetails($params);
                 $sn = 1;
-                $rows = $items->cursor()->map(function ($item) use (&$sn) {
+                $rows = $items->cursor()->map(function ($item) use (&$sn, $params) {
 
-                    //  $closingRate = ($item->opening_rate ?? 0) + (($item->product_purchase_rate ?? 0) + ($item->sale_rate ?? 0) + ($item->purchase_return_rate ?? 0) + ($item->sale_return_rate ?? 0)) / 4;
-
-                    // $closingQty = ($item->opening_quantity ?? 0) + ($item->purchase_quantity ?? 0) - ($item->sale_quantity ?? 0) - ($item->purchase_return_quantity ?? 0) + ($item->sale_return_quantity ?? 0);
-
+                    $closingDetail = $item->productClosingDetail($params);
                     return [
                         'S.N' => $sn++,
                         'Product Id' => $item->product_unique_id,
@@ -102,10 +99,9 @@ class StockRegisterListExportJob implements ShouldQueue
                         "Production Rate" => 0,
                         "Production Quantity" => 0,
 
-                        // "Closing Qty" => $closingQty,
-                        // "Closing Rate" => round($closingRate, 2),
-
-                        // "Closing Amount" => round($closingRate * $closingQty, 2),
+                        "Closing Qty" => $closingDetail['closing_quantity'] ?? 0,
+                        "Closing Rate" => round($closingDetail['closing_rate'] ?? 0, 2),
+                        "Closing Amount" => round($closingDetail['closing_amount'] ?? 0, 2),
 
                         'Category' => optional($item->category)->name,
                         'Sub Category' => optional($item->subCategory)->name,

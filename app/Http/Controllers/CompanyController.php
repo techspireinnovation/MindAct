@@ -187,7 +187,7 @@ class CompanyController extends Controller
                 }
             ]);
 
-            MainGroupStub::createMainGroups();
+            MainGroupStub::createMainGroups($company->id);
 
             return response()->json([
                 'success' => true,

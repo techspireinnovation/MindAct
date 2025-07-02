@@ -76,7 +76,6 @@ class GrossProfitListExportJob implements ShouldQueue
 
                     $closingAmount = $closingQty === 0 ? 0 : $closingQty * $purchaseRate;
 
-
                     $cogs = $qtyInAmt - $closingAmount;
 
                     $grossProfit = $qtyOutAmt - $cogs;

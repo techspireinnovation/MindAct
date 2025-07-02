@@ -577,6 +577,7 @@ class Product extends Model
             return $carry;
         }, ['total_price' => 0, 'primary_units' => 0]);
         return ['opening_qty' => $averagePrice['primary_units'], 'opening_avg_price' => $averagePrice['primary_units'] > 0 ? $averagePrice['total_price'] / $averagePrice['primary_units'] : 0];
+
     }
 
     public function purchaseDetail(array $params)

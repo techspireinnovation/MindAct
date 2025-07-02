@@ -26,7 +26,7 @@ class StockEntryController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'stock_entries' => 'required|array',
-                'stock_entries.*.company_id' => 'required|exists:companies,id',
+
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
@@ -48,7 +48,10 @@ class StockEntryController extends Controller
 
             $createdEntries = [];
 
+
+
             foreach ($request->stock_entries as $entry) {
+                $entry['company_id'] = $request->company_id;
                 $createdEntries[] = StockEntry::create($entry);
             }
 
@@ -58,6 +61,7 @@ class StockEntryController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
+            dd($e->getMessage());
             \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
@@ -84,7 +88,7 @@ class StockEntryController extends Controller
             $validator = Validator::make($request->all(), [
                 'stock_entries' => 'required|array',
                 'stock_entries.*.id' => 'required|exists:stock_entries,id',
-                'stock_entries.*.company_id' => 'required|exists:companies,id',
+               
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|exists:products,id',
@@ -117,6 +121,7 @@ class StockEntryController extends Controller
                     }
                     $entry['product_id'] = $product->id;
                 }
+                $entry['company_id'] = $request->company_id;
 
                 $stockEntry = StockEntry::findOrFail($entry['id']);
                 $stockEntry->update($entry);

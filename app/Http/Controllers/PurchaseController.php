@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\Helper;
 use App\Models\Purchase;
 use App\Models\Product;
+use App\Models\ProductList;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -150,7 +151,7 @@ class PurchaseController extends Controller
         } catch (ModelNotFoundEXception $e) {
             return response()->json(['errors' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-          
+
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
             dd($e->getMessage());
@@ -542,6 +543,7 @@ class PurchaseController extends Controller
             'purchase_products.*.product_id' => 'required|integer|exists:products,id',
             'purchase_products.*.product_name' => 'nullable|string|max:255',
             'purchase_products.*.product_code' => 'nullable|string|max:255',
+            'purchase_products.*.hs_code' => 'nullable|string|max:255',
             'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'purchase_products.*.mfd' => 'nullable|string|max:255',
             'purchase_products.*.quantity' => 'required|numeric',
@@ -616,6 +618,20 @@ class PurchaseController extends Controller
                                 $product->save();
                             }
                         }
+
+                        $productId = $purchaseProductData['product_id'] ?? null;
+                        $hsCode = $purchaseProductData['hs_code'] ?? null;
+
+                        if ($productId && $hsCode) {
+                            ProductList::where('product_id', $productId)
+                                ->where(function ($query) use ($hsCode) {
+                                    $query->whereNull('hs_code')
+                                        ->orWhere('hs_code', '!=', $hsCode);
+                                })
+                                ->update(['hs_code' => $hsCode]);
+                        }
+
+
                         // Create PurchaseProduct using static create method
                         $purchaseProduct = PurchaseProduct::create([
                             'purchase_id' => $item->id, // Manually set the foreign key

@@ -57,7 +57,7 @@ class GrossProfitListExportJob implements ShouldQueue
                 $sn = 1;
                 $rows = $items->cursor()->map(function ($item) use (&$sn, $params) {
 
-                    $purchase_detail = $item->purchase_detail($params);
+                    $purchase_detail = $item->purchaseDetail($params);
                     $sale_detail = $item->saleDetail($params);
                     $sale_return_detail = $item->saleReturnDetail($params);
                     $purchase_return_detail = $item->purchaseReturnDetail($params);

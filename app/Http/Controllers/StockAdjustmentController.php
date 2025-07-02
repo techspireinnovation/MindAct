@@ -50,7 +50,7 @@ class StockAdjustmentController extends Controller
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
                 'product_details.*.diff_stock' => 'required_with:product_details|numeric',
                 'product_details.*.actual_stock' => 'required_with:product_details|numeric|min:0',
-                'product_details.*.unit' => 'required_with:product_details|string|max:50',
+                'product_details.*.unit_id' => 'required_with:product_details|numeric|max:50',
                 'product_details.*.current_stock' => 'required_with:product_details|numeric|min:0',
                 'company_id' => 'required|integer|exists:companies,id',
             ]);
@@ -136,7 +136,7 @@ class StockAdjustmentController extends Controller
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
                 'product_details.*.diff_stock' => 'required_with:product_details|numeric',
                 'product_details.*.actual_stock' => 'required_with:product_details|numeric|min:0',
-                'product_details.*.unit' => 'required_with:product_details|string|max:50',
+                'product_details.*.unit_id' => 'required_with:product_details|numeric|max:50',
                 'product_details.*.current_stock' => 'required_with:product_details|numeric|min:0',
                 'company_id' => 'required|integer|exists:companies,id',
             ]);
@@ -194,7 +194,7 @@ class StockAdjustmentController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = StockAdjustment::with('StockProductDetails')->findOrFail($id);
+            $item = StockAdjustment::with('stockProductDetails')->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Stock Adjustment not found!!'], 404);

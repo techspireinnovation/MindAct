@@ -2398,7 +2398,6 @@ class SalesReturnController extends Controller
     private function calculateAvailablePiecesForFifo($saleProduct, int $companyId, $measureUnitsCalc): int
     {
 
-
         $saleMeasureUnitQuantity = $measureUnitsCalc ?? 1;
 
 

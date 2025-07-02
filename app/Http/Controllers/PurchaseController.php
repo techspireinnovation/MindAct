@@ -6,6 +6,7 @@ use App\Helpers\Helper;
 use App\Models\Purchase;
 use App\Models\Product;
 use App\Models\ProductList;
+use App\Models\MeasureUnit;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -154,7 +155,7 @@ class PurchaseController extends Controller
 
             return response()->json(['errors' => 'Database error occurred!!'], 500);
         } catch (\EXception $e) {
-            
+
             return response()->json(['errors' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -683,7 +684,7 @@ class PurchaseController extends Controller
                 'message' => 'Purchase Created Successfully!!',
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
-        }catch (QueryException $e) {
+        } catch (QueryException $e) {
             \Log::error('Purchase creation failed: ' . $e->getMessage());
             if ($e->getCode() == 23000) {
                 $errorMessage = $e->getMessage();
@@ -712,12 +713,23 @@ class PurchaseController extends Controller
     {
         try {
             $item = Purchase::with(['purchaseProducts.fieldValues.productField'])->findOrFail($id);
-            
+
 
 
             $itemArray = $item->toArray();
 
             foreach ($itemArray['purchase_products'] as &$purchaseProduct) {
+                $product = Product::find($purchaseProduct['product_id']);
+                $productId = $product->id;
+                $productMeasureUnitId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
+                $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
+                $mergedMeasureUnits = collect(array_merge($productMeasureUnitId, $productListMeasureUnitId))->unique()->filter()->values();
+
+                $usedMeasureUnits = MeasureUnit::whereIn('id', $mergedMeasureUnits)
+                    ->whereNull('deleted_at')
+                    ->get(['id', 'name', 'quantity']);
+                $purchaseProduct['measure_units'] = $usedMeasureUnits;
+
                 foreach ($purchaseProduct['field_values'] as &$fieldValue) {
                     if (isset($fieldValue['product_field'])) {
                         $fieldValue['name'] = $fieldValue['product_field']['name'];
@@ -734,9 +746,11 @@ class PurchaseController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

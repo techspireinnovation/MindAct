@@ -70,7 +70,7 @@ class GrossProfitListExportJob implements ShouldQueue
 
                     $qtyOutAmt = $sale_detail['total_price'] - $sale_return_detail['total_price'];
 
-                    $purchaseRate = $purchase_detail['total_price'] / $purchase_detail['qty'];
+                    $purchaseRate = $purchase_detail['qty'] > 0 ? $purchase_detail['total_price'] / $purchase_detail['qty'] : 0;
 
                     $closingQty = $qtyIn - $qtyOut;
 

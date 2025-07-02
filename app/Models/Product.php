@@ -579,11 +579,11 @@ class Product extends Model
         return ['opening_qty' => $averagePrice['primary_units'], 'opening_avg_price' => $averagePrice['primary_units'] > 0 ? $averagePrice['total_price'] / $averagePrice['primary_units'] : 0];
     }
 
-    public function getPurchaseDetailAttribute()
+    public function purchaseDetail(array $params)
     {
-        $request = request();
+        $request = (object) $params;
         $averagePrice = PurchaseProduct::where(['product_id' => $this->id])->whereHas('purchase', function ($query) use ($request) {
-            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                 $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
             });
         })->get()->map(function ($purchase) {
@@ -602,11 +602,29 @@ class Product extends Model
         return ['qty' => $averagePrice['primary_units'], 'total_price' => round($averagePrice['total_amount'], 2), 'avg_price' => $averagePrice['primary_units'] > 0 ? round($averagePrice['total_price'] / $averagePrice['primary_units'], 2) : 0];
     }
 
+    public function getPurchaseDetailAttribute()
+    {
+        $request = request();
+        return $this->purchaseDetail($request->all());
+    }
+
+    public function getSaleDetailAttribute()
+    {
+        $request = request();
+        return $this->saleDetail($request->all());
+    }
+
     public function getPurchaseReturnDetailAttribute()
     {
         $request = request();
+        return $this->saleDetail($request->all());
+    }
+
+    public function purchaseReturnDetail(array $params)
+    {
+        $request = (object) $params;
         $averagePrice = PurchaseProductReturn::where(['product_id' => $this->id])->whereHas('purchaseReturn', function ($query) use ($request) {
-            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                 $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
             });
         })->get()->map(function ($purchase) {
@@ -629,8 +647,13 @@ class Product extends Model
     public function getSaleReturnDetailAttribute()
     {
         $request = request();
+        return $this->saleReturnDetail($request->all());
+    }
+    public function saleReturnDetail(array $params)
+    {
+        $request = (object) $params;
         $averagePrice = SalesReturnProduct::where(['product_id' => $this->id])->whereHas('saleReturn', function ($query) use ($request) {
-            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                 $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
             });
         })->get()->map(function ($purchase) {
@@ -651,11 +674,11 @@ class Product extends Model
 
 
 
-    public function getSaleDetailAttribute()
+    public function saleDetail(array $params)
     {
-        $request = request();
+        $request = (object) $params;
         $averagePrice = SaleProduct::where(['product_id' => $this->id])->whereHas('sale', function ($query) use ($request) {
-            $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+            $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                 $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
             });
         })->get()->map(function ($sale) {

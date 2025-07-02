@@ -55,18 +55,18 @@ class GrossProfitListExportJob implements ShouldQueue
 
                 $items = ProductReport::stockRegisterListDetails($params);
                 $sn = 1;
-                $rows = $items->cursor()->map(function ($item) use (&$sn) {
+                $rows = $items->cursor()->map(function ($item) use (&$sn, $params) {
 
-                    $purchase_detail = $item->purchase_detail;
-                    $sale_detail = $item->sale_detail;
-                    $sale_return_detail = $item->sale_return_detail;
-                    $purchase_return_detail = $item->purchase_return_detail;
+                    $purchase_detail = $item->purchase_detail($params);
+                    $sale_detail = $item->saleDetail($params);
+                    $sale_return_detail = $item->saleReturnDetail($params);
+                    $purchase_return_detail = $item->purchaseReturnDetail($params);
 
                     $qtyIn = ($item->opening_quantity ?? 0) + ($purchase_detail['qty'] ?? 0) - ($purchase_return_detail['qty'] ?? 0);
 
                     $qtyOut = ($sale_detail['qty'] ?? 0) - ($sale_return_detail['qty'] ?? 0);
 
-                    $qtyInAmt = ($item->opening_rate * $item->opening_quantity) + $purchase_detail['total_price'] - $purchase_return_detail['total_price'];
+                    $qtyInAmt = $item->opening_rate * $item->opening_quantity + $purchase_detail['total_price'] - $purchase_return_detail['total_price'];
 
                     $qtyOutAmt = $sale_detail['total_price'] - $sale_return_detail['total_price'];
 

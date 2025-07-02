@@ -210,33 +210,32 @@ class Product extends Model
 
     }
 
-    public function getProductClosingDetailAttribute()
+    public function productClosingDetail(array $params)
     {
-        $request = request();
+        $request = (object) $params;
         if ($request->method === 'average') {
             $purchases = PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
 
-
             $purchaseReturns = PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
 
 
             $salesReturns = SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
 
 
             $sales = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
@@ -259,27 +258,27 @@ class Product extends Model
         } else if ($request->method === 'fifo') {
 
             $purchases = PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
 
             $sales = SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
 
 
             $purchaseReturns = PurchaseProductReturn::where('product_id', $this->id)->whereHas('purchaseReturn', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('purchase_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('purchase_returns.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
 
 
             $salesReturns = SalesReturnProduct::where('product_id', $this->id)->whereHas('saleReturn', function ($query) use ($request) {
-                $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
                     $query1->whereDate('sales_returns.invoice_date_bs', '>=', $request->from_date)->whereDate('sales_returns.invoice_date_bs', '<=', $request->to_date);
                 });
             })->get();
@@ -362,9 +361,6 @@ class Product extends Model
                 $layers
             ));
             $closingRate = $closingQuantity > 0 ? $closingAmount / $closingQuantity : 0;
-
-
-
             return [
                 'closing_quantity' => $closingQuantity,
                 'closing_amount' => $closingAmount,
@@ -373,7 +369,12 @@ class Product extends Model
             ];
 
         }
+    }
 
+    public function getProductClosingDetailAttribute()
+    {
+        $request = request();
+        return $this->productClosingDetail($request->all());
     }
 
     public function getProductPurchaseRateAttribute()

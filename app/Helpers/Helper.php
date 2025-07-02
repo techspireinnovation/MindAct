@@ -485,6 +485,20 @@ class Helper
         });
     }
 
+
+    public static function storeInCache(string $keyParam, mixed $allData, int $timeSec)
+    {
+        Cache::remember($keyParam, $timeSec, function () use ($allData) {
+            return $allData;
+        });
+    }
+
+
+    public static function getFromCache(string $keyParam)
+    {
+        return Cache::get($keyParam);
+    }
+
     public static function getDataFromCache(string $requestParams)
     {
         $cacheKey = self::buildCacheKey($requestParams);

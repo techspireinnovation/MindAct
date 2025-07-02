@@ -618,7 +618,7 @@ class Product extends Model
     public function getPurchaseReturnDetailAttribute()
     {
         $request = request();
-        return $this->saleDetail($request->all());
+        return $this->purchaseReturnDetail($request->all());
     }
 
     public function purchaseReturnDetail(array $params)

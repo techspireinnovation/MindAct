@@ -16,7 +16,7 @@ class AccountHeadController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = AccountHead::query();
+        $query = AccountHead::with('accountGroup:id,name');
 
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');

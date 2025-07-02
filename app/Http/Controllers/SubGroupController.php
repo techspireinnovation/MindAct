@@ -16,7 +16,7 @@ class SubGroupController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = SubGroup::query();
+        $query = SubGroup::with('mainGroup:id,name');
 
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');

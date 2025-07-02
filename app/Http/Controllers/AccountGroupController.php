@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\AccountGroup;
+use App\Models\AccountHead;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -47,7 +48,18 @@ class AccountGroupController extends Controller
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
-                'code' => 'string|max:255',
+                'code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('account_groups')
+                        ->ignore($id)
+                        ->where(function ($query) use ($request, $group) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+
+                        }),
+                ],
 
             ]);
             if ($validator->fails()) {
@@ -57,17 +69,10 @@ class AccountGroupController extends Controller
                 ], 422);
             }
             $validated = $validator->validated();
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                AccountGroup::where('company_id', $group->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
 
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
 
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
 
             $group->update($validated);
             return response()->json($group);
@@ -104,7 +109,17 @@ class AccountGroupController extends Controller
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
-                'code' => 'string|max:255'
+                'code' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('account_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+
+                    }),
+
+                ],
             ]);
 
             if ($validator->fails()) {
@@ -113,16 +128,7 @@ class AccountGroupController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
-
             $validated = $validator->validated();
-            if (!empty($validated['is_primary'])) {
-                AccountGroup::where('company_id', $validated['company_id'])
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            $validated['is_primary'] = $validated['is_primary'] ?? false;
-
             $group = AccountGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {
@@ -154,6 +160,9 @@ class AccountGroupController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
+            if ($this->checkIfUsed($id))
+                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+
             $group = AccountGroup::findOrFail($id);
             $group->delete();
             return response()->json(['message' => 'Account Group deleted!!']);
@@ -164,5 +173,14 @@ class AccountGroupController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
+    }
+
+    private function checkIfUsed($id): bool
+    {
+        if (AccountHead::where('account_group_id', $id)->first()) {
+            return true;
+        }
+        return false;
+
     }
 }

@@ -62,22 +62,26 @@ class GrossProfitListExportJob implements ShouldQueue
                     $sale_return_detail = $item->sale_return_detail;
                     $purchase_return_detail = $item->purchase_return_detail;
 
-                    $qtyIn = ($item->opening_quantity ?? 0) + ($purchase_detail['qty'] ?? 0) + ($sale_return_detail['qty'] ?? 0);
-                    $qtyOut = ($sale_detail['qty'] ?? 0) + ($purchase_return_detail['qty'] ?? 0);
+                    $qtyIn = ($item->opening_quantity ?? 0) + ($purchase_detail['qty'] ?? 0) - ($purchase_return_detail['qty'] ?? 0);
 
-                    $qtyInAmt = $item->opening_rate * $item->opening_quantity + $purchase_detail['avg_price'] * $purchase_detail['qty'] + $sale_return_detail['avg_price'] * $sale_return_detail['qty'];
+                    $qtyOut = ($sale_detail['qty'] ?? 0) - ($sale_return_detail['qty'] ?? 0);
 
-                    $qtyOutAmt = $sale_detail['avg_price'] * $sale_detail['qty'] + $purchase_return_detail['avg_price'] * $purchase_return_detail['qty'];
+                    $qtyInAmt = ($item->opening_rate * $item->opening_quantity) + $purchase_detail['total_price'] - $purchase_return_detail['total_price'];
+
+                    $qtyOutAmt = $sale_detail['total_price'] - $sale_return_detail['total_price'];
+
+                    $purchaseRate = $purchase_detail['total_price'] / $purchase_detail['qty'];
 
                     $closingQty = $qtyIn - $qtyOut;
-                    $avgCost = $qtyIn !== 0 ? $qtyInAmt / $qtyIn : 0;
-                    $closingAmount = $closingQty === 0 ? 0 : $closingQty * $avgCost;
-                    $saleAmt = $sale_detail['avg_price'] * $sale_detail['qty'];
-                    $cogs = $item->opening_rate * $item->opening_quantity + $purchase_detail['avg_price'] * $purchase_detail['qty'] + $sale_return_detail['avg_price'] * $sale_return_detail['qty'] - $purchase_return_detail['avg_price'] * $purchase_return_detail['qty'] - $closingAmount;
 
-                    $grossProfit = $saleAmt - $cogs;
+                    $closingAmount = $closingQty === 0 ? 0 : $closingQty * $purchaseRate;
 
-                    $grossProfitRatio = $saleAmt > 0 && isFinite($grossProfit) ? ($grossProfit / $saleAmt) * 100 : 0;
+
+                    $cogs = $qtyInAmt - $closingAmount;
+
+                    $grossProfit = $qtyOutAmt - $cogs;
+
+                    $grossProfitRatio = $qtyOutAmt > 0 && isFinite($grossProfit) ? ($grossProfit / $qtyOutAmt) * 100 : 0;
 
                     return [
                         'S.N' => $sn++,

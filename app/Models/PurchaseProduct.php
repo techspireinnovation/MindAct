@@ -28,7 +28,6 @@ class PurchaseProduct extends Model
         'discount_percent',
         'discount_amount',
         'amount',
-
         'is_vatable',
         'measure_unit_id',
     ];

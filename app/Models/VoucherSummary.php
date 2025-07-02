@@ -1,23 +1,27 @@
 <?php
 
 namespace App\Models;
+
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-class MainGroup extends Model
+
+class VoucherSummary extends Model
 {
-    use softDeletes, HasFactory;
-
-    protected $casts = [
-        'is_active' => 'boolean',
-        'is_primary' => 'boolean'
-    ];
-
+    use SoftDeletes;
     protected $fillable = [
-        'name',
+        'date',
+        'date_bs',
         'company_id',
-        'is_active',
+        'branch_id',
+        'voucher_number',
+        'particulars',
+        'debit',
+        'credit',
+        'account_head_id',
+        'cheque_number',
+        'tr_bill_number',
+        'type',
         'deleted_at'
     ];
 

@@ -7,6 +7,7 @@ use App\Models\CompanyUser;
 use App\Models\PurchaseMasterKey;
 use App\Models\SalesMasterKey;
 use App\Models\User;
+use App\Stubs\MainGroupStub;
 use DB;
 use Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -113,7 +114,7 @@ class CompanyController extends Controller
             ]);
 
             // Create the PurchaseMasterKey with default values
-            $purchaseMaster = $company->purchaseMasterKey()->withoutGlobalScopes()->create([
+            $company->purchaseMasterKey()->withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'product_code' => false,
                 'free' => false,
@@ -129,7 +130,7 @@ class CompanyController extends Controller
                 'mfd' => false,
             ]);
 
-            $saleMaster = $company->salesMasterKey()->withoutGlobalScopes()->create([
+            $company->salesMasterKey()->withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'salesman' => false,
                 'product_code' => false,
@@ -160,6 +161,8 @@ class CompanyController extends Controller
                 'password' => Hash::make($validated['password']),
             ]);
 
+            MainGroupStub::createMainGroups($company->id);
+
             // Assign the company_admin role
             $role = Role::firstOrCreate([
                 'name' => 'company_admin',
@@ -183,6 +186,8 @@ class CompanyController extends Controller
                     $query->withoutGlobalScopes();
                 }
             ]);
+
+            MainGroupStub::createMainGroups();
 
             return response()->json([
                 'success' => true,
@@ -751,6 +756,7 @@ class CompanyController extends Controller
             ]);
 
             $company->update($validated);
+            //MainGroupStub::createMainGroups($company->id);
 
             $userUpdates = [];
             $newToken = null;

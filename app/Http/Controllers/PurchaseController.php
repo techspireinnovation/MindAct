@@ -683,20 +683,21 @@ class PurchaseController extends Controller
                 'message' => 'Purchase Created Successfully!!',
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
-        } catch (QueryException $e) {
+        }catch (QueryException $e) {
+            \Log::error('Purchase creation failed: ' . $e->getMessage());
             if ($e->getCode() == 23000) {
-                // Parse error message to identify the field causing the duplicate
-                $field = strpos($e->getMessage(), 'ref_bill_number_company_id_unique') !== false
+                $errorMessage = $e->getMessage();
+                $field = strpos($errorMessage, 'ref_bill_number_company_id_unique') !== false
                     ? 'ref_bill_number'
-                    : (strpos($e->getMessage(), 'purchase_bill_number_company_id_unique') !== false
+                    : (strpos($errorMessage, 'purchase_bill_number_company_id_unique') !== false
                         ? 'purchase_bill_number'
-                        : 'unknown field');
+                        : 'unknown field (check logs for details)');
                 return response()->json([
                     'message' => "A purchase with this $field already exists for the company.",
                     'error' => 'Duplicate entry.',
+                    'details' => $errorMessage, // Include the full error message for debugging
                 ], 422);
             }
-            \Log::error('Purchase creation failed: ' . $e->getMessage());
             return response()->json([
                 'message' => 'Failed to create purchase',
                 'error' => $e->getMessage(),

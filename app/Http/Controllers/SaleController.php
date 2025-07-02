@@ -2,9 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sale;
 use App\Helpers\Helper;
-use App\Models\SaleProduct;
 use App\Models\MeasureUnit;
 use App\Models\SaleAdditional;
 use App\Models\SalesReturnProduct;
@@ -16,19 +14,21 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use App\Models\Product;
-use App\Models\ProductField;
 use App\Models\Purchase;
-use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseProduct;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rule;
 
+use App\Models\PurchaseProductReturn;
+use App\Models\Sale;
 
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\QueryException;
+use App\Models\SaleProduct;
 
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\JsonResponse;
+
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 
 class SaleController extends Controller
@@ -959,6 +959,7 @@ class SaleController extends Controller
                 'roundoff_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
+                'vat_amount' => 'nullable|numeric',
                 'abvt' => 'nullable|boolean',
                 'is_vatable' => 'nullable|boolean',
                 'total_amount' => 'nullable|numeric|min:0',
@@ -1106,6 +1107,7 @@ class SaleController extends Controller
                             'quantity' => $quantityInUOM,
                             'free_quantity' => $freeQuantityInUOM,
                             'price' => $productModel->price ?? $product->price,
+                            'amount' => $product->amount,
                             'discount_percent' => $product->discount_percent ?? 0,
                             'discount_amount' => $product->discount_amount ?? 0,
                             'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
@@ -1160,6 +1162,7 @@ class SaleController extends Controller
                     'is_vatable' => $validated['is_vatable'] ?? false,
                     'total_amount' => $validated['total_amount'] ?? 0,
                     'purchase_id' => $validated['purchase_id'] ?? null,
+                    'vat_amount' => $validated['vat_amount'] ?? null,
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 
@@ -1511,6 +1514,7 @@ class SaleController extends Controller
                             'quantity' => $allocation['quantity'],
                             'free_quantity' => $allocation['free_quantity'],
                             'price' => $productData['price'],
+                            'amount' => $productData['amount'],
                             'discount_percent' => $productData['discount_percent'] ?? 0,
                             'discount_amount' => $productData['discount_amount'] ?? 0,
                             'amount' => ($productData['price'] * $allocation['quantity']) - ($productData['discount_amount'] ?? 0),
@@ -2178,7 +2182,7 @@ class SaleController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = Sale::with('saleProducts')->findOrFail($id);
+            $item = Sale::with('saleProducts.measureUnit:id,name')->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

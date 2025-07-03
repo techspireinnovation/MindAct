@@ -713,14 +713,14 @@ class PurchaseController extends Controller
     {
         try {
             $item = Purchase::with(['purchaseProducts.fieldValues.productField'])->findOrFail($id);
-
-
-
             $itemArray = $item->toArray();
 
             foreach ($itemArray['purchase_products'] as &$purchaseProduct) {
                 $product = Product::find($purchaseProduct['product_id']);
+               
                 $productId = $product->id;
+                $purchaseRateVat = $product->purchase_rate_vat ?? 0;
+                
                 $productMeasureUnitId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
                 $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
                 $mergedMeasureUnits = collect(array_merge($productMeasureUnitId, $productListMeasureUnitId))->unique()->filter()->values();
@@ -729,6 +729,7 @@ class PurchaseController extends Controller
                     ->whereNull('deleted_at')
                     ->get(['id', 'name', 'quantity']);
                 $purchaseProduct['measure_units'] = $usedMeasureUnits;
+                $purchaseProduct['original_price'] = $purchaseRateVat;
 
                 foreach ($purchaseProduct['field_values'] as &$fieldValue) {
                     if (isset($fieldValue['product_field'])) {

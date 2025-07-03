@@ -843,6 +843,8 @@ class PurchaseReturnController extends Controller
                     'grouped_field_values' => $groupedFieldValues,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                 ]);
+                $getOriginalPrice = Product::where('id',$product['product_id'])->pluck('purchase_rate')->first();
+            
 
                 $getProductForMeasureUnits = Product::with('productLists')
                     ->where('id', $product['product_id'])
@@ -895,6 +897,7 @@ class PurchaseReturnController extends Controller
                     'sold_quantity' => $totalSoldInPieces,
                     'sale_returned_quantity' => $totalSaleReturnsInPieces,
                     'measure_units_for_products' => $measureUnitsForProducts ?? [],
+                    'original_price' => $getOriginalPrice ?? 0,
                     'remaining_quantity' => $remainingQuantityInPieces,
                     'regular_remaining_quantity' => $totalRegularQuantity,
                     'free_remaining_quantity' => $totalFreeQuantity,

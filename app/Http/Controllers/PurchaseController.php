@@ -684,25 +684,16 @@ class PurchaseController extends Controller
                 'message' => 'Purchase Created Successfully!!',
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
+        } catch (ModelNotFoundException $e) {
+            Log::error('Model not found', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Resource not found'], 404);
+
         } catch (QueryException $e) {
-            \Log::error('Purchase creation failed: ' . $e->getMessage());
-            if ($e->getCode() == 23000) {
-                $errorMessage = $e->getMessage();
-                $field = strpos($errorMessage, 'ref_bill_number_company_id_unique') !== false
-                    ? 'ref_bill_number'
-                    : (strpos($errorMessage, 'purchase_bill_number_company_id_unique') !== false
-                        ? 'purchase_bill_number'
-                        : 'unknown field (check logs for details)');
-                return response()->json([
-                    'message' => "A purchase with this $field already exists for the company.",
-                    'error' => 'Duplicate entry.',
-                    'details' => $errorMessage, // Include the full error message for debugging
-                ], 422);
-            }
-            return response()->json([
-                'message' => 'Failed to create purchase',
-                'error' => $e->getMessage(),
-            ], 500);
+            Log::error('Database error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
+        }catch (\Exception $e) {
+            Log::error('Unexpected error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
 
@@ -714,11 +705,15 @@ class PurchaseController extends Controller
         try {
             $item = Purchase::with(['purchaseProducts.fieldValues.productField'])->findOrFail($id);
             $itemArray = $item->toArray();
+            
 
             foreach ($itemArray['purchase_products'] as &$purchaseProduct) {
+                 
                 $product = Product::find($purchaseProduct['product_id']);
-               
+           
+                
                 $productId = $product->id;
+              
                 $purchaseRateVat = $product->purchase_rate_vat ?? 0;
                 
                 $productMeasureUnitId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
@@ -747,7 +742,7 @@ class PurchaseController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+           
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {

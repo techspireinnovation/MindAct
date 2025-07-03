@@ -710,6 +710,10 @@ class ProductController extends Controller
         try {
             $product = Product::where('company_id', $request->company_id)
                 ->with([
+                    'category:id,name',
+                    'subCategory:id,name',
+                    'brand:id,name',
+                    'location:id,name',
                     'productLists',
                     'productFieldValues.productField'
                 ])

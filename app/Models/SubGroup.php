@@ -18,6 +18,7 @@ class SubGroup extends Model
 
     protected $fillable = [
         'name',
+        'is_primary',
         'company_id',
         'main_group_id',
         'code',

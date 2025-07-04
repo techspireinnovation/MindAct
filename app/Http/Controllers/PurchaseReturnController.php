@@ -713,6 +713,40 @@ class PurchaseReturnController extends Controller
                 $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
                 $totalPurchaseQuantityInUOM = $totalQuantity;
 
+
+
+                $returnedRegularInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
+                    $unitId = $return['measure_unit_id'] ?? null;
+                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+                    $retQty = $return['quantity'] ?? 0; // Regular quantity returned
+                    $retDecimalStr = explode('.', (string) $retQty);
+                    $retQtyInt = floor($retQty);
+                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
+                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                });
+
+                $returnedFreeInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
+                    $unitId = $return['measure_unit_id'] ?? null;
+                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+                    $retFreeQty = $return['free_quantity'] ?? 0; // Free quantity returned
+                    $retDecimalStr = explode('.', (string) $retFreeQty);
+                    $retQtyInt = floor($retFreeQty);
+                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
+                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                });
+
+                // Adjust remaining quantities
+                $remainingRegularQuantity = max($totalRegularQuantity - $returnedRegularInPieces, 0);
+                $remainingFreeQuantity = max($totalFreeQuantity - $returnedFreeInPieces, 0);
+
+                // For Total Remaining
+                $totalQuantity = $quantity + $freeQuantity;
+                $decimalStr = explode('.', (string) $totalQuantity);
+                $quantityInt = floor($totalQuantity);
+                $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0;
+                $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
+                $totalPurchaseQuantityInUOM = $totalQuantity;
+
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
@@ -866,7 +900,7 @@ class PurchaseReturnController extends Controller
 
 
                 } else {
-                    dd('Product not found');
+                    echo 'Product not found';
                 }
 
                 $measureUnitsForProducts = MeasureUnit::whereIn('id', $allUnitIds)
@@ -901,8 +935,8 @@ class PurchaseReturnController extends Controller
                     'measure_units_for_products' => $measureUnitsForProducts ?? [],
                     'original_price' => $getOriginalPrice ?? 0,
                     'remaining_quantity' => $remainingQuantityInPieces,
-                    'regular_remaining_quantity' => $totalRegularQuantity,
-                    'free_remaining_quantity' => $totalFreeQuantity,
+                    'regular_remaining_quantity' => $remainingRegularQuantity,
+                    'free_remaining_quantity' => $remainingFreeQuantity,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                     'price' => $product['price'] ?? 0,
                     'is_vatable' => (bool) ($product['is_vatable'] ?? false),
@@ -1506,6 +1540,7 @@ class PurchaseReturnController extends Controller
 
             $productId = $purchaseProducts->pluck('product_id')->unique()->toArray();
 
+
             $purchaseProductReturns = DB::table('purchase_product_returns')
                 ->select([
                     'purchase_product_returns.purchase_product_id',
@@ -1721,6 +1756,20 @@ class PurchaseReturnController extends Controller
                     ->where('company_id', $companyId)
                     ->whereNull('deleted_at')
                     ->first();
+              
+                    
+               
+                $originalProductPrice = Product::where('id', $first->product_id)->value('purchase_rate');
+                
+                $purchaseProductsPrice = PurchaseProduct::where('product_id', $first->product_id)->orderBy('created_at', 'desc')->pluck('price');
+                $latestPrice = $purchaseProductsPrice->first();
+
+                // Get the minimum price
+                $minProductPrice = $purchaseProductsPrice->min();
+
+                // Get the average price
+                $avgProductPrice = $purchaseProductsPrice->avg();
+
 
 
 
@@ -1813,6 +1862,7 @@ class PurchaseReturnController extends Controller
                         'free_quantity' => $pp->free_quantity ?? 0,
                         'price' => $pp->price,
                         'is_vatable' => (bool) $pp->is_vatable,
+
                         'measure_unit_id' => $pp->measure_unit_id,
                         'measure_unit_name' => $pp->measure_unit_name,
                         'measure_unit_quantity' => $pp->measure_unit_quantity,
@@ -1837,7 +1887,11 @@ class PurchaseReturnController extends Controller
                     'product_id' => $first->product_id,
                     'product_name' => $product ? $product->name : $first->product_name,
                     'product_code' => $first->product_code,
-                    'min_price' => $group->min('price'),
+                    'original_price' => $originalProductPrice,
+                    'min_price' => $minProductPrice,
+                    'avg_price' => $avgProductPrice,
+                    'latest_price' => $latestPrice,
+                    'measure_units_for_products' => $measureUnitsForProducts,
                     'is_vatable' => (bool) $group->max('is_vatable'),
                     'measure_unit_id' => $first->measure_unit_id,
                     'measure_unit_name' => $first->measure_unit_name,

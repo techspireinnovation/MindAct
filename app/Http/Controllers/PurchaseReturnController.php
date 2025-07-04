@@ -793,6 +793,7 @@ class PurchaseReturnController extends Controller
                         ->map(function ($group) {
                             return $group->map(function ($field) {
                                 return [
+
                                     'product_field_id' => $field->product_field_id,
                                     'value' => $field->value,
                                     'quantity_index' => $field->quantity_index,
@@ -814,6 +815,7 @@ class PurchaseReturnController extends Controller
                             continue;
                         }
                         $groupedFieldValues[$quantityIndex][] = [
+                            'purchase_product_id' => $fieldValue['purchase_product_id'] ?? null,
                             'product_field_id' => $fieldValue['product_field_id'] ?? null,
                             'name' => $fieldValue['product_field']['name'] ?? 'N/A',
                             'quantity_index' => $quantityIndex,
@@ -843,8 +845,8 @@ class PurchaseReturnController extends Controller
                     'grouped_field_values' => $groupedFieldValues,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                 ]);
-                $getOriginalPrice = Product::where('id',$product['product_id'])->pluck('purchase_rate')->first();
-            
+                $getOriginalPrice = Product::where('id', $product['product_id'])->pluck('purchase_rate')->first();
+
 
                 $getProductForMeasureUnits = Product::with('productLists')
                     ->where('id', $product['product_id'])
@@ -2532,7 +2534,7 @@ class PurchaseReturnController extends Controller
                 'invoice_date_bs' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
                 'reason' => 'nullable|string|in:damaged,defective,incorrect,expired,other',
-                'store_id' => 'required|integer|exists:stores,id',
+                'store_id' => 'nullable|integer|exists:stores,id',
                 'location_id' => 'nullable|integer|exists:locations,id',
                 'balance' => 'nullable|numeric',
                 'discount_type' => 'nullable|in:percent,amount',
@@ -2895,7 +2897,7 @@ class PurchaseReturnController extends Controller
                     })->count();
 
                     $requiredFieldValueSets = ceil($requestedQuantityInPieces);
-                    dd($fieldValueSets, $requiredFieldValueSets);
+
                     Log::debug('Validating field values for product', [
                         'product_id' => $productData['product_id'],
                         'index' => $index,

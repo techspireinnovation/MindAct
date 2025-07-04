@@ -783,7 +783,16 @@ class SaleController extends Controller
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric|min:0',
-                'ref_number' => 'nullable|string|max:255',
+                'ref_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('sales')
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'roundoff_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
@@ -1432,7 +1441,7 @@ class SaleController extends Controller
                 'contact_number' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
-                'ref_number' => 'nullable|string|max:255',
+                'ref_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'ref_number')->ignore($id)],
                 'invoice_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'invoice_number')->ignore($id)],
                 'document_number' => 'nullable|string|max:255',
                 'batch_no' => 'nullable|string|max:255',

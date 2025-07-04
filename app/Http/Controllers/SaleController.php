@@ -983,6 +983,7 @@ class SaleController extends Controller
                     'contact_number' => $validated['contact_number'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'credit_days' => $validated['credit_days'] ?? null,
+                    'ref_number' => $validated['ref_number'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? 'INV-' . now()->format('Ymd') . '-' . rand(1000, 9999),
                     'invoice_date' => $validated['invoice_date'] ?? now(),
                     'invoice_date_bs' => $validated['invoice_date_bs'] ?? now(),

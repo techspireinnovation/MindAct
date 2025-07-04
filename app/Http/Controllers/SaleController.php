@@ -738,12 +738,11 @@ class SaleController extends Controller
         $query = Sale::query();
 
         if ($request->has('keywords')) {
-            $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
+
         }
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(100));
     }
-
-
 
     public function store(Request $request): JsonResponse
     {
@@ -784,7 +783,16 @@ class SaleController extends Controller
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric|min:0',
-                'ref_bill_number' => 'nullable|string|max:255',
+                'ref_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('sales')
+                        ->where(function ($query) use ($request) {
+                            return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                ->whereNull('deleted_at');
+                        }),
+                ],
                 'roundoff_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
@@ -975,6 +983,7 @@ class SaleController extends Controller
                     'contact_number' => $validated['contact_number'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'credit_days' => $validated['credit_days'] ?? null,
+                    'ref_number' => $validated['ref_number'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? 'INV-' . now()->format('Ymd') . '-' . rand(1000, 9999),
                     'invoice_date' => $validated['invoice_date'] ?? now(),
                     'invoice_date_bs' => $validated['invoice_date_bs'] ?? now(),
@@ -1433,7 +1442,7 @@ class SaleController extends Controller
                 'contact_number' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
-                'ref_number' => 'nullable|string|max:255',
+                'ref_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'ref_number')->ignore($id)],
                 'invoice_number' => ['nullable', 'string', 'max:255', Rule::unique('sales', 'invoice_number')->ignore($id)],
                 'document_number' => 'nullable|string|max:255',
                 'batch_no' => 'nullable|string|max:255',

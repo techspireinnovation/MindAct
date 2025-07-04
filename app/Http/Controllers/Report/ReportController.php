@@ -685,10 +685,6 @@ class ReportController extends Controller
             }
 
             if ($request->type === "list") {
-
-                if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
-                    return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
-                }
                 $items = ProductReport::stockRegisterListDetails($request->all());
                 $items = $items->paginate(250);
                 $items->getCollection()->transform(function ($item) use ($request) {
@@ -700,7 +696,7 @@ class ReportController extends Controller
                         'sale_rate' => round($item->marginSaleDetail($request->all()), 2),
                     ];
                 });
-                Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
+                //Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
                 return response()->json($items);
             } else if ($request->type === "download") {
                 $user = $request->user();

@@ -648,6 +648,49 @@ class ReportController extends Controller
                 }
                 $items = ProductReport::stockRegisterListDetails($request->all());
                 $items = $items->paginate(250);
+                $items->getCollection()->transform(function ($item) {
+                    return $item->append(['opening_quantity', 'opening_rate', 'purchase_detail', 'sale_detail', 'purchase_return_detail', 'sale_return_detail']);
+                });
+                Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
+                return response()->json($items);
+            } else if ($request->type === "download") {
+                $user = $request->user();
+                $tokenId = $user->currentAccessToken()->id;
+                GrossProfitListExportJob::dispatch($tokenId, $request->fullUrlWithQuery($request->all()));
+                return response()->json([
+                    'message' => 'Gross Profit List export started. You will receive a download link when it is ready.',
+                ]);
+
+            }
+            return response()->json([]);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+
+        }
+    }
+
+    public function grossMarginListDetails(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'from_date' => 'required',
+                'to_date' => 'required',
+                'type' => 'required|string|in:list,download',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json($validator->errors(), 422);
+            }
+
+            if ($request->type === "list") {
+
+                if (Helper::checkDataInCache($request->fullUrlWithQuery($request->all()))) {
+                    return response()->json(Helper::getDataFromCache($request->fullUrlWithQuery($request->all())));
+                }
+                $items = ProductReport::stockRegisterListDetails($request->all());
+                $items = $items->paginate(250);
                 $items->getCollection()->transform(function ($item) use ($request) {
                     return [
                         'id' => $item->id,

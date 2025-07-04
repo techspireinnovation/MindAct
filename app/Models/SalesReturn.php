@@ -63,6 +63,10 @@ class SalesReturn extends Model
     }
 
     // Relationships
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 
     public function sale()
     {

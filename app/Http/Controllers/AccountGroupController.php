@@ -16,7 +16,7 @@ class AccountGroupController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = AccountGroup::query();
+        $query = AccountGroup::with(['mainGroup:id,name', 'subGroup:id,name']);
 
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');

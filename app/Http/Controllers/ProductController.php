@@ -279,7 +279,9 @@ class ProductController extends Controller
         $availableFilters = [
             'name' => [
                 'param' => 'search_name',
-                'query' => fn($q, $v) => $q->where('products.name', 'LIKE', "%{$v}%"),
+                'query' => fn($q, $v) => $q->where('products.name', 'LIKE', "%{$v}%")->orWhere('product_unique_id', 'LIKE', "%$v%")->orWhereHas('productLists', function ($query) use ($v) {
+                    $query->where('barcode', 'LIKE', "%$v%")->orWhere('hs_code', 'LIKE', "%$v%");
+                }),
                 'match' => 'products.name LIKE ?'
             ],
             'category' => [
@@ -710,6 +712,10 @@ class ProductController extends Controller
         try {
             $product = Product::where('company_id', $request->company_id)
                 ->with([
+                    'category:id,name',
+                    'subCategory:id,name',
+                    'brand:id,name',
+                    'location:id,name',
                     'productLists',
                     'productFieldValues.productField'
                 ])

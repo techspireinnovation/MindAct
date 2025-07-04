@@ -24,7 +24,7 @@ class PurchaseObserver
             'tr_bill_number' => $purchase->purchase_bill_number,
             'cheque_number' => "234",
             'type' => "PURCHASE",
-            'account_head_id' => 9,
+            //'account_head_id' => ,
         ]);
     }
 

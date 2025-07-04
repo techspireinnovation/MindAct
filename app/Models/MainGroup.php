@@ -18,7 +18,8 @@ class MainGroup extends Model
         'name',
         'company_id',
         'is_active',
-        'deleted_at'
+        'deleted_at',
+        'is_primary',
     ];
 
     protected $dates = ['deleted_at'];

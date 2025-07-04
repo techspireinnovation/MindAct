@@ -28,7 +28,8 @@ class PurchaseReturn extends Model
         'pan_number',
         'address',
         'company_id',
-        'ref_bill_number',
+        'return_bill_no',
+        'ref_bill_no',
         'discount_after_vat',
         'purchase_bill_number',
         'expiry_date',
@@ -108,7 +109,6 @@ class PurchaseReturn extends Model
     {
         return $this->belongsTo(Purchase::class);
     }
-
 
     public function store()
     {

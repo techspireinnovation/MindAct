@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
-use App\Models\Purchase;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -87,7 +87,9 @@ class PurchaseController extends Controller
         $query = Purchase::query();
 
         if ($request->has('keywords')) {
-            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('purchase_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {
+                $query->where('party_name', 'LIKE', "%" . $request->input('keywords') . "%");
+            });
         }
 
         return response()->json($query->paginate(50));
@@ -665,25 +667,15 @@ class PurchaseController extends Controller
                 'message' => 'Purchase Created Successfully!!',
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
-        }catch (QueryException $e) {
-            \Log::error('Purchase creation failed: ' . $e->getMessage());
-            if ($e->getCode() == 23000) {
-                $errorMessage = $e->getMessage();
-                $field = strpos($errorMessage, 'ref_bill_number_company_id_unique') !== false
-                    ? 'ref_bill_number'
-                    : (strpos($errorMessage, 'purchase_bill_number_company_id_unique') !== false
-                        ? 'purchase_bill_number'
-                        : 'unknown field (check logs for details)');
-                return response()->json([
-                    'message' => "A purchase with this $field already exists for the company.",
-                    'error' => 'Duplicate entry.',
-                    'details' => $errorMessage, // Include the full error message for debugging
-                ], 422);
-            }
-            return response()->json([
-                'message' => 'Failed to create purchase',
-                'error' => $e->getMessage(),
-            ], 500);
+        } catch (ModelNotFoundException $e) {
+            Log::error('Model not found', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Resource not found'], 404);
+        } catch (QueryException $e) {
+            Log::error('Database error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
 

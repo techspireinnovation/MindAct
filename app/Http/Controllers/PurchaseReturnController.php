@@ -2,32 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ProductFieldValue;
 use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
-use App\Models\PurchaseReturnProductFieldValue;
-use App\Models\PurchaseProductFieldValue;
-use App\Models\PurchaseReturnHistory;
-use App\Models\SalesReturnProduct;
 use App\Models\MeasureUnit;
-use App\Models\SaleReturnProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\ProductList;
-
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
-use App\Models\SaleProduct;
+use App\Models\PurchaseProductFieldValue;
 use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseReturn;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
-
+use App\Models\PurchaseReturnHistory;
+use App\Models\PurchaseReturnProductFieldValue;
+use App\Models\SaleProduct;
+use App\Models\SaleReturnProductFieldValue;
+use App\Models\SalesProductFieldValue;
+use App\Models\SalesReturnProduct;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class PurchaseReturnController extends Controller
 {
@@ -36,7 +32,9 @@ class PurchaseReturnController extends Controller
         $query = PurchaseReturn::query();
 
         if ($request->has('keywords')) {
-            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('purchase_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {
+                $query->where('party_name', 'LIKE', "%" . $request->input('keywords') . "%");
+            });
         }
 
         return response()->json($query->paginate(50));

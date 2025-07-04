@@ -5,20 +5,19 @@ use App\Models\Store;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class StoreController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
         $query = Store::query();
-    
+
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
-        return response()->json(Store::paginate(10));
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -26,17 +25,18 @@ class StoreController extends Controller
         try {
             $item = Store::findOrFail($id);
             $validated = $request->validate([
-                'name' => ['required',
-                          'string',
-                          'max:255',
-                        Rule::unique('stores')
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('stores')
                         ->ignore($id)
-                        ->where(function ($query) use ($request ,$item){
-                            return $query->where('company_id', $request->input('company_id',$item->company_id))
-                            ->whereNull('deleted_at');
+                        ->where(function ($query) use ($request, $item) {
+                            return $query->where('company_id', $request->input('company_id', $item->company_id))
+                                ->whereNull('deleted_at');
 
                         }),
-                    ],                
+                ],
                 'is_active' => 'sometimes|boolean|required',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
@@ -54,15 +54,16 @@ class StoreController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'name' => ['required',
-                       'string',
-                       'max:255',
-                       Rule::unique('stores')->where(function ($query) use ($request){
-                        return $query->where('company_id',$request->company_id)
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('stores')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
 
-                       }),
-                    ],
+                }),
+            ],
             'is_active' => 'boolean|required',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',

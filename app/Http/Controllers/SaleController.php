@@ -783,7 +783,7 @@ class SaleController extends Controller
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric|min:0',
-                'ref_bill_number' => 'nullable|string|max:255',
+                'ref_number' => 'nullable|string|max:255',
                 'roundoff_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',

@@ -110,7 +110,6 @@ class PurchaseReturn extends Model
         return $this->belongsTo(Purchase::class);
     }
 
-
     public function store()
     {
         return $this->belongsTo(Store::class);

@@ -109,7 +109,7 @@ class ProductReport
             // Convert to English date
             $englishDateFrom = EnglishDate::create($request['from_date'])->toAD();
             $englishDateTo = EnglishDate::create($request['to_date'])->toAD();
-            $items->whereDate('created_at', '>=', $englishDateFrom)->whereDate('created_at', '<=', $englishDateTo);
+            //$items->whereDate('created_at', '>=', $englishDateFrom)->whereDate('created_at', '<=', $englishDateTo);
         }
 
         return $items;

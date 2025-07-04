@@ -17,15 +17,36 @@ class JournalVoucherController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = JournalVoucher::query()->with('transactions');
+        // Step 1: Eager load relationships
+        $query = JournalVoucher::with(['transactions', 'salesman', 'project']);
 
+        // Step 2: Apply keyword filter if needed
         if ($request->has('keywords')) {
             $query->where('voucher_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('reference_number', 'LIKE', '%' . $request->input('keywords') . '%');
-            ;
         }
 
-        return response()->json($query->paginate(50));
+        // Step 3: Paginate
+        $data = $query->paginate(50);
+
+        // Step 4: Transform each item to include names instead of nested objects
+        $data->getCollection()->transform(function ($item) {
+            return [
+                'id' => $item->id,
+                'company' => $item->company_id,
+                'voucher_number' => $item->voucher_number,
+                'reference_number' => $item->reference_number,
+                'date' => $item->date,
+                'salesman_id' => $item->salesman_id,
+                'salesman_name' => optional($item->salesman)->name,
+                'project_id' => $item->project_id,
+                'project_name' => optional($item->project)->name,
+                'transactions' => $item->transactions, // already loaded
+            ];
+        });
+        // Step 5: Return transformed paginated response
+        return response()->json($data);
     }
+
 
     public function print(Request $request): JsonResponse
     {

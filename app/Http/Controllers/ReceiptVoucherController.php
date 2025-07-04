@@ -3,26 +3,25 @@
 namespace App\Http\Controllers;
 
 use App\Models\ReceiptVoucher;
-
 use App\Models\ReceiptVoucherDetail;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
-use Illuminate\Http\Request;
 
 class ReceiptVoucherController extends Controller
 {
     public function index(Request $request)
     {
-
         $query = ReceiptVoucher::query();
+        if ($request->has('keywords')) {
+            $query->where('receipt_voucher_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('reference_number', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
         return response()->json($query->paginate(10));
-
     }
 
     public function update(Request $request, $id): JsonResponse

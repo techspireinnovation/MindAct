@@ -756,7 +756,7 @@ class CompanyController extends Controller
             ]);
 
             $company->update($validated);
-            //MainGroupStub::createMainGroups($company->id);
+            MainGroupStub::createMainGroups($company->id);
 
             $userUpdates = [];
             $newToken = null;

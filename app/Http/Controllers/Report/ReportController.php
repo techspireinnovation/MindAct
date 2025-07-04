@@ -648,10 +648,17 @@ class ReportController extends Controller
                 }
                 $items = ProductReport::stockRegisterListDetails($request->all());
                 $items = $items->paginate(250);
-                $items->getCollection()->transform(function ($item) {
-                    return $item->append(['opening_quantity', 'opening_rate', 'purchase_detail', 'sale_detail', 'purchase_return_detail', 'sale_return_detail']);
+                $items->getCollection()->transform(function ($item) use ($request) {
+                    return [
+                        'id' => $item->id,
+                        'product_name' => $item->name,
+                        'product_unique_id' => $item->product_unique_id,
+                        'purchase_rate' => $item->marginPurchaseDetail($request->all()),
+                        'sale_rate' => $item->marginSaleDetail($request->all()),
+                        // /$item->append(['margin_purchase_detail', 'margin_sale_detail']);
+                    ];
                 });
-                Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
+                //Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
                 return response()->json($items);
             } else if ($request->type === "download") {
                 $user = $request->user();

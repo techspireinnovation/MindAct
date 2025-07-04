@@ -210,6 +210,46 @@ class Product extends Model
 
     }
 
+
+    public function getMarginPurchaseDetailAttribute()
+    {
+        $request = request();
+        return $this->marginPurchaseDetail($request->all());
+    }
+
+    public function getMarginSaleDetailAttribute()
+    {
+        $request = request();
+        return $this->marginSaleDetail($request->all());
+    }
+
+    public function marginPurchaseDetail(array $params)
+    {
+        $request = (object) $params;
+        $start = $request->from_date;
+        $end = $request->to_date;
+
+        if ($start === $end) {
+            // Single date (start and end are the same)
+        } else {
+            // Range of dates
+        }
+    }
+
+    public function marginSaleDetail(array $params)
+    {
+        $request = (object) $params;
+        $start = $request->from_date;
+        $end = $request->to_date;
+
+        if ($start === $end) {
+            // Single date (start and end are the same)
+        } else {
+            // Range of dates
+        }
+    }
+
+
     public function productClosingDetail(array $params)
     {
         $request = (object) $params;

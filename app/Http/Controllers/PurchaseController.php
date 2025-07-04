@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
-use App\Models\Purchase;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -87,7 +87,9 @@ class PurchaseController extends Controller
         $query = Purchase::query();
 
         if ($request->has('keywords')) {
-            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('purchase_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {
+                $query->where('party_name', 'LIKE', "%" . $request->input('keywords') . "%");
+            });
         }
 
         return response()->json($query->paginate(50));
@@ -668,11 +670,10 @@ class PurchaseController extends Controller
         } catch (ModelNotFoundException $e) {
             Log::error('Model not found', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Resource not found'], 404);
-
         } catch (QueryException $e) {
             Log::error('Database error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             Log::error('Unexpected error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }

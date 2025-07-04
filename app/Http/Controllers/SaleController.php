@@ -738,7 +738,10 @@ class SaleController extends Controller
         $query = Sale::query();
 
         if ($request->has('keywords')) {
-            $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {
+                $query->where('party_name', 'LIKE', "%" . $request->input('keywords') . "%");
+            });
+
         }
         return response()->json($query->paginate(10));
     }

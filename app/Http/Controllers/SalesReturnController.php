@@ -32,7 +32,9 @@ class SalesReturnController extends Controller
         $query = SalesReturn::query();
 
         if ($request->has('keywords')) {
-            $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('ref_bill_no', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {
+                $query->where('party_name', 'LIKE', "%" . $request->input('keywords') . "%");
+            });
         }
 
         return response()->json($query->paginate(50));

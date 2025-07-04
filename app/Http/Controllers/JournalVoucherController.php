@@ -20,7 +20,8 @@ class JournalVoucherController extends Controller
         $query = JournalVoucher::query()->with('transactions');
 
         if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('voucher_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('reference_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            ;
         }
 
         return response()->json($query->paginate(50));

@@ -211,41 +211,41 @@ class Product extends Model
     }
 
 
-    public function getMarginPurchaseDetailAttribute()
-    {
-        $request = request();
-        return $this->marginPurchaseDetail($request->all());
-    }
-
-    public function getMarginSaleDetailAttribute()
-    {
-        $request = request();
-        return $this->marginSaleDetail($request->all());
-    }
-
     public function marginPurchaseDetail(array $params)
     {
         $request = (object) $params;
-        $start = $request->from_date;
-        $end = $request->to_date;
 
-        if ($start === $end) {
-            // Single date (start and end are the same)
+        if ($request->from_date === $request->to_date) {
+            return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->orderBy('id', 'DESC')->first()->price ?? 0;
         } else {
-            // Range of dates
+            return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->avg('price') ?? 0;
         }
     }
 
     public function marginSaleDetail(array $params)
     {
         $request = (object) $params;
-        $start = $request->from_date;
-        $end = $request->to_date;
 
-        if ($start === $end) {
-            // Single date (start and end are the same)
+        if ($request->from_date === $request->to_date) {
+            return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->orderBy('id', 'DESC')->first()->price ?? 0;
         } else {
-            // Range of dates
+            return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->avg('price') ?? 0;
         }
     }
 

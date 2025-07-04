@@ -3,6 +3,7 @@
 namespace App\Stubs;
 
 use App\Models\AccountGroup;
+use App\Models\AccountHead;
 use App\Models\MainGroup;
 use App\Models\SubGroup;
 use Str;
@@ -127,7 +128,7 @@ class MainGroupStub
 
                 foreach ($accountGroups as $accountGroupKey => $accountGroup) {
 
-                    AccountGroup::firstOrCreate([
+                    $accountGroup = AccountGroup::firstOrCreate([
                         'name' => $accountGroup,
                         'company_id' => $companyId,
                         'main_group_id' => $newMainGroup->id,
@@ -137,6 +138,19 @@ class MainGroupStub
                         'is_primary' => true,
 
                     ]);
+
+                    foreach ($accountGroups as $accountGroupKey => $accountGroup) {
+
+                        $accountGroup = AccountHead::firstOrCreate([
+                            'name' => $accountGroup,
+                            'company_id' => $companyId,
+                            'account_group_id' => $accountGroup->id,
+                            'code' => $accountGroupKey,
+                            'is_active' => true,
+                            'is_primary' => true,
+
+                        ]);
+                    }
                 }
             }
 

@@ -653,9 +653,8 @@ class ReportController extends Controller
                         'id' => $item->id,
                         'product_name' => $item->name,
                         'product_unique_id' => $item->product_unique_id,
-                        'purchase_rate' => $item->marginPurchaseDetail($request->all()),
-                        'sale_rate' => $item->marginSaleDetail($request->all()),
-                        // /$item->append(['margin_purchase_detail', 'margin_sale_detail']);
+                        'purchase_rate' => round($item->marginPurchaseDetail($request->all()), 2),
+                        'sale_rate' => round($item->marginSaleDetail($request->all()), 2),
                     ];
                 });
                 //Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);

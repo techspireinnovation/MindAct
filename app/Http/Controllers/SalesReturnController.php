@@ -2249,6 +2249,7 @@ class SalesReturnController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
+                'customer_name' => 'required|string|max:255',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'sale_id' => 'nullable|exists:sales,id',
                 'sale_invoice_number' => 'required|string|max:255',

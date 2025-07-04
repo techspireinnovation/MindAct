@@ -35,7 +35,7 @@ class SalesReturnController extends Controller
             $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('ref_bill_no', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
-        return response()->json($query->paginate(50));
+        return response()->json($query->paginate(100));
     }
 
 

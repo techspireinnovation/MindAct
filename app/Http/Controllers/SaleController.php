@@ -741,10 +741,8 @@ class SaleController extends Controller
             $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
 
         }
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(100));
     }
-
-
 
     public function store(Request $request): JsonResponse
     {

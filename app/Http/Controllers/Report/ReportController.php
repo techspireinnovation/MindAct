@@ -700,7 +700,7 @@ class ReportController extends Controller
                         'sale_rate' => round($item->marginSaleDetail($request->all()), 2),
                     ];
                 });
-                //Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
+                Helper::applyCache($request->fullUrlWithQuery($request->all()), $items);
                 return response()->json($items);
             } else if ($request->type === "download") {
                 $user = $request->user();

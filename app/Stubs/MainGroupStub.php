@@ -6,7 +6,6 @@ use App\Models\AccountGroup;
 use App\Models\AccountHead;
 use App\Models\MainGroup;
 use App\Models\SubGroup;
-use Str;
 
 
 class MainGroupStub
@@ -158,69 +157,47 @@ class MainGroupStub
                 'Sales Income' => [
                     '4001' => [
                         'group' => 'Export Sales',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4002' => [
                         'group' => 'Export Sales-Return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4010' => [
                         'group' => 'Sales',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4011' => [
                         'group' => 'Sales Return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4020' => [
                         'group' => 'Capital Sales',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4021' => [
                         'group' => 'Capital Sales-Return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4030' => [
                         'group' => 'Services Sales',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4031' => [
                         'group' => 'Services Sales-Return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4040' => [
                         'group' => 'Excise duty income',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4050' => [
                         'group' => 'health insurance income',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4060' => [
                         'group' => 'fright charge income',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                 ],
                 'Revenue' => [
@@ -247,14 +224,12 @@ class MainGroupStub
                 ],
                 'other income' => [
                     '4120' => [
-                        'group' => 'discount income',
+                        'group' => 'Discount Income',
                         'heads' => []
                     ],
                     '4130' => [
                         'group' => 'Scheme Discount Income',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                 ],
                 'Other Income' => [
@@ -266,15 +241,11 @@ class MainGroupStub
                 'indirect income' => [
                     '4150' => [
                         'group' => 'Round Off Plus in Sales',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '4151' => [
                         'group' => 'Round Off Minus in Purchase',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                 ],
             ],
@@ -282,105 +253,71 @@ class MainGroupStub
                 'direct expenses' => [
                     '5001' => [
                         'group' => 'Purchase',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5002' => [
                         'group' => 'Purchase Return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5010' => [
                         'group' => 'Freight Inward',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5011' => [
                         'group' => 'Carriage Inward',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5020' => [
                         'group' => 'import purchase',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5021' => [
                         'group' => 'import purchase return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5030' => [
                         'group' => 'service purchase',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5031' => [
                         'group' => 'service purchase return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5040' => [
                         'group' => 'capital purchase',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5041' => [
                         'group' => 'capital purchase return',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5050' => [
                         'group' => 'Custom Fee Expenses',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5060' => [
                         'group' => 'wages',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5070' => [
                         'group' => 'Excise Duty Expenses',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5080' => [
                         'group' => 'health insurance Expenses',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5090' => [
                         'group' => 'fright charge',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5100' => [
                         'group' => 'Discount Expenses',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5110' => [
                         'group' => 'Scheme Discount',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                 ],
                 'Indirect Expense' => [
@@ -452,19 +389,13 @@ class MainGroupStub
                             'Staff Welfare'
                         ]
                     ],
-                ],
-                'indirect expense' => [
                     '5190' => [
                         'group' => 'Round Off Minus in Sales',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                     '5191' => [
                         'group' => 'Round Off Plus in Purchase',
-                        'heads' => [
-                            'Ledger Show'
-                        ]
+
                     ],
                 ],
             ],
@@ -481,41 +412,56 @@ class MainGroupStub
                 'is_primary' => true,
             ]);
 
+            $subGroupCode = 1;
             foreach ($mainGroup as $mainGroupKey1 => $accountGroups) {
                 $subGroup = SubGroup::firstOrCreate([
-                    'name' => $mainGroupKey1,
+                    'name' => ucfirst($mainGroupKey1),
                     'company_id' => $companyId,
                     'main_group_id' => $newMainGroup->id,
-                    'code' => Str::upper(Str::slug($mainGroupKey1, '_')),
+                    'code' => $subGroupCode++,
                     'ranking_for_trial' => 1,
                     'is_active' => true,
                     'is_primary' => true,
                 ]);
 
-                foreach ($accountGroups as $accountGroupKey => $accountGroup) {
+                $accountGroupCode = 1;
 
-                    $accountGroup = AccountGroup::firstOrCreate([
-                        'name' => $accountGroup->group,
-                        'company_id' => $companyId,
-                        'main_group_id' => $newMainGroup->id,
-                        'sub_group_id' => $subGroup->id,
-                        'code' => $accountGroupKey,
-                        'is_active' => true,
-                        'is_primary' => true,
 
-                    ]);
 
-                    foreach ($accountGroup->heads as $accountHead) {
+                foreach ($accountGroups as $accountGroup) {
 
-                        AccountHead::firstOrCreate([
-                            'name' => $accountHead,
+
+
+                    if (isset($accountGroup['group'])) {
+                        $newAccountGroup = AccountGroup::firstOrCreate([
+                            'name' => ucfirst($accountGroup['group']),
                             'company_id' => $companyId,
-                            'account_group_id' => $accountGroup->id,
-                            'code' => Str::upper(Str::slug($accountHead, '_')),
+                            'main_group_id' => $newMainGroup->id,
+                            'sub_group_id' => $subGroup->id,
+                            'code' => $accountGroupCode++,
                             'is_active' => true,
                             'is_primary' => true,
-
                         ]);
+                    }
+
+
+
+                    if (isset($accountGroup['heads'])) {
+
+                        $accountHeadCode = 1;
+
+                        foreach ($accountGroup['heads'] as $accountHead) {
+
+                            AccountHead::firstOrCreate([
+                                'name' => ucfirst($accountHead),
+                                'company_id' => $companyId,
+                                'account_group_id' => $newAccountGroup->id,
+                                'code' => $accountHeadCode++,
+                                'is_active' => true,
+                                'is_primary' => true,
+
+                            ]);
+                        }
                     }
                 }
             }

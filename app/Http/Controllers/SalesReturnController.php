@@ -2256,6 +2256,7 @@ class SalesReturnController extends Controller
                 'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number',
                 'document_number' => 'nullable|string|max:255',
                 'ref_bill_no' => 'nullable|string|max:255',
+                'return_bill_no' => 'nullable|string|max:255',
                 'batch_no' => 'nullable|string|max:255|unique:sales_returns,batch_no',
                 'balance' => 'nullable|numeric|min:0',
                 'invoice_date' => 'nullable|date',

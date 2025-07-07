@@ -76,6 +76,9 @@ class SalesReturnController extends Controller
 
 
 
+
+
+
     public function getSaleByInvoiceNumber(Request $request): JsonResponse
     {
         try {
@@ -264,7 +267,6 @@ class SalesReturnController extends Controller
                         ->first();
                 }
                 $primaryMeasureUnitquantity = MeasureUnit::where('id', $primarymeasureUnitId)->pluck('quantity')->first();
-
                 $measureUnitId = $saleProduct->measure_unit_id ?? null;
                 $measureUnit = isset($measureUnits[$measureUnitId]) ? [
                     'id' => $measureUnits[$measureUnitId]->id,
@@ -294,9 +296,10 @@ class SalesReturnController extends Controller
                 $freeQuantityInPieces = ($freeQuantityInt * $measureUnitQuantity) + $freedecimalPieces;
                 $saleTotal = $quantityInPieces + $freeQuantityInPieces;
 
-                // Calculate return quantities
+                // Calculate return quantities for this sale product
                 $returnQuantityInPieces = 0;
                 $returnFreeQuantityInPieces = 0;
+
                 $returnTotal = 0;
                 $returnProductsForSale = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
                 if ($returnProductsForSale->isNotEmpty()) {
@@ -304,21 +307,19 @@ class SalesReturnController extends Controller
                         $returnMeasureUnitId = $returnProduct->measure_unit_id ?? $measureUnitId;
                         $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
 
-                        // for Regular Lookup
                         $returnQuantity = $returnProduct->quantity ?? 0;
                         $returnQuantityInt = floor($returnQuantity);
                         $returnQuantityDecimal = $returnQuantity - $returnQuantityInt;
                         $quantityDecimal = (string) $returnQuantityDecimal;
                         $returnQuantityDecimal = $quantityDecimal > 0 ? (int) str_replace('.', '', (string) $quantityDecimal) : 0;
-                        $returnQuantityInPieces += ($returnQuantityInt * $returnMeasureUnitQuantity) + $returnQuantityDecimal;
+                        $returnQuantityInPieces = ($returnQuantityInt * $returnMeasureUnitQuantity) + $returnQuantityDecimal;
 
-                        // for free quantity
                         $returnFreeQuantity = $returnProduct->free_quantity ?? 0;
                         $returnFreeQuantityInt = floor($returnFreeQuantity);
                         $returnFreeQuantityDecimal = $returnFreeQuantity - $returnFreeQuantityInt;
                         $freeDecimal = (string) $returnFreeQuantityDecimal;
                         $freedecimalPieces = $freeDecimal > 0 ? (int) str_replace('.', '', (string) $freeDecimal) : 0;
-                        $returnFreeQuantityInPieces += ($returnFreeQuantityInt * $returnMeasureUnitQuantity) + $freedecimalPieces;
+                        $returnFreeQuantityInPieces = ($returnFreeQuantityInt * $returnMeasureUnitQuantity) + $freedecimalPieces;
 
                         $returnTotal += $returnQuantityInPieces + $returnFreeQuantityInPieces;
                     }
@@ -333,7 +334,7 @@ class SalesReturnController extends Controller
                 $regularQuantityAvailableForSalesReturn = $quantityInPieces - $returnQuantityInPieces;
                 $freeQuantityAvailableForSalesReturn = $freeQuantityInPieces - $returnFreeQuantityInPieces;
 
-                // Initialize product entry
+                // Initialize or update product entry with totals
                 if (!isset($products[$productId])) {
                     $products[$productId] = [
                         'product_id' => $productId,
@@ -342,9 +343,9 @@ class SalesReturnController extends Controller
                         'min_price' => $saleProduct->price,
                         'amount' => $saleProduct->amount,
                         'is_vatable' => (bool) $saleProduct->is_vatable,
+                        'used_measure_units' => $usedMeasureUnits,
                         'measure_unit_id' => $primarymeasureUnitId,
                         'measure_unit_quantity' => $primaryMeasureUnitquantity,
-                        'used_measure_units' => $usedMeasureUnits,
                         'purchased_quantity' => 0,
                         'return_quantity' => 0,
                         'sale_quantity' => 0,
@@ -358,12 +359,14 @@ class SalesReturnController extends Controller
                     ];
                 }
 
-                // Update product quantities
+                // Aggregate totals at product level
                 $products[$productId]['sale_quantity'] += $saleTotal;
+                $products[$productId]['return_quantity'] += $returnTotal;
                 $products[$productId]['sales_return_quantity'] += $returnTotal;
                 $products[$productId]['available_quantity'] += $availableQuantity;
                 $products[$productId]['regular_quantity_available'] += $regularQuantityAvailableForSalesReturn;
                 $products[$productId]['free_quantity_available'] += $freeQuantityAvailableForSalesReturn;
+
 
                 if ($saleProduct->expiry_date && !in_array($saleProduct->expiry_date, $products[$productId]['expiry_dates'])) {
                     $products[$productId]['expiry_dates'][] = $saleProduct->expiry_date;
@@ -402,29 +405,38 @@ class SalesReturnController extends Controller
                     }
                 }
 
-                // Add sale product details
-                $products[$productId]['sale_products'][] = [
-                    'sale_product_id' => $saleProduct->id,
-                    'sale_id' => $saleProduct->sale_id,
-                    'product_id' => $saleProduct->product_id,
-                    'product_name' => $saleProduct->product_name,
-                    'product_code' => $saleProduct->product_code,
-                    'quantity_in_pieces' => $quantityInPieces,
-                    'free_quantity_in_pieces' => $freeQuantityInPieces,
-                    'regular_quantity_available_for_sales_return' => $regularQuantityAvailableForSalesReturn,
-                    'free_quantity_available_for_sales_return' => $freeQuantityAvailableForSalesReturn,
-                    'price' => $saleProduct->price,
-                    'is_vatable' => (bool) $saleProduct->is_vatable,
-                    'measure_unit_id' => $measureUnit['id'],
-                    'measure_unit_name' => $measureUnit['name'],
-                    'measure_unit_quantity' => $measureUnit['quantity'],
-                    'available_quantity' => $availableQuantity,
-                    'return_quantity' => $returnTotal,
-                    'sale_quantity' => $saleTotal,
-                    'sales_return_quantity' => $returnTotal,
-                    'expiry_date' => $saleProduct->expiry_date,
-                    'purchase_product_id' => $saleProduct->purchase_product_id,
-                ];
+                // Add sale product details only if available quantity is >= 1
+                if ($availableQuantity >= 1) {
+                    $products[$productId]['sale_products'][] = [
+                        'sale_product_id' => $saleProduct->id,
+                        'sale_id' => $saleProduct->sale_id,
+                        'product_id' => $saleProduct->product_id,
+                        'product_name' => $saleProduct->product_name,
+                        'product_code' => $saleProduct->product_code,
+                        'quantity_in_pieces' => $quantityInPieces,
+                        'free_quantity_in_pieces' => $freeQuantityInPieces,
+                        'price' => $saleProduct->price,
+                        'is_vatable' => (bool) $saleProduct->is_vatable,
+                        'measure_unit_id' => $measureUnit['id'],
+                        'measure_unit_name' => $measureUnit['name'],
+                        'measure_unit_quantity' => $measureUnit['quantity'],
+                        'available_quantity' => $availableQuantity,
+                        'return_quantity' => $returnTotal,
+                        'sale_quantity' => $saleTotal,
+                        'sales_return_quantity' => $returnTotal,
+                        'expiry_date' => $saleProduct->expiry_date,
+                        'purchase_product_id' => $saleProduct->purchase_product_id,
+
+                    ];
+                }
+            }
+
+            // Filter products where available_quantity is >= 1 at product level
+            $filteredProducts = [];
+            foreach ($products as $product) {
+                if ($product['available_quantity'] >= 1) {
+                    $filteredProducts[] = $product;
+                }
             }
 
             // Calculate purchased quantities in pieces
@@ -443,6 +455,11 @@ class SalesReturnController extends Controller
 
                 $products[$productId]['purchased_quantity'] = (int) ($purchasedTotal ?? 0);
             }
+            $paymentData = [
+                'cash' => $sale->payment['cash'] ?? null,
+                'credit' => $sale->payment['credit'] ?? null,
+                'bank' => $sale->payment['bank'] ?? null,
+            ];
 
             // Prepare sale data
             $saleData = [
@@ -454,10 +471,8 @@ class SalesReturnController extends Controller
                 'customer_address' => $sale->customer_address,
                 'credit_days' => $sale->credit_days,
                 'balance' => $sale->balance,
-                'invoice_number' => $sale->invoice_number,
-                'batch_no' => $sale->batch_no,
-                'invoice_date' => optional($sale->invoice_date)->toDateString(),
-                'invoice_date_bs' => optional($sale->invoice_date_bs)->toDateString(),
+                'invoice_number' => $sale->invoice_date->toDateString(),
+                'invoice_date_bs' => $sale->invoice_date_bs->toDateString(),
                 'document_number' => $sale->document_number,
                 'contact_number' => $sale->contact_number,
                 'ref_number' => $sale->ref_number,
@@ -477,7 +492,7 @@ class SalesReturnController extends Controller
                 'round_off_amount' => $sale->round_off_amount,
                 'roundoff_type' => $sale->roundoff_type,
                 'total_amount' => $sale->total_amount,
-                'payment' => $sale->payment,
+                'payment' => $paymentData,
                 'note' => $sale->note,
                 'is_vatable' => $sale->is_vatable,
                 'is_mail_notify' => $sale->is_mail_notify,
@@ -486,7 +501,7 @@ class SalesReturnController extends Controller
                 'created_at' => $sale->created_at->toIso8601String(),
                 'updated_at' => $sale->updated_at->toIso8601String(),
                 'deleted_at' => $sale->deleted_at ? $sale->deleted_at->toIso8601String() : null,
-                'products' => array_values($products),
+                'products' => array_values($filteredProducts),
             ];
 
             return response()->json([
@@ -501,6 +516,7 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             Log::error('Unexpected error in getSaleByInvoiceNumber', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),

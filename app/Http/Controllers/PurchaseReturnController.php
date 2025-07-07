@@ -578,6 +578,7 @@ class PurchaseReturnController extends Controller
 
             $purchase = $purchaseQuery->first();
 
+
             if (!$purchase) {
                 Log::info('Purchase not found', [
                     'company_id' => $companyId,
@@ -598,7 +599,15 @@ class PurchaseReturnController extends Controller
             }
 
             // Prepare response data
-            $purchaseData = $purchase->toArray();
+            $purchaseData = $purchase ? $purchase->toArray() : [];
+            $payment = $purchase->payment;
+
+            $purchaseData['payment'] = [
+                'cash' => $payment['cash'] ?? null,
+                'credit' => $payment['credit'] ?? null,
+                'bank' => $payment['bank'] ?? null,
+            ];
+
             $measureUnitsCalc = MeasureUnit::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->get()
@@ -1756,11 +1765,11 @@ class PurchaseReturnController extends Controller
                     ->where('company_id', $companyId)
                     ->whereNull('deleted_at')
                     ->first();
-              
-                    
-               
+
+
+
                 $originalProductPrice = Product::where('id', $first->product_id)->value('purchase_rate');
-                
+
                 $purchaseProductsPrice = PurchaseProduct::where('product_id', $first->product_id)->orderBy('created_at', 'desc')->pluck('price');
                 $latestPrice = $purchaseProductsPrice->first();
 

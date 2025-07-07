@@ -250,7 +250,7 @@ class MainGroupStub
                 ],
             ],
             'Expenses' => [
-                'direct expenses' => [
+                'Direct Expenses' => [
                     '5001' => [
                         'group' => 'Purchase',
 

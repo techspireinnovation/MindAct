@@ -24,6 +24,7 @@ class VoucherSummaryController extends Controller
         $vouchers = VoucherSummary::selectRaw('
                     date_bs,
                     date,
+                    tr_bill_number,
                     voucher_number,
                     a.name AS account_head,
                     particulars,
@@ -40,7 +41,7 @@ class VoucherSummaryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'required|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,DEBIT,CREDIT,RECEIPT,PAYMENT,ABVT,PRODUCTION',
+            'type' => 'required|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,DEBIT,CREDIT,RECEIPT,PAYMENT,PRODUCTION',
         ]);
 
         if ($validator->fails()) {
@@ -52,6 +53,7 @@ class VoucherSummaryController extends Controller
                     date,
                     voucher_number,
                     a.name AS account_head,
+                    tr_bill_number,
                     particulars,
                     debit,type,
                     credit

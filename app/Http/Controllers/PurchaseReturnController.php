@@ -46,7 +46,7 @@ class PurchaseReturnController extends Controller
 
 
         } catch (ModelNotFoundException $e) {
-            return resoponse()->json(["error" => "Item not Found!!"], 404);
+            return response()->json(["error" => "Item not Found!!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
@@ -55,7 +55,22 @@ class PurchaseReturnController extends Controller
 
     }
 
-
+    public function getItemByBillNumber($billNumber): JsonResponse
+    {
+        try {
+            $purchase = PurchaseReturn::where('purchase_number', $billNumber)->firstOrFail();
+            return $this->show($purchase->id);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
 
 
     public function getRefBillNumber(Request $request)

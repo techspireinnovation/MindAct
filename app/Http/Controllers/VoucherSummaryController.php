@@ -12,33 +12,26 @@ class VoucherSummaryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'nullable|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,JOURNAL_VOUCHER',
+            'type' => 'required|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,DEBIT,CREDIT,RECEIPT,PAYMENT,ABVT,PRODUCTION',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-
         $vouchers = VoucherSummary::selectRaw('
-                   
                     date_bs,
                     date,
                     voucher_number,
-                    a.name as account_head,
+                    a.name AS account_head,
                     particulars,
-                    debit, type,
+                    debit,type,
                     credit
-        ')
-            ->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')
-            ->when($request->has('type'), function ($rr) use ($request) {
-                $rr->where('type', $request->type);
-            })
-            ->orderBy('date', 'desc')
-            ->paginate(200);
+        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
+            $rr->where('type', $request->type);
+        })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);
-
 
     }
 }

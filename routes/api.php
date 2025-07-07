@@ -193,6 +193,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('receipt-vouchers', ReceiptVoucherController::class);
     Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::resource('voucher-summary', VoucherSummaryController::class);
+    Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
     Route::resource('company-staff', StaffController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);

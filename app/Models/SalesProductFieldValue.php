@@ -24,6 +24,7 @@ class SalesProductFieldValue extends Model
         'quantity_index', 
         'value',
         'deleted_at',
+        'quantity_type'
     ];
 
     protected $dates = ['deleted_at'];

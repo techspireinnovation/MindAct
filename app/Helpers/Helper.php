@@ -401,14 +401,50 @@ class Helper
 
         // Transform the product detail to include type in product_field_values
         $productData = $productDetail->toArray();
-        $productData['product_field_values'] = $productDetail->productFieldValues->map(function ($fieldValue) {
+        $getProductForMeasureUnits = Product::with('productLists')
+            ->where('id', $productDetail->id)
+            ->where('company_id', $company)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($getProductForMeasureUnits) {
+            // Step 1: Get measure_unit_id from Product
+            $unitIds = collect([$getProductForMeasureUnits->measure_unit_id]);
+
+            // Step 2: Add all measure_unit_ids from ProductList
+            $productListUnitIds = $getProductForMeasureUnits->productLists->pluck('measure_unit_id');
+
+            // Step 3: Merge and make unique
+            $allUnitIds = $unitIds->merge($productListUnitIds)->unique()->values();
+
+
+        } else {
+            dd('Product not found');
+        }
+
+        $productData['measure_units'] = MeasureUnit::whereIn('id', $allUnitIds)
+            ->where('company_id', $company)
+            ->whereNull('deleted_at')
+            ->get(['id', 'name', 'quantity']) // Get as a collection
+            ->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'measure_unit_quantity' => $unit->quantity ?? null,
+                ];
+            });
+
+        $productData['product_field_values'] = $productDetail->productFieldValues->filter(function ($fieldValue) {
+            return $fieldValue->productField !== null;
+        })->map(function ($fieldValue) {
             return [
                 'id' => $fieldValue->id,
                 'company_id' => $fieldValue->company_id,
                 'product_field_id' => $fieldValue->product_field_id,
                 'product_id' => $fieldValue->product_id,
-                'value' => $fieldValue->value,
+                'value' => $fieldValue->value ?? null,
                 'name' => $fieldValue->productField->name ?? null,
+
                 'type' => $fieldValue->productField->type ?? null, // Include type from ProductField, handle null case
                 'values' => $fieldValue->productField->values ?? null,
                 'deleted_at' => $fieldValue->deleted_at,

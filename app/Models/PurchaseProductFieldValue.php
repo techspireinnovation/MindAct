@@ -21,7 +21,8 @@ class PurchaseProductFieldValue extends Model
         'product_field_id',
         'product_id',
         'purchase_product_id',
-        'quantity_index', 
+        'quantity_index',
+        'quantity_type' ,
         'value',
         'deleted_at',
     ];

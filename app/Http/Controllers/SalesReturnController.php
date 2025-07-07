@@ -75,6 +75,7 @@ class SalesReturnController extends Controller
 
 
 
+
     public function getSaleByInvoiceNumber(Request $request): JsonResponse
     {
         try {
@@ -251,14 +252,13 @@ class SalesReturnController extends Controller
                     ->whereNull('deleted_at')
                     ->get(['id', 'name', 'quantity']);
 
-
                 $primarymeasureUnitId = ProductList::where('product_id', $productId)
                     ->where('is_primary', 1)
                     ->pluck('measure_unit_id')
                     ->first();
 
                 if (!$primarymeasureUnitId) {
-                    $primarymeasureUnitId = ProductList::where('id', $productId)
+                    $primarymeasureUnitId = ProductList::where('product_id', $productId) // Fixed: Changed 'id' to 'product_id'
                         ->orderBy('created_at', 'asc')
                         ->pluck('measure_unit_id')
                         ->first();
@@ -295,6 +295,8 @@ class SalesReturnController extends Controller
                 $saleTotal = $quantityInPieces + $freeQuantityInPieces;
 
                 // Calculate return quantities
+                $returnQuantityInPieces = 0;
+                $returnFreeQuantityInPieces = 0;
                 $returnTotal = 0;
                 $returnProductsForSale = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
                 if ($returnProductsForSale->isNotEmpty()) {
@@ -308,7 +310,7 @@ class SalesReturnController extends Controller
                         $returnQuantityDecimal = $returnQuantity - $returnQuantityInt;
                         $quantityDecimal = (string) $returnQuantityDecimal;
                         $returnQuantityDecimal = $quantityDecimal > 0 ? (int) str_replace('.', '', (string) $quantityDecimal) : 0;
-                        $returnQuantityInPieces = ($returnQuantityInt * $returnMeasureUnitQuantity) + $returnQuantityDecimal;
+                        $returnQuantityInPieces += ($returnQuantityInt * $returnMeasureUnitQuantity) + $returnQuantityDecimal;
 
                         // for free quantity
                         $returnFreeQuantity = $returnProduct->free_quantity ?? 0;
@@ -316,7 +318,7 @@ class SalesReturnController extends Controller
                         $returnFreeQuantityDecimal = $returnFreeQuantity - $returnFreeQuantityInt;
                         $freeDecimal = (string) $returnFreeQuantityDecimal;
                         $freedecimalPieces = $freeDecimal > 0 ? (int) str_replace('.', '', (string) $freeDecimal) : 0;
-                        $returnFreeQuantityInPieces = ($returnFreeQuantityInt * $returnMeasureUnitQuantity) + $freedecimalPieces;
+                        $returnFreeQuantityInPieces += ($returnFreeQuantityInt * $returnMeasureUnitQuantity) + $freedecimalPieces;
 
                         $returnTotal += $returnQuantityInPieces + $returnFreeQuantityInPieces;
                     }
@@ -328,6 +330,8 @@ class SalesReturnController extends Controller
                 }
 
                 $availableQuantity = $saleTotal - $returnTotal;
+                $regularQuantityAvailableForSalesReturn = $quantityInPieces - $returnQuantityInPieces;
+                $freeQuantityAvailableForSalesReturn = $freeQuantityInPieces - $returnFreeQuantityInPieces;
 
                 // Initialize product entry
                 if (!isset($products[$productId])) {
@@ -339,7 +343,6 @@ class SalesReturnController extends Controller
                         'amount' => $saleProduct->amount,
                         'is_vatable' => (bool) $saleProduct->is_vatable,
                         'measure_unit_id' => $primarymeasureUnitId,
-
                         'measure_unit_quantity' => $primaryMeasureUnitquantity,
                         'used_measure_units' => $usedMeasureUnits,
                         'purchased_quantity' => 0,
@@ -347,6 +350,8 @@ class SalesReturnController extends Controller
                         'sale_quantity' => 0,
                         'sales_return_quantity' => 0,
                         'available_quantity' => 0,
+                        'regular_quantity_available' => 0,
+                        'free_quantity_available' => 0,
                         'expiry_dates' => [],
                         'field_values' => [],
                         'sale_products' => [],
@@ -357,6 +362,8 @@ class SalesReturnController extends Controller
                 $products[$productId]['sale_quantity'] += $saleTotal;
                 $products[$productId]['sales_return_quantity'] += $returnTotal;
                 $products[$productId]['available_quantity'] += $availableQuantity;
+                $products[$productId]['regular_quantity_available'] += $regularQuantityAvailableForSalesReturn;
+                $products[$productId]['free_quantity_available'] += $freeQuantityAvailableForSalesReturn;
 
                 if ($saleProduct->expiry_date && !in_array($saleProduct->expiry_date, $products[$productId]['expiry_dates'])) {
                     $products[$productId]['expiry_dates'][] = $saleProduct->expiry_date;
@@ -404,6 +411,8 @@ class SalesReturnController extends Controller
                     'product_code' => $saleProduct->product_code,
                     'quantity_in_pieces' => $quantityInPieces,
                     'free_quantity_in_pieces' => $freeQuantityInPieces,
+                    'regular_quantity_available_for_sales_return' => $regularQuantityAvailableForSalesReturn,
+                    'free_quantity_available_for_sales_return' => $freeQuantityAvailableForSalesReturn,
                     'price' => $saleProduct->price,
                     'is_vatable' => (bool) $saleProduct->is_vatable,
                     'measure_unit_id' => $measureUnit['id'],
@@ -449,7 +458,6 @@ class SalesReturnController extends Controller
                 'batch_no' => $sale->batch_no,
                 'invoice_date' => optional($sale->invoice_date)->toDateString(),
                 'invoice_date_bs' => optional($sale->invoice_date_bs)->toDateString(),
-
                 'document_number' => $sale->document_number,
                 'contact_number' => $sale->contact_number,
                 'ref_number' => $sale->ref_number,
@@ -500,6 +508,7 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
 
 
 

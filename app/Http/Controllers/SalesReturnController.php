@@ -33,13 +33,13 @@ class SalesReturnController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = SalesReturn::query();
+        $query = SalesReturn::with("customer:id,party_name");
 
         if ($request->has('keywords')) {
-            $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%');
+            $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('ref_bill_no', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
-        return response()->json($query->paginate(50));
+        return response()->json($query->paginate(100));
     }
 
 
@@ -2557,9 +2557,12 @@ class SalesReturnController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
+                'customer_name' => 'required|string|max:255',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number',
                 'document_number' => 'nullable|string|max:255',
+                'ref_bill_no' => 'nullable|string|max:255',
+                'return_bill_no' => 'nullable|string|max:255',
                 'batch_no' => 'nullable|string|max:255|unique:sales_returns,batch_no',
                 'balance' => 'nullable|numeric|min:0',
                 'invoice_date' => 'nullable|date',

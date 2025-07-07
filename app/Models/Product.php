@@ -210,6 +210,46 @@ class Product extends Model
 
     }
 
+
+    public function marginPurchaseDetail(array $params)
+    {
+        $request = (object) $params;
+
+        if ($request->from_date === $request->to_date) {
+            return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->orderBy('id', 'DESC')->first()->price ?? 0;
+        } else {
+            return PurchaseProduct::where('product_id', $this->id)->whereHas('purchase', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->avg('price') ?? 0;
+        }
+    }
+
+    public function marginSaleDetail(array $params)
+    {
+        $request = (object) $params;
+
+        if ($request->from_date === $request->to_date) {
+            return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->orderBy('id', 'DESC')->first()->price ?? 0;
+        } else {
+            return SaleProduct::where('product_id', $this->id)->whereHas('sale', function ($query) use ($request) {
+                $query->when(isset($request->from_date) && isset($request->to_date), function ($query1) use ($request) {
+                    $query1->whereDate('sales.invoice_date_bs', '>=', $request->from_date)->whereDate('sales.invoice_date_bs', '<=', $request->to_date);
+                });
+            })->avg('price') ?? 0;
+        }
+    }
+
+
     public function productClosingDetail(array $params)
     {
         $request = (object) $params;

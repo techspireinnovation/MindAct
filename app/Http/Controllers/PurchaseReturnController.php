@@ -58,17 +58,17 @@ class PurchaseReturnController extends Controller
     public function getItemByBillNumber($billNumber): JsonResponse
     {
         try {
-            $purchase = PurchaseReturn::where('purchase_number', $billNumber)->firstOrFail();
+            $purchase = PurchaseReturn::where('purchase_bill_number', '=', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected query error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected exception error occurred'], 500);
         }
     }
 
@@ -3388,10 +3388,10 @@ class PurchaseReturnController extends Controller
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected show error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected show exception error occurred'], 500);
         }
     }
 

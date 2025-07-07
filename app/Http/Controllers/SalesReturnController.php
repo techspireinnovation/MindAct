@@ -8,6 +8,7 @@ use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseProductFieldValue;
 use App\Models\SalesProductFieldValue;
 use App\Models\SalesReturn;
+use App\Models\ProductList;
 use App\Models\Sale;
 use App\Models\MeasureUnit;
 use App\Models\SalesReturnProduct;
@@ -234,6 +235,36 @@ class SalesReturnController extends Controller
 
             foreach ($sale->saleProducts as $saleProduct) {
                 $productId = $saleProduct->product_id;
+                $productMeasureUnit = Product::where('id', $productId)->first();
+                $productMeasureUnitId = $productMeasureUnit->measure_unit_id ?? null;
+                $productMeasureUnitLists = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
+                $measureunitsLists = collect(
+                    array_unique(
+                        array_merge(
+                            $productMeasureUnitId ? [$productMeasureUnitId] : [], // wrap in array if not null
+                            $productMeasureUnitLists
+                        )
+                    )
+                );
+                $usedMeasureUnits = MeasureUnit::whereIn('id', $measureunitsLists)
+                    ->where('company_id', $companyId)
+                    ->whereNull('deleted_at')
+                    ->get(['id', 'name', 'quantity']);
+
+
+                $primarymeasureUnitId = ProductList::where('product_id', $productId)
+                    ->where('is_primary', 1)
+                    ->pluck('measure_unit_id')
+                    ->first();
+
+                if (!$primarymeasureUnitId) {
+                    $primarymeasureUnitId = ProductList::where('id', $productId)
+                        ->orderBy('created_at', 'asc')
+                        ->pluck('measure_unit_id')
+                        ->first();
+                }
+                $primaryMeasureUnitquantity = MeasureUnit::where('id', $primarymeasureUnitId)->pluck('quantity')->first();
+
                 $measureUnitId = $saleProduct->measure_unit_id ?? null;
                 $measureUnit = isset($measureUnits[$measureUnitId]) ? [
                     'id' => $measureUnits[$measureUnitId]->id,
@@ -307,9 +338,10 @@ class SalesReturnController extends Controller
                         'min_price' => $saleProduct->price,
                         'amount' => $saleProduct->amount,
                         'is_vatable' => (bool) $saleProduct->is_vatable,
-                        'measure_unit_id' => $measureUnit['id'],
-                        'measure_unit_name' => $measureUnit['name'],
-                        'measure_unit_quantity' => $measureUnit['quantity'],
+                        'measure_unit_id' => $primarymeasureUnitId,
+
+                        'measure_unit_quantity' => $primaryMeasureUnitquantity,
+                        'used_measure_units' => $usedMeasureUnits,
                         'purchased_quantity' => 0,
                         'return_quantity' => 0,
                         'sale_quantity' => 0,
@@ -415,8 +447,9 @@ class SalesReturnController extends Controller
                 'balance' => $sale->balance,
                 'invoice_number' => $sale->invoice_number,
                 'batch_no' => $sale->batch_no,
-                'invoice_date' => $sale->invoice_date,
-                'invoice_date_bs' => $sale->invoice_date_bs,
+                'invoice_date' => optional($sale->invoice_date)->toDateString(),
+                'invoice_date_bs' => optional($sale->invoice_date_bs)->toDateString(),
+
                 'document_number' => $sale->document_number,
                 'contact_number' => $sale->contact_number,
                 'ref_number' => $sale->ref_number,

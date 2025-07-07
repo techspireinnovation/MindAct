@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
 use App\Models\MeasureUnit;
+use App\Models\ProductList;
 use App\Models\SaleAdditional;
 use App\Models\SalesReturnProduct;
 use App\Models\SaleReturnProductFieldValue;
@@ -401,10 +402,6 @@ class SaleController extends Controller
     }
 
 
-
-
-
-
     private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $responseUnitId = null): array
     {
         Log::debug('Fetching detailed available products with purchase products', [
@@ -483,7 +480,7 @@ class SaleController extends Controller
             $productSoldPrice = SaleProduct::where('product_id', $productForUnit)
                 ->orderByDesc('created_at')
                 ->get(['price', 'created_at']);
-          
+
 
             $avgPrice = $productSoldPrice->avg('price');
             $minPrice = $productSoldPrice->min('price');
@@ -496,6 +493,22 @@ class SaleController extends Controller
                 ->where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->first();
+
+            $productPrimaryMeasureUnit = ProductList::where('product_id', $productForUnit)
+                ->where('is_primary', 1)
+                ->pluck('measure_unit_id')
+                ->first();
+
+            if (!$productPrimaryMeasureUnit) {
+                $productPrimaryMeasureUnit = ProductList::where('product_id', $productForUnit)
+                    ->orderBy('created_at', 'asc')
+                    ->pluck('measure_unit_id')
+                    ->first();
+            }
+
+            $primarayMeasureUnitId = MeasureUnit::where('id',$productPrimaryMeasureUnit)->first();
+            $primaryMeasureUnitQuantity = $primarayMeasureUnitId->quantity ?? 0;
+            
 
 
             if ($getProductForMeasureUnits) {
@@ -590,7 +603,7 @@ class SaleController extends Controller
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice,$primaryMeasureUnitQuantity,$primarayMeasureUnitId) {
 
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes) {
@@ -734,9 +747,9 @@ class SaleController extends Controller
                     'product_code' => $product->product_code,
                     // 'min_price' => !empty($productPurchaseProducts) ? min(array_column($productPurchaseProducts, 'price')) : 0,
                     'is_vatable' => (bool) $product->is_vatable,
-                    // 'measure_unit_id' => null, // No specific measure unit for pieces
-                    'measure_unit_name' => 'Piece', // Always Piece
-                    'measure_unit_quantity' => 1, // 1 piece = 1 
+                    'measure_unit_id' => $primarayMeasureUnitId->id ?? null, // No specific measure unit for pieces
+                  
+                    'measure_unit_quantity' => $primaryMeasureUnitQuantity, // 1 piece = 1 
                     'retail_sale_price' => $retailSalePrice ?? 0,
                     'avg_price' => $avgPrice ?? 0,
                     'min_price' => $minPrice ?? 0,

@@ -527,9 +527,6 @@ class SalesReturnController extends Controller
 
 
 
-
-
-
     public function listAvailableInvoiceNumbers(Request $request): JsonResponse
     {
         try {
@@ -1253,6 +1250,41 @@ class SalesReturnController extends Controller
                 foreach ($sale->saleProducts as $saleProduct) {
                     $productId = $saleProduct->product_id;
                     // Use sale product's measure unit or default if missing
+
+                    $primaryMeasureUnit = ProductList::where('product_id', $productId)
+                        ->where('is_primary', 1)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->pluck('measure_unit_id')->first();
+                    if (!$primaryMeasureUnit) {
+                        $primaryMeasureUnit = ProductList::where('id', $productId)
+                            ->where('company_id', $companyId)
+                            ->whereNull('deleted_at')
+                            ->orderBy('created_at', 'asc')
+                            ->pluck('measure_unit_id')
+                            ->first();
+                    }
+                    $primaryMeasureUnitQuantity = MeasureUnit::where('id', $primaryMeasureUnit)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->pluck('quantity')
+                        ->first();
+                    $productMeasureUniId = Product::where('id', $productId)->pluck('measure_unit_id')->first();
+                    $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->first();
+
+                    $allMeasureUnitsId = collect(
+                        array_unique(
+                            array_merge(
+                                $productMeasureUniId ? [$productMeasureUniId] : [],
+                                $productListMeasureUnitId ? [$productListMeasureUnitId] : []
+                            )
+                        )
+                    )->toArray();
+
+                    $usedMeasureUnits = MeasureUnit::whereIn('id', $allMeasureUnitsId)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->get(['id', 'name', 'quantity']);
                     $measureUnitId = $saleProduct->measure_unit_id ?? null;
                     $measureUnit = isset($measureUnits[$measureUnitId]) ? [
                         'id' => $measureUnits[$measureUnitId]->id,
@@ -1281,9 +1313,10 @@ class SalesReturnController extends Controller
                             'min_price' => $saleProduct->price,
                             'amount' => $saleProduct->amount,
                             'is_vatable' => (bool) $saleProduct->is_vatable,
-                            'measure_unit_id' => $saleProduct->measure_unit_id ?? null,
-                            'measure_unit_name' => $measureUnit['name'],
-                            'measure_unit_quantity' => $measureUnitQuantity,
+                            'used_measure_units' => $usedMeasureUnits,
+                            'measure_unit_id' => $primaryMeasureUnit,
+                           
+                            'measure_unit_quantity' => $primaryMeasureUnitQuantity,
                             'purchased_quantity' => 0,
                             'return_quantity' => 0,
                             'sale_quantity' => 0,
@@ -1543,6 +1576,7 @@ class SalesReturnController extends Controller
             return response()->json($response);
 
         } catch (QueryException $e) {
+           
             Log::error('Database query error in getAvailableProductsForSalesReturn', [
                 'product_id' => $productId,
                 'product_name' => $productName,
@@ -1554,6 +1588,7 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'Database query error'], 500);
         } catch (\Exception $e) {
+
             Log::error('Unexpected error in getAvailableProductsForSalesReturn', [
                 'product_id' => $productId,
                 'product_name' => $productName,

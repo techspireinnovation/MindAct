@@ -61,7 +61,6 @@ class PurchaseReturnController extends Controller
 
 
 
-
     public function getRefBillNumber(Request $request)
     {
         try {

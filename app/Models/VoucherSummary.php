@@ -19,6 +19,8 @@ class VoucherSummary extends Model
         'debit',
         'credit',
         'account_head_id',
+        'account_group_id',
+        'payment_type',
         'cheque_number',
         'tr_bill_number',
         'type',

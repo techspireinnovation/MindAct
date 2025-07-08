@@ -46,19 +46,6 @@ class AccountHeadController extends Controller
                 'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
                 'account_group_id' => 'integer|exists:account_groups,id',
-                'code' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('account_heads')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $account_head) {
-                            return $query->where('company_id', $request->input('company_id', $account_head->company_id))
-                                ->whereNull('deleted_at');
-
-                        }),
-                ],
-
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -82,7 +69,6 @@ class AccountHeadController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
 
         }
@@ -107,17 +93,6 @@ class AccountHeadController extends Controller
                 'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
                 'account_group_id' => 'integer|exists:account_groups,id',
-                'code' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('account_heads')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
-
-                    }),
-
-                ],
             ]);
 
             if ($validator->fails()) {

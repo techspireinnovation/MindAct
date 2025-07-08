@@ -9,36 +9,62 @@ use Validator;
 
 class VoucherSummaryController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function ledgerList(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'nullable|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,JOURNAL_VOUCHER',
+            'from_date' => 'required|string',
+            'to_date' => 'required|string',
+            'account_head_id' => 'nullable|numeric',
+            'account_group_id' => 'nullable|numeric'
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-
         $vouchers = VoucherSummary::selectRaw('
-                   
                     date_bs,
                     date,
+                    tr_bill_number,
                     voucher_number,
-                    a.name as account_head,
+                    a.name AS account_head,
                     particulars,
-                    debit, type,
+                    debit,type,
                     credit
-        ')
-            ->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')
-            ->when($request->has('type'), function ($rr) use ($request) {
-                $rr->where('type', $request->type);
-            })
-            ->orderBy('date', 'desc')
-            ->paginate(200);
+        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('account_head_id'), function ($rr) use ($request) {
+            $rr->where('account_head_id', $request->account_head_id);
+        })->when($request->has('account_group_id'), function ($rr) use ($request) {
+            $rr->where('account_group_id', $request->account_group_id);
+        })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);
 
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,DEBIT,CREDIT,RECEIPT,PAYMENT,PRODUCTION',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $vouchers = VoucherSummary::selectRaw('
+                    date_bs,
+                    date,
+                    voucher_number,
+                    a.name AS account_head,
+                    tr_bill_number,
+                    particulars,
+                    debit,type,
+                    credit
+        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
+            $rr->where('type', $request->type);
+        })->orderBy('date', 'desc')->paginate(200);
+
+        return response()->json($vouchers);
 
     }
 }

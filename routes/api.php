@@ -111,9 +111,11 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::resource('customers', CustomerController::class);
+    Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
     Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
+    Route::get('sales-returns/get-by-bill-number/{billNumber}', [SalesReturnController::class, 'getItemByBillNumber']);
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
@@ -135,11 +137,13 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
         //});
     });
-
+    Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
     Route::resource('purchases', PurchaseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
+
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
+    Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
@@ -193,6 +197,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('receipt-vouchers', ReceiptVoucherController::class);
     Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::resource('voucher-summary', VoucherSummaryController::class);
+    Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
     Route::resource('company-staff', StaffController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);

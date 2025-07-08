@@ -26,7 +26,7 @@ class PurchaseObserver
         ];
 
         if ($purchase->roundoff_type === 'plus') {
-            $purchaseAccGroups['Round Off Plus in Purchase'] = ['type' => 'debit', 'valueAmount' => 'roundoff_amount', 'payment_type' => ''];
+            $purchaseAccGroups['Round Off Plus in Purchase'] = ['type' => 'credit', 'valueAmount' => 'roundoff_amount', 'payment_type' => ''];
         }
 
         if ($purchase->roundoff_type === 'minus') {

@@ -15,7 +15,8 @@ class VoucherSummaryController extends Controller
             'from_date' => 'required|string',
             'to_date' => 'required|string',
             'account_head_id' => 'nullable|numeric',
-            'account_group_id' => 'nullable|numeric'
+            'account_group_id' => 'nullable|numeric',
+            'payment_type' => 'nullable|string|in:cash,bank'
         ]);
 
         if ($validator->fails()) {
@@ -30,7 +31,7 @@ class VoucherSummaryController extends Controller
                     a.name AS account_head,
                     b.name AS account_group,
                     particulars,
-                    debit,type,
+                    debit,type,payment_type,
                     credit
         ')->leftJoin('account_groups as b', 'account_group_id', '=', 'b.id')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('account_head_id'), function ($rr) use ($request) {
             $rr->where('account_head_id', $request->account_head_id);

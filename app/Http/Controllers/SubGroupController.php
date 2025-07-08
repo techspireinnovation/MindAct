@@ -111,17 +111,6 @@ class SubGroupController extends Controller
                         return $query->where('company_id', $request->input('company_id'));
                     }),
                 ],
-                'code' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
-
-                    }),
-
-                ],
                 'ranking_for_trial' => 'string|max:255'
             ]);
             if ($validator->fails()) {

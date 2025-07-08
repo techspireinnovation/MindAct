@@ -188,7 +188,7 @@ class MainGroupStub
 
                     ],
                     '4040' => [
-                        'group' => 'Excise duty income',
+                        'group' => 'Excise Duty Income',
 
                     ],
                     '4050' => [

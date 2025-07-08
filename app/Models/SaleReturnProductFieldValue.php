@@ -20,6 +20,7 @@ class SaleReturnProductFieldValue extends Model
            'product_id',
            'company_id',
            'quantity_index',
+           'quantity_type'
        ];
 
        protected $dates = ['deleted_at'];

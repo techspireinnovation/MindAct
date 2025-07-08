@@ -50,6 +50,7 @@ class Sale extends Model
         'location_id',
         'salesman_id',
         'sub_total_before_discount',
+     
         'discount',
         'non_taxable_amount',
         'taxable_amount',

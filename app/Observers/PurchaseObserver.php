@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\AccountGroup;
 use App\Models\Purchase;
 use App\Models\VoucherSummary;
 
@@ -12,20 +13,40 @@ class PurchaseObserver
      */
     public function created(Purchase $purchase): void
     {
-        VoucherSummary::create([
-            'date' => $purchase->invoice_date,
-            'date_bs' => $purchase->invoice_date_bs,
-            'company_id' => $purchase->company_id,
-            'branch_id' => null,
-            'voucher_number' => "VOC-11102",
-            'particulars' => "Product Purchased from - {$purchase->customer->party_name} from Bill No. {$purchase->purchase_bill_number}",
-            'debit' => 0,
-            'credit' => 0,
-            'tr_bill_number' => $purchase->purchase_bill_number,
-            'cheque_number' => "234",
-            'type' => "PURCHASE",
-            //'account_head_id' => ,
-        ]);
+        $purchaseAccGroups = [
+            'Purchase',
+            'Discount Income',
+            'Excise Duty',
+            'Vat',
+            'Health Insurance',
+            'Fright Charge',
+            'Scheme Discount Income',
+            'Round Off Minus in Purchase',
+            'Round Off Plus in Purchase'
+        ];
+
+        foreach ($purchaseAccGroups as $purchaseAccGroup) {
+
+            $accGroup = AccountGroup::where('name', $purchaseAccGroup)->id;
+            VoucherSummary::create([
+                'date' => $purchase->invoice_date,
+                'date_bs' => $purchase->invoice_date_bs,
+                'company_id' => $purchase->company_id,
+                'branch_id' => null,
+                'voucher_number' => "VOC-11102",
+                'particulars' => "Product Purchased from - {$purchase->customer->party_name} from Bill No. {$purchase->purchase_bill_number}",
+                'debit' => 0,
+                'credit' => 0,
+                'tr_bill_number' => $purchase->purchase_bill_number,
+                'cheque_number' => "",
+                'type' => "PURCHASE",
+                'payment_type' => "PURCHASE",
+                'account_group_id' => $accGroup->id,
+                //'account_head_id' => ,
+            ]);
+        }
+
+
     }
 
     /**

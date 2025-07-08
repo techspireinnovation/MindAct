@@ -14,7 +14,8 @@ class VoucherSummaryController extends Controller
         $validator = Validator::make($request->all(), [
             'from_date' => 'required|string',
             'to_date' => 'required|string',
-            'account_head_id' => 'nullable|numeric'
+            'account_head_id' => 'nullable|numeric',
+            'account_group_id' => 'nullable|numeric'
         ]);
 
         if ($validator->fails()) {
@@ -30,8 +31,10 @@ class VoucherSummaryController extends Controller
                     particulars,
                     debit,type,
                     credit
-        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
-            $rr->where('type', $request->type);
+        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('account_head_id'), function ($rr) use ($request) {
+            $rr->where('account_head_id', $request->account_head_id);
+        })->when($request->has('account_group_id'), function ($rr) use ($request) {
+            $rr->where('account_group_id', $request->account_group_id);
         })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);

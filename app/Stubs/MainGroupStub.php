@@ -443,15 +443,9 @@ class MainGroupStub
                             'is_primary' => true,
                         ]);
                     }
-
-
-
                     if (isset($accountGroup['heads'])) {
-
                         $accountHeadCode = 1;
-
                         foreach ($accountGroup['heads'] as $accountHead) {
-
                             AccountHead::firstOrCreate([
                                 'name' => ucfirst($accountHead),
                                 'company_id' => $companyId,

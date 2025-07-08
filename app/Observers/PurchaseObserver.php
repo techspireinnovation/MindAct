@@ -33,6 +33,10 @@ class PurchaseObserver
             $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => 'roundoff_amount', 'payment_type' => ''];
         }
 
+        if ($purchase->customer()) {
+
+        }
+
         try {
             foreach ($purchaseAccGroups as $purchaseAccGroupKey => $purchaseAccGroupValue) {
 
@@ -43,7 +47,7 @@ class PurchaseObserver
                     'company_id' => $purchase->company_id,
                     'branch_id' => null,
                     'voucher_number' => "VOC-818200{$purchase->id}",
-                    'particulars' => "Product Purchased from - {$purchase->customer->party_name} from Bill No. {$purchase->purchase_bill_number}",
+                    'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
                     'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchase->{$purchaseAccGroupValue['valueAmount']} : 0,
                     'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchase->{$purchaseAccGroupValue['valueAmount']} : 0,
                     'tr_bill_number' => $purchase->purchase_bill_number,
@@ -55,16 +59,11 @@ class PurchaseObserver
             }
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-
         } catch (QueryException $e) {
             \Log::error($e);
-
         } catch (\Exception $e) {
             \Log::error($e);
-
         }
-
-
     }
 
     /**

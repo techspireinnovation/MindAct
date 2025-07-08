@@ -471,7 +471,7 @@ class SalesReturnController extends Controller
                 'customer_address' => $sale->customer_address,
                 'credit_days' => $sale->credit_days,
                 'balance' => $sale->balance,
-                'invoice_number' => $sale->invoice_date->toDateString(),
+                'invoice_number' => $sale->invoice_number,
                 'invoice_date_bs' => $sale->invoice_date_bs->toDateString(),
                 'document_number' => $sale->document_number,
                 'contact_number' => $sale->contact_number,
@@ -1703,7 +1703,7 @@ class SalesReturnController extends Controller
             // Fetch sale products based on product criteria
             $productIds = array_filter(array_column($validated['sales_return_products'] ?? [], 'product_id'));
             $productNames = array_filter(array_column($validated['sales_return_products'] ?? [], 'product_name'));
-            $barcodes = array_filter(array_column($validated['sales_return_products'] ?? [], 'barcode'));
+           $barcodes = array_filter(array_map(fn($item) => $item['barcode'] ?? null, $validated['sales_return_products'] ?? []));
 
             if (empty($productIds) && empty($productNames) && empty($barcodes) && !$validated['return_entire_all'] && empty($validated['sale_product_ids'])) {
                 return response()->json(['error' => 'At least one of product_id, product_name, or barcode must be provided in sales_return_products unless returning entire sale'], 422);

@@ -188,7 +188,7 @@ class MainGroupStub
 
                     ],
                     '4040' => [
-                        'group' => 'Excise duty income',
+                        'group' => 'Excise Duty Income',
 
                     ],
                     '4050' => [
@@ -250,7 +250,7 @@ class MainGroupStub
                 ],
             ],
             'Expenses' => [
-                'direct expenses' => [
+                'Direct Expenses' => [
                     '5001' => [
                         'group' => 'Purchase',
 
@@ -401,8 +401,6 @@ class MainGroupStub
             ],
         ];
 
-
-
         foreach ($chartOfAccounts as $key => $mainGroup) {
 
             $newMainGroup = MainGroup::firstOrCreate([
@@ -425,12 +423,7 @@ class MainGroupStub
                 ]);
 
                 $accountGroupCode = 1;
-
-
-
                 foreach ($accountGroups as $accountGroup) {
-
-
 
                     if (isset($accountGroup['group'])) {
                         $newAccountGroup = AccountGroup::firstOrCreate([
@@ -443,15 +436,9 @@ class MainGroupStub
                             'is_primary' => true,
                         ]);
                     }
-
-
-
                     if (isset($accountGroup['heads'])) {
-
                         $accountHeadCode = 1;
-
                         foreach ($accountGroup['heads'] as $accountHead) {
-
                             AccountHead::firstOrCreate([
                                 'name' => ucfirst($accountHead),
                                 'company_id' => $companyId,

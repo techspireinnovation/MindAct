@@ -401,8 +401,6 @@ class MainGroupStub
             ],
         ];
 
-
-
         foreach ($chartOfAccounts as $key => $mainGroup) {
 
             $newMainGroup = MainGroup::firstOrCreate([
@@ -425,12 +423,7 @@ class MainGroupStub
                 ]);
 
                 $accountGroupCode = 1;
-
-
-
                 foreach ($accountGroups as $accountGroup) {
-
-
 
                     if (isset($accountGroup['group'])) {
                         $newAccountGroup = AccountGroup::firstOrCreate([

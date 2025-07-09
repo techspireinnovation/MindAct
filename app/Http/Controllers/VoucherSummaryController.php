@@ -38,7 +38,7 @@ class VoucherSummaryController extends Controller
         })->when($request->has('account_group_id'), function ($rr) use ($request) {
             $rr->where('account_group_id', $request->account_group_id);
         })->when($request->has('payment_type'), function ($rr) use ($request) {
-            $rr->where('payment_type', $request->payment_type);
+            $rr->where('payment_type', strtoupper($request->payment_type));
         })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);

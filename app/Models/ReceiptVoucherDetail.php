@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\ReceiptVoucher;
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\ReceiptVoucherDetailObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -21,7 +22,7 @@ class ReceiptVoucherDetail extends Model
         'receipt_voucher_id',
         'party_name',
         'amount',
-        'contra_acount',
+        'contra_account',
         'remarks',
         'cheque_slip',
         'remaining_balance'
@@ -30,7 +31,7 @@ class ReceiptVoucherDetail extends Model
 
     protected static function booted()
     {
-        self::observe(ReceiptVoucherDetail::class);
+        self::observe(ReceiptVoucherDetailObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

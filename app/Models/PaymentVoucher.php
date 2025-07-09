@@ -3,11 +3,10 @@
 namespace App\Models;
 use App\Models\PaymentVoucherDetail;
 use App\Models\Scopes\CompanyIdScope;
-
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 class PaymentVoucher extends Model
@@ -15,7 +14,6 @@ class PaymentVoucher extends Model
     use SoftDeletes, HasFactory;
 
     protected $casts = [
-        
         'is_active' => 'boolean'
     ];
     protected $fillable = [
@@ -24,10 +22,9 @@ class PaymentVoucher extends Model
         'date_bs',
         'payment_voucher_number',
         'reference_number',
-        
     ];
 
-    protected $dates = ['deleted_at', 'date_ad', 'date_bs'];
+    protected $dates = ['deleted_at',];
 
     protected static function booted()
     {

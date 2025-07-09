@@ -22,7 +22,6 @@ class PaymentVoucher extends Model
         'date_bs',
         'payment_voucher_number',
         'reference_number',
-
     ];
 
     protected $dates = ['deleted_at',];

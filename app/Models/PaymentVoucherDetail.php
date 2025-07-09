@@ -36,7 +36,7 @@ class PaymentVoucherDetail extends Model
 
     public function receiptVoucher()
     {
-        return $this->belongsTo(PaymentVoucher::class, 'receipt_voucher_id');
+        return $this->belongsTo(PaymentVoucher::class, 'payment_voucher_id');
     }
 
     public function company()

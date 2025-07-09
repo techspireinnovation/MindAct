@@ -3,10 +3,9 @@
 namespace App\Observers;
 
 use App\Models\AccountGroup;
+use App\Models\AccountHead;
 use App\Models\Purchase;
 use App\Models\VoucherSummary;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Database\QueryException;
 
 class PurchaseObserver
 {
@@ -33,14 +32,31 @@ class PurchaseObserver
             $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => 'roundoff_amount', 'payment_type' => ''];
         }
 
-        if ($purchase->customer()) {
+        // dd($purchase->payment['credit']);
 
+        switch ($purchase->customer->ledger_type) {
+            case 'customer':
+                if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
+                    $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['credit'], 'payment_type' => 'CREDIT'];
+                if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null)
+                    $purchaseAccGroups['Cash in Hand'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['cash'], 'payment_type' => 'CASH'];
+                if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
+                    $bankAccountGroup = AccountGroup::where('name', "Bank Accounts")->first();
+                    $accHeadBank = AccountHead::where(['name', $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id])->firstOrCreate();
+                    $purchaseAccGroups[$accHeadBank->name] = ['type' => 'credit', 'valueAmount' => $purchase->payment['bank'], 'payment_type' => 'BANK'];
+                }
+                break;
+            default:
+                break;
         }
 
         try {
             foreach ($purchaseAccGroups as $purchaseAccGroupKey => $purchaseAccGroupValue) {
 
-                $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->firstOrFail();
+                $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
+                $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
+                \Log::info($purchaseAccGroupKey, [$accHead]);
+
                 VoucherSummary::create([
                     'date' => $purchase->invoice_date,
                     'date_bs' => $purchase->invoice_date_bs,
@@ -53,14 +69,11 @@ class PurchaseObserver
                     'tr_bill_number' => $purchase->purchase_bill_number,
                     'cheque_number' => "",
                     'type' => "PURCHASE",
-                    'payment_type' => "PURCHASE",
-                    'account_group_id' => $accGroup->id,
+                    'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
+                    'account_group_id' => $accGroup?->id,
+                    'account_head_id' => $accHead?->id,
                 ]);
             }
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-        } catch (QueryException $e) {
-            \Log::error($e);
         } catch (\Exception $e) {
             \Log::error($e);
         }

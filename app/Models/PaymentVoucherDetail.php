@@ -26,9 +26,7 @@ class PaymentVoucherDetail extends Model
         'remarks',
         'cheque_slip',
         'remaining_balance'
-
     ];
-
 
     protected static function booted()
     {

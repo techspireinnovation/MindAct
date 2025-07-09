@@ -25,7 +25,6 @@ class ReceiptVoucherDetail extends Model
         'remarks',
         'cheque_slip',
         'remaining_balance'
-
     ];
 
 
@@ -43,5 +42,10 @@ class ReceiptVoucherDetail extends Model
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 }

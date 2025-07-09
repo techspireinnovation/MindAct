@@ -114,8 +114,12 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
+
+    // Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
+
     Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
     Route::get('sales-returns/get-by-bill-number/{billNumber}', [SalesReturnController::class, 'getItemByBillNumber']);
+
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);

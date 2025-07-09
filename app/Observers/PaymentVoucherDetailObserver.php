@@ -30,7 +30,7 @@ class PaymentVoucherDetailObserver
             'branch_id' => null,
             'voucher_number' => $paymentVoucherDetail->receiptVoucher->payment_voucher_number,
             'particulars' => $paymentVoucherDetail->remarks,
-            'payment_type' => strtoupper($paymentVoucherDetail->contra_acount),
+            'payment_type' => strtoupper($paymentVoucherDetail->contra_account),
             'credit' => 0,
             'debit' => $paymentVoucherDetail->amount,
             'tr_bill_number' => $paymentVoucherDetail->receiptVoucher->reference_number,

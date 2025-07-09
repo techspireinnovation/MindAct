@@ -29,7 +29,7 @@ class ReceiptVoucherDetailObserver
             'branch_id' => null,
             'voucher_number' => $receiptVoucherDetail->receiptVoucher->receipt_voucher_number,
             'particulars' => $receiptVoucherDetail->remarks,
-            'payment_type' => strtoupper($receiptVoucherDetail->contra_acount),
+            'payment_type' => strtoupper($receiptVoucherDetail->contra_account),
             'credit' => $receiptVoucherDetail->amount,
             'debit' => 0,
             'tr_bill_number' => $receiptVoucherDetail->receiptVoucher->reference_number,

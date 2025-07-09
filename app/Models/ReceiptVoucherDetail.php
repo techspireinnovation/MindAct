@@ -22,7 +22,7 @@ class ReceiptVoucherDetail extends Model
         'receipt_voucher_id',
         'party_name',
         'amount',
-        'contra_acount',
+        'contra_account',
         'remarks',
         'cheque_slip',
         'remaining_balance'

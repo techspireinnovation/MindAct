@@ -4,10 +4,8 @@ namespace App\Models;
 
 use App\Models\PaymentVoucher;
 use App\Models\Scopes\CompanyIdScope;
-
-use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Observers\PaymentVoucherDetailObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 use Illuminate\Database\Eloquent\Model;
 
 
@@ -28,23 +26,28 @@ class PaymentVoucherDetail extends Model
         'remarks',
         'cheque_slip',
         'remaining_balance'
-        
+
     ];
 
-    
 
     protected static function booted()
     {
+        self::observe(PaymentVoucherDetailObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 
     public function receiptVoucher()
     {
-        return $this->belongsTo(PaymentVoucher::class,'receipt_voucher_id');
+        return $this->belongsTo(PaymentVoucher::class, 'receipt_voucher_id');
     }
-    
+
     public function company()
     {
         return $this->belongsTo(Company::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class, 'customer_id');
     }
 }

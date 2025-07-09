@@ -23,6 +23,7 @@ class AccountHead extends Model
         'company_id',
         'account_group_id',
         'code',
+        'is_primary',
         'is_active',
         'deleted_at'
     ];

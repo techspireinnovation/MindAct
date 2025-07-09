@@ -48,7 +48,7 @@ class PurchaseObserver
 
         if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
             $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
-            $accHeadBank = AccountHead::firstOrCreate(['name' => $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'is_primary' => true]);
+            $accHeadBank = AccountHead::firstOrCreate(['name' => $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($purchase->payment['bank_name']), 'is_primary' => true]);
             $purchaseAccGroups[$accHeadBank->name] = ['type' => 'credit', 'valueAmount' => $purchase->payment['bank'], 'payment_type' => 'BANK'];
         }
 
@@ -57,7 +57,6 @@ class PurchaseObserver
 
                 $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
-
 
                 VoucherSummary::create([
                     'date' => $purchase->invoice_date,

@@ -31,22 +31,25 @@ class PurchaseObserver
         if ($purchase->roundoff_type === 'minus') {
             $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => 'roundoff_amount', 'payment_type' => ''];
         }
-        dd($purchase->payment);
 
         switch ($purchase->customer->ledger_type) {
             case 'customer':
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
-                    $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['credit'], 'payment_type' => 'CREDIT'];
-                if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null)
-                    $purchaseAccGroups['Cash in Hand'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['cash'], 'payment_type' => 'CASH'];
-                if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
-                    $bankAccountGroup = AccountGroup::where('name', "Bank Accounts")->first();
-                    $accHeadBank = AccountHead::where(['name', $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id])->firstOrCreate();
-                    $purchaseAccGroups[$accHeadBank->name] = ['type' => 'credit', 'valueAmount' => $purchase->payment['bank'], 'payment_type' => 'BANK'];
-                }
+                    $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
             default:
+                if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
+                    $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
+        }
+
+        if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null)
+            $purchaseAccGroups['Cash in Hand'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['cash'], 'payment_type' => 'CASH'];
+
+        if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
+            $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
+            $accHeadBank = AccountHead::firstOrCreate(['name' => $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'is_primary' => true]);
+            $purchaseAccGroups[$accHeadBank->name] = ['type' => 'credit', 'valueAmount' => $purchase->payment['bank'], 'payment_type' => 'BANK'];
         }
 
         try {
@@ -54,7 +57,7 @@ class PurchaseObserver
 
                 $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
-                \Log::info($purchaseAccGroupKey, [$accHead]);
+
 
                 VoucherSummary::create([
                     'date' => $purchase->invoice_date,
@@ -63,8 +66,8 @@ class PurchaseObserver
                     'branch_id' => null,
                     'voucher_number' => "VOC-818200{$purchase->id}",
                     'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
-                    'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchase->{$purchaseAccGroupValue['valueAmount']} : 0,
-                    'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchase->{$purchaseAccGroupValue['valueAmount']} : 0,
+                    'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchase->{$purchaseAccGroupValue['valueAmount']} ?? $purchaseAccGroupValue['valueAmount'] : 0,
+                    'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchase->{$purchaseAccGroupValue['valueAmount']} ?? $purchaseAccGroupValue['valueAmount'] : 0,
                     'tr_bill_number' => $purchase->purchase_bill_number,
                     'cheque_number' => "",
                     'type' => "PURCHASE",

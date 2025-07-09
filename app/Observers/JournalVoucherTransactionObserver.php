@@ -25,6 +25,7 @@ class JournalVoucherTransactionObserver
             'tr_bill_number' => $journalVoucherTransaction->journalVoucher->reference_number,
             'cheque_number' => $journalVoucherTransaction->type,
             'type' => "JOURNAL_VOUCHER",
+            'payment_type' => "BANK",
             'account_head_id' => $journalVoucherTransaction->account_head_id,
         ]);
     }

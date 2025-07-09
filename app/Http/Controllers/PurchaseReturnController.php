@@ -6,10 +6,6 @@ use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
-use App\Models\SaleReturnProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\ProductList;
-
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
@@ -18,7 +14,8 @@ use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnHistory;
 use App\Models\PurchaseReturnProductFieldValue;
 use App\Models\SaleProduct;
-
+use App\Models\SaleReturnProductFieldValue;
+use App\Models\SalesProductFieldValue;
 use App\Models\SalesReturnProduct;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -2628,6 +2625,7 @@ class PurchaseReturnController extends Controller
                 'total_amount' => 'nullable|numeric|min:0',
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.credit' => 'nullable|numeric|min:0',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'return_entire_batch' => 'nullable|boolean',
@@ -3323,8 +3321,8 @@ class PurchaseReturnController extends Controller
     }
 
 
-   
-    
+
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -3370,6 +3368,7 @@ class PurchaseReturnController extends Controller
                 'total_amount' => 'nullable|numeric|min:0',
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.credit' => 'nullable|numeric|min:0',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'return_entire_batch' => 'nullable|boolean',
@@ -3461,27 +3460,27 @@ class PurchaseReturnController extends Controller
                             $unitQuantity = $measureUnit->quantity ?? 1;
 
                             $purchasedPieces = $this->calculatePieces($product->quantity ?? 0, $unitQuantity) +
-                                              $this->calculatePieces($product->free_quantity ?? 0, $unitQuantity);
+                                $this->calculatePieces($product->free_quantity ?? 0, $unitQuantity);
                             $returnedPieces = $product->purchaseProductReturns()
                                 ->where('company_id', $validated['company_id'])
                                 ->whereNull('deleted_at')
                                 ->sum(function ($return) use ($unitQuantity) {
                                     return $this->calculatePieces($return->quantity ?? 0, $unitQuantity) +
-                                           $this->calculatePieces($return->free_quantity ?? 0, $unitQuantity);
+                                        $this->calculatePieces($return->free_quantity ?? 0, $unitQuantity);
                                 });
                             $soldPieces = $product->saleProducts()
                                 ->where('company_id', $validated['company_id'])
                                 ->whereNull('deleted_at')
                                 ->sum(function ($sale) use ($unitQuantity) {
                                     return $this->calculatePieces($sale->quantity ?? 0, $unitQuantity) +
-                                           $this->calculatePieces($sale->free_quantity ?? 0, $unitQuantity);
+                                        $this->calculatePieces($sale->free_quantity ?? 0, $unitQuantity);
                                 });
                             $salesReturnedPieces = SalesReturnProduct::where('product_id', $product->product_id)
                                 ->where('company_id', $validated['company_id'])
                                 ->whereNull('deleted_at')
                                 ->sum(function ($return) use ($unitQuantity) {
                                     return $this->calculatePieces($return->quantity ?? 0, $unitQuantity) +
-                                           $this->calculatePieces($return->free_quantity ?? 0, $unitQuantity);
+                                        $this->calculatePieces($return->free_quantity ?? 0, $unitQuantity);
                                 });
 
                             $availablePieces = max(0, $purchasedPieces - $soldPieces + $salesReturnedPieces - $returnedPieces);
@@ -3600,9 +3599,9 @@ class PurchaseReturnController extends Controller
 
                     $hasFieldValues = !empty($fieldValuesFlat);
                     $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) &&
-                                         PurchaseProductFieldValue::whereIn('purchase_product_id', $purchaseProductIds)
-                                             ->whereNull('deleted_at')
-                                             ->exists();
+                        PurchaseProductFieldValue::whereIn('purchase_product_id', $purchaseProductIds)
+                            ->whereNull('deleted_at')
+                            ->exists();
 
                     Log::debug('Field value requirements for update', [
                         'product_id' => $productData['product_id'],
@@ -3678,7 +3677,7 @@ class PurchaseReturnController extends Controller
                     if ($hasFieldValues) {
                         foreach ($groupedFieldValues as $purchaseProductId => $fvByIndex) {
                             $purchaseProduct = $purchaseProducts->firstWhere('id', $purchaseProductId) ??
-                                             throw new \Exception("Purchase product ID {$purchaseProductId} not found at index {$index}.");
+                                throw new \Exception("Purchase product ID {$purchaseProductId} not found at index {$index}.");
                             $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
 
                             $purchaseMeasureUnit = MeasureUnit::findOrFail($purchaseProduct->measure_unit_id);
@@ -3774,14 +3773,15 @@ class PurchaseReturnController extends Controller
                     // Allocate remaining pieces (FIFO or single purchase_product_id)
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
                         $purchaseProduct = isset($productData['purchase_product_id']) ?
-                                         $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
+                            $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
 
                         if ($purchaseProduct && $purchaseProduct->fieldValues->isNotEmpty()) {
                             throw new \Exception("Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}.");
                         }
 
                         foreach ($purchaseProducts as $purchaseProduct) {
-                            if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) break;
+                            if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0)
+                                break;
 
                             $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
                             $purchaseMeasureUnit = MeasureUnit::findOrFail($purchaseProduct->measure_unit_id);
@@ -3789,7 +3789,8 @@ class PurchaseReturnController extends Controller
 
                             $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id']);
 
-                            if ($totalAvailablePieces <= 0) continue;
+                            if ($totalAvailablePieces <= 0)
+                                continue;
 
                             $totalRemainingPieces = $remainingRegularPieces + $remainingFreePieces;
                             $allocatePieces = min($totalRemainingPieces, $totalAvailablePieces);
@@ -3950,9 +3951,9 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    
 
-    
+
+
 
 
     public function show($id): JsonResponse

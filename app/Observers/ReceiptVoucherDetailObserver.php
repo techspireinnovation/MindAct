@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Models\AccountGroup;
 use App\Models\ReceiptVoucherDetail;
 use App\Models\VoucherSummary;
 
@@ -12,6 +13,17 @@ class ReceiptVoucherDetailObserver
      */
     public function created(ReceiptVoucherDetail $receiptVoucherDetail): void
     {
+        switch ($receiptVoucherDetail->customer->ledger_type) {
+            case 'customer':
+                $bankAccountGroup = AccountGroup::where('name', '=', "Accounts Receivable (Debtors)")->first();
+
+                break;
+            default:
+                $bankAccountGroup = AccountGroup::where('name', '=', "Accounts Payable (Creditors)")->first();
+
+                break;
+        }
+
         VoucherSummary::create([
             'date' => $receiptVoucherDetail->receiptVoucher->date_ad,
             'date_bs' => $receiptVoucherDetail->receiptVoucher->date_bs,
@@ -19,12 +31,12 @@ class ReceiptVoucherDetailObserver
             'branch_id' => null,
             'voucher_number' => $receiptVoucherDetail->receiptVoucher->receipt_voucher_number,
             'particulars' => $receiptVoucherDetail->remarks,
-            //  'debit' => $journalVoucherTransaction->debit,
-            // 'credit' => $journalVoucherTransaction->credit,
-            // 'tr_bill_number' => $journalVoucherTransaction->journalVoucher->reference_number,
-            //'cheque_number' => $journalVoucherTransaction->type,
-            // 'type' => "RECEIPT_VOUCHER",
-            // 'account_head_id' => $journalVoucherTransaction->account_head_id,
+            'payment_type' => strtoupper($receiptVoucherDetail->contra_acount),
+            'credit' => $receiptVoucherDetail->amount,
+            'tr_bill_number' => $receiptVoucherDetail->receiptVoucher->reference_number,
+            'cheque_number' => $receiptVoucherDetail->cheque_slip,
+            'type' => "RECEIPT_VOUCHER",
+            'account_group_id' => $bankAccountGroup?->id,
         ]);
     }
 

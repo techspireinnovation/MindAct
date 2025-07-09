@@ -4,30 +4,25 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
 use App\Models\MeasureUnit;
-use App\Models\ProductList;
-use App\Models\SaleAdditional;
-use App\Models\SalesReturnProduct;
-use App\Models\SaleReturnProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\PurchaseProductFieldValue;
-use App\Models\PurchaseReturnProductFieldValue;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
-
+use App\Models\PurchaseProductFieldValue;
 use App\Models\PurchaseProductReturn;
+use App\Models\PurchaseReturnProductFieldValue;
 use App\Models\Sale;
-
+use App\Models\SaleAdditional;
 use App\Models\SaleProduct;
-
+use App\Models\SaleReturnProductFieldValue;
+use App\Models\SalesProductFieldValue;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -506,9 +501,9 @@ class SaleController extends Controller
                     ->first();
             }
 
-            $primarayMeasureUnitId = MeasureUnit::where('id',$productPrimaryMeasureUnit)->first();
+            $primarayMeasureUnitId = MeasureUnit::where('id', $productPrimaryMeasureUnit)->first();
             $primaryMeasureUnitQuantity = $primarayMeasureUnitId->quantity ?? 0;
-            
+
 
 
             if ($getProductForMeasureUnits) {
@@ -603,7 +598,7 @@ class SaleController extends Controller
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice,$primaryMeasureUnitQuantity,$primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
 
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes) {
@@ -748,7 +743,7 @@ class SaleController extends Controller
                     // 'min_price' => !empty($productPurchaseProducts) ? min(array_column($productPurchaseProducts, 'price')) : 0,
                     'is_vatable' => (bool) $product->is_vatable,
                     'measure_unit_id' => $primarayMeasureUnitId->id ?? null, // No specific measure unit for pieces
-                  
+
                     'measure_unit_quantity' => $primaryMeasureUnitQuantity, // 1 piece = 1 
                     'retail_sale_price' => $retailSalePrice ?? 0,
                     'avg_price' => $avgPrice ?? 0,
@@ -962,6 +957,7 @@ class SaleController extends Controller
                 'pan_number' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
                 'payment' => 'nullable|array',
+                'payment.bank_name' => 'nullable|string',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
                 'payment.bank' => 'nullable|numeric|min:0',
@@ -1750,6 +1746,7 @@ class SaleController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'note' => 'nullable|string|max:255',
                 'is_mail_notify' => 'nullable|boolean',

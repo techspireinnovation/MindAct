@@ -3,30 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
-use App\Models\PurchaseProduct;
-use App\Models\PurchaseProductReturn;
-use App\Models\PurchaseProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\SalesReturn;
-use App\Models\ProductList;
-use App\Models\Sale;
 use App\Models\MeasureUnit;
-use App\Models\SalesReturnProduct;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\PurchaseProduct;
+use App\Models\PurchaseProductFieldValue;
+use App\Models\Sale;
+use App\Models\SaleProduct;
 use App\Models\SaleReturnAdditional;
 use App\Models\SaleReturnProductFieldValue;
-use App\Models\SaleProduct;
-use App\Models\Purchase;
-use App\Models\Product;
-use DB;
+use App\Models\SalesReturn;
+use App\Models\SalesReturnProduct;
 use Carbon\Carbon;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SalesReturnController extends Controller
 {
@@ -1315,7 +1311,7 @@ class SalesReturnController extends Controller
                             'is_vatable' => (bool) $saleProduct->is_vatable,
                             'used_measure_units' => $usedMeasureUnits,
                             'measure_unit_id' => $primaryMeasureUnit,
-                           
+
                             'measure_unit_quantity' => $primaryMeasureUnitQuantity,
                             'purchased_quantity' => 0,
                             'return_quantity' => 0,
@@ -1576,7 +1572,7 @@ class SalesReturnController extends Controller
             return response()->json($response);
 
         } catch (QueryException $e) {
-           
+
             Log::error('Database query error in getAvailableProductsForSalesReturn', [
                 'product_id' => $productId,
                 'product_name' => $productName,
@@ -1703,7 +1699,7 @@ class SalesReturnController extends Controller
             // Fetch sale products based on product criteria
             $productIds = array_filter(array_column($validated['sales_return_products'] ?? [], 'product_id'));
             $productNames = array_filter(array_column($validated['sales_return_products'] ?? [], 'product_name'));
-           $barcodes = array_filter(array_map(fn($item) => $item['barcode'] ?? null, $validated['sales_return_products'] ?? []));
+            $barcodes = array_filter(array_map(fn($item) => $item['barcode'] ?? null, $validated['sales_return_products'] ?? []));
 
             if (empty($productIds) && empty($productNames) && empty($barcodes) && !$validated['return_entire_all'] && empty($validated['sale_product_ids'])) {
                 return response()->json(['error' => 'At least one of product_id, product_name, or barcode must be provided in sales_return_products unless returning entire sale'], 422);
@@ -2602,6 +2598,7 @@ class SalesReturnController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'payment_type' => 'nullable|string|in:cash,credit,bank',
                 'sale_id' => [
@@ -3229,6 +3226,7 @@ class SalesReturnController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'payment_type' => 'nullable|string|in:cash,credit,bank',
                 'return_entire_sale' => 'nullable|boolean',

@@ -3,11 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
-use App\Models\Product;
-use App\Models\Purchase;
-
-use App\Models\ProductList;
 use App\Models\MeasureUnit;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use DB;
@@ -221,6 +220,7 @@ class PurchaseController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'remarks' => 'nullable|string|max:255',
                 'store_id' => 'required|integer|exists:stores,id',
@@ -540,6 +540,7 @@ class PurchaseController extends Controller
             'payment.cash' => 'nullable|numeric|min:0',
             'payment.credit' => 'nullable|numeric|min:0',
             'payment.bank' => 'nullable|numeric|min:0',
+            'payment.bank_name' => 'nullable|string',
             'store_id' => 'nullable|integer|exists:stores,id',
             'bank_id' => 'nullable|integer|exists:banks,id',
             'location_id' => 'nullable|integer|exists:locations,id',

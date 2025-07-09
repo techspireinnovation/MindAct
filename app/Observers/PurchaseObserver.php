@@ -31,8 +31,7 @@ class PurchaseObserver
         if ($purchase->roundoff_type === 'minus') {
             $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => 'roundoff_amount', 'payment_type' => ''];
         }
-
-        // dd($purchase->payment['credit']);
+        dd($purchase->payment);
 
         switch ($purchase->customer->ledger_type) {
             case 'customer':

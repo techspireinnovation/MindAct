@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\AccountGroup;
 use App\Models\AccountHead;
 use App\Models\Purchase;
+use App\Models\Sale;
 use App\Models\VoucherSummary;
 
 class SaleObserver
@@ -12,62 +13,62 @@ class SaleObserver
     /**
      * Handle the Purchase "created" event.
      */
-    public function created(Purchase $purchase): void
+    public function created(Sale $sale): void
     {
-        $purchaseAccGroups = [
-            'Purchase' => ['type' => 'debit', 'valueAmount' => $purchase->sub_total_before_discount, 'payment_type' => ''],
-            'Discount Income' => ['type' => 'credit', 'valueAmount' => $purchase->discount_value, 'payment_type' => ''],
-            'Excise Duty Expenses' => ['type' => 'debit', 'valueAmount' => $purchase->excise_duty, 'payment_type' => ''],
-            'VAT Account' => ['type' => 'debit', 'valueAmount' => $purchase->vat_percent, 'payment_type' => ''],
-            'Health insurance Expenses' => ['type' => 'debit', 'valueAmount' => $purchase->health_insurance, 'payment_type' => ''],
-            'Fright charge' => ['type' => 'debit', 'valueAmount' => $purchase->freight_amount, 'payment_type' => ''],
-            'Scheme Discount Income' => ['type' => 'credit', 'valueAmount' => $purchase->discount_after_vat, 'payment_type' => ''],
+        $saleAccGroups = [
+            'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => ''],
+            'Discount Income' => ['type' => 'debit', 'valueAmount' => $sale->discount_value, 'payment_type' => ''],
+            'Excise Duty Expenses' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
+            'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_percent, 'payment_type' => ''],
+            'Health insurance Expenses' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
+            'Fright charge' => ['type' => 'credit', 'valueAmount' => $sale->freight_amount, 'payment_type' => ''],
+            'Scheme Discount Income' => ['type' => 'debit', 'valueAmount' => $sale->discount_after_vat, 'payment_type' => ''],
         ];
 
-        if ($purchase->roundoff_type === 'plus') {
-            $purchaseAccGroups['Round Off Plus in Purchase'] = ['type' => 'credit', 'valueAmount' => $purchase->roundoff_amount, 'payment_type' => ''];
+        if ($sale->roundoff_type === 'plus') {
+            $saleAccGroups['Round Off Plus in Purchase'] = ['type' => 'credit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
         }
 
-        if ($purchase->roundoff_type === 'minus') {
-            $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => $purchase->roundoff_amount, 'payment_type' => ''];
+        if ($sale->roundoff_type === 'minus') {
+            $saleAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
         }
 
-        switch ($purchase->customer->ledger_type) {
+        switch ($sale->customer->ledger_type) {
             case 'customer':
-                if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
-                    $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
+                if (isset($sale->payment['debit']) && $sale->payment['credit'] !== null)
+                    $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
             default:
-                if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
-                    $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
+                if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
+                    $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
         }
 
-        if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null)
-            $purchaseAccGroups['Cash in Hand'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['cash'], 'payment_type' => 'CASH'];
+        if (isset($sale->payment['cash']) && $sale->payment['cash'] !== null)
+            $saleAccGroups['Cash in Hand'] = ['type' => 'debit', 'valueAmount' => $sale->payment['cash'], 'payment_type' => 'CASH'];
 
-        if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
+        if (isset($sale->payment['bank']) && $sale->payment['bank'] !== null) {
             $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
-            $accHeadBank = AccountHead::firstOrCreate(['name' => $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($purchase->payment['bank_name']), 'is_primary' => true]);
-            $purchaseAccGroups[$accHeadBank->name] = ['type' => 'credit', 'valueAmount' => $purchase->payment['bank'], 'payment_type' => 'BANK'];
+            $accHeadBank = AccountHead::firstOrCreate(['name' => $sale->payment['bank_name'], 'company_id' => $sale->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($sale->payment['bank_name']), 'is_primary' => true]);
+            $saleAccGroups[$accHeadBank->name] = ['type' => 'debit', 'valueAmount' => $sale->payment['bank'], 'payment_type' => 'BANK'];
         }
 
         try {
-            foreach ($purchaseAccGroups as $purchaseAccGroupKey => $purchaseAccGroupValue) {
+            foreach ($saleAccGroups as $saleAccGroupKey => $saleAccGroupValue) {
 
-                $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
-                $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
+                $accGroup = AccountGroup::where('name', $saleAccGroupKey)->first();
+                $accHead = AccountHead::where('name', $saleAccGroupKey)->first();
 
                 VoucherSummary::create([
-                    'date' => $purchase->invoice_date,
-                    'date_bs' => $purchase->invoice_date_bs,
-                    'company_id' => $purchase->company_id,
+                    'date' => $sale->invoice_date,
+                    'date_bs' => $sale->invoice_date_bs,
+                    'company_id' => $sale->company_id,
                     'branch_id' => null,
-                    'voucher_number' => "SLVOU-818200{$purchase->id}",
-                    'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
-                    'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchaseAccGroupValue['valueAmount'] : 0,
-                    'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchaseAccGroupValue['valueAmount'] : 0,
-                    'tr_bill_number' => $purchase->purchase_bill_number,
+                    'voucher_number' => "SLVOU-818200{$sale->id}",
+                    'particulars' => "Product Sale to - {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+                    'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
+                    'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
+                    'tr_bill_number' => $sale->invoice_number,
                     'type' => "PURCHASE",
                     'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
                     'account_group_id' => $accGroup?->id,

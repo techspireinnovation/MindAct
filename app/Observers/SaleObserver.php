@@ -17,20 +17,20 @@ class SaleObserver
     {
         $saleAccGroups = [
             'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => ''],
-            'Discount Income' => ['type' => 'debit', 'valueAmount' => $sale->discount_value, 'payment_type' => ''],
-            'Excise Duty Expenses' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
+            'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount_value, 'payment_type' => ''],
+            'Excise Duty Income' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_percent, 'payment_type' => ''],
-            'Health insurance Expenses' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
-            'Fright charge' => ['type' => 'credit', 'valueAmount' => $sale->freight_amount, 'payment_type' => ''],
-            'Scheme Discount Income' => ['type' => 'debit', 'valueAmount' => $sale->discount_after_vat, 'payment_type' => ''],
+            'Health insurance Income' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
+            'Fright Charge Income' => ['type' => 'credit', 'valueAmount' => $sale->freight_amount, 'payment_type' => ''],
+            'Scheme Discount' => ['type' => 'debit', 'valueAmount' => $sale->discount_after_vat, 'payment_type' => ''],
         ];
 
         if ($sale->roundoff_type === 'plus') {
-            $saleAccGroups['Round Off Plus in Purchase'] = ['type' => 'credit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
+            $saleAccGroups['Round Off Plus in Sales'] = ['type' => 'credit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
         }
 
         if ($sale->roundoff_type === 'minus') {
-            $saleAccGroups['Round Off Minus in Purchase'] = ['type' => 'debit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
+            $saleAccGroups['Round Off Minus in Sales'] = ['type' => 'debit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
         }
 
         switch ($sale->customer->ledger_type) {

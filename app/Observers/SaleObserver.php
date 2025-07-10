@@ -35,12 +35,12 @@ class SaleObserver
 
         switch ($sale->customer->ledger_type) {
             case 'customer':
-                if (isset($sale->payment['debit']) && $sale->payment['credit'] !== null)
-                    $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
+                if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
+                    $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
             default:
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
-                    $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
+                    $saleAccGroups['Accounts Payable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
         }
 

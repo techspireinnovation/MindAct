@@ -27,7 +27,7 @@ class VoucherSummaryController extends Controller
         }
 
         $vouchers = VoucherSummary::selectRaw('
-                    date_bs,
+                    date_bs, voucher_summaries.id,
                     date,
                     tr_bill_number,
                     voucher_number,
@@ -61,7 +61,7 @@ class VoucherSummaryController extends Controller
         }
 
         $vouchers = VoucherSummary::selectRaw('
-                    date_bs,
+                    date_bs, voucher_summaries.id,
                     date,
                     voucher_number,
                     a.name AS account_head,

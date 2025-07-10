@@ -37,7 +37,7 @@ class VoucherSummaryController extends Controller
         ')->leftJoin('account_groups as b', 'account_group_id', '=', 'b.id')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('account_head_id'), function ($rr) use ($request) {
             $rr->where('account_head_id', $request->account_head_id);
         })->when($request->has('account_group_id'), function ($rr) use ($request) {
-            $rr->where('account_group_id', $request->account_group_id);
+            $rr->where('voucher_summaries.account_group_id', $request->account_group_id);
         })->when($request->has('payment_type'), function ($rr) use ($request) {
             $rr->where('payment_type', operator: strtoupper($request->payment_type));
         })->when($request->has('voucher_number'), function ($rr) use ($request) {

@@ -26,8 +26,6 @@ class CustomerObserver
                 break;
         }
 
-
-
     }
 
     /**

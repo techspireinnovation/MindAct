@@ -63,7 +63,7 @@ class SaleObserver
                     'date_bs' => $purchase->invoice_date_bs,
                     'company_id' => $purchase->company_id,
                     'branch_id' => null,
-                    'voucher_number' => "PCVOU-818200{$purchase->id}",
+                    'voucher_number' => "SLVOU-818200{$purchase->id}",
                     'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
                     'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchaseAccGroupValue['valueAmount'] : 0,
                     'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchaseAccGroupValue['valueAmount'] : 0,

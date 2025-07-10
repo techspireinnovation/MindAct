@@ -39,9 +39,9 @@ class VoucherSummaryController extends Controller
         })->when($request->has('account_group_id'), function ($rr) use ($request) {
             $rr->where('account_group_id', $request->account_group_id);
         })->when($request->has('payment_type'), function ($rr) use ($request) {
-            $rr->where('payment_type', strtoupper($request->payment_type));
+            $rr->where('payment_type', operator: strtoupper($request->payment_type));
         })->when($request->has('voucher_number'), function ($rr) use ($request) {
-            $rr->where('voucher_number', strtoupper($request->voucher_number));
+            $rr->where('voucher_number', ($request->voucher_number));
         })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);
@@ -51,7 +51,7 @@ class VoucherSummaryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'type' => 'required|string|in:PURCHASE,SALE,PURCHASE_RETURN,SALE_RETURN,DEBIT,CREDIT,RECEIPT,PAYMENT,PRODUCTION',
+            'type' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -68,7 +68,10 @@ class VoucherSummaryController extends Controller
                     debit,type,
                     credit
         ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
-            $rr->where('type', $request->type);
+            $requestIdentifier = $request->type;
+            $requestIdentifierArry = explode(",", $requestIdentifier);
+            if (!in_array('ALL', $requestIdentifierArry))
+                $rr->whereIn('type', $requestIdentifierArry);
         })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);

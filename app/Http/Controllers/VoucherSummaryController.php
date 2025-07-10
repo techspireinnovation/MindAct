@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\VoucherSummary;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Validator;
@@ -75,6 +77,21 @@ class VoucherSummaryController extends Controller
         })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);
-
     }
+
+
+    public function show($id): JsonResponse
+    {
+        try {
+            $item = VoucherSummary::with(['accountHead:id,name', 'accountGroup:id,name'])->findOrFail($id);
+            return response()->json($item);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
 }

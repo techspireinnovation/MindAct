@@ -33,4 +33,16 @@ class VoucherSummary extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function accountHead()
+    {
+        return $this->belongsTo(AccountHead::class, 'account_head_id');
+
+    }
+
+    public function accountGroup()
+    {
+        return $this->belongsTo(AccountGroup::class, 'account_group_id');
+
+    }
 }

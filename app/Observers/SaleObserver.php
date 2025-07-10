@@ -11,7 +11,7 @@ use App\Models\VoucherSummary;
 class SaleObserver
 {
     /**
-     * Handle the Purchase "created" event.
+     * Handle the Sale "created" event.
      */
     public function created(Sale $sale): void
     {
@@ -70,7 +70,7 @@ class SaleObserver
                     'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
                     'tr_bill_number' => $sale->invoice_number,
                     'type' => "SALE",
-                    'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "SALE",
+                    'payment_type' => $saleAccGroups['payment_type'] ?? "SALE",
                     'account_group_id' => $accGroup?->id,
                     'account_head_id' => $accHead?->id,
                 ]);
@@ -83,7 +83,7 @@ class SaleObserver
     /**
      * Handle the Purchase "updated" event.
      */
-    public function updated(Purchase $purchase): void
+    public function updated(Sale $purchase): void
     {
         //
     }
@@ -91,7 +91,7 @@ class SaleObserver
     /**
      * Handle the Purchase "deleted" event.
      */
-    public function deleted(Purchase $purchase): void
+    public function deleted(Sale $sale): void
     {
         //
     }
@@ -99,7 +99,7 @@ class SaleObserver
     /**
      * Handle the Purchase "restored" event.
      */
-    public function restored(Purchase $purchase): void
+    public function restored(Sale $sale): void
     {
         //
     }
@@ -107,7 +107,7 @@ class SaleObserver
     /**
      * Handle the Purchase "force deleted" event.
      */
-    public function forceDeleted(Purchase $purchase): void
+    public function forceDeleted(Purchase $sale): void
     {
         //
     }

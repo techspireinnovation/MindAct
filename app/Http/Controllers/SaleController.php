@@ -789,6 +789,7 @@ class SaleController extends Controller
         }
     }
 
+
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
@@ -914,6 +915,26 @@ class SaleController extends Controller
     }
 
 
+
+
+
+
+    public function getItemByBillNumber($billNumber): JsonResponse
+    {
+        try {
+            $purchase = Sale::where('invoice_number', $billNumber)->firstOrFail();
+            return $this->show($purchase->id);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
 
 
     public function index(Request $request): JsonResponse

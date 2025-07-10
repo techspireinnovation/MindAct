@@ -16,7 +16,8 @@ class VoucherSummaryController extends Controller
             'to_date' => 'required|string',
             'account_head_id' => 'nullable|numeric',
             'account_group_id' => 'nullable|numeric',
-            'payment_type' => 'nullable|string|in:cash,bank'
+            'payment_type' => 'nullable|string|in:cash,bank',
+            'voucher_number' => 'nullable|string'
         ]);
 
         if ($validator->fails()) {
@@ -39,6 +40,8 @@ class VoucherSummaryController extends Controller
             $rr->where('account_group_id', $request->account_group_id);
         })->when($request->has('payment_type'), function ($rr) use ($request) {
             $rr->where('payment_type', strtoupper($request->payment_type));
+        })->when($request->has('voucher_number'), function ($rr) use ($request) {
+            $rr->where('voucher_number', strtoupper($request->voucher_number));
         })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);

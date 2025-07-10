@@ -69,8 +69,8 @@ class SaleObserver
                     'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
                     'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
                     'tr_bill_number' => $sale->invoice_number,
-                    'type' => "PURCHASE",
-                    'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
+                    'type' => "SALE",
+                    'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "SALE",
                     'account_group_id' => $accGroup?->id,
                     'account_head_id' => $accHead?->id,
                 ]);

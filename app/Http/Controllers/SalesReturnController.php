@@ -805,189 +805,189 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
-   
 
-    
-public function getSaleProductNames(Request $request): JsonResponse
-{
-    try {
-        // Validate inputs
-        $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id',
-        ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
 
-        $companyId = $request->input('company_id');
+    public function getSaleProductNames(Request $request): JsonResponse
+    {
+        try {
+            // Validate inputs
+            $validator = Validator::make($request->all(), [
+                'company_id' => 'required|integer|exists:companies,id',
+            ]);
 
-        Log::debug('Input parameters for sale product names', [
-            'company_id' => $companyId,
-        ]);
-
-        // Authentication and authorization
-        if (!auth()->check()) {
-            return response()->json(['message' => 'Unauthenticated'], 401);
-        }
-
-        $user = auth()->user();
-        $userCompanyId = optional($user->company)->company_id;
-        if ($userCompanyId != $companyId) {
-            return response()->json(['error' => 'Unauthorized access to company resources'], 403);
-        }
-
-        // Fetch measure units
-        $measureUnits = MeasureUnit::where('company_id', $companyId)
-            ->where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->select(['id', 'name', 'quantity'])
-            ->get()
-            ->keyBy('id');
-
-        Log::info('Measure units fetched', [
-            'company_id' => $companyId,
-            'measure_units' => $measureUnits->toArray(),
-        ]);
-
-        // Fetch sales with products
-        $sales = Sale::where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->with([
-                'saleProducts' => function ($query) use ($companyId) {
-                    $query->select([
-                        'sale_products.id',
-                        'sale_products.sale_id',
-                        'sale_products.product_id',
-                        'sale_products.measure_unit_id',
-                        'sale_products.quantity',
-                        'sale_products.free_quantity',
-                        'products.name as product_name',
-                    ])
-                        ->join('products', 'sale_products.product_id', '=', 'products.id')
-                        ->where('sale_products.company_id', $companyId)
-                        ->whereNull('sale_products.deleted_at')
-                        ->whereNull('products.deleted_at');
-                },
-            ])
-            ->select(['id', 'company_id'])
-            ->get();
-
-        if ($sales->isEmpty()) {
-            Log::warning('No sales found', ['company_id' => $companyId]);
-            return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
-        }
-
-        // Fetch sales return products
-        $saleProductIds = $sales->pluck('saleProducts.*.id')->flatten()->unique()->toArray();
-        $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->select([
-                'id',
-                'sale_product_id',
-                'quantity',
-                'free_quantity',
-                'measure_unit_id',
-            ])
-            ->get();
-
-        Log::info('Sales return products fetched', [
-            'sale_product_ids' => $saleProductIds,
-            'sales_return_products' => $salesReturnProducts->toArray(),
-        ]);
-
-        // Aggregate products
-        $products = [];
-        foreach ($sales as $sale) {
-            if ($sale->saleProducts->isEmpty()) {
-                Log::warning('No available products for sale', [
-                    'sale_id' => $sale->id,
-                    'company_id' => $companyId,
-                ]);
-                continue;
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            foreach ($sale->saleProducts as $saleProduct) {
-                $productId = $saleProduct->product_id;
-                // Use sale product's measure unit or default if missing
-                $measureUnitId = $saleProduct->measure_unit_id ?? null;
-                $measureUnit = isset($measureUnits[$measureUnitId]) ? [
-                    'id' => $measureUnits[$measureUnitId]->id,
-                    'name' => $measureUnits[$measureUnitId]->name,
-                    'quantity' => $measureUnits[$measureUnitId]->quantity ?? 1,
-                ] : [
-                    'id' => null,
-                    'name' => 'null',
-                    'quantity' => 1,
-                ];
-                $measureUnitQuantity = $measureUnit['quantity'];
+            $companyId = $request->input('company_id');
 
-                if (!isset($measureUnits[$measureUnitId])) {
-                    Log::warning('Measure unit not found for sale product, using default', [
-                        'sale_product_id' => $saleProduct->id,
-                        'measure_unit_id' => $saleProduct->measure_unit_id,
+            Log::debug('Input parameters for sale product names', [
+                'company_id' => $companyId,
+            ]);
+
+            // Authentication and authorization
+            if (!auth()->check()) {
+                return response()->json(['message' => 'Unauthenticated'], 401);
+            }
+
+            $user = auth()->user();
+            $userCompanyId = optional($user->company)->company_id;
+            if ($userCompanyId != $companyId) {
+                return response()->json(['error' => 'Unauthorized access to company resources'], 403);
+            }
+
+            // Fetch measure units
+            $measureUnits = MeasureUnit::where('company_id', $companyId)
+                ->where('is_active', 1)
+                ->whereNull('deleted_at')
+                ->select(['id', 'name', 'quantity'])
+                ->get()
+                ->keyBy('id');
+
+            Log::info('Measure units fetched', [
+                'company_id' => $companyId,
+                'measure_units' => $measureUnits->toArray(),
+            ]);
+
+            // Fetch sales with products
+            $sales = Sale::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->with([
+                    'saleProducts' => function ($query) use ($companyId) {
+                        $query->select([
+                            'sale_products.id',
+                            'sale_products.sale_id',
+                            'sale_products.product_id',
+                            'sale_products.measure_unit_id',
+                            'sale_products.quantity',
+                            'sale_products.free_quantity',
+                            'products.name as product_name',
+                        ])
+                            ->join('products', 'sale_products.product_id', '=', 'products.id')
+                            ->where('sale_products.company_id', $companyId)
+                            ->whereNull('sale_products.deleted_at')
+                            ->whereNull('products.deleted_at');
+                    },
+                ])
+                ->select(['id', 'company_id'])
+                ->get();
+
+            if ($sales->isEmpty()) {
+                Log::warning('No sales found', ['company_id' => $companyId]);
+                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+            }
+
+            // Fetch sales return products
+            $saleProductIds = $sales->pluck('saleProducts.*.id')->flatten()->unique()->toArray();
+            $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->select([
+                    'id',
+                    'sale_product_id',
+                    'quantity',
+                    'free_quantity',
+                    'measure_unit_id',
+                ])
+                ->get();
+
+            Log::info('Sales return products fetched', [
+                'sale_product_ids' => $saleProductIds,
+                'sales_return_products' => $salesReturnProducts->toArray(),
+            ]);
+
+            // Aggregate products
+            $products = [];
+            foreach ($sales as $sale) {
+                if ($sale->saleProducts->isEmpty()) {
+                    Log::warning('No available products for sale', [
+                        'sale_id' => $sale->id,
+                        'company_id' => $companyId,
                     ]);
+                    continue;
                 }
 
-                // Initialize product entry
-                if (!isset($products[$productId])) {
-                    $products[$productId] = [
-                        'product_id' => $productId,
-                        'product_name' => $saleProduct->product_name,
-                        'sale_quantity' => 0,
-                        'sales_return_quantity' => 0,
-                        'available_quantity' => 0,
+                foreach ($sale->saleProducts as $saleProduct) {
+                    $productId = $saleProduct->product_id;
+                    // Use sale product's measure unit or default if missing
+                    $measureUnitId = $saleProduct->measure_unit_id ?? null;
+                    $measureUnit = isset($measureUnits[$measureUnitId]) ? [
+                        'id' => $measureUnits[$measureUnitId]->id,
+                        'name' => $measureUnits[$measureUnitId]->name,
+                        'quantity' => $measureUnits[$measureUnitId]->quantity ?? 1,
+                    ] : [
+                        'id' => null,
+                        'name' => 'null',
+                        'quantity' => 1,
                     ];
-                }
+                    $measureUnitQuantity = $measureUnit['quantity'];
 
-                // Calculate sale quantity
-                $regularQuantity = $saleProduct->quantity ?? 0;
-                $freeQuantity = $saleProduct->free_quantity ?? 0;
-                $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
-                $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-                $saleTotal = $saleRegular + $saleFree;
+                    if (!isset($measureUnits[$measureUnitId])) {
+                        Log::warning('Measure unit not found for sale product, using default', [
+                            'sale_product_id' => $saleProduct->id,
+                            'measure_unit_id' => $saleProduct->measure_unit_id,
+                        ]);
+                    }
 
-                // Calculate returned quantity
-                $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
-                $returned = 0;
-                foreach ($returnProducts as $returnProduct) {
-                    $returnMeasureUnitId = $returnProduct->measure_unit_id ?? null;
-                    $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$measureUnitId]->quantity : 1;
-                    $regularQuantity = $returnProduct->quantity ?? 0;
-                    $freeQuantity = $returnProduct->free_quantity ?? 0;
+                    // Initialize product entry
+                    if (!isset($products[$productId])) {
+                        $products[$productId] = [
+                            'product_id' => $productId,
+                            'product_name' => $saleProduct->product_name,
+                            'sale_quantity' => 0,
+                            'sales_return_quantity' => 0,
+                            'available_quantity' => 0,
+                        ];
+                    }
 
-                    $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
-                    $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
-                    $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
+                    // Calculate sale quantity
+                    $regularQuantity = $saleProduct->quantity ?? 0;
+                    $freeQuantity = $saleProduct->free_quantity ?? 0;
+                    $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
+                    $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
+                    $saleTotal = $saleRegular + $saleFree;
 
-                    $returned += $returnQuantity; // Accumulate the returned quantity
+                    // Calculate returned quantity
+                    $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
+                    $returned = 0;
+                    foreach ($returnProducts as $returnProduct) {
+                        $returnMeasureUnitId = $returnProduct->measure_unit_id ?? null;
+                        $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$measureUnitId]->quantity : 1;
+                        $regularQuantity = $returnProduct->quantity ?? 0;
+                        $freeQuantity = $returnProduct->free_quantity ?? 0;
 
-                    Log::info('Processing return product', [
-                        'sale_product_id' => $saleProduct->id,
-                        'return_product_id' => $returnProduct->id,
-                        'return_quantity' => $returnQuantity,
-                        'measure_unit_id' => $returnMeasureUnitId,
-                        'measure_unit_quantity' => $returnMeasureUnitQuantity,
-                    ]);
-                }
+                        $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
+                        $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
+                        $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
 
-                if ($returned >= $saleTotal) {
-                    Log::warning('Return quantity equals or exceeds sale quantity', [
-                        'sale_product_id' => $saleProduct->id,
-                        'sale_total' => $saleTotal,
-                        'return_total' => $returned,
-                    ]);
-                    continue; // Skip this sale product
-                }
+                        $returned += $returnQuantity; // Accumulate the returned quantity
 
-                // Calculate available quantity
-                $returnTotal = round($returned, 2);
-                $saleTotal = round($saleTotal, 2);
-                $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
+                        Log::info('Processing return product', [
+                            'sale_product_id' => $saleProduct->id,
+                            'return_product_id' => $returnProduct->id,
+                            'return_quantity' => $returnQuantity,
+                            'measure_unit_id' => $returnMeasureUnitId,
+                            'measure_unit_quantity' => $returnMeasureUnitQuantity,
+                        ]);
+                    }
 
-                // Log for product "Dhojj" with ID 13539
-              
+                    if ($returned >= $saleTotal) {
+                        Log::warning('Return quantity equals or exceeds sale quantity', [
+                            'sale_product_id' => $saleProduct->id,
+                            'sale_total' => $saleTotal,
+                            'return_total' => $returned,
+                        ]);
+                        continue; // Skip this sale product
+                    }
+
+                    // Calculate available quantity
+                    $returnTotal = round($returned, 2);
+                    $saleTotal = round($saleTotal, 2);
+                    $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
+
+                    // Log for product "Dhojj" with ID 13539
+
                     Log::info('Available quantity for Dhojj', [
                         'product_id' => $saleProduct->product_id,
                         'product_name' => $saleProduct->product_name,
@@ -995,71 +995,71 @@ public function getSaleProductNames(Request $request): JsonResponse
                         'return_total' => $returnTotal,
                         'available_quantity' => $availableQuantity,
                     ]);
-                
 
-                Log::info('Quantity calculation for sale product', [
-                    'sale_product_id' => $saleProduct->id,
-                    'sale_total' => $saleTotal,
-                    'return_total' => $returnTotal,
-                    'available_quantity' => $availableQuantity,
-                ]);
 
-                $products[$productId]['sale_quantity'] += $saleTotal;
-                $products[$productId]['sales_return_quantity'] += $returnTotal;
-                $products[$productId]['available_quantity'] += $availableQuantity;
+                    Log::info('Quantity calculation for sale product', [
+                        'sale_product_id' => $saleProduct->id,
+                        'sale_total' => $saleTotal,
+                        'return_total' => $returnTotal,
+                        'available_quantity' => $availableQuantity,
+                    ]);
+
+                    $products[$productId]['sale_quantity'] += $saleTotal;
+                    $products[$productId]['sales_return_quantity'] += $returnTotal;
+                    $products[$productId]['available_quantity'] += $availableQuantity;
+                }
             }
-        }
 
-        // Filter products with available quantity
-        Log::info('Products before filtering', ['products' => $products]);
-        $products = array_filter($products, function ($product) {
-            Log::info('Filtering product', [
-                'product_id' => $product['product_id'],
-                'available_quantity' => $product['available_quantity'],
+            // Filter products with available quantity
+            Log::info('Products before filtering', ['products' => $products]);
+            $products = array_filter($products, function ($product) {
+                Log::info('Filtering product', [
+                    'product_id' => $product['product_id'],
+                    'available_quantity' => $product['available_quantity'],
+                ]);
+                return $product['available_quantity'] > 0;
+            });
+
+            if (empty($products)) {
+                Log::warning('No available products after processing', ['company_id' => $companyId]);
+                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+            }
+
+            // Prepare response
+            $response = array_map(function ($product) {
+                return [
+                    'key' => $product['product_id'],
+                    'value' => $product['product_name'],
+                ];
+            }, array_values($products));
+
+            Log::info('Final response prepared', [
+                'product_count' => count($products),
+                'product_ids' => array_column(array_values($products), 'product_id'),
             ]);
-            return $product['available_quantity'] > 0;
-        });
 
-        if (empty($products)) {
-            Log::warning('No available products after processing', ['company_id' => $companyId]);
-            return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+            return response()->json([
+                'message' => 'Data Received Successfully !!',
+                'data' => $response,
+            ], 200);
+
+        } catch (QueryException $e) {
+            Log::error('Database query error in getSaleProductNames', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings(),
+            ]);
+            return response()->json(['error' => 'Database error occurred'], 500);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error in getSaleProductNames', [
+                'company_id' => $companyId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
-        // Prepare response
-        $response = array_map(function ($product) {
-            return [
-                'key' => $product['product_id'],
-                'value' => $product['product_name'],
-            ];
-        }, array_values($products));
-
-        Log::info('Final response prepared', [
-            'product_count' => count($products),
-            'product_ids' => array_column(array_values($products), 'product_id'),
-        ]);
-
-        return response()->json([
-            'message' => 'Data Received Successfully !!',
-            'data' => $response,
-        ], 200);
-
-    } catch (QueryException $e) {
-        Log::error('Database query error in getSaleProductNames', [
-            'company_id' => $companyId,
-            'error' => $e->getMessage(),
-            'sql' => $e->getSql(),
-            'bindings' => $e->getBindings(),
-        ]);
-        return response()->json(['error' => 'Database error occurred'], 500);
-    } catch (\Exception $e) {
-        Log::error('Unexpected error in getSaleProductNames', [
-            'company_id' => $companyId,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
-}
 
 
     public function getAvailableProductsForSalesReturn(Request $request): JsonResponse
@@ -1987,10 +1987,24 @@ public function getSaleProductNames(Request $request): JsonResponse
                     }
 
                     if (empty($saleProductIds)) {
-                        $fifoSaleProducts = $filteredSaleProducts->filter(function ($saleProduct) use ($validated, $measureUnits) {
+                        // Apply strict FIFO: Track allocated pieces across all products in this payload
+                        static $allocatedPiecesBySaleProduct = [];
+
+                        $fifoSaleProducts = $filteredSaleProducts->filter(function ($saleProduct) use ($validated, $measureUnits, &$allocatedPiecesBySaleProduct) {
                             $availablePieces = $this->calculateAvailablePieces($saleProduct, $validated['company_id'], $measureUnits);
-                            return $availablePieces > 0;
-                        })->values();
+                            // Subtract previously allocated pieces in this request
+                            $previouslyAllocated = $allocatedPiecesBySaleProduct[$saleProduct->id] ?? 0;
+                            $remainingAvailable = $availablePieces - $previouslyAllocated;
+                            Log::debug('Calculated available pieces after allocation', [
+                                'sale_product_id' => $saleProduct->id,
+                                'total_sold' => $saleProduct->quantity + ($saleProduct->free_quantity ?? 0),
+                                'returned' => $saleProduct->saleProductReturns->sum(fn($return) => $return->quantity + ($return->free_quantity ?? 0)),
+                                'available' => $availablePieces,
+                                'previously_allocated' => $previouslyAllocated,
+                                'remaining_available' => $remainingAvailable
+                            ]);
+                            return $remainingAvailable > 0;
+                        })->sortBy('created_at')->values();
 
                         if ($fifoSaleProducts->isEmpty()) {
                             Log::error('No available sale product found for FIFO', [
@@ -2008,53 +2022,77 @@ public function getSaleProductNames(Request $request): JsonResponse
                         $allocations = [];
 
                         foreach ($fifoSaleProducts as $saleProduct) {
+                            // Skip if no pieces remain to allocate
                             if ($remainingTotalPieces <= 0) {
                                 break;
                             }
-                            $meaureUnitId = $saleProduct->measure_unit_id;
-                            $measureUnitData = MeasureUnit::where('id', $meaureUnitId)->first();
-                            $measureUnits = $measureUnitData->quantity ?? 0;
 
+                            $measureUnitId = $saleProduct->measure_unit_id;
+                            $measureUnitData = $measureUnits[$measureUnitId] ?? MeasureUnit::find($measureUnitId);
+                            $saleMeasureUnitQuantity = $measureUnitData->quantity ?? 1;
 
+                            $availablePiecesFifo = $this->calculateAvailablePieces($saleProduct, $validated['company_id'], $measureUnits);
+                            // Subtract previously allocated pieces
+                            $previouslyAllocated = $allocatedPiecesBySaleProduct[$saleProduct->id] ?? 0;
+                            $availablePiecesFifo -= $previouslyAllocated;
 
-                            $availablePiecesFifo = $this->calculateAvailablePiecesForFifo($saleProduct, $validated['company_id'], $measureUnits);
+                            // Continue allocating from this sale_product_id until it's exhausted
+                            while ($availablePiecesFifo > 0 && $remainingTotalPieces > 0) {
+                                $allocateTotalPieces = min($remainingTotalPieces, $availablePiecesFifo);
+                                $allocateRegularPieces = min($remainingRegularPieces, $allocateTotalPieces);
+                                $allocateFreePieces = min($remainingFreePieces, $allocateTotalPieces - $allocateRegularPieces);
 
+                                if ($allocateTotalPieces > 0) {
+                                    $saleProductIds[] = $saleProduct->id;
+                                    $allocations[$saleProduct->id] = ($allocations[$saleProduct->id] ?? [
+                                        'regular_pieces' => 0,
+                                        'free_pieces' => 0
+                                    ]);
+                                    $allocations[$saleProduct->id]['regular_pieces'] += $allocateRegularPieces;
+                                    $allocations[$saleProduct->id]['free_pieces'] += $allocateFreePieces;
 
-                            $saleMeasureUnitQuantity = $measureUnits[$saleProduct->measure_unit_id]->quantity ?? 1;
+                                    // Update allocated pieces for this sale_product_id
+                                    $allocatedPiecesBySaleProduct[$saleProduct->id] = ($allocatedPiecesBySaleProduct[$saleProduct->id] ?? 0) + $allocateTotalPieces;
 
-                            // Allocate total pieces, prioritizing regular then free
-                            $allocateTotalPieces = min($remainingTotalPieces, $availablePiecesFifo);
-                            $allocateRegularPieces = min($remainingRegularPieces, $allocateTotalPieces);
-                            $allocateFreePieces = min($remainingFreePieces, $allocateTotalPieces - $allocateRegularPieces);
+                                    $remainingRegularPieces -= $allocateRegularPieces;
+                                    $remainingFreePieces -= $allocateFreePieces;
+                                    $remainingTotalPieces -= $allocateTotalPieces;
+                                    $availablePiecesFifo -= $allocateTotalPieces;
 
-                            $remainingRegularPieces -= $allocateRegularPieces;
-                            $remainingFreePieces -= $allocateFreePieces;
-                            $remainingTotalPieces -= ($allocateTotalPieces);
+                                    Log::debug('FIFO allocation', [
+                                        'index' => $index,
+                                        'sale_product_id' => $saleProduct->id,
+                                        'sale_id' => $saleProduct->sale_id,
+                                        'regular_pieces' => $allocateRegularPieces,
+                                        'free_pieces' => $allocateFreePieces,
+                                        'total_pieces' => $allocateTotalPieces,
+                                        'available_pieces' => $availablePiecesFifo,
+                                        'previously_allocated' => $previouslyAllocated,
+                                        'remaining_regular_pieces' => $remainingRegularPieces,
+                                        'remaining_free_pieces' => $remainingFreePieces,
+                                        'sale_measure_unit_quantity' => $saleMeasureUnitQuantity,
+                                    ]);
 
-                            if ($allocateTotalPieces > 0) {
-                                $saleProductIds[] = $saleProduct->id;
-                                $allocations[$saleProduct->id] = [
-                                    'regular_pieces' => $allocateRegularPieces,
-                                    'free_pieces' => $allocateFreePieces,
-                                ];
-
-                                Log::debug('FIFO allocation', [
-                                    'index' => $index,
-                                    'sale_product_id' => $saleProduct->id,
-                                    'sale_id' => $saleProduct->sale_id,
-                                    'regular_pieces' => $allocateRegularPieces,
-                                    'free_pieces' => $allocateFreePieces,
-                                    'total_pieces' => $allocateTotalPieces,
-                                    'available_pieces' => $availablePiecesFifo,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'sale_measure_unit_quantity' => $saleMeasureUnitQuantity,
-                                ]);
+                                    // If this sale_product_id is exhausted, move to the next one
+                                    if ($availablePiecesFifo <= 0) {
+                                        break;
+                                    }
+                                } else {
+                                    break; // No pieces allocated, exit inner loop
+                                }
                             }
                         }
 
                         if ($remainingTotalPieces > 0) {
-
+                            Log::error('Insufficient stock for product', [
+                                'index' => $index,
+                                'product_id' => $product['product_id'] ?? null,
+                                'product_name' => $product['product_name'] ?? null,
+                                'barcode' => $product['barcode'] ?? null,
+                                'requested_total_pieces' => $expectedTotalPieces,
+                                'remaining_regular_pieces' => $remainingRegularPieces,
+                                'remaining_free_pieces' => $remainingFreePieces,
+                            ]);
                             return response()->json([
                                 'error' => "Insufficient stock for product at index {$index}. Requested: {$expectedTotalPieces} pieces (regular: {$expectedRegularPieces}, free: {$expectedFreePieces}), Allocated: " . ($expectedRegularPieces - $remainingRegularPieces) . " regular, " . ($expectedFreePieces - $remainingFreePieces) . " free",
                             ], 422);
@@ -2351,12 +2389,6 @@ public function getSaleProductNames(Request $request): JsonResponse
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
-
-
-
-
-
-
 
 
 

@@ -7,7 +7,7 @@ use App\Models\AccountHead;
 use App\Models\Purchase;
 use App\Models\VoucherSummary;
 
-class PurchaseObserver
+class SaleObserver
 {
     /**
      * Handle the Purchase "created" event.

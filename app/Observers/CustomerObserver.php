@@ -16,13 +16,20 @@ class CustomerObserver
         switch ($customer->ledger_type) {
 
             case 'customer':
-                $bankAccountGroup = AccountGroup::where('name', '=', "Accounts Receivable (Debtors)")->first();
-                AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($customer->party_name), 'is_primary' => true]);
+                $name = "Accounts Receivable (Debtors)";
+                $bankAccountGroup = AccountGroup::where('name', '=', $name)->first();
+                $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();
+                $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+                AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
                 break;
 
             default:
-                $bankAccountGroup = AccountGroup::where('name', '=', "Accounts Payable (Creditors)")->first();
-                AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($customer->party_name), 'is_primary' => true]);
+                $name = "Accounts Payable (Creditors)";
+                $bankAccountGroup = AccountGroup::where('name', '=', $name)->first();
+                $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();
+                $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+
+                AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
                 break;
         }
 

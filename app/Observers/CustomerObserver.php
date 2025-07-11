@@ -13,16 +13,10 @@ class CustomerObserver
      */
     public function created(Customer $customer): void
     {
-        switch ($customer->ledger_type) {
-
-            case 'customer':
-                $name = "Accounts Receivable (Debtors)";
-                break;
-
-            default:
-                $name = "Accounts Payable (Creditors)";
-                break;
-        }
+        $name = match ($customer->ledger_type) {
+            'customer' => "Accounts Receivable (Debtors)",
+            default => "Accounts Payable (Creditors)",
+        };
 
         $bankAccountGroup = AccountGroup::where('name', '=', $name)->first();
         $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();

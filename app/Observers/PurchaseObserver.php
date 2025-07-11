@@ -57,7 +57,6 @@ class PurchaseObserver
 
                 $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
-                //\Log::info("purchaseAccGroupValue", $purchaseAccGroupValue);
 
                 VoucherSummary::create([
                     'date' => $purchase->invoice_date,

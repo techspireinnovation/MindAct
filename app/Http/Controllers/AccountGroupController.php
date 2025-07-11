@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\AccountGroup;
 use App\Models\AccountHead;
+use App\Models\VoucherSummary;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -177,7 +178,7 @@ class AccountGroupController extends Controller
 
     private function checkIfUsed($id): bool
     {
-        if (AccountHead::where('account_group_id', $id)->first()) {
+        if (AccountHead::where('account_group_id', $id)->first() || VoucherSummary::where('account_group_id', $id)->first()) {
             return true;
         }
         return false;

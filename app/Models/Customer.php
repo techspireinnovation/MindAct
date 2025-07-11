@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
-use App\Models\Sale;
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\CustomerObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -43,6 +43,7 @@ class Customer extends Model
 
     protected static function booted()
     {
+        self::observe(CustomerObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

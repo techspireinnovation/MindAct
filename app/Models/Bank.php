@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\BankObserver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -30,6 +31,7 @@ class Bank extends Model
 
     protected static function booted()
     {
+        self::observe(BankObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 }

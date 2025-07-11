@@ -994,7 +994,7 @@ class SaleController extends Controller
                                 ->whereNull('deleted_at');
                         }),
                 ],
-                'roundoff_amount' => 'nullable|numeric|max:255',
+                'round_off_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
                 'vat_amount' => 'nullable|numeric',

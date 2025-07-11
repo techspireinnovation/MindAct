@@ -982,7 +982,7 @@ class SaleController extends Controller
                 'sub_total_before_discount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'discount_after_vat' => 'nullable|numeric|min:0',
-                'freight_amount' => 'nullable|numeric|min:0',
+                'freight_charge' => 'nullable|numeric|min:0',
                 'excise_duty' => 'nullable|numeric|min:0',
                 'health_insurance' => 'nullable|numeric|min:0',
                 'balance' => 'nullable|numeric|min:0',
@@ -1188,7 +1188,7 @@ class SaleController extends Controller
                     'sub_total_before_discount' => $validated['sub_total_before_discount'] ?? 0,
                     'discount' => $validated['discount'] ?? 0,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? 0,
-                    'freight_amount' => $validated['freight_amount'] ?? 0,
+                    'freight_charge' => $validated['freight_charge'] ?? 0,
                     'excise_duty' => $validated['excise_duty'] ?? 0,
                     'health_insurance' => $validated['health_insurance'] ?? 0,
                     'balance' => $validated['balance'] ?? 0,
@@ -1206,6 +1206,7 @@ class SaleController extends Controller
                     'total_amount' => $validated['total_amount'] ?? 0,
                     'purchase_id' => $validated['purchase_id'] ?? null,
                     'vat_amount' => $validated['vat_amount'] ?? null,
+                    'payment' => $validated['payment'] ?? null,
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 

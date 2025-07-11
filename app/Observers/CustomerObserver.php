@@ -17,21 +17,17 @@ class CustomerObserver
 
             case 'customer':
                 $name = "Accounts Receivable (Debtors)";
-                $bankAccountGroup = AccountGroup::where('name', '=', $name)->first();
-                $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();
-                $code = $accountHead ? (int) $accountHead->code + 1 : 1;
-                AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
                 break;
 
             default:
                 $name = "Accounts Payable (Creditors)";
-                $bankAccountGroup = AccountGroup::where('name', '=', $name)->first();
-                $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();
-                $code = $accountHead ? (int) $accountHead->code + 1 : 1;
-
-                AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
                 break;
         }
+
+        $bankAccountGroup = AccountGroup::where('name', '=', $name)->first();
+        $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();
+        $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+        AccountHead::firstOrCreate(['name' => $customer->party_name, 'company_id' => $customer->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
 
     }
 

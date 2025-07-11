@@ -528,6 +528,9 @@ class PurchaseReturnController extends Controller
 
 
 
+  
+
+   
     public function getPurchaseByBillNumber(Request $request): JsonResponse
     {
         try {
@@ -590,7 +593,6 @@ class PurchaseReturnController extends Controller
 
             $purchase = $purchaseQuery->first();
 
-
             if (!$purchase) {
                 Log::info('Purchase not found', [
                     'company_id' => $companyId,
@@ -611,8 +613,8 @@ class PurchaseReturnController extends Controller
             }
 
             // Prepare response data
-            $purchaseData = $purchase ? $purchase->toArray() : [];
-            $payment = $purchase->payment;
+            $purchaseData = $purchase->toArray();
+            $payment = $purchase->payment ?? [];
 
             $purchaseData['payment'] = [
                 'cash' => $payment['cash'] ?? null,
@@ -626,6 +628,13 @@ class PurchaseReturnController extends Controller
                 ->keyBy('id');
 
             $purchaseProducts = collect($purchaseData['purchase_products'])->filter(function ($product) use ($companyId, $measureUnitsCalc) {
+                Log::debug('Raw purchase product data', [
+                    'purchase_product_id' => $product['id'] ?? 'unknown',
+                    'quantity' => $product['quantity'] ?? 0,
+                    'free_quantity' => $product['free_quantity'] ?? 0,
+                    'measure_unit_id' => $product['measure_unit_id'] ?? null,
+                ]);
+
                 // Ensure measureUnit is valid
                 $measureUnitId = $product['measure_unit_id'] ?? null;
                 $unitData = isset($measureUnitsCalc[$measureUnitId]) ? [
@@ -643,36 +652,83 @@ class PurchaseReturnController extends Controller
                     'measure_unit' => $unitData,
                 ]);
 
-
-
                 // Calculate total quantity in pieces
-                $totalQuantity = ($product['quantity'] ?? 0) + ($product['free_quantity'] ?? 0);
+                $totalQuantity = ((float) ($product['quantity'] ?? 0)) + ((float) ($product['free_quantity'] ?? 0));
                 $unitQuantity = $unitData['quantity'] ?? 1;
                 $decimalStr = explode('.', (string) $totalQuantity);
                 $quantityInt = floor($totalQuantity);
-                $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0;
+                $decimalDigits = isset($decimalStr[1]) ? (int) str_replace('.', '', $decimalStr[1]) : 0;
                 $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
+
+                Log::debug('Total purchase quantity calculation', [
+                    'product_id' => $product['id'] ?? 'unknown',
+                    'quantity' => $product['quantity'] ?? 0,
+                    'free_quantity' => $product['free_quantity'] ?? 0,
+                    'total_quantity' => $totalQuantity,
+                    'unit_quantity' => $unitQuantity,
+                    'quantity_int' => $quantityInt,
+                    'decimal_digits' => $decimalDigits,
+                    'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
+                ]);
 
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
-                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ($return['quantity'] ?? 0) + ($return['free_quantity'] ?? 0);
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                    $measureUnitQuantity = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+                    $quantity = (float) ($return['quantity'] ?? 0);
+                    $freeQuantity = (float) ($return['free_quantity'] ?? 0);
+
+                    // Calculate pieces for quantity
+                    $integerPart = floor($quantity);
+                    $decimalPart = $quantity - $integerPart;
+                    $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
+                    $quantityPieces = ($integerPart * $measureUnitQuantity) + $decimalPieces;
+
+                    // Calculate pieces for free_quantity
+                    $freeIntegerPart = floor($freeQuantity);
+                    $freeDecimalPart = $freeQuantity - $freeIntegerPart;
+                    $freeDecimalPieces = $freeDecimalPart > 0 ? (int) str_replace('.', '', (string) $freeDecimalPart) : 0;
+                    $freeQuantityPieces = ($freeIntegerPart * $measureUnitQuantity) + $freeDecimalPieces;
+
+                    $returnTotal = $quantityPieces + $freeQuantityPieces;
+
+                    Log::debug('Return quantity calculation', [
+                        'return_id' => $return['id'] ?? 'unknown',
+                        'quantity' => $quantity,
+                        'free_quantity' => $freeQuantity,
+                        'sum_quantity' => $quantity + $freeQuantity,
+                        'measure_unit_id' => $unitId,
+                        'measure_unit_quantity' => $measureUnitQuantity,
+                        'quantity_pieces' => $quantityPieces,
+                        'free_quantity_pieces' => $freeQuantityPieces,
+                        'total_returned_pieces' => $returnTotal,
+                    ]);
+
+                    return $returnTotal;
                 });
 
                 // Calculate sold quantities
                 $totalSoldInPieces = collect($product['sale_products'] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = ($sale['quantity'] ?? 0) + ($sale['free_quantity'] ?? 0);
+                    $saleTotalQty = ((float) ($sale['quantity'] ?? 0)) + ((float) ($sale['free_quantity'] ?? 0));
                     $saleDecimalStr = explode('.', (string) $saleTotalQty);
                     $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (float) $saleDecimalStr[1] : 0;
-                    return ($saleQtyInt * $unitQty) + $saleQtyDec;
+                    $saleQtyDec = isset($saleDecimalStr[1]) ? (int) str_replace('.', '', $saleDecimalStr[1]) : 0;
+                    $soldPieces = ($saleQtyInt * $unitQty) + $saleQtyDec;
+
+                    Log::debug('Sale quantity calculation', [
+                        'sale_id' => $sale['id'] ?? 'unknown',
+                        'quantity' => $sale['quantity'] ?? 0,
+                        'free_quantity' => $sale['free_quantity'] ?? 0,
+                        'total_quantity' => $saleTotalQty,
+                        'unit_quantity' => $unitQty,
+                        'sale_qty_int' => $saleQtyInt,
+                        'sale_qty_dec' => $saleQtyDec,
+                        'sold_pieces' => $soldPieces,
+                    ]);
+
+                    return $soldPieces;
                 });
 
                 // Calculate sale returns
@@ -681,17 +737,46 @@ class PurchaseReturnController extends Controller
                 })->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ($return['quantity'] ?? 0) + ($return['free_quantity'] ?? 0);
+                    $retTotalQty = ((float) ($return['quantity'] ?? 0)) + ((float) ($return['free_quantity'] ?? 0));
                     $retDecimalStr = explode('.', (string) $retTotalQty);
                     $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
+                    $saleReturnPieces = ($retQtyInt * $unitQty) + $retQtyDec;
+
+                    Log::debug('Sale return quantity calculation', [
+                        'sale_return_id' => $return['id'] ?? 'unknown',
+                        'quantity' => $return['quantity'] ?? 0,
+                        'free_quantity' => $return['free_quantity'] ?? 0,
+                        'total_quantity' => $retTotalQty,
+                        'unit_quantity' => $unitQty,
+                        'ret_qty_int' => $retQtyInt,
+                        'ret_qty_dec' => $retQtyDec,
+                        'sale_return_pieces' => $saleReturnPieces,
+                    ]);
+
+                    return $saleReturnPieces;
                 });
 
                 $availableQuantityInPieces = $totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces;
 
+                Log::debug('Available quantity calculation', [
+                    'product_id' => $product['id'] ?? 'unknown',
+                    'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
+                    'total_returned_in_pieces' => $totalReturnedInPieces,
+                    'total_sold_in_pieces' => $totalSoldInPieces,
+                    'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
+                    'available_quantity_in_pieces' => $availableQuantityInPieces,
+                ]);
+
                 return $availableQuantityInPieces > 0;
             })->map(function ($product) use ($companyId, $measureUnitsCalc) {
+                Log::debug('Raw purchase product data in map', [
+                    'purchase_product_id' => $product['id'] ?? 'unknown',
+                    'quantity' => $product['quantity'] ?? 0,
+                    'free_quantity' => $product['free_quantity'] ?? 0,
+                    'measure_unit_id' => $product['measure_unit_id'] ?? null,
+                ]);
+
                 // Ensure measureUnit is valid
                 $measureUnitId = $product['measure_unit_id'] ?? null;
                 $unitData = isset($measureUnitsCalc[$measureUnitId]) ? [
@@ -704,90 +789,147 @@ class PurchaseReturnController extends Controller
                     'quantity' => 1
                 ];
 
-                Log::debug('Processing product measure unit', [
+                Log::debug('Processing product measure unit in map', [
                     'purchase_product_id' => $product['id'] ?? 'unknown',
                     'measure_unit' => $unitData,
                 ]);
 
                 // Calculate quantities
                 $unitQuantity = $unitData['quantity'] ?? 1;
-                $quantity = $product['quantity'] ?? 0;
+                $quantity = (float) ($product['quantity'] ?? 0);
                 $decimalStrforRegularQuantity = explode('.', (string) $quantity);
                 $regularQuantityInt = floor($quantity);
-
-                $regularDecimalDigits = isset($decimalStrforRegularQuantity[1]) ? (float) $decimalStrforRegularQuantity[1] : 0;
+                $regularDecimalDigits = isset($decimalStrforRegularQuantity[1]) ? (int) str_replace('.', '', $decimalStrforRegularQuantity[1]) : 0;
                 $totalRegularQuantity = ($regularQuantityInt * $unitQuantity) + $regularDecimalDigits;
-                $freeQuantity = $product['free_quantity'] ?? 0;
+                $freeQuantity = (float) ($product['free_quantity'] ?? 0);
                 $decimalStrforFreeQuantity = explode('.', (string) $freeQuantity);
                 $freeQuantityInt = floor($freeQuantity);
-
-                $freeDecimalDigits = isset($decimalStrforFreeQuantity[1]) ? (float) $decimalStrforFreeQuantity[1] : 0;
+                $freeDecimalDigits = isset($decimalStrforFreeQuantity[1]) ? (int) str_replace('.', '', $decimalStrforFreeQuantity[1]) : 0;
                 $totalFreeQuantity = ($freeQuantityInt * $unitQuantity) + $freeDecimalDigits;
-
-
-                //For Totral Remaining 
-                $totalQuantity = $quantity + $freeQuantity;
-
-                $decimalStr = explode('.', (string) $totalQuantity);
-                $quantityInt = floor($totalQuantity);
-                $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0;
-                $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
-                $totalPurchaseQuantityInUOM = $totalQuantity;
-
-
-
-                $returnedRegularInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
-                    $unitId = $return['measure_unit_id'] ?? null;
-                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retQty = $return['quantity'] ?? 0; // Regular quantity returned
-                    $retDecimalStr = explode('.', (string) $retQty);
-                    $retQtyInt = floor($retQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
-                });
-
-                $returnedFreeInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
-                    $unitId = $return['measure_unit_id'] ?? null;
-                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retFreeQty = $return['free_quantity'] ?? 0; // Free quantity returned
-                    $retDecimalStr = explode('.', (string) $retFreeQty);
-                    $retQtyInt = floor($retFreeQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
-                });
-
-                // Adjust remaining quantities
-                $remainingRegularQuantity = max($totalRegularQuantity - $returnedRegularInPieces, 0);
-                $remainingFreeQuantity = max($totalFreeQuantity - $returnedFreeInPieces, 0);
 
                 // For Total Remaining
                 $totalQuantity = $quantity + $freeQuantity;
                 $decimalStr = explode('.', (string) $totalQuantity);
                 $quantityInt = floor($totalQuantity);
-                $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0;
+                $decimalDigits = isset($decimalStr[1]) ? (int) str_replace('.', '', $decimalStr[1]) : 0;
                 $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
                 $totalPurchaseQuantityInUOM = $totalQuantity;
+
+                Log::debug('Purchase quantity in map', [
+                    'product_id' => $product['id'] ?? 'unknown',
+                    'quantity' => $quantity,
+                    'free_quantity' => $freeQuantity,
+                    'total_quantity' => $totalQuantity,
+                    'unit_quantity' => $unitQuantity,
+                    'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
+                    'total_purchase_quantity_in_uom' => $totalPurchaseQuantityInUOM,
+                ]);
 
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ($return['quantity'] ?? 0) + ($return['free_quantity'] ?? 0);
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                    $quantity = (float) ($return['quantity'] ?? 0);
+                    $freeQuantity = (float) ($return['free_quantity'] ?? 0);
+
+                    // Calculate pieces for quantity
+                    $integerPart = floor($quantity);
+                    $decimalPart = $quantity - $integerPart;
+                    $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
+                    $quantityPieces = ($integerPart * $unitQty) + $decimalPieces;
+
+                    // Calculate pieces for free_quantity
+                    $freeIntegerPart = floor($freeQuantity);
+                    $freeDecimalPart = $freeQuantity - $freeIntegerPart;
+                    $freeDecimalPieces = $freeDecimalPart > 0 ? (int) str_replace('.', '', (string) $freeDecimalPart) : 0;
+                    $freeQuantityPieces = ($freeIntegerPart * $unitQty) + $freeDecimalPieces;
+
+                    $totalReturned = $quantityPieces + $freeQuantityPieces;
+
+                    Log::debug('Total returned in map', [
+                        'return_id' => $return['id'] ?? 'unknown',
+                        'quantity' => $quantity,
+                        'free_quantity' => $freeQuantity,
+                        'sum_quantity' => $quantity + $freeQuantity,
+                        'unit_quantity' => $unitQty,
+                        'quantity_integer_part' => $integerPart,
+                        'quantity_decimal_part' => $decimalPart,
+                        'quantity_decimal_pieces' => $decimalPieces,
+                        'quantity_pieces' => $quantityPieces,
+                        'free_integer_part' => $freeIntegerPart,
+                        'free_decimal_part' => $freeDecimalPart,
+                        'free_decimal_pieces' => $freeDecimalPieces,
+                        'free_quantity_pieces' => $freeQuantityPieces,
+                        'total_returned' => $totalReturned,
+                    ]);
+
+                    return $totalReturned;
+                });
+
+                $returnedRegularInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
+                    $unitId = $return['measure_unit_id'] ?? null;
+                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+                    $retQty = (float) ($return['quantity'] ?? 0);
+                    $retDecimalStr = explode('.', (string) $retQty);
+                    $retQtyInt = floor($retQty);
+                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
+                    $returnedPieces = ($retQtyInt * $unitQty) + $retQtyDec;
+
+                    Log::debug('Returned regular quantity in map', [
+                        'return_id' => $return['id'] ?? 'unknown',
+                        'quantity' => $retQty,
+                        'unit_quantity' => $unitQty,
+                        'ret_qty_int' => $retQtyInt,
+                        'ret_qty_dec' => $retQtyDec,
+                        'returned_pieces' => $returnedPieces,
+                    ]);
+
+                    return $returnedPieces;
+                });
+
+                $returnedFreeInPieces = collect($product['purchase_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
+                    $unitId = $return['measure_unit_id'] ?? null;
+                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+                    $retFreeQty = (float) ($return['free_quantity'] ?? 0);
+                    $retDecimalStr = explode('.', (string) $retFreeQty);
+                    $retQtyInt = floor($retFreeQty);
+                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
+                    $returnedFreePieces = ($retQtyInt * $unitQty) + $retQtyDec;
+
+                    Log::debug('Returned free quantity in map', [
+                        'return_id' => $return['id'] ?? 'unknown',
+                        'free_quantity' => $retFreeQty,
+                        'unit_quantity' => $unitQty,
+                        'ret_qty_int' => $retQtyInt,
+                        'ret_qty_dec' => $retQtyDec,
+                        'returned_free_pieces' => $returnedFreePieces,
+                    ]);
+
+                    return $returnedFreePieces;
                 });
 
                 // Calculate sold quantities
                 $totalSoldInPieces = collect($product['sale_products'] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = ($sale['quantity'] ?? 0) + ($sale['free_quantity'] ?? 0);
+                    $saleTotalQty = ((float) ($sale['quantity'] ?? 0)) + ((float) ($sale['free_quantity'] ?? 0));
                     $saleDecimalStr = explode('.', (string) $saleTotalQty);
                     $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (float) $saleDecimalStr[1] : 0;
-                    return ($saleQtyInt * $unitQty) + $saleQtyDec;
+                    $saleQtyDec = isset($saleDecimalStr[1]) ? (int) str_replace('.', '', $saleDecimalStr[1]) : 0;
+                    $soldPieces = ($saleQtyInt * $unitQty) + $saleQtyDec;
+
+                    Log::debug('Sale quantity calculation in map', [
+                        'sale_id' => $sale['id'] ?? 'unknown',
+                        'quantity' => $sale['quantity'] ?? 0,
+                        'free_quantity' => $sale['free_quantity'] ?? 0,
+                        'total_quantity' => $saleTotalQty,
+                        'unit_quantity' => $unitQty,
+                        'sale_qty_int' => $saleQtyInt,
+                        'sale_qty_dec' => $saleQtyDec,
+                        'sold_pieces' => $soldPieces,
+                    ]);
+
+                    return $soldPieces;
                 });
 
                 // Calculate sale returns
@@ -796,15 +938,41 @@ class PurchaseReturnController extends Controller
                 })->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ($return['quantity'] ?? 0) + ($return['free_quantity'] ?? 0);
+                    $retTotalQty = ((float) ($return['quantity'] ?? 0)) + ((float) ($return['free_quantity'] ?? 0));
                     $retDecimalStr = explode('.', (string) $retTotalQty);
                     $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
+                    $saleReturnPieces = ($retQtyInt * $unitQty) + $retQtyDec;
+
+                    Log::debug('Sale return quantity calculation in map', [
+                        'sale_return_id' => $return['id'] ?? 'unknown',
+                        'quantity' => $return['quantity'] ?? 0,
+                        'free_quantity' => $return['free_quantity'] ?? 0,
+                        'total_quantity' => $retTotalQty,
+                        'unit_quantity' => $unitQty,
+                        'ret_qty_int' => $retQtyInt,
+                        'ret_qty_dec' => $retQtyDec,
+                        'sale_return_pieces' => $saleReturnPieces,
+                    ]);
+
+                    return $saleReturnPieces;
                 });
 
+                // Adjust remaining quantities
+                $remainingRegularQuantity = max($totalRegularQuantity - $returnedRegularInPieces, 0);
+                $remainingFreeQuantity = max($totalFreeQuantity - $returnedFreeInPieces, 0);
                 $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces, 0);
                 $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
+
+                Log::debug('Final remaining quantity calculation', [
+                    'product_id' => $product['id'] ?? 'unknown',
+                    'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
+                    'total_returned_in_pieces' => $totalReturnedInPieces,
+                    'total_sold_in_pieces' => $totalSoldInPieces,
+                    'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
+                    'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
+                    'remaining_quantity_in_uom' => $remainingQuantityInUOM,
+                ]);
 
                 // Process field values
                 $unavailableQuantityIndices = [];
@@ -848,7 +1016,6 @@ class PurchaseReturnController extends Controller
                         ->map(function ($group) {
                             return $group->map(function ($field) {
                                 return [
-
                                     'product_field_id' => $field->product_field_id,
                                     'value' => $field->value,
                                     'quantity_index' => $field->quantity_index,
@@ -893,15 +1060,14 @@ class PurchaseReturnController extends Controller
                 $groupedFieldValues = array_slice($groupedFieldValues, 0, (int) $remainingQuantityInPieces, true);
                 $groupedFieldValues = array_filter($groupedFieldValues, fn($value) => !empty($value));
 
-                // Log data for debugging
-                Log::debug('Preparing product data', [
+                Log::debug('Field values processing', [
                     'product_id' => $product['id'] ?? 'unknown',
-                    'measure_unit_id' => $product['measure_unit_id'] ?? 'null',
                     'grouped_field_values' => $groupedFieldValues,
-                    'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
+                    'unavailable_quantity_indices' => $unavailableQuantityIndices,
+                    'sale_returned_indices' => $saleReturnedIndices,
                 ]);
-                $getOriginalPrice = Product::where('id', $product['product_id'])->pluck('purchase_rate')->first();
 
+                $getOriginalPrice = Product::where('id', $product['product_id'])->pluck('purchase_rate')->first();
 
                 $getProductForMeasureUnits = Product::with('productLists')
                     ->where('id', $product['product_id'])
@@ -909,6 +1075,7 @@ class PurchaseReturnController extends Controller
                     ->whereNull('deleted_at')
                     ->first();
 
+                $allUnitIds = collect([]);
                 if ($getProductForMeasureUnits) {
                     // Step 1: Get measure_unit_id from Product
                     $unitIds = collect([$getProductForMeasureUnits->measure_unit_id]);
@@ -918,16 +1085,17 @@ class PurchaseReturnController extends Controller
 
                     // Step 3: Merge and make unique
                     $allUnitIds = $unitIds->merge($productListUnitIds)->unique()->values();
-
-
                 } else {
-                    echo 'Product not found';
+                    Log::warning('Product not found for measure units', [
+                        'product_id' => $product['product_id'] ?? 'unknown',
+                        'company_id' => $companyId,
+                    ]);
                 }
 
                 $measureUnitsForProducts = MeasureUnit::whereIn('id', $allUnitIds)
                     ->where('company_id', $companyId)
                     ->whereNull('deleted_at')
-                    ->get(['id', 'name', 'quantity']) // Get as a collection
+                    ->get(['id', 'name', 'quantity'])
                     ->map(function ($unit) {
                         return [
                             'id' => $unit->id,
@@ -935,6 +1103,12 @@ class PurchaseReturnController extends Controller
                             'measure_unit_quantity' => $unit->quantity ?? null,
                         ];
                     });
+
+                Log::debug('Measure units for product', [
+                    'product_id' => $product['product_id'] ?? 'unknown',
+                    'unit_ids' => $allUnitIds->toArray(),
+                    'measure_units' => $measureUnitsForProducts->toArray(),
+                ]);
 
                 // Prepare product data, filtering out invalid values
                 $productData = array_filter([
@@ -953,7 +1127,7 @@ class PurchaseReturnController extends Controller
                     'returned_quantity' => $totalReturnedInPieces,
                     'sold_quantity' => $totalSoldInPieces,
                     'sale_returned_quantity' => $totalSaleReturnsInPieces,
-                    'measure_units_for_products' => $measureUnitsForProducts ?? [],
+                    'measure_units_for_products' => $measureUnitsForProducts->toArray(),
                     'original_price' => $getOriginalPrice ?? 0,
                     'remaining_quantity' => $remainingQuantityInPieces,
                     'regular_remaining_quantity' => $remainingRegularQuantity,
@@ -966,6 +1140,11 @@ class PurchaseReturnController extends Controller
                 ], function ($value) {
                     return !is_null($value) && (!is_array($value) || !empty($value));
                 });
+
+                Log::debug('Final product data', [
+                    'product_id' => $product['id'] ?? 'unknown',
+                    'product_data' => $productData,
+                ]);
 
                 return $productData;
             })->values()->toArray();
@@ -1022,6 +1201,9 @@ class PurchaseReturnController extends Controller
             DB::disableQueryLog();
         }
     }
+
+
+
 
 
     public function getPurchaseByRefBillNumber(Request $request)
@@ -2565,7 +2747,7 @@ class PurchaseReturnController extends Controller
         $freeIntegerUnits = floor($freePieces / $targetMeasureUnitQuantity);
         $freeRemainingPieces = $freePieces - ($freeIntegerUnits * $targetMeasureUnitQuantity);
         // Convert remaining pieces to decimal (e.g., 567 -> 0.567)
-        $freeDecimal = $freeRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+        $freeDecimal = $freeRemainingPieces > 0 ? (float) ('0.' . (int) $freeRemainingPieces) : 0;
         $freeQuantity = $freeIntegerUnits + $freeDecimal;
 
         return [$regularQuantity, $freeQuantity];
@@ -2691,18 +2873,10 @@ class PurchaseReturnController extends Controller
             // Helper function to calculate quantity in pieces
             $calculateQuantityInPieces = function ($quantity, $freeQuantity, $unitQuantity) {
                 $totalQuantity = (float) ($quantity ?? 0) + (float) ($freeQuantity ?? 0);
-
                 $decimalStr = explode('.', (string) $totalQuantity);
-
                 $quantityInt = floor($totalQuantity);
-
                 $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0;
-
-
-
                 $totalPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
-
-
                 Log::debug('Calculating pieces', [
                     'quantity' => $quantity,
                     'free_quantity' => $freeQuantity,
@@ -2713,9 +2887,7 @@ class PurchaseReturnController extends Controller
                     'total_pieces' => $totalPieces,
                 ]);
                 return $totalPieces;
-
             };
-
 
             // Handle entire batch return
             if ($validated['return_entire_batch'] ?? false) {
@@ -2740,7 +2912,6 @@ class PurchaseReturnController extends Controller
 
                         // Calculate purchased pieces
                         $purchasedQuantityInPieces = $calculateQuantityInPieces($product->quantity, $product->free_quantity, $unitQuantity);
-
 
                         // Calculate returned pieces
                         $totalReturnedInPieces = PurchaseProductReturn::where('purchase_product_id', $product->id)
@@ -2809,70 +2980,65 @@ class PurchaseReturnController extends Controller
             }
 
             // Process purchase return products
-            foreach ($validated['purchase_return_products'] as $index => $productData) {
-                $regularQuantity = (float) ($productData['quantity'] ?? 0);
-                $freeQuantity = (float) ($productData['free_quantity'] ?? 0);
-                $totalQuantityInUOM = $regularQuantity + $freeQuantity;
+            // Group products by product_id for FIFO allocation
+            $productsById = collect($validated['purchase_return_products'])->groupBy('product_id')->map(function ($products) {
+                return $products->toArray();
+            })->toArray();
 
-                // Validate measure unit
-                $measureUnit = MeasureUnit::findOrFail($productData['measure_unit_id']);
-                $unitQuantity = $measureUnit->quantity ?? 1;
-                Log::debug('Requested measure unit for product at index ' . $index, [
-                    'measure_unit_id' => $productData['measure_unit_id'],
-                    'unit_quantity' => $unitQuantity,
-                    'product_id' => $productData['product_id'],
-                    'quantity' => $regularQuantity,
-                    'free_quantity' => $freeQuantity,
-                    'total_quantity_in_uom' => $totalQuantityInUOM,
-                ]);
+            foreach ($productsById as $productId => $productGroup) {
+                // Calculate total requested pieces
+                $totalRequestedPieces = 0;
+                $productAllocations = [];
+                $batchQuantities = [];
 
-                // Calculate requested pieces for availability check
-                $requestedQuantityInPieces = $calculateQuantityInPieces($regularQuantity, $freeQuantity, $unitQuantity);
+                // Collect total requested pieces and store product data
+                foreach ($productGroup as $index => $productData) {
+                    $regularQuantity = (float) ($productData['quantity'] ?? 0);
+                    $freeQuantity = (float) ($productData['free_quantity'] ?? 0);
+                    $totalQuantityInUOM = $regularQuantity + $freeQuantity;
 
-                $remainingQuantityInPieces = $requestedQuantityInPieces;
+                    $measureUnit = MeasureUnit::findOrFail($productData['measure_unit_id']);
+                    $unitQuantity = $measureUnit->quantity ?? 1;
 
-                // Normalize field_values
-                $fieldValuesFlat = collect($productData['field_values'])->flatMap(function ($item) {
-                    return is_array($item) && isset($item[0]['product_field_id']) ? $item : [$item];
-                })->toArray();
+                    $regularPieces = $calculateQuantityInPieces($regularQuantity, 0, $unitQuantity);
+                    $freePieces = $calculateQuantityInPieces(0, $freeQuantity, $unitQuantity);
+                    $totalRequestedPieces += $regularPieces + $freePieces;
 
-                $hasFieldValues = !empty($fieldValuesFlat);
-                $allocations = [];
-                $usedQuantityIndexes = [];
+                    $productAllocations[$index] = [
+                        'regular_pieces' => $regularPieces,
+                        'free_pieces' => $freePieces,
+                        'product_data' => $productData,
+                        'allocations' => [],
+                    ];
 
-                // Calculate total available pieces for the product
-                $totalAvailablePieces = 0;
-                $purchaseProductsQuery = PurchaseProduct::where('product_id', $productData['product_id'])
+                    Log::debug('Requested quantities for product', [
+                        'product_id' => $productId,
+                        'index' => $index,
+                        'regular_quantity' => $regularQuantity,
+                        'free_quantity' => $freeQuantity,
+                        'regular_pieces' => $regularPieces,
+                        'free_pieces' => $freePieces,
+                        'total_requested_pieces' => $totalRequestedPieces,
+                        'measure_unit_id' => $productData['measure_unit_id'],
+                        'unit_quantity' => $unitQuantity,
+                    ]);
+                }
+
+                // Build query for PurchaseProducts
+                $purchaseProductsQuery = PurchaseProduct::where('product_id', $productId)
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
                     ->with([
                         'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
-                        'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
+                        'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with('measureUnit'),
                         'saleProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with([
                             'saleReturnProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with([
                                 'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])
                             ])
                         ]),
-                        'measureUnit'
+                        'measureUnit',
+                        'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
                     ]);
-
-                if ($hasFieldValues) {
-                    $purchaseProductsQuery->whereExists(function ($query) use ($validated) {
-                        $query->select(DB::raw(1))
-                            ->from('purchase_product_field_values')
-                            ->whereColumn('purchase_product_field_values.purchase_product_id', 'purchase_products.id')
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at');
-                    });
-                } else {
-                    $purchaseProductsQuery->whereNotExists(function ($query) use ($validated) {
-                        $query->select(DB::raw(1))
-                            ->from('purchase_product_field_values')
-                            ->whereColumn('purchase_product_field_values.purchase_product_id', 'purchase_products.id')
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at');
-                    });
-                }
 
                 if ($validated['purchase_bill_number']) {
                     $purchaseProductsQuery->whereHas('purchase', function ($query) use ($validated) {
@@ -2883,29 +3049,23 @@ class PurchaseReturnController extends Controller
                 $purchaseProducts = $purchaseProductsQuery->orderBy('created_at')->get();
 
                 if ($purchaseProducts->isEmpty()) {
-                    return response()->json(['error' => "No purchase products found for product ID {$productData['product_id']} at index {$index}"], 404);
+                    return response()->json(['error' => "No valid purchase products found for product ID {$productId}"], 404);
                 }
 
+                // Calculate total available pieces and initialize batch quantities
+                $totalAvailablePieces = 0;
                 foreach ($purchaseProducts as $purchaseProduct) {
                     $purchaseMeasureUnit = $purchaseProduct->measureUnit;
                     if (!$purchaseMeasureUnit) {
-                        Log::error('No measure unit found for purchase_product_id ' . $purchaseProduct->id, [
-                            'purchase_product' => $purchaseProduct->toArray(),
-                            'request_measure_unit_id' => $productData['measure_unit_id']
-                        ]);
-                        return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProduct->id} at index {$index}"], 404);
+                        return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProduct->id}"], 404);
                     }
                     $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
 
-                    // Calculate available pieces
                     $purchasedQuantityInPieces = $calculateQuantityInPieces($purchaseProduct->quantity, $purchaseProduct->free_quantity, $purchaseUnitQuantity);
-
                     $totalReturnedInPieces = $purchaseProduct->purchaseProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
                         $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                         return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
                     });
-
-
                     $soldQuantityInPieces = $purchaseProduct->saleProducts->sum(function ($sale) use ($calculateQuantityInPieces) {
                         $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
                         return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
@@ -2918,9 +3078,8 @@ class PurchaseReturnController extends Controller
                     })->sum();
 
                     $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
-
+                    $batchQuantities[$purchaseProduct->id] = $availableQuantityInPieces;
                     $totalAvailablePieces += $availableQuantityInPieces;
-
 
                     Log::debug('Availability check for purchase_product_id ' . $purchaseProduct->id, [
                         'purchased_pieces' => $purchasedQuantityInPieces,
@@ -2929,217 +3088,349 @@ class PurchaseReturnController extends Controller
                         'total_returned_pieces' => $totalReturnedInPieces,
                         'available_pieces' => $availableQuantityInPieces,
                         'total_available_pieces' => $totalAvailablePieces,
-                        'requested_pieces' => $requestedQuantityInPieces,
+                        'requested_pieces' => $totalRequestedPieces,
                     ]);
                 }
 
                 // Check if total requested pieces exceed total available pieces
-                if ($requestedQuantityInPieces > $totalAvailablePieces + 0.0001) {
+                if ($totalRequestedPieces > $totalAvailablePieces + 0.0001) {
                     return response()->json([
-                        'error' => "Insufficient stock for product ID {$productData['product_id']} at index {$index}. Requested: {$totalQuantityInUOM} ({$requestedQuantityInPieces} pieces), Available: {$totalAvailablePieces} pieces"
+                        'error' => "Insufficient stock for product ID {$productId}. Requested: {$totalRequestedPieces} pieces, Available: {$totalAvailablePieces} pieces"
                     ], 422);
                 }
 
-                if ($hasFieldValues) {
-                    // Validate field_values structure
-                    foreach ($fieldValuesFlat as $fv) {
-                        if (!isset($fv['purchase_product_id']) || !is_numeric($fv['purchase_product_id'])) {
-                            return response()->json(['error' => "Invalid or missing purchase_product_id in field_values at index {$index}"], 422);
-                        }
-                    }
+                // Process each product in the group
+                foreach ($productGroup as $index => $productData) {
+                    $regularQuantity = (float) ($productData['quantity'] ?? 0);
+                    $freeQuantity = (float) ($productData['free_quantity'] ?? 0);
+                    $measureUnit = MeasureUnit::findOrFail($productData['measure_unit_id']);
+                    $unitQuantity = $measureUnit->quantity ?? 1;
+                    $remainingRegularPieces = $productAllocations[$index]['regular_pieces'];
+                    $remainingFreePieces = $productAllocations[$index]['free_pieces'];
 
-                    // Group field_values by purchase_product_id and quantity_index
-                    $groupedFieldValues = collect($fieldValuesFlat)
-                        ->groupBy('purchase_product_id')
-                        ->map(function ($group) {
-                            return $group->groupBy('quantity_index')->map(function ($fvGroup) {
-                                return $fvGroup->map(function ($fv) {
-                                    return [
-                                        'product_field_id' => $fv['product_field_id'],
-                                        'value' => $fv['value'],
-                                        'quantity_index' => $fv['quantity_index'],
-                                        'quantity_type' => $fv['quantity_type'],
-                                        'purchase_product_id' => $fv['purchase_product_id'],
-                                    ];
+                    // Normalize field_values
+                    $fieldValuesFlat = collect($productData['field_values'])->flatMap(function ($item) {
+                        return is_array($item) && isset($item[0]['product_field_id']) ? $item : [$item];
+                    })->toArray();
+                    $hasFieldValues = !empty($fieldValuesFlat);
+                    $usedQuantityIndexes = [];
+
+                    // Handle field values
+                    if ($hasFieldValues) {
+                        // Validate field_values structure
+                        foreach ($fieldValuesFlat as $fv) {
+                            if (!isset($fv['purchase_product_id']) || !is_numeric($fv['purchase_product_id'])) {
+                                return response()->json(['error' => "Invalid or missing purchase_product_id in field_values at index {$index}"], 422);
+                            }
+                            if (!isset($fv['quantity_index']) || !is_numeric($fv['quantity_index']) || $fv['quantity_index'] < 0) {
+                                return response()->json(['error' => "Invalid quantity_index in field_values at index {$index}"], 422);
+                            }
+                            if (!isset($fv['quantity_type']) || !in_array($fv['quantity_type'], ['regular', 'free'])) {
+                                return response()->json(['error' => "Invalid quantity_type in field_values at index {$index}. Must be 'regular' or 'free'"], 422);
+                            }
+                            if ($fv['quantity_type'] === 'free' && $freeQuantity == 0) {
+                                return response()->json(['error' => "quantity_type 'free' is not allowed when free_quantity is 0 at index {$index}"], 422);
+                            }
+                            if ($fv['quantity_type'] === 'regular' && $regularQuantity == 0) {
+                                return response()->json(['error' => "quantity_type 'regular' is not allowed when quantity is 0 at index {$index}"], 422);
+                            }
+                        }
+
+                        // Group field values by purchase_product_id and quantity_index
+                        $groupedFieldValues = collect($fieldValuesFlat)
+                            ->groupBy('purchase_product_id')
+                            ->map(function ($group) {
+                                return $group->groupBy('quantity_index')->map(function ($fvGroup) {
+                                    return $fvGroup->map(function ($fv) {
+                                        return [
+                                            'product_field_id' => $fv['product_field_id'],
+                                            'value' => $fv['value'],
+                                            'quantity_index' => $fv['quantity_index'],
+                                            'quantity_type' => $fv['quantity_type'],
+                                            'purchase_product_id' => $fv['purchase_product_id'],
+                                        ];
+                                    })->unique(function ($fv) {
+                                        return "{$fv['product_field_id']}:{$fv['value']}:{$fv['quantity_type']}";
+                                    })->values()->toArray();
                                 })->toArray();
                             })->toArray();
-                        })->toArray();
 
-                    // Validate field value sets
-                    $fieldValueSets = collect($groupedFieldValues)->flatMap(function ($fvByIndex) {
-                        return array_keys($fvByIndex);
-                    })->count();
+                        // Count field value sets for regular and free quantities
+                        $regularFieldValueSets = collect($fieldValuesFlat)
+                            ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
+                            ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                            ->unique()
+                            ->count();
+                        $freeFieldValueSets = collect($fieldValuesFlat)
+                            ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'free')
+                            ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                            ->unique()
+                            ->count();
 
-                    $requiredFieldValueSets = ceil($requestedQuantityInPieces);
+                        Log::debug('Field value sets', [
+                            'product_id' => $productId,
+                            'index' => $index,
+                            'regular_field_value_sets' => $regularFieldValueSets,
+                            'free_field_value_sets' => $freeFieldValueSets,
+                            'regular_pieces' => $remainingRegularPieces,
+                            'free_pieces' => $remainingFreePieces,
+                        ]);
 
-                    Log::debug('Validating field values for product', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'field_value_sets' => $fieldValueSets,
-                        'required_field_value_sets' => $requiredFieldValueSets,
-                        'requested_pieces' => $requestedQuantityInPieces,
-                        'total_quantity_in_uom' => $totalQuantityInUOM,
-                    ]);
-
-                    if ($fieldValueSets != $requiredFieldValueSets) {
-                        return response()->json([
-                            'error' => "Number of field_values sets ({$fieldValueSets}) must equal total pieces ({$requiredFieldValueSets}) for product ID {$productData['product_id']} at index {$index}"
-                        ], 422);
-                    }
-
-                    $purchaseProductIds = array_keys($groupedFieldValues);
-                    $requiresFieldValues = PurchaseProductFieldValue::whereIn('purchase_product_id', $purchaseProductIds)
-                        ->where('company_id', $validated['company_id'])
-                        ->whereNull('deleted_at')
-                        ->exists();
-
-                    if (!$requiresFieldValues) {
-                        return response()->json([
-                            'error' => "Field values provided for product ID {$productData['product_id']} at index {$index}, but no field values are required."
-                        ], 422);
-                    }
-
-                    // Validate product_fields_bill if provided
-                    if (isset($productData['product_fields_bill'])) {
-                        foreach ($productData['product_fields_bill'] as $billSet) {
-                            foreach ($billSet as $field) {
-                                if ($field['purchase_product_id'] != $productData['purchase_product_id']) {
-                                    return response()->json([
-                                        'error' => "Incorrect purchase_product_id {$field['purchase_product_id']} in product_fields_bill for product ID {$productData['product_id']} at index {$index}"
-                                    ], 422);
-                                }
-                            }
-                        }
-                    }
-
-                    foreach ($purchaseProducts as $purchaseProduct) {
-                        $fvByIndex = $groupedFieldValues[$purchaseProduct->id] ?? [];
-                        if (empty($fvByIndex) || $remainingQuantityInPieces <= 0) {
-                            continue;
+                        if ($hasFieldValues && ($regularFieldValueSets != $remainingRegularPieces || $freeFieldValueSets != $remainingFreePieces)) {
+                            return response()->json([
+                                'error' => "Field value sets (Regular: {$regularFieldValueSets}, Free: {$freeFieldValueSets}) must match pieces (Regular: {$remainingRegularPieces}, Free: {$remainingFreePieces}) for product ID {$productId} at index {$index}"
+                            ], 422);
                         }
 
-                        $purchaseMeasureUnit = $purchaseProduct->measureUnit;
-                        $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
-
-                        // Calculate available pieces
-                        $purchasedQuantityInPieces = $calculateQuantityInPieces($purchaseProduct->quantity, $purchaseProduct->free_quantity, $purchaseUnitQuantity);
-                        $totalReturnedInPieces = $purchaseProduct->purchaseProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                            return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                        });
-                        $soldQuantityInPieces = $purchaseProduct->saleProducts->sum(function ($sale) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
-                            return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
-                        });
-                        $salesReturnedInPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($calculateQuantityInPieces) {
-                            return $sale->saleReturnProducts->map(function ($return) use ($calculateQuantityInPieces) {
-                                $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                                return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                            });
-                        })->sum();
-
-                        $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
-                        if ($availableQuantityInPieces <= 0) {
-                            continue;
-                        }
-
-                        // Validate field values
-                        $existingFieldValues = $purchaseProduct->fieldValues
-                            ->groupBy('quantity_index')
-                            ->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
-
-                        $saleReturnFieldValues = $purchaseProduct->saleProducts->flatMap(function ($sale) {
-                            return $sale->saleReturnProducts->flatMap(function ($return) {
-                                return $return->fieldValues;
-                            });
-                        })->groupBy('quantity_index')
-                            ->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
-
-                        $unavailableQuantityIndices = [];
-                        if ($purchaseProduct->purchaseProductReturns->isNotEmpty()) {
-                            $returnIds = $purchaseProduct->purchaseProductReturns->pluck('id');
-                            $unavailableQuantityIndices = PurchaseReturnProductFieldValue::whereIn('purchase_return_product_id', $returnIds)
-                                ->whereNull('deleted_at')
-                                ->pluck('quantity_index')
-                                ->toArray();
-                        }
-                        if ($purchaseProduct->saleProducts->isNotEmpty()) {
-                            $saleIds = $purchaseProduct->saleProducts->pluck('id');
-                            $soldIndices = SalesProductFieldValue::whereIn('sale_product_id', $saleIds)
-                                ->whereNull('deleted_at')
-                                ->pluck('quantity_index')
-                                ->toArray();
-                            $unavailableQuantityIndices = array_merge($unavailableQuantityIndices, $soldIndices);
-                        }
-                        $salesReturnedIndices = SaleReturnProductFieldValue::whereIn(
-                            'sale_return_product_id',
-                            SalesReturnProduct::whereIn('sale_product_id', $purchaseProduct->saleProducts->pluck('id'))
-                                ->whereNull('deleted_at')
-                                ->pluck('id')
-                        )
+                        $purchaseProductIds = array_keys($groupedFieldValues);
+                        $requiresFieldValues = PurchaseProductFieldValue::whereIn('purchase_product_id', $purchaseProductIds)
+                            ->where('company_id', $validated['company_id'])
                             ->whereNull('deleted_at')
-                            ->pluck('quantity_index')
-                            ->toArray();
-                        $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
+                            ->exists();
 
-                        foreach ($fvByIndex as $quantityIndex => $fvSet) {
-                            if (in_array($quantityIndex, $unavailableQuantityIndices) || (!isset($existingFieldValues[$quantityIndex]) && !isset($saleReturnFieldValues[$quantityIndex]))) {
-                                return response()->json(['error' => "Invalid or already returned/sold quantity_index {$quantityIndex} for purchase_product_id {$purchaseProduct->id} at index {$index}"], 422);
-                            }
-                            if (in_array($quantityIndex, $usedQuantityIndexes[$purchaseProduct->id] ?? [])) {
-                                return response()->json(['error' => "Duplicate quantity_index {$quantityIndex} for purchase_product_id {$purchaseProduct->id} at index {$index}"], 422);
-                            }
-                            $providedFieldValues = collect($fvSet)->pluck('value', 'product_field_id')->toArray();
-                            $expectedFieldValues = $existingFieldValues[$quantityIndex] ?? $saleReturnFieldValues[$quantityIndex] ?? [];
-                            if ($providedFieldValues != $expectedFieldValues) {
-                                return response()->json(['error' => "Field values for quantity_index {$quantityIndex} do not match for purchase_product_id {$purchaseProduct->id} at index {$index}"], 422);
-                            }
-                            foreach ($fvSet as $fv) {
-                                if ($fv['quantity_type'] === 'free' && $freeQuantity == 0) {
-                                    return response()->json(['error' => "quantity_type 'free' is not allowed when free_quantity is 0 for quantity_index {$quantityIndex} at index {$index}"], 422);
-                                }
-                                if ($fv['quantity_type'] === 'regular' && $regularQuantity == 0) {
-                                    return response()->json(['error' => "quantity_type 'regular' is not allowed when quantity is 0 for quantity_index {$quantityIndex} at index {$index}"], 422);
-                                }
-                            }
-                            $usedQuantityIndexes[$purchaseProduct->id][] = $quantityIndex;
+                        if ($hasFieldValues && !$requiresFieldValues) {
+                            return response()->json([
+                                'error' => "Field values provided for product ID {$productId} at index {$index}, but no field values are required."
+                            ], 422);
                         }
 
-                        // Allocate pieces
-                        $allocateQuantityInPieces = min($remainingQuantityInPieces, $availableQuantityInPieces);
-                        if ($allocateQuantityInPieces <= 0) {
-                            continue;
+                        // Validate product_fields_bill if provided
+                        if (isset($productData['product_fields_bill'])) {
+                            foreach ($productData['product_fields_bill'] as $billSet) {
+                                foreach ($billSet as $field) {
+                                    if ($field['purchase_product_id'] != $productData['purchase_product_id']) {
+                                        return response()->json([
+                                            'error' => "Incorrect purchase_product_id {$field['purchase_product_id']} in product_fields_bill for product ID {$productId} at index {$index}"
+                                        ], 422);
+                                    }
+                                }
+                            }
                         }
 
-                        // Save quantities directly from payload
-                        $allocations[] = [
-                            'purchase_product_id' => $purchaseProduct->id,
-                            'quantity' => $regularQuantity,
-                            'free_quantity' => $freeQuantity,
-                            'field_values' => collect($fvByIndex)->take(ceil($allocateQuantityInPieces))->toArray(),
-                            'mfd' => $purchaseProduct->mfd ?? ($productData['mfd'] ?? null),
-                            'expiry_date' => $purchaseProduct->expiry_date ?? ($productData['expiry_date'] ?? null),
-                        ];
+                        // Allocate with field values
+                        foreach ($groupedFieldValues as $purchaseProductId => $fvByIndex) {
+                            if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) {
+                                break;
+                            }
 
-                        $remainingQuantityInPieces -= $allocateQuantityInPieces;
+                            $purchaseProduct = $purchaseProducts->firstWhere('id', $purchaseProductId);
+                            if (!$purchaseProduct) {
+                                return response()->json(['error' => "Purchase product ID {$purchaseProductId} not found at index {$index}"], 404);
+                            }
+
+                            $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
+                            $purchaseMeasureUnit = $purchaseProduct->measureUnit;
+                            if (!$purchaseMeasureUnit) {
+                                return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProductId} at index {$index}"], 404);
+                            }
+                            $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
+
+                            $availableQuantityInPieces = $batchQuantities[$purchaseProductId];
+                            if ($availableQuantityInPieces <= 0) {
+                                continue;
+                            }
+
+                            // Validate field values
+                            $existingFieldValues = $purchaseProduct->fieldValues
+                                ->groupBy('quantity_index')
+                                ->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
+                            $saleReturnFieldValues = $purchaseProduct->saleProducts->flatMap(function ($sale) {
+                                return $sale->saleReturnProducts->flatMap(function ($return) {
+                                    return $return->fieldValues;
+                                });
+                            })->groupBy('quantity_index')
+                                ->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
+
+                            $unavailableQuantityIndices = [];
+                            if ($purchaseProduct->purchaseProductReturns->isNotEmpty()) {
+                                $returnIds = $purchaseProduct->purchaseProductReturns->pluck('id');
+                                $unavailableQuantityIndices = PurchaseReturnProductFieldValue::whereIn('purchase_return_product_id', $returnIds)
+                                    ->whereNull('deleted_at')
+                                    ->pluck('quantity_index')
+                                    ->toArray();
+                            }
+                            if ($purchaseProduct->saleProducts->isNotEmpty()) {
+                                $saleIds = $purchaseProduct->saleProducts->pluck('id');
+                                $soldIndices = SalesProductFieldValue::whereIn('sale_product_id', $saleIds)
+                                    ->whereNull('deleted_at')
+                                    ->pluck('quantity_index')
+                                    ->toArray();
+                                $unavailableQuantityIndices = array_merge($unavailableQuantityIndices, $soldIndices);
+                            }
+                            $salesReturnedIndices = SaleReturnProductFieldValue::whereIn(
+                                'sale_return_product_id',
+                                SalesReturnProduct::whereIn('sale_product_id', $purchaseProduct->saleProducts->pluck('id'))
+                                    ->whereNull('deleted_at')
+                                    ->pluck('id')
+                            )
+                                ->whereNull('deleted_at')
+                                ->pluck('quantity_index')
+                                ->toArray();
+                            $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
+
+                            foreach ($fvByIndex as $quantityIndex => $fvSet) {
+                                if (in_array($quantityIndex, $unavailableQuantityIndices) || (!isset($existingFieldValues[$quantityIndex]) && !isset($saleReturnFieldValues[$quantityIndex]))) {
+                                    return response()->json(['error' => "Invalid or already returned/sold quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}"], 422);
+                                }
+                                if (in_array($quantityIndex, $usedQuantityIndexes[$purchaseProductId] ?? [])) {
+                                    return response()->json(['error' => "Duplicate quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}"], 422);
+                                }
+                                $providedFieldValues = collect($fvSet)->pluck('value', 'product_field_id')->toArray();
+                                $expectedFieldValues = $existingFieldValues[$quantityIndex] ?? $saleReturnFieldValues[$quantityIndex] ?? [];
+                                if ($providedFieldValues != $expectedFieldValues) {
+                                    return response()->json(['error' => "Field values for quantity_index {$quantityIndex} do not match for purchase_product_id {$purchaseProductId} at index {$index}"], 422);
+                                }
+                                $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
+                            }
+
+                            // Split field values by quantity_type
+                            $regularFvByIndex = collect($fvByIndex)
+                                ->filter(fn($fvSet) => collect($fvSet)->first()['quantity_type'] === 'regular')
+                                ->toArray();
+                            $freeFvByIndex = collect($fvByIndex)
+                                ->filter(fn($fvSet) => collect($fvSet)->first()['quantity_type'] === 'free')
+                                ->toArray();
+
+                            $totalRequestedForThisProduct = count($regularFvByIndex) + count($freeFvByIndex);
+                            $allocatePieces = min($totalRequestedForThisProduct, $availableQuantityInPieces, $remainingRegularPieces + $remainingFreePieces);
+
+                            if ($allocatePieces > 0) {
+                                $allocateRegularPieces = min(count($regularFvByIndex), $remainingRegularPieces, $allocatePieces);
+                                $allocateFreePieces = min(count($freeFvByIndex), $remainingFreePieces, $allocatePieces - $allocateRegularPieces);
+
+                                // Convert allocated pieces back to target measure unit
+                                $regularQuantity = floor($allocateRegularPieces / $unitQuantity);
+                                $regularRemainingPieces = $allocateRegularPieces - ($regularQuantity * $unitQuantity);
+                                $regularDecimal = $regularRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+                                $allocateRegularQuantity = $regularQuantity + $regularDecimal;
+
+                                $freeQuantity = floor($allocateFreePieces / $unitQuantity);
+                                $freeRemainingPieces = $allocateFreePieces - ($freeQuantity * $unitQuantity);
+                                $freeDecimal = $freeRemainingPieces > 0 ? (float) ('0.' . (int) $freeRemainingPieces) : 0;
+                                $allocateFreeQuantity = $freeQuantity + $freeDecimal;
+
+                                $productAllocations[$index]['allocations'][] = [
+                                    'purchase_product_id' => $purchaseProductId,
+                                    'quantity' => $allocateRegularQuantity,
+                                    'free_quantity' => $allocateFreeQuantity,
+                                    'field_values' => array_merge(
+                                        array_values(array_slice($regularFvByIndex, 0, $allocateRegularPieces)),
+                                        array_values(array_slice($freeFvByIndex, 0, $allocateFreePieces))
+                                    ),
+                                    'mfd' => $productData['mfd'] ?? $purchaseProduct->mfd,
+                                    'expiry_date' => $productData['expiry_date'] ?? $purchaseProduct->expiry_date,
+                                    'customer_id' => $productData['customer_id'] ?? $purchaseProduct->customer_id,
+                                    'return_measure_unit_id' => $productData['measure_unit_id'],
+                                ];
+
+                                $batchQuantities[$purchaseProductId] -= ($allocateRegularPieces + $allocateFreePieces);
+                                $remainingRegularPieces -= $allocateRegularPieces;
+                                $remainingFreePieces -= $allocateFreePieces;
+
+                                Log::debug('Allocation with field values', [
+                                    'product_id' => $productId,
+                                    'index' => $index,
+                                    'purchase_product_id' => $purchaseProductId,
+                                    'allocated_regular_pieces' => $allocateRegularPieces,
+                                    'allocated_free_pieces' => $allocateFreePieces,
+                                    'allocated_regular_quantity' => $allocateRegularQuantity,
+                                    'allocated_free_quantity' => $allocateFreeQuantity,
+                                    'remaining_regular_pieces' => $remainingRegularPieces,
+                                    'remaining_free_pieces' => $remainingFreePieces,
+                                    'batch_remaining_pieces' => $batchQuantities[$purchaseProductId],
+                                ]);
+                            }
+                        }
                     }
-                } else {
-                    foreach ($purchaseProducts as $purchaseProduct) {
-                        if ($remainingQuantityInPieces <= 0) {
-                            break;
+
+                    // Allocate remaining pieces (FIFO or single purchase_product_id)
+                    if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
+                        $purchaseProduct = isset($productData['purchase_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
+
+                        if ($purchaseProduct) {
+                            if ($purchaseProduct->fieldValues->isNotEmpty()) {
+                                return response()->json(['error' => "Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}"], 422);
+                            }
+                            $purchaseProducts = collect([$purchaseProduct]);
                         }
 
-                        $purchaseMeasureUnit = $purchaseProduct->measureUnit;
-                        if (!$purchaseMeasureUnit) {
-                            Log::error('No measure unit found for purchase_product_id ' . $purchaseProduct->id, [
-                                'purchase_product' => $purchaseProduct->toArray(),
-                                'request_measure_unit_id' => $productData['measure_unit_id']
-                            ]);
-                            return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProduct->id} at index {$index}"], 404);
+                        foreach ($purchaseProducts as $purchaseProduct) {
+                            if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) {
+                                break;
+                            }
+
+                            $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
+                            $purchaseMeasureUnit = $purchaseProduct->measureUnit;
+                            if (!$purchaseMeasureUnit) {
+                                return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProduct->id} at index {$index}"], 404);
+                            }
+                            $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
+
+                            $availableQuantityInPieces = $batchQuantities[$purchaseProduct->id];
+                            if ($availableQuantityInPieces <= 0) {
+                                continue;
+                            }
+
+                            // Modified: Cap allocations at requested regular and free pieces separately
+                            $allocateRegularPieces = min($remainingRegularPieces, $availableQuantityInPieces);
+                            $allocateFreePieces = min($remainingFreePieces, max(0, $availableQuantityInPieces - $allocateRegularPieces));
+
+                            if ($allocateRegularPieces > 0 || $allocateFreePieces > 0) {
+                                $regularIntegerQuantity = floor($allocateRegularPieces / $unitQuantity);
+                                $regularRemainingPieces = $allocateRegularPieces - ($regularIntegerQuantity * $unitQuantity);
+                                $regularDecimal = $regularRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+                                $allocateRegularQuantity = $regularIntegerQuantity + $regularDecimal;
+
+                                $freeIntegerQuantity = floor($allocateFreePieces / $unitQuantity);
+                                $freeRemainingPieces = $allocateFreePieces - ($freeIntegerQuantity * $unitQuantity);
+                                $freeDecimal = $freeRemainingPieces > 0 ? (float) ('0.' . (int) $freeRemainingPieces) : 0;
+                                $allocateFreeQuantity = $freeIntegerQuantity + $freeDecimal;
+
+                                $productAllocations[$index]['allocations'][] = [
+                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'quantity' => $allocateRegularQuantity,
+                                    'free_quantity' => $allocateFreeQuantity,
+                                    'field_values' => [],
+                                    'mfd' => $productData['mfd'] ?? $purchaseProduct->mfd,
+                                    'expiry_date' => $productData['expiry_date'] ?? $purchaseProduct->expiry_date,
+                                    'customer_id' => $productData['customer_id'] ?? $purchaseProduct->customer_id,
+                                    'return_measure_unit_id' => $productData['measure_unit_id'],
+                                ];
+
+                                $batchQuantities[$purchaseProduct->id] -= ($allocateRegularPieces + $allocateFreePieces);
+                                $remainingRegularPieces -= $allocateRegularPieces;
+                                $remainingFreePieces -= $allocateFreePieces;
+
+                                Log::debug('FIFO allocation', [
+                                    'product_id' => $productId,
+                                    'index' => $index,
+                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'allocated_regular_pieces' => $allocateRegularPieces,
+                                    'allocated_free_pieces' => $allocateFreePieces,
+                                    'allocated_regular_quantity' => $allocateRegularQuantity,
+                                    'allocated_free_quantity' => $allocateFreeQuantity,
+                                    'remaining_regular_pieces' => $remainingRegularPieces,
+                                    'remaining_free_pieces' => $remainingFreePieces,
+                                    'batch_remaining_pieces' => $batchQuantities[$purchaseProduct->id],
+                                ]);
+                            }
                         }
+                    }
+
+                    if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
+                        return response()->json([
+                            'error' => "Insufficient stock for product ID {$productId} at index {$index}. Requested: " . ($productAllocations[$index]['regular_pieces'] + $productAllocations[$index]['free_pieces']) . " pieces (Regular: {$productAllocations[$index]['regular_pieces']}, Free: {$productAllocations[$index]['free_pieces']}), Allocated: " . (($productAllocations[$index]['regular_pieces'] + $productAllocations[$index]['free_pieces']) - ($remainingRegularPieces + $remainingFreePieces)) . " pieces"
+                        ], 422);
+                    }
+
+                    // Add allocations to processedProducts
+                    foreach ($productAllocations[$index]['allocations'] as $allocation) {
+                        $purchaseProduct = PurchaseProduct::findOrFail($allocation['purchase_product_id']);
+                        $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
+                        $purchaseMeasureUnit = $purchaseProduct->measureUnit;
                         $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
 
-                        // Calculate available pieces
+                        // Log remaining pieces for debugging
                         $purchasedQuantityInPieces = $calculateQuantityInPieces($purchaseProduct->quantity, $purchaseProduct->free_quantity, $purchaseUnitQuantity);
                         $totalReturnedInPieces = $purchaseProduct->purchaseProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
                             $mu = MeasureUnit::findOrFail($return->measure_unit_id);
@@ -3155,85 +3446,32 @@ class PurchaseReturnController extends Controller
                                 return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
                             });
                         })->sum();
+                        $allocatedQuantityInPieces = $calculateQuantityInPieces($allocation['quantity'], $allocation['free_quantity'], $unitQuantity);
+                        $remainingQuantityInPiecesAfterAllocation = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces - $allocatedQuantityInPieces;
 
-                        $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
-                        if ($availableQuantityInPieces <= 0) {
-                            continue;
-                        }
-
-                        // Allocate pieces
-                        $allocateQuantityInPieces = min($remainingQuantityInPieces, $availableQuantityInPieces);
-                        if ($allocateQuantityInPieces <= 0) {
-                            continue;
-                        }
-
-                        // Save quantities directly from payload
-                        $allocations[] = [
-                            'purchase_product_id' => $purchaseProduct->id,
-                            'quantity' => $regularQuantity,
-                            'free_quantity' => $freeQuantity,
-                            'mfd' => $purchaseProduct->mfd ?? ($productData['mfd'] ?? null),
-                            'expiry_date' => $purchaseProduct->expiry_date ?? ($productData['expiry_date'] ?? null),
-                            'field_values' => [],
+                        $processedProducts[] = [
+                            'purchase_product_id' => $allocation['purchase_product_id'],
+                            'product_id' => $productId,
+                            'product_name' => $productData['product_name'] ?? ($purchaseProduct->product->name ?? ''),
+                            'purchase_product_code' => $productData['purchase_product_code'] ?? ($purchaseProduct->product_code ?? ''),
+                            'mfd' => $allocation['mfd'],
+                            'customer_id' => $productData['customer_id'] ?? ($purchaseProduct->customer_id ?? null),
+                            'quantity' => $allocation['quantity'],
+                            'free_quantity' => $allocation['free_quantity'],
+                            'price' => $productData['price'] ?? ($purchaseProduct->price ?? 0),
+                            'discount_percent' => $productData['discount_percent'] ?? 0,
+                            'discount_amount' => $productData['discount_amount'] ?? 0,
+                            'amount' => ($productData['price'] ?? ($purchaseProduct->price ?? 0)) * $allocation['quantity'] - ($productData['discount_amount'] ?? 0),
+                            'is_vatable' => $productData['is_vatable'],
+                            'measure_unit_id' => $productData['measure_unit_id'],
+                            'expiry_date' => $allocation['expiry_date'],
+                            'field_values' => $allocation['field_values'],
+                            'purchase_id' => $purchaseProduct->purchase_id,
+                            'purchase_bill_number' => $purchaseProduct->purchase->purchase_bill_number ?? '',
+                            'allocated_quantity_in_pieces' => $allocatedQuantityInPieces,
+                            'remaining_quantity_in_pieces' => $remainingQuantityInPiecesAfterAllocation,
                         ];
-
-                        $remainingQuantityInPieces -= $allocateQuantityInPieces;
                     }
-                }
-
-                if ($remainingQuantityInPieces > 0.0001) {
-                    return response()->json([
-                        'error' => "Insufficient stock for product ID {$productData['product_id']} at index {$index}. Requested: {$totalQuantityInUOM} ({$requestedQuantityInPieces} pieces), Available: {$totalAvailablePieces} pieces"
-                    ], 422);
-                }
-
-                foreach ($allocations as $allocation) {
-                    $purchaseProduct = PurchaseProduct::findOrFail($allocation['purchase_product_id']);
-                    $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
-                    $purchaseMeasureUnit = $purchaseProduct->measureUnit;
-                    $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
-
-                    // Log remaining pieces for debugging
-                    $purchasedQuantityInPieces = $calculateQuantityInPieces($purchaseProduct->quantity, $purchaseProduct->free_quantity, $purchaseUnitQuantity);
-                    $totalReturnedInPieces = $purchaseProduct->purchaseProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
-                        $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                        return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                    });
-                    $soldQuantityInPieces = $purchaseProduct->saleProducts->sum(function ($sale) use ($calculateQuantityInPieces) {
-                        $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
-                        return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
-                    });
-                    $salesReturnedInPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($calculateQuantityInPieces) {
-                        return $sale->saleReturnProducts->map(function ($return) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                            return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                        });
-                    })->sum();
-                    $allocatedQuantityInPieces = $calculateQuantityInPieces($allocation['quantity'], $allocation['free_quantity'], $unitQuantity);
-                    $remainingQuantityInPiecesAfterAllocation = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces - $allocatedQuantityInPieces;
-
-                    $processedProducts[] = [
-                        'purchase_product_id' => $allocation['purchase_product_id'],
-                        'product_id' => $productData['product_id'],
-                        'product_name' => $productData['product_name'] ?? ($purchaseProduct->product->name ?? ''),
-                        'purchase_product_code' => $productData['purchase_product_code'] ?? ($purchaseProduct->product_code ?? ''),
-                        'mfd' => $allocation['mfd'],
-                        'customer_id' => $productData['customer_id'] ?? ($purchaseProduct->customer_id ?? null),
-                        'quantity' => $allocation['quantity'],
-                        'free_quantity' => $allocation['free_quantity'],
-                        'price' => $productData['price'] ?? ($purchaseProduct->price ?? 0),
-                        'discount_percent' => $productData['discount_percent'] ?? 0,
-                        'discount_amount' => $productData['discount_amount'] ?? 0,
-                        'amount' => ($productData['price'] ?? ($purchaseProduct->price ?? 0)) * $allocation['quantity'] - ($productData['discount_amount'] ?? 0),
-                        'is_vatable' => $productData['is_vatable'],
-                        'measure_unit_id' => $productData['measure_unit_id'],
-                        'expiry_date' => $allocation['expiry_date'],
-                        'field_values' => $allocation['field_values'],
-                        'purchase_id' => $purchaseProduct->purchase_id,
-                        'purchase_bill_number' => $purchaseProduct->purchase->purchase_bill_number ?? '',
-                        'allocated_quantity_in_pieces' => $allocatedQuantityInPieces,
-                        'remaining_quantity_in_pieces' => $remainingQuantityInPiecesAfterAllocation,
-                    ];
                 }
             }
 
@@ -3273,7 +3511,6 @@ class PurchaseReturnController extends Controller
                                     'quantity_index' => $quantityIndex,
                                     'quantity_type' => $fv['quantity_type'],
                                 ]);
-
                             }
                         }
                     }

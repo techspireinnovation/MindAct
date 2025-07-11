@@ -19,7 +19,7 @@ class SaleObserver
             'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => ''],
             'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount_value, 'payment_type' => ''],
             'Excise Duty Income' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
-            'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_percent, 'payment_type' => ''],
+            'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_amount, 'payment_type' => ''],
             'Health insurance Income' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
             'Fright Charge Income' => ['type' => 'credit', 'valueAmount' => $sale->freight_amount, 'payment_type' => ''],
             'Scheme Discount' => ['type' => 'debit', 'valueAmount' => $sale->discount_after_vat, 'payment_type' => ''],

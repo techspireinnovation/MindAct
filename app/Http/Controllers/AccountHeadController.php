@@ -102,6 +102,9 @@ class AccountHeadController extends Controller
                 ], 422);
             }
             $validated = $validator->validated();
+            $lastGroup = AccountHead::where(['account_group_id' => $validated['account_group_id']])->orderBy('code', 'DESC')->first();
+            $validated['code'] = $lastGroup ? (int) ($lastGroup->code) + 1 : 1;
+
             $account_head = AccountHead::create($validated);
             return response()->json($account_head, 201);
         } catch (ModelNotFoundException $e) {

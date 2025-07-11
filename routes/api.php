@@ -12,6 +12,7 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\WorkShiftController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
@@ -53,6 +54,7 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -203,6 +205,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('voucher-summary', VoucherSummaryController::class);
     Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
     Route::resource('company-staff', StaffController::class);
+    Route::resource('work-shifts', WorkShiftController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
     Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);

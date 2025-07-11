@@ -14,8 +14,9 @@ class BankObserver
     public function created(Bank $bank): void
     {
         $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
-
-        AccountHead::firstOrCreate(['name' => $bank->name, 'company_id' => $bank->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($bank->name), 'is_primary' => true]);
+        $accountHead = AccountHead::where(['account_group_id' => $bankAccountGroup->id])->orderBy('code', 'DESC')->first();
+        $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+        AccountHead::firstOrCreate(['name' => $bank->name, 'company_id' => $bank->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
     }
 
     /**

@@ -978,23 +978,23 @@ class SaleController extends Controller
                 'sub_total_before_discount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'discount_after_vat' => 'nullable|numeric|min:0',
-                'freight_amount' => 'nullable|numeric|min:0',
+                'freight_charge' => 'nullable|numeric|min:0',
                 'excise_duty' => 'nullable|numeric|min:0',
                 'health_insurance' => 'nullable|numeric|min:0',
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric|min:0',
-                'ref_number' => [
+                'ref_bill_number' => [
                     'nullable',
                     'string',
                     'max:255',
-                    Rule::unique('sales')
+                    Rule::unique('sales', 'ref_number')
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
                         }),
                 ],
-                'roundoff_amount' => 'nullable|numeric|max:255',
+                'round_off_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
                 'vat_amount' => 'nullable|numeric',
@@ -1175,7 +1175,7 @@ class SaleController extends Controller
                     'contact_number' => $validated['contact_number'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'credit_days' => $validated['credit_days'] ?? null,
-                    'ref_number' => $validated['ref_number'] ?? null,
+                    'ref_number' => $validated['ref_bill_number'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? 'INV-' . now()->format('Ymd') . '-' . rand(1000, 9999),
                     'invoice_date' => $validated['invoice_date'] ?? now(),
                     'invoice_date_bs' => $validated['invoice_date_bs'] ?? now(),
@@ -1184,10 +1184,11 @@ class SaleController extends Controller
                     'sub_total_before_discount' => $validated['sub_total_before_discount'] ?? 0,
                     'discount' => $validated['discount'] ?? 0,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? 0,
-                    'freight_amount' => $validated['freight_amount'] ?? 0,
+                    'freight_charge' => $validated['freight_charge'] ?? 0,
                     'excise_duty' => $validated['excise_duty'] ?? 0,
                     'health_insurance' => $validated['health_insurance'] ?? 0,
                     'balance' => $validated['balance'] ?? 0,
+                    'payment' => $validated['payment'] ?? "",
                     'taxable_amount' => $validated['taxable_amount'] ?? 0,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? 0,
                     'ref_bill_number' => $validated['ref_bill_number'] ?? null,

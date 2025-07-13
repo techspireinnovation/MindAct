@@ -4,7 +4,6 @@ namespace App\Observers;
 
 use App\Models\AccountGroup;
 use App\Models\AccountHead;
-use App\Models\Purchase;
 use App\Models\Sale;
 use App\Models\VoucherSummary;
 
@@ -17,20 +16,20 @@ class SaleObserver
     {
         $saleAccGroups = [
             'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => ''],
-            'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount_value, 'payment_type' => ''],
+            'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount, 'payment_type' => ''],
             'Excise Duty Income' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
-            'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_percent, 'payment_type' => ''],
+            'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_amount, 'payment_type' => ''],
             'Health insurance Income' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
-            'Fright Charge Income' => ['type' => 'credit', 'valueAmount' => $sale->freight_amount, 'payment_type' => ''],
+            'Fright Charge Income' => ['type' => 'credit', 'valueAmount' => $sale->freight_charge, 'payment_type' => ''],
             'Scheme Discount' => ['type' => 'debit', 'valueAmount' => $sale->discount_after_vat, 'payment_type' => ''],
         ];
 
         if ($sale->roundoff_type === 'plus') {
-            $saleAccGroups['Round Off Plus in Sales'] = ['type' => 'credit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
+            $saleAccGroups['Round Off Plus in Sales'] = ['type' => 'credit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
         }
 
         if ($sale->roundoff_type === 'minus') {
-            $saleAccGroups['Round Off Minus in Sales'] = ['type' => 'debit', 'valueAmount' => $sale->roundoff_amount, 'payment_type' => ''];
+            $saleAccGroups['Round Off Minus in Sales'] = ['type' => 'debit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
         }
 
         switch ($sale->customer->ledger_type) {
@@ -83,13 +82,13 @@ class SaleObserver
     /**
      * Handle the Purchase "updated" event.
      */
-    public function updated(Sale $purchase): void
+    public function updated(Sale $sale): void
     {
         //
     }
 
     /**
-     * Handle the Purchase "deleted" event.
+     * Handle the Sale "deleted" event.
      */
     public function deleted(Sale $sale): void
     {
@@ -97,7 +96,7 @@ class SaleObserver
     }
 
     /**
-     * Handle the Purchase "restored" event.
+     * Handle the Sale "restored" event.
      */
     public function restored(Sale $sale): void
     {
@@ -105,9 +104,9 @@ class SaleObserver
     }
 
     /**
-     * Handle the Purchase "force deleted" event.
+     * Handle the Sale "force deleted" event.
      */
-    public function forceDeleted(Purchase $sale): void
+    public function forceDeleted(Sale $sale): void
     {
         //
     }

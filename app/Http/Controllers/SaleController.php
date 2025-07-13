@@ -978,7 +978,7 @@ class SaleController extends Controller
                 'sub_total_before_discount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'discount_after_vat' => 'nullable|numeric|min:0',
-                'freight_amount' => 'nullable|numeric|min:0',
+                'freight_charge' => 'nullable|numeric|min:0',
                 'excise_duty' => 'nullable|numeric|min:0',
                 'health_insurance' => 'nullable|numeric|min:0',
                 'balance' => 'nullable|numeric|min:0',

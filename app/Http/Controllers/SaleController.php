@@ -984,11 +984,11 @@ class SaleController extends Controller
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric|min:0',
-                'ref_number' => [
+                'ref_bill_number' => [
                     'nullable',
                     'string',
                     'max:255',
-                    Rule::unique('sales')
+                    Rule::unique('sales', 'ref_number')
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
@@ -1175,7 +1175,7 @@ class SaleController extends Controller
                     'contact_number' => $validated['contact_number'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'credit_days' => $validated['credit_days'] ?? null,
-                    'ref_number' => $validated['ref_number'] ?? null,
+                    'ref_number' => $validated['ref_bill_number'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? 'INV-' . now()->format('Ymd') . '-' . rand(1000, 9999),
                     'invoice_date' => $validated['invoice_date'] ?? now(),
                     'invoice_date_bs' => $validated['invoice_date_bs'] ?? now(),

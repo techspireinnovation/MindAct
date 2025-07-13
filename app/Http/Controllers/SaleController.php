@@ -1192,7 +1192,7 @@ class SaleController extends Controller
                     'taxable_amount' => $validated['taxable_amount'] ?? 0,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? 0,
                     'ref_bill_number' => $validated['ref_bill_number'] ?? null,
-                    'roundoff_amount' => $validated['roundoff_amount'] ?? 0,
+                    'round_off_amount' => $validated['round_off_amount'] ?? 0,
                     'roundoff_type' => $validated['roundoff_type'] ?? null,
                     'remarks' => $validated['remarks'] ?? null,
                     'abvt' => $validated['abvt'] ?? false,

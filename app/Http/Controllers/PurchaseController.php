@@ -167,6 +167,8 @@ class PurchaseController extends Controller
 
 
 
+
+  
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -239,11 +241,12 @@ class PurchaseController extends Controller
                 'freight_amount' => 'nullable|numeric',
                 'purchase_products' => 'nullable|array',
                 'purchase_products.*.id' => [
-                    'required',
+                    'nullable',
                     'integer',
-                    Rule::exists('purchase_products', 'id')->where(function ($query) use ($id) {
-                        $query->where('purchase_id', $id);
-                    }),
+                    Rule::when(
+                        fn ($input) => !is_null($input),
+                        Rule::exists('purchase_products', 'id')->where(fn ($query) => $query->where('purchase_id', $id))
+                    ),
                 ],
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',
@@ -309,6 +312,7 @@ class PurchaseController extends Controller
                 // Initialize priceMetrics and fieldValuesToDelete
                 $priceMetrics = [];
                 $fieldValuesToDelete = [];
+                $processedPurchaseProductIds = [];
 
                 if (isset($validated['purchase_products'])) {
                     foreach ($validated['purchase_products'] as $purchaseProductData) {
@@ -328,16 +332,40 @@ class PurchaseController extends Controller
                             return $key !== 'field_values';
                         }, ARRAY_FILTER_USE_KEY);
 
-                        // Update existing PurchaseProduct
-                        $purchaseProduct = PurchaseProduct::where('id', $purchaseProductData['id'])
-                            ->where('purchase_id', $item->id)
-                            ->firstOrFail();
-                        $purchaseProduct->update(
-                            array_merge($purchaseProductDataFiltered, [
-                                'purchase_id' => $item->id,
-                                'company_id' => $validated['company_id'],
-                            ])
-                        );
+                        // Check if this is a new product (no id provided)
+                        if (!isset($purchaseProductData['id']) || empty($purchaseProductData['id'])) {
+                            // Create new PurchaseProduct
+                            $purchaseProduct = PurchaseProduct::create(
+                                array_merge($purchaseProductDataFiltered, [
+                                    'purchase_id' => $item->id,
+                                    'company_id' => $validated['company_id'],
+                                    'customer_id' => $validated['customer_id'],
+                                ])
+                            );
+                            Log::debug('Created new purchase product', [
+                                'purchase_product_id' => $purchaseProduct->id,
+                                'product_id' => $purchaseProductData['product_id'],
+                            ]);
+                            $processedPurchaseProductIds[] = $purchaseProduct->id;
+                        } else {
+                            // Update existing PurchaseProduct
+                            $purchaseProduct = PurchaseProduct::where('id', $purchaseProductData['id'])
+                                ->where('purchase_id', $item->id)
+                                ->firstOrFail();
+                            $purchaseProduct->update(
+                                array_merge($purchaseProductDataFiltered, [
+                                    'purchase_id' => $item->id,
+                                    'company_id' => $validated['company_id'],
+                                    'customer_id' => $validated['customer_id'],
+                                ])
+                            );
+                            Log::debug('Updated existing purchase product', [
+                                'purchase_product_id' => $purchaseProduct->id,
+                                'product_id' => $purchaseProductData['product_id'],
+                                'customer_id' => $validated['customer_id'],
+                            ]);
+                            $processedPurchaseProductIds[] = $purchaseProduct->id;
+                        }
 
                         // Calculate price metrics
                         $purchaseProductsPrice = PurchaseProduct::where('product_id', $purchaseProduct->product_id)
@@ -446,6 +474,33 @@ class PurchaseController extends Controller
                             }
                         }
                     }
+
+                    // Delete unprocessed purchase products
+                    $existingPurchaseProductIds = PurchaseProduct::where('purchase_id', $item->id)
+                        ->pluck('id')
+                        ->toArray();
+                    $unprocessedPurchaseProductIds = array_diff($existingPurchaseProductIds, $processedPurchaseProductIds);
+                    if (!empty($unprocessedPurchaseProductIds)) {
+                        Log::debug('Deleting unprocessed purchase products', [
+                            'purchase_id' => $item->id,
+                            'ids' => $unprocessedPurchaseProductIds,
+                        ]);
+                        PurchaseProduct::where('purchase_id', $item->id)
+                            ->whereIn('id', $unprocessedPurchaseProductIds)
+                            ->delete();
+                    }
+                } else {
+                    // If no purchase products are provided, delete all associated purchase products
+                    $existingPurchaseProductIds = PurchaseProduct::where('purchase_id', $item->id)
+                        ->pluck('id')
+                        ->toArray();
+                    if (!empty($existingPurchaseProductIds)) {
+                        Log::debug('Deleting all purchase products as none provided', [
+                            'purchase_id' => $item->id,
+                            'ids' => $existingPurchaseProductIds,
+                        ]);
+                        PurchaseProduct::where('purchase_id', $item->id)->delete();
+                    }
                 }
 
                 foreach ($fieldValuesToDelete as $deleteSet) {
@@ -470,6 +525,7 @@ class PurchaseController extends Controller
             Log::error('Purchase not found: ' . $e->getMessage());
             return response()->json(['error' => 'Purchase not found'], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             Log::error('Database error during purchase update: ' . $e->getMessage());
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
@@ -477,6 +533,8 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'An unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
+
+
 
 
 

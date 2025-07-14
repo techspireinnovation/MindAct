@@ -531,9 +531,9 @@ class PurchaseReturnController extends Controller
 
 
 
-  
 
-   
+
+
     public function getPurchaseByBillNumber(Request $request): JsonResponse
     {
         try {
@@ -2716,6 +2716,7 @@ class PurchaseReturnController extends Controller
     private function calculateAvailablePieces($purchaseProduct, float $measureUnitQuantity, int $companyId): float
     {
         $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQuantity);
+
         $freePieces = $this->calculatePieces($purchaseProduct->free_quantity ?? 0, $measureUnitQuantity);
 
         $purchaseReturnedPieces = $purchaseProduct->purchaseProductReturns->reduce(fn($carry, $return) => $carry + $this->calculatePieces($return->quantity ?? 0, $return->measureUnit->quantity ?? 1) + $this->calculatePieces($return->free_quantity ?? 0, $return->measureUnit->quantity ?? 1), 0);
@@ -2728,6 +2729,10 @@ class PurchaseReturnController extends Controller
             ->with('measureUnit')
             ->get()
             ->reduce(fn($carry, $return) => $carry + $this->calculatePieces($return->quantity ?? 0, $return->measureUnit->quantity ?? 1) + $this->calculatePieces($return->free_quantity ?? 0, $return->measureUnit->quantity ?? 1), 0);
+
+
+        $availablePieces = $regularPieces + $freePieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
+
 
         return max(0, ($regularPieces + $freePieces) - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces);
     }
@@ -3561,7 +3566,7 @@ class PurchaseReturnController extends Controller
 
 
 
-
+   
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -3569,7 +3574,7 @@ class PurchaseReturnController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer|exists:companies,id',
                 'purchase_id' => 'nullable|integer|exists:purchases,id',
-                'customer_id' => 'nullable|integer|exists:customers,id',
+                'customer_id' => 'required|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|numeric|digits:10',
                 'invoice_number' => [
@@ -3646,7 +3651,7 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.is_vatable' => 'required|boolean',
                 'purchase_return_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'purchase_return_products.*.expiry_date' => 'nullable|string|max:255',
-                'purchase_return_products.*.field_values' => 'present|array',
+                'purchase_return_products.*.field_values' => 'nullable|array',
                 'purchase_return_products.*.field_values.*' => 'array|min:1',
                 'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'required_if:field_values,array|integer|exists:purchase_products,id',
                 'purchase_return_products.*.field_values.*.*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
@@ -3664,10 +3669,17 @@ class PurchaseReturnController extends Controller
 
             $purchaseReturn = DB::transaction(function () use ($validated, $id) {
                 // Fetch existing purchase return with products and field values
-                $purchaseReturn = PurchaseReturn::with(['purchaseReturnProducts.fieldValues'])->findOrFail($id);
+                $purchaseReturn = PurchaseReturn::with(['purchaseReturnProducts.fieldValues', 'purchase'])->findOrFail($id);
                 if ($purchaseReturn->company_id !== $validated['company_id']) {
                     throw new \Exception('Company ID mismatch for purchase return ID ' . $id);
                 }
+
+                // Get purchase_bill_number from PurchaseReturn or fallback to validated data
+                $purchaseBillNumber = $purchaseReturn->purchase_bill_number ?? $validated['purchase_bill_number'] ?? null;
+                Log::debug('Purchase bill number retrieved', [
+                    'purchase_return_id' => $id,
+                    'purchase_bill_number' => $purchaseBillNumber
+                ]);
 
                 // Track existing product IDs
                 $existingProducts = $purchaseReturn->purchaseReturnProducts->keyBy('purchase_product_id');
@@ -3682,7 +3694,7 @@ class PurchaseReturnController extends Controller
                         throw new \Exception('purchase_id is required when return_entire_batch is true');
                     }
                     $purchase = Purchase::findOrFail($validated['purchase_id']);
-                    if ($validated['purchase_bill_number'] && $validated['purchase_bill_number'] !== $purchase->purchase_bill_number) {
+                    if ($purchaseBillNumber && $purchaseBillNumber !== $purchase->purchase_bill_number) {
                         throw new \Exception('Purchase bill number does not match purchase record');
                     }
                     $validated['purchase_return_products'] = $purchase->purchaseProducts()
@@ -3713,7 +3725,7 @@ class PurchaseReturnController extends Controller
                                     return $this->calculatePieces($sale->quantity ?? 0, $unitQuantity) +
                                         $this->calculatePieces($sale->free_quantity ?? 0, $unitQuantity);
                                 });
-                            $salesReturnedPieces = SalesReturnProduct::where('product_id', $product->product_id)
+                            $salesReturnedPieces = SaleReturnProduct::where('product_id', $product->product_id)
                                 ->where('company_id', $validated['company_id'])
                                 ->whereNull('deleted_at')
                                 ->sum(function ($return) use ($unitQuantity) {
@@ -3722,6 +3734,7 @@ class PurchaseReturnController extends Controller
                                 });
 
                             $availablePieces = max(0, $purchasedPieces - $soldPieces + $salesReturnedPieces - $returnedPieces);
+
                             if ($availablePieces <= 0) {
                                 return null;
                             }
@@ -3750,7 +3763,7 @@ class PurchaseReturnController extends Controller
                                 'product_name' => $product->product_name,
                                 'purchase_product_code' => $product->product_code,
                                 'mfd' => $product->mfd,
-                                'customer_id' => $product->customer_id,
+                                'customer_id' => $product->customer_id ?? $validated['customer_id'],
                                 'quantity' => $quantity,
                                 'free_quantity' => $freeQuantity,
                                 'price' => $product->price,
@@ -3868,10 +3881,18 @@ class PurchaseReturnController extends Controller
                     $allocations = [];
                     $usedQuantityIndexes = [];
 
-                    // Fetch PurchaseProducts
-                    $query = PurchaseProduct::where('product_id', $productData['product_id'])
-                        ->where('company_id', $validated['company_id'])
-                        ->whereNull('deleted_at')
+                    // Fetch PurchaseProducts for stock allocation
+                    $stockQuery = PurchaseProduct::where('purchase_products.product_id', $productData['product_id'])
+                        ->where('purchase_products.company_id', $validated['company_id'])
+                        ->whereNull('purchase_products.deleted_at')
+                        ->join('purchases', function ($join) use ($validated, $purchaseBillNumber) {
+                            $join->on('purchase_products.purchase_id', '=', 'purchases.id')
+                                 ->where('purchases.company_id', $validated['company_id'])
+                                 ->whereNull('purchases.deleted_at');
+                            if ($purchaseBillNumber) {
+                                $join->where('purchases.purchase_bill_number', $purchaseBillNumber);
+                            }
+                        })
                         ->with([
                             'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
                             'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with('measureUnit'),
@@ -3880,25 +3901,23 @@ class PurchaseReturnController extends Controller
                         ]);
 
                     if ($hasFieldValues) {
-                        $query->whereIn('id', $purchaseProductIds);
-                    } elseif (isset($productData['purchase_product_id'])) {
-                        $query->where('id', $productData['purchase_product_id']);
+                        $stockQuery->whereIn('purchase_products.id', $purchaseProductIds);
+                    } elseif ($validated['purchase_id']) {
+                        $stockQuery->where('purchase_products.purchase_id', $validated['purchase_id']);
                     } else {
-                        $query->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))
+                        $stockQuery->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))
                             ->from('purchase_product_field_values')
                             ->whereColumn('purchase_product_id', 'purchase_products.id')
                             ->where('company_id', $validated['company_id'])
                             ->whereNull('deleted_at'));
                     }
-                    if ($validated['purchase_id']) {
-                        $query->where('purchase_id', $validated['purchase_id']);
-                    }
 
-                    $purchaseProducts = $query->orderBy('created_at')->distinct()->get();
+                    $purchaseProducts = $stockQuery->orderBy('purchase_products.created_at')->distinct()->get();
                     Log::debug('Fetched PurchaseProducts for update', [
                         'product_id' => $productData['product_id'],
                         'index' => $index,
                         'purchase_product_ids' => $purchaseProducts->pluck('id')->toArray(),
+                        'purchase_bill_number' => $purchaseBillNumber,
                         'count' => $purchaseProducts->count()
                     ]);
 
@@ -3906,10 +3925,9 @@ class PurchaseReturnController extends Controller
                         throw new \Exception("No valid purchase products found for product ID {$productData['product_id']} at index {$index}.");
                     }
 
-                    // Track provided purchase_product_id
-                    if (isset($productData['purchase_product_id'])) {
-                        $providedProductIds[] = $productData['purchase_product_id'];
-                    }
+                    // Track provided purchase_product_id for updating records
+                    $targetPurchaseProductId = $productData['purchase_product_id'] ?? null;
+                    $providedProductIds[] = $targetPurchaseProductId;
 
                     // Allocate with field values
                     if ($hasFieldValues) {
@@ -3986,7 +4004,7 @@ class PurchaseReturnController extends Controller
                                     ),
                                     'mfd' => $productData['mfd'] ?? $purchaseProduct->mfd,
                                     'expiry_date' => $productData['expiry_date'] ?? $purchaseProduct->expiry_date,
-                                    'customer_id' => $productData['customer_id'] ?? $purchaseProduct->customer_id,
+                                    'customer_id' => $productData['customer_id'] ?? $validated['customer_id'],
                                     'return_measure_unit_id' => $productData['measure_unit_id'],
                                 ];
 
@@ -4008,15 +4026,8 @@ class PurchaseReturnController extends Controller
                         }
                     }
 
-                    // Allocate remaining pieces (FIFO or single purchase_product_id)
+                    // Allocate remaining pieces (FIFO across all purchase products)
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                        $purchaseProduct = isset($productData['purchase_product_id']) ?
-                            $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
-
-                        if ($purchaseProduct && $purchaseProduct->fieldValues->isNotEmpty()) {
-                            throw new \Exception("Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}.");
-                        }
-
                         foreach ($purchaseProducts as $purchaseProduct) {
                             if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0)
                                 break;
@@ -4043,14 +4054,17 @@ class PurchaseReturnController extends Controller
                                     $targetMeasureUnitQuantity
                                 );
 
+                                // Use the provided purchase_product_id for the allocation, or fall back to the current purchase_product_id
+                                $allocationPurchaseProductId = $targetPurchaseProductId ?? $purchaseProduct->id;
+
                                 $allocations[] = [
-                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'purchase_product_id' => $allocationPurchaseProductId,
                                     'quantity' => $allocateRegularQuantity,
                                     'free_quantity' => $allocateFreeQuantity,
                                     'field_values' => [],
                                     'mfd' => $productData['mfd'] ?? $purchaseProduct->mfd,
                                     'expiry_date' => $productData['expiry_date'] ?? $purchaseProduct->expiry_date,
-                                    'customer_id' => $productData['customer_id'] ?? $purchaseProduct->customer_id,
+                                    'customer_id' => $productData['customer_id'] ?? $validated['customer_id'],
                                     'return_measure_unit_id' => $productData['measure_unit_id'],
                                 ];
 
@@ -4060,7 +4074,7 @@ class PurchaseReturnController extends Controller
                                 Log::debug('FIFO allocation for update', [
                                     'product_id' => $productData['product_id'],
                                     'index' => $index,
-                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'purchase_product_id' => $allocationPurchaseProductId,
                                     'allocated_regular_pieces' => $allocateRegularPieces,
                                     'allocated_free_pieces' => $allocateFreePieces,
                                     'total_allocated_pieces' => $allocateRegularPieces + $allocateFreePieces,
@@ -4117,49 +4131,78 @@ class PurchaseReturnController extends Controller
                 $purchaseReturnData = collect($validated)->except(['purchase_return_products', 'return_entire_batch'])->filter()->toArray();
                 $purchaseReturn->update($purchaseReturnData);
 
-                // Update or create purchase return products
+                // Update purchase return products (only existing ones)
+                $processedPurchaseProductIds = [];
                 foreach ($processedProducts as $productData) {
+                    if (!isset($productData['purchase_product_id'])) {
+                        Log::warning('Skipping product update due to missing purchase_product_id', [
+                            'purchase_return_id' => $purchaseReturn->id,
+                            'product_id' => $productData['product_id'] ?? 'unknown',
+                        ]);
+                        continue;
+                    }
+
                     $productDataFiltered = collect($productData)->except(['field_values', 'purchase_id', 'purchase_purchase_bill_number'])->filter()->toArray();
                     $productDataFiltered['company_id'] = $validated['company_id'];
+                    $productDataFiltered['customer_id'] = $productData['customer_id'];
 
                     // Check if a PurchaseReturnProduct exists for this purchase_product_id
                     $existingProduct = $existingProducts[$productData['purchase_product_id']] ?? null;
                     if ($existingProduct) {
-                        // Update existing record
                         $existingProduct->update($productDataFiltered);
                         $purchaseReturnProduct = $existingProduct;
+                        Log::debug('Updated existing purchase return product', [
+                            'purchase_return_product_id' => $purchaseReturnProduct->id,
+                            'purchase_product_id' => $productData['purchase_product_id'],
+                            'product_id' => $productData['product_id'],
+                            'customer_id' => $productDataFiltered['customer_id'],
+                        ]);
 
-                        // Remove from existingProductIds to mark as processed
+                        $processedPurchaseProductIds[] = $productData['purchase_product_id'];
+
+                        if (!empty($productData['field_values'])) {
+                            $purchaseReturnProduct->fieldValues()->delete();
+                            foreach ($productData['field_values'] as $fvSet) {
+                                foreach ($fvSet as $fv) {
+                                    PurchaseReturnProductFieldValue::create([
+                                        'purchase_return_product_id' => $purchaseReturnProduct->id,
+                                        'product_field_id' => $fv['product_field_id'],
+                                        'value' => $fv['value'],
+                                        'product_id' => $purchaseReturnProduct->product_id,
+                                        'company_id' => $validated['company_id'],
+                                        'quantity_index' => $fv['quantity_index'],
+                                        'quantity_type' => $fv['quantity_type'] ?? 'regular',
+                                    ]);
+                                }
+                            }
+                        } else {
+                            $purchaseReturnProduct->fieldValues()->delete();
+                        }
+
                         unset($existingProducts[$productData['purchase_product_id']]);
                     } else {
-                        // Create new record
-                        $purchaseReturnProduct = $purchaseReturn->purchaseReturnProducts()->create($productDataFiltered);
-                    }
-
-                    // Update or create field values
-                    if (!empty($productData['field_values'])) {
-                        // Delete existing field values for this product
-                        $purchaseReturnProduct->fieldValues()->delete();
-
-                        foreach ($productData['field_values'] as $fvSet) {
-                            foreach ($fvSet as $fv) {
-                                PurchaseReturnProductFieldValue::create([
-                                    'purchase_return_product_id' => $purchaseReturnProduct->id,
-                                    'product_field_id' => $fv['product_field_id'],
-                                    'value' => $fv['value'],
-                                    'product_id' => $purchaseReturnProduct->product_id,
-                                    'company_id' => $validated['company_id'],
-                                    'quantity_index' => $fv['quantity_index'],
-                                    'quantity_type' => $fv['quantity_type'] ?? 'regular',
-                                ]);
-                            }
-                        }
+                        Log::warning('No existing PurchaseReturnProduct found for purchase_product_id, skipping update', [
+                            'purchase_return_id' => $purchaseReturn->id,
+                            'purchase_product_id' => $productData['purchase_product_id'],
+                            'product_id' => $productData['product_id'] ?? 'unknown',
+                        ]);
+                        continue;
                     }
                 }
 
-                // Delete unprocessed (not provided) purchase return products
+                // Delete unprocessed purchase return products
                 if (!empty($existingProducts)) {
-                    PurchaseReturnProduct::whereIn('id', array_keys($existingProducts))->delete();
+                    $existingPurchaseProductIds = array_keys($existingProducts->toArray());
+                    $unprocessedPurchaseProductIds = array_diff($existingPurchaseProductIds, $processedPurchaseProductIds);
+                    if (!empty($unprocessedPurchaseProductIds)) {
+                        Log::debug('Deleting unprocessed purchase return products', [
+                            'purchase_return_id' => $purchaseReturn->id,
+                            'unprocessed_purchase_product_ids' => $unprocessedPurchaseProductIds,
+                        ]);
+                        PurchaseProductReturn::where('purchase_return_id', $purchaseReturn->id)
+                            ->whereIn('purchase_product_id', $unprocessedPurchaseProductIds)
+                            ->delete();
+                    }
                 }
 
                 // Log history
@@ -4189,8 +4232,7 @@ class PurchaseReturnController extends Controller
         }
     }
 
-
-
+   
 
 
 

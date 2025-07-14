@@ -15,7 +15,7 @@ class PurchaseObserver
     public function created(Purchase $purchase): void
     {
         $purchaseAccGroups = [
-            'Purchase' => ['type' => 'debit', 'valueAmount' => $purchase->sub_total_before_discount, 'payment_type' => ''],
+            'Purchase' => ['type' => 'debit', 'valueAmount' => $purchase->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Income' => ['type' => 'credit', 'valueAmount' => $purchase->discount_value, 'payment_type' => ''],
             'Excise Duty Expenses' => ['type' => 'debit', 'valueAmount' => $purchase->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'debit', 'valueAmount' => $purchase->vat_percent, 'payment_type' => ''],
@@ -72,6 +72,7 @@ class PurchaseObserver
                     'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
                     'account_group_id' => $accGroup?->id,
                     'account_head_id' => $accHead?->id,
+                    'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
                 ]);
             }
         } catch (\Exception $e) {

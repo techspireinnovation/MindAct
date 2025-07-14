@@ -36,6 +36,7 @@ class ReceiptVoucherDetailObserver
             'cheque_number' => $receiptVoucherDetail->cheque_slip,
             'type' => "RECEIPT_VOUCHER",
             'account_group_id' => $bankAccountGroup?->id,
+            'is_parent' => true,
         ]);
     }
 

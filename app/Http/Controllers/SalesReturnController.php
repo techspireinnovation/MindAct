@@ -1658,16 +1658,16 @@ class SalesReturnController extends Controller
                 'sales_return_products.*.field_values.*.*.value' => 'required_if:sales_return_products.*.field_values,exists|string|max:255',
                 'sales_return_products.*.field_values.*.*.quantity_index' => 'required_if:sales_return_products.*.field_values,exists|integer|min:0',
                 'sales_return_products.*.field_values.*.*.quantity_type' => 'required_if:sales_return_products.*.field_values,exists|string|in:regular,free',
-                'return_additionals_sale' => 'nullable|array',
-                'return_additionals_sale.place' => 'nullable|string|max:255',
-                'return_additionals_sale.transport' => 'nullable|string|max:255',
-                'return_additionals_sale.vehicle_number' => 'nullable|string|max:255',
-                'return_additionals_sale.vehicle_name' => 'nullable|string|max:255',
-                'return_additionals_sale.driver_name' => 'nullable|string|max:255',
-                'return_additionals_sale.return_code' => 'required_if:return_additionals_sale,exists|string|max:255',
-                'return_additionals_sale.driver_contact_number' => 'nullable|string|max:255',
-                'return_additionals_sale.return_date' => 'nullable|date',
-                'return_additionals_sale.return_time' => 'nullable|date_format:H:i:s',
+                'sales_return_additional' => 'nullable|array',
+                'sales_return_additional.place' => 'nullable|string|max:255',
+                'sales_return_additional.transport' => 'nullable|string|max:255',
+                'sales_return_additional.vehicle_number' => 'nullable|string|max:255',
+                'sales_return_additional.vehicle_name' => 'nullable|string|max:255',
+                'sales_return_additional.driver_name' => 'nullable|string|max:255',
+                'sales_return_additional.return_code' => 'required_if:sales_return_additional,exists|string|max:255',
+                'sales_return_additional.driver_contact_number' => 'nullable|string|max:255',
+                'sales_return_additional.return_date' => 'nullable|date',
+                'sales_return_additional.return_time' => 'nullable|date_format:H:i:s',
             ]);
 
             if ($validator->fails()) {
@@ -2250,7 +2250,7 @@ class SalesReturnController extends Controller
             $validated['location_id'] = $validated['location_id'] ?? $sale->location_id;
 
             // Prepare sales return additionals
-            $salesReturnAdditionalsData = $validated['return_additionals_sale'] ?? null;
+            $salesReturnAdditionalsData = $validated['sales_return_additional'] ?? null;
             if (!$salesReturnAdditionalsData && $sale->saleAdditionals->isNotEmpty()) {
                 $saleAdditional = $sale->saleAdditionals->first();
                 $salesReturnAdditionalsData = [

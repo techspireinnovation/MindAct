@@ -11,8 +11,12 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('voucher_summaries', function (Blueprint $table) {
-            $table->string('payment_type', 50)->nullable();
-            $table->foreignId('account_group_id')->nullable()->constrained('account_groups');
+            if (!Schema::hasColumn('voucher_summaries', 'payment_type')) {
+                $table->string('payment_type', 50)->nullable();
+            }
+            if (!Schema::hasColumn('voucher_summaries', 'account_group_id')) {
+                $table->foreignId('account_group_id')->nullable()->constrained('account_groups');
+            }
         });
     }
 

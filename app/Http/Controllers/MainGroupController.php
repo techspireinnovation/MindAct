@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AccountGroup;
 use App\Models\MainGroup;
+use App\Models\SubGroup;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,46 @@ use Illuminate\Validation\Rule;
 
 class MainGroupController extends Controller
 {
+
+    public function mainGroupList(Request $request): JsonResponse
+    {
+        $mainGroupList = MainGroup::whereNull('deleted_at')
+                                   ->where('company_id',$request->company_id)
+                                   ->whereHas('subGroups', function($query){
+                                         $query->whereNull('deleted_at');
+
+                                   })
+                                   ->get(['id','name']);
+
+        
+        return response()->json($mainGroupList);
+    }
+
+
+
+    public function subGroupOfMainGroup(Request $request): JsonResponse
+{
+    try {
+        $mainGroup = $request->main_group_id;
+
+        if (!$mainGroup) {
+            return response()->json(['error' => 'Main Group Id not Found!!'], 404);
+        }
+
+        $subGroupList = SubGroup::whereNull('deleted_at')
+            ->where('company_id', $request->company_id)
+            ->where('main_group_id', $mainGroup)
+            ->get(['id', 'name', 'ranking_for_trial']);
+
+        return response()->json($subGroupList);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Something went wrong!',
+            'message' => $e->getMessage()
+        ], 500);
+    }
+}
+
 
     public function index(Request $request): JsonResponse
     {

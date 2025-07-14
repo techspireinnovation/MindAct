@@ -58,22 +58,24 @@ class SaleObserver
                 $accGroup = AccountGroup::where('name', $saleAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $saleAccGroupKey)->first();
 
-                VoucherSummary::create([
-                    'date' => $sale->invoice_date,
-                    'date_bs' => $sale->invoice_date_bs,
-                    'company_id' => $sale->company_id,
-                    'branch_id' => null,
-                    'voucher_number' => "SLVOU-818200{$sale->id}",
-                    'particulars' => "Product Sale to - {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
-                    'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
-                    'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
-                    'tr_bill_number' => $sale->invoice_number,
-                    'type' => "SALE",
-                    'payment_type' => $saleAccGroups['payment_type'] ?? "SALE",
-                    'account_group_id' => $accGroup?->id,
-                    'account_head_id' => $accHead?->id,
-                    'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
-                ]);
+                if ($saleAccGroupValue['valueAmount'] > 0) {
+                    VoucherSummary::create([
+                        'date' => $sale->invoice_date,
+                        'date_bs' => $sale->invoice_date_bs,
+                        'company_id' => $sale->company_id,
+                        'branch_id' => null,
+                        'voucher_number' => "SLVOU-818200{$sale->id}",
+                        'particulars' => "Product Sale to - {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+                        'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
+                        'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
+                        'tr_bill_number' => $sale->invoice_number,
+                        'type' => "SALE",
+                        'payment_type' => $saleAccGroups['payment_type'],
+                        'account_group_id' => $accGroup?->id,
+                        'account_head_id' => $accHead?->id,
+                        'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             \Log::error($e);

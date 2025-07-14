@@ -58,22 +58,24 @@ class PurchaseObserver
                 $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
 
-                VoucherSummary::create([
-                    'date' => $purchase->invoice_date,
-                    'date_bs' => $purchase->invoice_date_bs,
-                    'company_id' => $purchase->company_id,
-                    'branch_id' => null,
-                    'voucher_number' => "PCVOU-818200{$purchase->id}",
-                    'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
-                    'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchaseAccGroupValue['valueAmount'] : 0,
-                    'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchaseAccGroupValue['valueAmount'] : 0,
-                    'tr_bill_number' => $purchase->purchase_bill_number,
-                    'type' => "PURCHASE",
-                    'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
-                    'account_group_id' => $accGroup?->id,
-                    'account_head_id' => $accHead?->id,
-                    'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
-                ]);
+                if ($purchaseAccGroupValue['valueAmount'] > 0) {
+                    VoucherSummary::create([
+                        'date' => $purchase->invoice_date,
+                        'date_bs' => $purchase->invoice_date_bs,
+                        'company_id' => $purchase->company_id,
+                        'branch_id' => null,
+                        'voucher_number' => "PCVOU-818200{$purchase->id}",
+                        'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
+                        'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchaseAccGroupValue['valueAmount'] : 0,
+                        'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchaseAccGroupValue['valueAmount'] : 0,
+                        'tr_bill_number' => $purchase->purchase_bill_number,
+                        'type' => "PURCHASE",
+                        'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
+                        'account_group_id' => $accGroup?->id,
+                        'account_head_id' => $accHead?->id,
+                        'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             \Log::error($e);

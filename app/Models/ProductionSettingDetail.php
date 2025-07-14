@@ -8,9 +8,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ProductionSetting extends Model
+class ProductionSettingDetail extends Model
 {
-    use softDeletes,HasFactory;
+       use softDeletes,HasFactory;
 
    protected $casts = [
         'product_details' => 'array',
@@ -18,16 +18,15 @@ class ProductionSetting extends Model
 
     protected $fillable = [
         'company_id',
-        'date',
-        'document_no',
+        'production_setting_id',
         'product_id',
         'product_name',
         'quantity',
         'measure_unit_id',
-        'product_details',
-       
-
-        
+        'amount',
+        'price',
+        'deleted_at',
+               
     ];
 
     protected $dates = ['deleted_at'];

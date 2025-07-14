@@ -2578,10 +2578,6 @@ class SalesReturnController extends Controller
 
 
 
-
-
-
-
     public function getItemByBillNumber($billNumber): JsonResponse
     {
         try {

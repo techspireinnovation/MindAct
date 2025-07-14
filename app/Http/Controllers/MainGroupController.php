@@ -29,6 +29,51 @@ class MainGroupController extends Controller
         return response()->json($mainGroupList);
     }
 
+public function draggable(Request $request): JsonResponse
+{
+    try {
+        $mainGroupId = $request->main_group_id;
+        $subGroups = $request->sub_groups;
+
+        if (!$mainGroupId || empty($subGroups)) {
+            return response()->json(["error" => "Main Group ID or Subgroup list is missing!"], 400);
+        }
+
+        $updatedData = [];
+
+        foreach ($subGroups as $item) {
+            if (!isset($item['id']) || !isset($item['ranking_for_trial'])) {
+                continue;
+            }
+
+            $subgroup = SubGroup::where('id', $item['id'])
+                ->where('main_group_id', $mainGroupId)
+                ->first();
+
+            if ($subgroup) {
+                $subgroup->ranking_for_trial = $item['ranking_for_trial'];
+                $subgroup->save();
+
+                $updatedData[] = $subgroup; // Store updated model
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Subgroup rankings updated successfully for Main Group ID: ' . $mainGroupId,
+            'data' => $updatedData
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json(["error" => 'Subgroup not found!'], 404);
+    } catch (QueryException $e) {
+        return response()->json(["error" => 'Database error occurred!'], 500);
+    } catch (\Exception $e) {
+        return response()->json(["error" => 'Unexpected error occurred!'], 500);
+    }
+}
+
+
 
 
     public function subGroupOfMainGroup(Request $request): JsonResponse

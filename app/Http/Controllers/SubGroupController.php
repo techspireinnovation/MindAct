@@ -144,6 +144,9 @@ class SubGroupController extends Controller
         }
     }
 
+
+
+
     public function destroy($id): JsonResponse
     {
         try {

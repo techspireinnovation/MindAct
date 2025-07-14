@@ -153,7 +153,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
     Route::get('main-groups-list', [MainGroupController::class,'mainGroupList']);
-    Route::get('sub-groups-update-ranking', [MainGroupController::class,'draggable']);
+    Route::post('sub-groups-update-ranking', [MainGroupController::class,'draggable']);
     Route::get('sub-groups-of-main', [MainGroupController::class,'subGroupOfMainGroup']);
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);

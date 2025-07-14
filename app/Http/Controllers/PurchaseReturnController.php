@@ -3621,7 +3621,7 @@ class PurchaseReturnController extends Controller
 
 
 
-
+   
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -3766,7 +3766,7 @@ class PurchaseReturnController extends Controller
                     ->with(['measureUnit', 'fieldValues'])
                     ->orderBy('created_at')
                     ->get()
-                    ->map(function ($product) use ($validated, $calculateQuantityInPieces) {
+                    ->map(function ($product) use ($validated, $calculateQuantityInPieces, $id) {
                         $measureUnitId = $product->measure_unit_id ?? ($validated['purchase_return_products'][0]['measure_unit_id'] ?? null);
                         if (!$measureUnitId) {
                             throw new \Exception("No measure unit specified for purchase_product_id {$product->id}");
@@ -3777,10 +3777,11 @@ class PurchaseReturnController extends Controller
                         // Calculate purchased pieces
                         $purchasedQuantityInPieces = $calculateQuantityInPieces($product->quantity, $product->free_quantity, $unitQuantity);
 
-                        // Calculate returned pieces
+                        // Calculate returned pieces, excluding the current PurchaseReturn
                         $totalReturnedInPieces = PurchaseProductReturn::where('purchase_product_id', $product->id)
                             ->where('company_id', $validated['company_id'])
                             ->whereNull('deleted_at')
+                            ->where('purchase_return_id', '!=', $id)
                             ->sum(function ($return) use ($calculateQuantityInPieces) {
                                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                                 return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
@@ -3856,8 +3857,6 @@ class PurchaseReturnController extends Controller
                 foreach ($productGroup as $index => $productData) {
                     $regularQuantity = (float) ($productData['quantity'] ?? 0);
                     $freeQuantity = (float) ($productData['free_quantity'] ?? 0);
-                    $totalQuantityInUOM = $regularQuantity + $freeQuantity;
-
                     $measureUnit = MeasureUnit::findOrFail($productData['measure_unit_id']);
                     $unitQuantity = $measureUnit->quantity ?? 1;
 
@@ -3890,9 +3889,9 @@ class PurchaseReturnController extends Controller
                     ->where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at');
 
-                // Apply purchase_product_id filter as the primary condition
-                if ($productGroup[0]['purchase_product_id']) {
-                    $purchaseProductsQuery->where('purchase_products.id', $productGroup[0]['purchase_product_id']);
+                // Apply purchase_id filter if provided
+                if ($validated['purchase_id']) {
+                    $purchaseProductsQuery->where('purchase_id', $validated['purchase_id']);
                 }
 
                 // Apply bill-wise filtering
@@ -3906,9 +3905,9 @@ class PurchaseReturnController extends Controller
 
                 $purchaseProductsQuery->with([
                     'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
-                    'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with('measureUnit'),
+                    'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('purchase_return_id', '!=', $id)->with('measureUnit'),
                     'saleProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with([
-                        'saleReturnProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with([
+                        'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with([
                             'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])
                         ])
                     ]),
@@ -4198,16 +4197,20 @@ class PurchaseReturnController extends Controller
                     }
 
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                        $purchaseProduct = isset($productData['purchase_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
+                        $specificPurchaseProduct = isset($productData['purchase_product_id']) && !$hasFieldValues ? $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
 
-                        if ($purchaseProduct) {
-                            if ($purchaseProduct->fieldValues->isNotEmpty()) {
-                                return response()->json(['error' => "Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}"], 422);
-                            }
-                            $purchaseProducts = collect([$purchaseProduct]);
+                        if ($specificPurchaseProduct && $specificPurchaseProduct->fieldValues->isNotEmpty()) {
+                            return response()->json(['error' => "Purchase product ID {$specificPurchaseProduct->id} has field values; field_values must be provided at index {$index}"], 422);
                         }
 
-                        foreach ($purchaseProducts as $purchaseProduct) {
+                        // Start with the specific purchase product, if provided, then fall back to all purchase products
+                        $filteredPurchaseProducts = $specificPurchaseProduct ? collect([$specificPurchaseProduct]) : $purchaseProducts;
+                        if ($specificPurchaseProduct && ($remainingRegularPieces > 0 || $remainingFreePieces > 0)) {
+                            // If specific purchase product was insufficient, include all purchase products for further allocation
+                            $filteredPurchaseProducts = $purchaseProducts;
+                        }
+
+                        foreach ($filteredPurchaseProducts as $purchaseProduct) {
                             if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) {
                                 break;
                             }
@@ -4330,10 +4333,19 @@ class PurchaseReturnController extends Controller
                 $purchaseReturnData = collect($validated)->except(['purchase_return_products', 'return_entire_batch'])->filter()->toArray();
                 $purchaseReturnData['company_id'] = $validated['company_id'];
 
+                // Restore previous balance
+                $previousProducts = $purchaseReturn->purchaseReturnProducts()->with('purchaseProduct.purchase')->get();
+                foreach ($previousProducts as $prevProduct) {
+                    $purchase = $prevProduct->purchaseProduct->purchase;
+                    $prevReturnValue = ($prevProduct->quantity * ($prevProduct->price ?? 0)) - ($prevProduct->discount_amount ?? 0);
+                    $purchase->balance += $prevReturnValue;
+                    $purchase->save();
+                }
+
                 // Update PurchaseReturn
                 $purchaseReturn->update($purchaseReturnData);
 
-                // Delete existing PurchaseReturnProducts and their field values
+                // Delete existing PurchaseProductReturns and their field values
                 $purchaseReturn->purchaseReturnProducts()->each(function ($product) {
                     $product->fieldValues()->delete();
                     $product->delete();
@@ -4374,7 +4386,8 @@ class PurchaseReturnController extends Controller
                     $balanceUpdates[$purchaseId] = ($balanceUpdates[$purchaseId] ?? 0) + $returnValue;
                 }
 
-            
+                
+
                 PurchaseReturnHistory::create([
                     'purchase_return_id' => $purchaseReturn->id,
                     'action' => 'updated',
@@ -4383,7 +4396,7 @@ class PurchaseReturnController extends Controller
 
                 return $purchaseReturn->load([
                     'purchaseReturnProducts' => function ($query) {
-                        $query->select('id', 'purchase_return_id', 'purchase_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id');
+                        $query->select('id', 'purchase_return_id', 'purchase_product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id');
                     },
                     'purchaseReturnProducts.fieldValues' => fn($query) => $query->orderBy('quantity_index')->orderBy('product_field_id'),
                 ]);

@@ -15,7 +15,7 @@ class SaleObserver
     public function created(Sale $sale): void
     {
         $saleAccGroups = [
-            'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => ''],
+            'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount, 'payment_type' => ''],
             'Excise Duty Income' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_amount, 'payment_type' => ''],
@@ -72,6 +72,7 @@ class SaleObserver
                     'payment_type' => $saleAccGroups['payment_type'] ?? "SALE",
                     'account_group_id' => $accGroup?->id,
                     'account_head_id' => $accHead?->id,
+                    'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
                 ]);
             }
         } catch (\Exception $e) {

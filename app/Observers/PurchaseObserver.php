@@ -59,6 +59,7 @@ class PurchaseObserver
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
+
             default:
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
@@ -79,6 +80,13 @@ class PurchaseObserver
 
                 $accGroup = AccountGroup::where('name', $purchaseAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
+
+                if (!$accHead && ($purchaseAccGroupKey == "Accounts Receivable (Debtors)" || $purchaseAccGroupKey == "Accounts Payable (Creditors)")) {
+                    $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
+                    $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+                    $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
+                }
 
                 if ($purchaseAccGroupValue['valueAmount'] > 0) {
                     VoucherSummaryDetail::create([

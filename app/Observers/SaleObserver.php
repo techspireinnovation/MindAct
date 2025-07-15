@@ -2,10 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\AccountGroup;
-use App\Models\AccountHead;
 use App\Models\Sale;
-use App\Models\VoucherSummary;
 
 class SaleObserver
 {
@@ -14,6 +11,7 @@ class SaleObserver
      */
     public function created(Sale $sale): void
     {
+        /*
         $saleAccGroups = [
             'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount, 'payment_type' => ''],
@@ -80,6 +78,7 @@ class SaleObserver
         } catch (\Exception $e) {
             \Log::error($e);
         }
+            */
     }
 
     /**

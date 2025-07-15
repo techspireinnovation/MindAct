@@ -30,7 +30,7 @@ class PurchaseObserver
             'credit' => 0,
             'tr_bill_number' => $purchase->purchase_bill_number,
             'type' => "PURCHASE",
-            'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
+            'payment_type' => "PURCHASE",
             'account_group_id' => $accGroup?->id,
             'account_head_id' => $accHead?->id,
 
@@ -85,7 +85,6 @@ class PurchaseObserver
                     $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
                     $code = $accountHead ? (int) $accountHead->code + 1 : 1;
                     $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
-
                 }
 
                 if ($purchaseAccGroupValue['valueAmount'] > 0) {

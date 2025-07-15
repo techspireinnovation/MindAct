@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductionSetting;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\MeasureUnit;
 use App\Models\ProductionSettingDetail;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -113,17 +116,94 @@ class ProductionSettingController extends Controller
     }
 
 
-    public function show($id): JsonResponse
-    {
-        try {
-            $item = ProductionSetting::findOrFail($id);
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+public function show($id): JsonResponse
+{
+    try {
+        $item = ProductionSetting::with('settingDetail')->findOrFail($id);
+
+        $mainProductId = $item->product_id;
+        $settingDetails = $item->settingDetail ?? [];
+
+        // Collect all product IDs (main + detail)
+        $detailProductIds = collect($settingDetails)->pluck('product_id')->filter()->unique()->toArray();
+        $allProductIds = $detailProductIds;
+
+        if ($mainProductId) {
+            $allProductIds[] = $mainProductId;
         }
+
+        $allProductIds = array_unique($allProductIds);
+
+        // Map: product_id => list of measure_unit_ids (from both Product and ProductList)
+        $productUnitsMap = [];
+
+        // From Product table
+        $productUnits = Product::whereIn('id', $allProductIds)->get(['id', 'measure_unit_id']);
+        foreach ($productUnits as $p) {
+            if ($p->measure_unit_id) {
+                $productUnitsMap[$p->id][] = $p->measure_unit_id;
+            }
+        }
+
+        // From ProductList table
+        $productListUnits = ProductList::whereIn('product_id', $allProductIds)->get(['product_id', 'measure_unit_id']);
+        foreach ($productListUnits as $pl) {
+            if ($pl->measure_unit_id) {
+                $productUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
+            }
+        }
+
+        // From setting detail explicit measure_unit_id
+        foreach ($settingDetails as $detail) {
+            if ($detail->measure_unit_id) {
+                $productUnitsMap[$detail->product_id][] = $detail->measure_unit_id;
+            }
+        }
+
+        // Unique measure unit IDs
+        $allMeasureUnitIds = array_unique(array_merge(...array_values($productUnitsMap)));
+
+        // Fetch full unit info
+        $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)->get(['id', 'name', 'quantity'])->keyBy('id');
+
+        // Format: product_id => list of measure_unit_details
+        $productUsedUnits = [];
+        foreach ($productUnitsMap as $productId => $unitIds) {
+            $productUsedUnits[$productId] = collect($unitIds)
+                ->unique()
+                ->filter(fn ($id) => isset($measureUnits[$id]))
+                ->map(fn ($id) => [
+                    'id' => $id,
+                    'name' => $measureUnits[$id]->name,
+                    'quantity' => $measureUnits[$id]->quantity,
+                ])
+                ->values()
+                ->toArray();
+        }
+
+        // Add used_measure_units to each setting_detail
+        $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($productUsedUnits) {
+            return array_merge($detail->toArray(), [
+                'used_measure_units' => $productUsedUnits[$detail->product_id] ?? [],
+            ]);
+        });
+
+        // Add used_measure_units to main product
+        $mainData = $item->toArray();
+        $mainData['used_measure_units'] = $mainProductId ? ($productUsedUnits[$mainProductId] ?? []) : [];
+        $mainData['setting_detail'] = $enrichedDetails;
+
+        return response()->json([
+            'data' => $mainData
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
+
 
 
 
@@ -166,6 +246,7 @@ class ProductionSettingController extends Controller
             }
 
             $data = $validator->validated();
+
 
             $productionSetting = ProductionSetting::findOrFail($id);
             $productionSetting->update($data);

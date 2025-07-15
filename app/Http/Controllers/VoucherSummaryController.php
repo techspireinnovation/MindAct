@@ -65,11 +65,12 @@ class VoucherSummaryController extends Controller
                     date,
                     voucher_number,
                     a.name AS account_head,
+                      b.name AS account_group,
                     tr_bill_number,
                     particulars,
                     debit,type,
                     credit
-        ')->with('voucherSummaryDetail')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
+        ')->with(['voucherSummaryDetail.accountHead:id,name', 'voucherSummaryDetail.accountGroup:id,name'])->leftJoin('account_groups as b', 'account_group_id', '=', 'b.id')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
             $requestIdentifier = $request->type;
             $requestIdentifierArry = explode(",", $requestIdentifier);
             if (!in_array('ALL', $requestIdentifierArry))

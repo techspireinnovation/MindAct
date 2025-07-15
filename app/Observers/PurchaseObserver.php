@@ -103,7 +103,6 @@ class PurchaseObserver
                         'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
                         'account_group_id' => $accGroup?->id,
                         'account_head_id' => $accHead?->id,
-
                     ]);
                 }
             }

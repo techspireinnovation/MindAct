@@ -22,7 +22,6 @@ class VoucherSummary extends Model
         'account_group_id',
         'payment_type',
         'cheque_number',
-        'is_parent',
         'tr_bill_number',
         'type',
         'deleted_at'

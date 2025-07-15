@@ -50,7 +50,7 @@ class ProductionSettingController extends Controller
                 'product_name' => 'nullable|string|max:255',
                 'quantity' => 'nullable|numeric',
                 'measure_unit_id' => 'nullable|exists:measure_units,id',
-
+                'product_id' => 'nullable|integer|exists:products,id',
                 'product_details' => 'nullable|array',
                 'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
@@ -68,6 +68,7 @@ class ProductionSettingController extends Controller
             }
 
             $validated = $validator->validated();
+
 
             // Create the main production setting
             $productionSetting = ProductionSetting::create($validated);
@@ -115,8 +116,7 @@ class ProductionSettingController extends Controller
         }
     }
 
-
-public function show($id): JsonResponse
+   public function show($id): JsonResponse
 {
     try {
         $item = ProductionSetting::with('settingDetail')->findOrFail($id);
@@ -134,45 +134,72 @@ public function show($id): JsonResponse
 
         $allProductIds = array_unique($allProductIds);
 
-        // Map: product_id => list of measure_unit_ids (from both Product and ProductList)
+        // 1) From Product table: get all measure_unit_ids for all products
+        $productUnits = Product::whereIn('id', $allProductIds)
+            ->get(['id', 'measure_unit_id']);
         $productUnitsMap = [];
-
-        // From Product table
-        $productUnits = Product::whereIn('id', $allProductIds)->get(['id', 'measure_unit_id']);
         foreach ($productUnits as $p) {
             if ($p->measure_unit_id) {
                 $productUnitsMap[$p->id][] = $p->measure_unit_id;
             }
         }
 
-        // From ProductList table
-        $productListUnits = ProductList::whereIn('product_id', $allProductIds)->get(['product_id', 'measure_unit_id']);
+        // 2) From ProductList table: get all measure_unit_ids for all products
+        $productListUnits = ProductList::whereIn('product_id', $allProductIds)
+            ->get(['product_id', 'measure_unit_id']);
+        $productListUnitsMap = [];
         foreach ($productListUnits as $pl) {
             if ($pl->measure_unit_id) {
-                $productUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
+                $productListUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
             }
         }
 
-        // From setting detail explicit measure_unit_id
+        // 3) From settingDetail explicit measure_unit_id
+        $detailUnitsMap = [];
         foreach ($settingDetails as $detail) {
-            if ($detail->measure_unit_id) {
-                $productUnitsMap[$detail->product_id][] = $detail->measure_unit_id;
-            }
+            $productId = $detail->product_id;
+            $units = array_merge(
+                $productUnitsMap[$productId] ?? [],
+                $productListUnitsMap[$productId] ?? [],
+                $detail->measure_unit_id ? [$detail->measure_unit_id] : []
+            );
+            $detailUnitsMap[$productId] = array_unique($units);
         }
 
-        // Unique measure unit IDs
-        $allMeasureUnitIds = array_unique(array_merge(...array_values($productUnitsMap)));
+        // Combine measure units for main product
+        $mainUnits = array_unique(array_merge(
+            $productUnitsMap[$mainProductId] ?? [],
+            $productListUnitsMap[$mainProductId] ?? []
+        ));
 
-        // Fetch full unit info
-        $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)->get(['id', 'name', 'quantity'])->keyBy('id');
+        // Get all measure unit ids used anywhere (main + details)
+        $allMeasureUnitIds = array_unique(array_merge(
+            $mainUnits,
+            ...array_values($detailUnitsMap)
+        ));
 
-        // Format: product_id => list of measure_unit_details
-        $productUsedUnits = [];
-        foreach ($productUnitsMap as $productId => $unitIds) {
-            $productUsedUnits[$productId] = collect($unitIds)
-                ->unique()
-                ->filter(fn ($id) => isset($measureUnits[$id]))
-                ->map(fn ($id) => [
+        // Fetch measure unit info
+        $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
+            ->get(['id', 'name', 'quantity'])
+            ->keyBy('id');
+
+        // Format main product used units
+        $mainUsedMeasureUnits = collect($mainUnits)
+            ->filter(fn($id) => isset($measureUnits[$id]))
+            ->map(fn($id) => [
+                'id' => $id,
+                'name' => $measureUnits[$id]->name,
+                'quantity' => $measureUnits[$id]->quantity,
+            ])
+            ->values()
+            ->toArray();
+
+        // Format detail products used units
+        $detailUsedMeasureUnits = [];
+        foreach ($detailUnitsMap as $productId => $unitIds) {
+            $detailUsedMeasureUnits[$productId] = collect($unitIds)
+                ->filter(fn($id) => isset($measureUnits[$id]))
+                ->map(fn($id) => [
                     'id' => $id,
                     'name' => $measureUnits[$id]->name,
                     'quantity' => $measureUnits[$id]->quantity,
@@ -181,20 +208,20 @@ public function show($id): JsonResponse
                 ->toArray();
         }
 
-        // Add used_measure_units to each setting_detail
-        $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($productUsedUnits) {
+        // Enrich settingDetail with used_measure_units
+        $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($detailUsedMeasureUnits) {
             return array_merge($detail->toArray(), [
-                'used_measure_units' => $productUsedUnits[$detail->product_id] ?? [],
+                'used_measure_units' => $detailUsedMeasureUnits[$detail->product_id] ?? [],
             ]);
         });
 
-        // Add used_measure_units to main product
+        // Add used_measure_units to main product data
         $mainData = $item->toArray();
-        $mainData['used_measure_units'] = $mainProductId ? ($productUsedUnits[$mainProductId] ?? []) : [];
+        $mainData['used_measure_units'] = $mainUsedMeasureUnits;
         $mainData['setting_detail'] = $enrichedDetails;
 
         return response()->json([
-            'data' => $mainData
+            'data' => $mainData,
         ]);
 
     } catch (ModelNotFoundException $e) {
@@ -203,7 +230,6 @@ public function show($id): JsonResponse
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
-
 
 
 
@@ -225,6 +251,7 @@ public function show($id): JsonResponse
                     })
                 ],
                 'product_name' => 'nullable|string|max:255',
+                'product_id' => 'nullable|integer|exists:products,id',
                 'quantity' => 'nullable|numeric',
                 'measure_unit_id' => 'nullable|exists:measure_units,id',
 

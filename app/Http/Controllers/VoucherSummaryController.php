@@ -44,7 +44,7 @@ class VoucherSummaryController extends Controller
             $rr->where('payment_type', operator: strtoupper($request->payment_type));
         })->when($request->has('voucher_number'), function ($rr) use ($request) {
             $rr->where('voucher_number', ($request->voucher_number));
-        })->orderBy('date', 'desc')->paginate(200);
+        })->orderBy('date', 'desc')->paginate(250);
 
         return response()->json($vouchers);
 

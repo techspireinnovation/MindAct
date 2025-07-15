@@ -25,6 +25,8 @@ return new class extends Migration {
             $table->string('tr_bill_number')->nullable();
             $table->string('cheque_number')->nullable();
             $table->char('type', 50)->nullable();
+            $table->string('payment_type', 50)->nullable();
+            $table->foreignId('account_group_id')->nullable()->constrained('account_groups');
             $table->timestamps();
             $table->softDeletes();
         });

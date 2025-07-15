@@ -6,6 +6,7 @@ use App\Models\AccountGroup;
 use App\Models\AccountHead;
 use App\Models\Purchase;
 use App\Models\VoucherSummary;
+use App\Models\VoucherSummaryDetail;
 
 class PurchaseObserver
 {
@@ -14,8 +15,29 @@ class PurchaseObserver
      */
     public function created(Purchase $purchase): void
     {
+
+        $accGroup = AccountGroup::where('name', "Purchase")->first();
+        $accHead = AccountHead::where('name', "Purchase")->first();
+
+        $voucher = VoucherSummary::firstOrCreate([
+            'date' => $purchase->invoice_date,
+            'date_bs' => $purchase->invoice_date_bs,
+            'company_id' => $purchase->company_id,
+            'branch_id' => null,
+            'voucher_number' => "PCVOU-818200{$purchase->id}",
+            'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
+            'debit' => $purchase->sub_total_before_discount,
+            'credit' => 0,
+            'tr_bill_number' => $purchase->purchase_bill_number,
+            'type' => "PURCHASE",
+            'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
+            'account_group_id' => $accGroup?->id,
+            'account_head_id' => $accHead?->id,
+
+        ]);
+
         $purchaseAccGroups = [
-            'Purchase' => ['type' => 'debit', 'valueAmount' => $purchase->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
+            //'Purchase' => ['type' => 'debit', 'valueAmount' => $purchase->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Income' => ['type' => 'credit', 'valueAmount' => $purchase->discount_value, 'payment_type' => ''],
             'Excise Duty Expenses' => ['type' => 'debit', 'valueAmount' => $purchase->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'debit', 'valueAmount' => $purchase->vat_percent, 'payment_type' => ''],
@@ -59,8 +81,9 @@ class PurchaseObserver
                 $accHead = AccountHead::where('name', $purchaseAccGroupKey)->first();
 
                 if ($purchaseAccGroupValue['valueAmount'] > 0) {
-                    VoucherSummary::create([
+                    VoucherSummaryDetail::create([
                         'date' => $purchase->invoice_date,
+                        'voucher_summary_id' => $voucher->id,
                         'date_bs' => $purchase->invoice_date_bs,
                         'company_id' => $purchase->company_id,
                         'branch_id' => null,
@@ -73,7 +96,7 @@ class PurchaseObserver
                         'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
                         'account_group_id' => $accGroup?->id,
                         'account_head_id' => $accHead?->id,
-                        'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
+
                     ]);
                 }
             }

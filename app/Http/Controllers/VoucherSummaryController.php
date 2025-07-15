@@ -66,15 +66,15 @@ class VoucherSummaryController extends Controller
                     voucher_number,
                     a.name AS account_head,
                     tr_bill_number,
-                    particulars,is_parent,
+                    particulars,
                     debit,type,
                     credit
-        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
+        ')->with('voucherSummaryDetail')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
             $requestIdentifier = $request->type;
             $requestIdentifierArry = explode(",", $requestIdentifier);
             if (!in_array('ALL', $requestIdentifierArry))
                 $rr->whereIn('type', $requestIdentifierArry);
-        })->where('is_parent', true)->orderBy('date', 'desc')->paginate(200);
+        })->orderBy('date', 'desc')->paginate(200);
 
         return response()->json($vouchers);
     }

@@ -209,6 +209,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('production-settings-list', [ProductionAssembleController::class,'getProductionSettingList']);
     Route::get('production-settings-details', [ProductionAssembleController::class,'getProductionSettingDetail']);
     Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
+    Route::get('purchase-products-shrinking-working-loss', [ShrinkingWorkingLossController::class,'getProductDetailsforShrinkingWorkingLoss']);
     Route::resource('receipt-vouchers', ReceiptVoucherController::class);
     Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::resource('voucher-summary', VoucherSummaryController::class);

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\ShrinkingWorkingLoss;
+use App\Models\PurchaseProduct;
+use App\Models\MeasureUnit;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
@@ -20,6 +22,115 @@ class ShrinkingWorkingLossController extends Controller
         return response()->json($query->paginate(10));
     }
 
+
+    public function getProductDetailsforShrinkingWorkingLoss(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'product_id' => 'required|exists:products,id',
+                'date_from' => 'nullable|string|max:255',
+                'date_to' => 'nullable|string|max:255',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $productId = $request->input('product_id');
+            $dateFrom = $request->filled('date_from') ? $request->input('date_from') : null;
+            $dateTo = $request->filled('date_to') ? $request->input('date_to') : null;
+
+            // Check for previously processed date_to in ShrinkingWorkingLoss
+            $latestProcessed = ShrinkingWorkingLoss::where('product_id', $productId)
+                ->whereNotNull('date_from')
+                ->whereNotNull('date_to')
+                ->orderBy('date_to', 'desc')
+                ->first();
+
+            // Adjust date_from to avoid overlap with previously processed ranges
+            if ($latestProcessed && $dateFrom) {
+                $latestDateTo = \Carbon\Carbon::parse($latestProcessed->date_to);
+                $requestedDateFrom = \Carbon\Carbon::parse($dateFrom);
+                if ($requestedDateFrom->lte($latestDateTo)) {
+                    $dateFrom = $latestDateTo->addDay()->toDateString();
+                }
+            }
+
+            // Fetch PurchaseProduct records
+            $purchasedProducts = PurchaseProduct::where('product_id', $productId)
+                ->whereHas('purchase', function ($query) use ($dateFrom, $dateTo) {
+                    if ($dateFrom) {
+                        $query->whereDate('invoice_date_bs', '>=', $dateFrom);
+                    }
+                    if ($dateTo) {
+                        $query->whereDate('invoice_date_bs', '<=', $dateTo);
+                    }
+                })
+                ->with('purchase')
+                ->get();
+
+            // Get all measure_unit_ids used in PurchaseProduct
+            $measureUnitIds = $purchasedProducts->pluck('measure_unit_id')->filter()->unique()->toArray();
+
+            // Fetch MeasureUnit details
+            $measureUnits = MeasureUnit::whereIn('id', $measureUnitIds)
+                ->get(['id', 'quantity'])
+                ->keyBy('id');
+
+            // Enrich PurchaseProduct records with quantity_in_pieces
+            $enrichedProducts = $purchasedProducts->map(function ($product) use ($measureUnits) {
+                $data = $product->toArray();
+                $measureUnitId = $product->measure_unit_id;
+                $quantity = $product->quantity ?? 0;
+                $freeQuantity = $product->free_quantity ?? 0;
+
+            $data['purchase_bill_number'] = $product->purchase->purchase_bill_number ?? null;
+            $data['ref_bill_number'] = $product->purchase->ref_bill_number ?? null;
+
+                // Calculate quantity_in_pieces
+                if (isset($measureUnits[$measureUnitId]) && !is_null($measureUnits[$measureUnitId]->quantity)) {
+                    $measureUnitQuantity = $measureUnits[$measureUnitId]->quantity;
+
+                    $quantityRegular = floor($quantity);
+                    $quantityRegularDecimal = (float) $quantity;
+                    $quantityRegularInDecimal = explode('.', (string) $quantity);
+                    $decimalRegularDigits = isset($quantityRegularInDecimal[1]) ? (float) $quantityRegularInDecimal[1] : 0;
+                    $quantityRegularInt = ($quantityRegular * $measureUnitQuantity) + $decimalRegularDigits;
+
+                    $freeQuantityRegular = floor($freeQuantity);
+                    $quantityFreeDecimal = (float) $freeQuantity;
+                    $quantityFreeInDecimal = explode('.', (string) $freeQuantity);
+                    $decimalFreeDigits = isset($quantityFreeInDecimal[1]) ? (float) $quantityFreeInDecimal[1] : 0;
+                    $quantityFreeInt = ($freeQuantityRegular * $measureUnitQuantity) + $decimalFreeDigits;
+
+                    $data['quantity_in_pieces'] = $quantityRegularInt + $quantityFreeInt;
+                } else {
+                    // Fallback to quantity + free_quantity
+                    $data['quantity_in_pieces'] = $quantity + $freeQuantity;
+                }
+
+                return $data;
+            });
+
+            return response()->json([
+                'message' => 'Data Retrieved Successfully !!',
+                'data' => $enrichedProducts
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error('Item not Found in getProductDetailsforShrinkingWorkingLoss', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            return response()->json(['message' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getProductDetailsforShrinkingWorkingLoss', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            return response()->json(['message' => 'Database error occurred.'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getProductDetailsforShrinkingWorkingLoss', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            return response()->json(['message' => 'Unexpected error occurred.'], 500);
+        }
+    }
 
     public function store(Request $request): JsonResponse
     {
@@ -159,8 +270,6 @@ class ShrinkingWorkingLossController extends Controller
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
-
-
 
     public function destroy($id): JsonResponse
     {

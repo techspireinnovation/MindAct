@@ -12,6 +12,9 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\WorkShiftController;
+use App\Http\Controllers\NozzleController;
+use App\Http\Controllers\MeterReadingController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
@@ -53,6 +56,7 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
+
 
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -148,6 +152,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
+    Route::get('main-groups-list', [MainGroupController::class,'mainGroupList']);
+    Route::post('sub-groups-update-ranking', [MainGroupController::class,'draggable']);
+    Route::get('sub-groups-of-main', [MainGroupController::class,'subGroupOfMainGroup']);
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
@@ -203,6 +210,9 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('voucher-summary', VoucherSummaryController::class);
     Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
     Route::resource('company-staff', StaffController::class);
+    Route::resource('work-shifts', WorkShiftController::class);
+    Route::resource('nozzles', NozzleController::class);
+    Route::resource('meter-readings', MeterReadingController::class);
     Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
     Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
     Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);

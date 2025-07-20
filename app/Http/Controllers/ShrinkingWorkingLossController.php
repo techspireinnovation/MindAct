@@ -87,8 +87,8 @@ class ShrinkingWorkingLossController extends Controller
                 $quantity = $product->quantity ?? 0;
                 $freeQuantity = $product->free_quantity ?? 0;
 
-            $data['purchase_bill_number'] = $product->purchase->purchase_bill_number ?? null;
-            $data['ref_bill_number'] = $product->purchase->ref_bill_number ?? null;
+                $data['purchase_bill_number'] = $product->purchase->purchase_bill_number ?? null;
+                $data['ref_bill_number'] = $product->purchase->ref_bill_number ?? null;
 
                 // Calculate quantity_in_pieces
                 if (isset($measureUnits[$measureUnitId]) && !is_null($measureUnits[$measureUnitId]->quantity)) {

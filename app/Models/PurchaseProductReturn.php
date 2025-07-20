@@ -11,6 +11,8 @@ use Request;
 class PurchaseProductReturn extends Model
 {
 
+    protected $table = 'purchase_product_returns';
+
     protected $fillable = [
         'purchase_return_id',
         'purchase_product_id',

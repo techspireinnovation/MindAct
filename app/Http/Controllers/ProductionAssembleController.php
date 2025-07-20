@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductionAssemble;
+use App\Models\ProductionSetting;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\MeasureUnit;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
@@ -18,6 +22,153 @@ class ProductionAssembleController extends Controller
 
 
         return response()->json($query->paginate(10));
+    }
+
+
+    public function getProductionSettingList(Request $request): JsonResponse
+    {
+        try {
+            $productionSettings = ProductionSetting::select('id', 'product_id', 'product_name', 'quantity')
+                ->whereNull('deleted_at')
+                ->where('company_id', $request->company_id)
+                ->get();
+
+            return response()->json([
+                'message' => 'Production Settings fetched successfully.',
+                'data' => $productionSettings
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error('Item not Found in getProductionSettingList', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Item Not Found !!'], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getProductionSettingList', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Database error occurred.'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getProductionSettingList', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Unexpected error occurred.'], 500);
+        }
+    }
+
+
+    public function getProductionSettingDetail(Request $request): JsonResponse
+    {
+        try {
+            $productionSettingId = $request->input('production_setting_id');
+            $item = ProductionSetting::with('settingDetail')->findOrFail($productionSettingId);
+
+            $mainProductId = $item->product_id;
+            $settingDetails = $item->settingDetail ?? [];
+
+            // Collect product IDs
+            $detailProductIds = collect($settingDetails)->pluck('product_id')->filter()->unique()->toArray();
+            $allProductIds = $detailProductIds;
+
+            if ($mainProductId) {
+                $allProductIds[] = $mainProductId;
+            }
+
+            $allProductIds = array_unique($allProductIds);
+
+            // Get measure_unit_ids from Product table
+            $productUnits = Product::whereIn('id', $allProductIds)->get(['id', 'measure_unit_id']);
+            $productUnitsMap = [];
+            foreach ($productUnits as $p) {
+                if ($p->measure_unit_id) {
+                    $productUnitsMap[$p->id][] = $p->measure_unit_id;
+                }
+            }
+
+            // Get measure_unit_ids from ProductList table
+            $productListUnits = ProductList::whereIn('product_id', $allProductIds)->get(['product_id', 'measure_unit_id']);
+            $productListUnitsMap = [];
+            foreach ($productListUnits as $pl) {
+                if ($pl->measure_unit_id) {
+                    $productListUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
+                }
+            }
+
+            // Include explicit unit from settingDetail
+            $detailUnitsMap = [];
+            foreach ($settingDetails as $detail) {
+                $productId = $detail->product_id;
+                $units = array_merge(
+                    $productUnitsMap[$productId] ?? [],
+                    $productListUnitsMap[$productId] ?? [],
+                    $detail->measure_unit_id ? [$detail->measure_unit_id] : []
+                );
+                $detailUnitsMap[$productId] = array_unique($units);
+            }
+
+            // Main product units
+            $mainUnits = array_unique(array_merge(
+                $productUnitsMap[$mainProductId] ?? [],
+                $productListUnitsMap[$mainProductId] ?? [],
+                $item->measure_unit_id ? [$item->measure_unit_id] : [] // Include root measure_unit_id
+            ));
+
+            $allMeasureUnitIds = array_unique(array_merge(
+                $mainUnits,
+                ...array_values($detailUnitsMap)
+            ));
+
+            $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
+                ->get(['id', 'name', 'quantity'])
+                ->keyBy('id');
+
+            // Map main used measure units
+            $mainUsedMeasureUnits = collect($mainUnits)
+                ->filter(fn($id) => isset($measureUnits[$id]))
+                ->map(fn($id) => [
+                    'id' => $id,
+                    'name' => $measureUnits[$id]->name,
+                    'quantity' => $measureUnits[$id]->quantity,
+                ])
+                ->values()
+                ->toArray();
+
+            // Map detail used measure units
+            $detailUsedMeasureUnits = [];
+            foreach ($detailUnitsMap as $productId => $unitIds) {
+                $detailUsedMeasureUnits[$productId] = collect($unitIds)
+                    ->filter(fn($id) => isset($measureUnits[$id]))
+                    ->map(fn($id) => [
+                        'id' => $id,
+                        'name' => $measureUnits[$id]->name,
+                        'quantity' => $measureUnits[$id]->quantity,
+                    ])
+                    ->values()
+                    ->toArray();
+            }
+
+            // Enrich settingDetail
+            $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($detailUsedMeasureUnits) {
+                return array_merge($detail->toArray(), [
+                    'used_measure_units' => $detailUsedMeasureUnits[$detail->product_id] ?? [],
+                ]);
+            });
+
+            // Final response
+            $mainData = $item->toArray();
+            $mainData['measure_unit_id'] = $item->measure_unit_id; // Add root measure_unit_id
+            $mainData['used_measure_units'] = $mainUsedMeasureUnits;
+            $mainData['setting_detail'] = $enrichedDetails;
+
+            return response()->json([
+                'message' => 'Production Settings fetched successfully.',
+                'data' => $mainData,
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error('Item not Found in getProductionSettingDetail', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Item Not Found !!'], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in getProductionSettingDetail', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Database error occurred.'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in getProductionSettingDetail', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'Unexpected error occurred.'], 500);
+        }
     }
 
 

@@ -10,10 +10,7 @@ class VoucherInnerDetail extends Model
 {
     use SoftDeletes;
     protected $fillable = [
-        'date',
-        'date_bs',
         'company_id',
-
         'voucher_summary_id',
         'particulars',
         'debit',

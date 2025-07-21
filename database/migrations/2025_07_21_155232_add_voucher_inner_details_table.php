@@ -17,8 +17,6 @@ return new class extends Migration {
             $table->string('particulars')->nullable();
             $table->double('debit')->nullable();
             $table->double('credit')->nullable();
-            $table->foreignId('account_head_id')->nullable()->constrained('account_heads');
-            $table->foreignId('account_group_id')->nullable()->constrained('account_groups');
             $table->timestamps();
             $table->softDeletes();
         });

@@ -245,7 +245,7 @@ class CustomerController extends Controller
                 'address' => 'nullable|string',
                 'phone' => 'required|string|max:20',
                 'email' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('customers')
@@ -294,7 +294,6 @@ class CustomerController extends Controller
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
-
 
 
 

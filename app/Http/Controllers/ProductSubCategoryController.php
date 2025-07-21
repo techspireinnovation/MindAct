@@ -11,15 +11,36 @@ use Illuminate\Validation\Rule;
 
 class ProductSubCategoryController extends Controller
 {
-    public function index(Request $request): JsonResponse
+     public function index(Request $request): JsonResponse
     {
         $query = ProductSubCategory::with('category:id,name');
 
-        if ($request->has('keywords')) {
+       if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
-        return response()->json($query->paginate(50));
+
+     
+        $subCategories = $query->paginate(50);
+
+      
+        $transformed = $subCategories->getCollection()->map(function ($subCategory) {
+            return [
+                'id' => $subCategory->id,
+                'name' => $subCategory->name,
+                'category_id' => optional($subCategory->category)->id,
+                'category_name' => optional($subCategory->category)->name, 
+                'is_active' => $subCategory->is_active,
+                'company_id' => $subCategory->company_id,
+               
+            ];
+        });
+
+       
+        $subCategories->setCollection($transformed);
+
+        return response()->json($subCategories);
     }
+
 
 
     public function subCategoryList(Request $request)

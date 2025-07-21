@@ -14,7 +14,6 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
             $table->foreignId('voucher_summary_id')->constrained('voucher_summaries');
-            $table->foreignId('voucher_summary_detail_id')->constrained('voucher_summary_details');
             $table->string('particulars')->nullable();
             $table->double('debit')->nullable();
             $table->double('credit')->nullable();

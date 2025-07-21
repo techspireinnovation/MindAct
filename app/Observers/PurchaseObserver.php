@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\AccountGroup;
 use App\Models\AccountHead;
 use App\Models\Purchase;
+use App\Models\VoucherInnerDetail;
 use App\Models\VoucherSummary;
 use App\Models\VoucherSummaryDetail;
 
@@ -85,13 +86,9 @@ class PurchaseObserver
                     $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
                     $code = $accountHead ? (int) $accountHead->code + 1 : 1;
                     $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
                 }
 
-                if ($accHead && $purchaseAccGroupKey == "Cash in Hand") {
-                    $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
-                    $code = $accountHead ? (int) $accountHead->code + 1 : 1;
-                    $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
-                }
 
                 if ($purchaseAccGroupValue['valueAmount'] > 0) {
                     VoucherSummaryDetail::create([
@@ -111,6 +108,49 @@ class PurchaseObserver
                         'account_head_id' => $accHead?->id,
                     ]);
                 }
+            }
+
+
+            if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null) {
+                $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
+
+                VoucherInnerDetail::create([
+                    'voucher_summary_id' => $voucher->id,
+                    'company_id' => $purchase->company_id,
+                    'debit' => $purchase->payment['credit'],
+                    'credit' => 0,
+                    'particulars' => $accHead->name,
+
+                ]);
+            }
+
+            if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null) {
+
+                $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
+
+                VoucherInnerDetail::create([
+                    'voucher_summary_id' => $voucher->id,
+                    'company_id' => $purchase->company_id,
+
+                    'credit' => $purchase->payment['cash'],
+                    'debit' => 0,
+                    'particulars' => "Cash",
+
+                ]);
+            }
+
+            if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
+
+                $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
+
+                VoucherInnerDetail::create([
+                    'voucher_summary_id' => $voucher->id,
+                    'company_id' => $purchase->company_id,
+                    'credit' => $purchase->payment['bank'],
+                    'debit' => 0,
+                    'particulars' => $purchase->payment['bank_name'],
+
+                ]);
             }
         } catch (\Exception $e) {
             \Log::error($e);

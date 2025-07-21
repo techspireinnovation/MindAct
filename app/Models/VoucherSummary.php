@@ -14,6 +14,7 @@ class VoucherSummary extends Model
         'date_bs',
         'company_id',
         'branch_id',
+        'ref_bill_number',
         'voucher_number',
         'particulars',
         'debit',

@@ -31,6 +31,7 @@ class PurchaseObserver
             'tr_bill_number' => $purchase->purchase_bill_number,
             'type' => "PURCHASE",
             'payment_type' => "PURCHASE",
+            'ref_bill_number' => $purchase->ref_bill_number,
             'account_group_id' => $accGroup?->id,
             'account_head_id' => $accHead?->id,
 

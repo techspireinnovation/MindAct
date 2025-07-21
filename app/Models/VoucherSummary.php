@@ -50,6 +50,11 @@ class VoucherSummary extends Model
     public function voucherSummaryDetail()
     {
         return $this->hasMany(VoucherSummaryDetail::class, 'voucher_summary_id');
+    }
+
+    public function voucherSummaryInnerDetail()
+    {
+        return $this->hasMany(VoucherInnerDetail::class, 'voucher_summary_id');
 
     }
 }

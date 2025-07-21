@@ -162,12 +162,19 @@ class Product extends Model
     public function getPurchaseQuantityAttribute()
     {
         $request = request();
-        return PurchaseProduct::where('product_id', $this->id)
+        $purchaseProduct = PurchaseProduct::where('product_id', $this->id)
             ->whereHas('purchase', function ($query) use ($request) {
                 $query->when($request->has('from_date') && $request->has('to_date'), function ($query1) use ($request) {
                     $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
                 });
-            })->sum('quantity') ?? 0;
+            })->first();
+        if (!$purchaseProduct->measure_unit_id)
+            return 0;
+        $measureUnit = MeasureUnit::find($purchaseProduct->measure_unit_id);
+        $calculatePieces = Helper::calculatePieces($purchaseProduct->quantity, $measureUnit->quantity);
+        $targetQty = Helper::convertToTargetMeasureUnit($calculatePieces, 0, $this->getPrimaryMeasureUnitAttribute()->quantity);
+        return $targetQty[0];
+
     }
 
     public function getProductSaleRateAttribute()

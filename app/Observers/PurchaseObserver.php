@@ -87,6 +87,12 @@ class PurchaseObserver
                     $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
                 }
 
+                if ($accHead && $purchaseAccGroupKey == "Cash in Hand") {
+                    $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
+                    $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+                    $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                }
+
                 if ($purchaseAccGroupValue['valueAmount'] > 0) {
                     VoucherSummaryDetail::create([
                         'date' => $purchase->invoice_date,

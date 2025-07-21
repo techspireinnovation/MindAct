@@ -580,5 +580,36 @@ class Helper
         ];
     }
 
+    public static function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    {
+        $integerPart = floor($quantity);
+        $decimalPart = $quantity - $integerPart;
+        $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
+        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+    }
+
+    public static function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
+    {
+        // Ensure targetMeasureUnitQuantity is not zero to prevent division by zero
+        if ($targetMeasureUnitQuantity <= 0) {
+            throw new \Exception('Target measure unit quantity must be greater than zero.');
+        }
+
+        // Calculate regular quantity
+        $regularIntegerUnits = floor($regularPieces / $targetMeasureUnitQuantity);
+        $regularRemainingPieces = $regularPieces - ($regularIntegerUnits * $targetMeasureUnitQuantity);
+        // Convert remaining pieces to decimal (e.g., 567 -> 0.567)
+        $regularDecimal = $regularRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+        $regularQuantity = $regularIntegerUnits + $regularDecimal;
+
+        // Calculate free quantity
+        $freeIntegerUnits = floor($freePieces / $targetMeasureUnitQuantity);
+        $freeRemainingPieces = $freePieces - ($freeIntegerUnits * $targetMeasureUnitQuantity);
+        // Convert remaining pieces to decimal (e.g., 567 -> 0.567)
+        $freeDecimal = $freeRemainingPieces > 0 ? (float) ('0.' . (int) $freeRemainingPieces) : 0;
+        $freeQuantity = $freeIntegerUnits + $freeDecimal;
+
+        return [$regularQuantity, $freeQuantity];
+    }
 
 }

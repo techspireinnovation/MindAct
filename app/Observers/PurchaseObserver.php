@@ -110,9 +110,6 @@ class PurchaseObserver
                 }
             }
 
-
-
-
             VoucherSummaryDetail::create([
                 'date' => $purchase->invoice_date,
                 'voucher_summary_id' => $voucher->id,

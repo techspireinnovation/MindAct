@@ -6,7 +6,7 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class VoucherSummary extends Model
+class VoucherSummaryDetail extends Model
 {
     use SoftDeletes;
     protected $fillable = [
@@ -14,8 +14,8 @@ class VoucherSummary extends Model
         'date_bs',
         'company_id',
         'branch_id',
-        'ref_bill_number',
         'voucher_number',
+        'voucher_summary_id',
         'particulars',
         'debit',
         'credit',
@@ -41,15 +41,15 @@ class VoucherSummary extends Model
 
     }
 
-    public function accountGroup()
+    public function voucherSummary()
     {
-        return $this->belongsTo(AccountGroup::class, 'account_group_id');
+        return $this->belongsTo(VoucherSummary::class, 'voucher_summary_id');
 
     }
 
-    public function voucherSummaryDetail()
+    public function accountGroup()
     {
-        return $this->hasMany(VoucherSummaryDetail::class, 'voucher_summary_id');
+        return $this->belongsTo(AccountGroup::class, 'account_group_id');
 
     }
 }

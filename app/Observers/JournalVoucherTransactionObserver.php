@@ -27,6 +27,7 @@ class JournalVoucherTransactionObserver
             'type' => "JOURNAL_VOUCHER",
             'payment_type' => "BANK",
             'account_head_id' => $journalVoucherTransaction->account_head_id,
+            'is_parent' => true,
         ]);
     }
 

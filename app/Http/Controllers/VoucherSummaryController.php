@@ -27,24 +27,25 @@ class VoucherSummaryController extends Controller
         }
 
         $vouchers = VoucherSummary::selectRaw('
-                    date_bs, voucher_summaries.id,
-                    date,
-                    tr_bill_number,
-                    voucher_number,
+                    voucher_summaries.date_bs, voucher_summaries.id,
+                    voucher_summaries.date,
+                    voucher_summaries.tr_bill_number,
+                    voucher_summaries.ref_bill_number,
+                    voucher_summaries.voucher_number,
                     a.name AS account_head,
                     b.name AS account_group,
-                    particulars,
-                    debit,type,payment_type,
-                    credit
-        ')->leftJoin('account_groups as b', 'account_group_id', '=', 'b.id')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('account_head_id'), function ($rr) use ($request) {
-            $rr->where('account_head_id', $request->account_head_id);
+                    voucher_summaries.particulars,
+                    voucher_summaries.debit,voucher_summaries.type,voucher_summaries.payment_type,
+                    voucher_summaries.credit
+        ')->leftJoin('voucher_summary_details as vsd', 'voucher_summaries.id', '=', 'vsd.voucher_summary_id')->leftJoin('account_groups as b', 'voucher_summaries.account_group_id', '=', 'b.id')->leftJoin('account_heads as a', 'voucher_summaries.account_head_id', '=', 'a.id')->when($request->has('account_head_id'), function ($rr) use ($request) {
+            $rr->where('voucher_summaries.account_head_id', $request->account_head_id);
         })->when($request->has('account_group_id'), function ($rr) use ($request) {
             $rr->where('voucher_summaries.account_group_id', $request->account_group_id);
         })->when($request->has('payment_type'), function ($rr) use ($request) {
-            $rr->where('payment_type', operator: strtoupper($request->payment_type));
+            $rr->where('vsd.payment_type', operator: strtoupper($request->payment_type));
         })->when($request->has('voucher_number'), function ($rr) use ($request) {
-            $rr->where('voucher_number', ($request->voucher_number));
-        })->orderBy('date', 'desc')->paginate(200);
+            $rr->where('voucher_summaries..voucher_number', ($request->voucher_number));
+        })->orderBy('voucher_summaries.date', 'desc')->paginate(250);
 
         return response()->json($vouchers);
 
@@ -64,12 +65,14 @@ class VoucherSummaryController extends Controller
                     date_bs, voucher_summaries.id,
                     date,
                     voucher_number,
+                    ref_bill_number,
                     a.name AS account_head,
+                    b.name AS account_group,
                     tr_bill_number,
                     particulars,
                     debit,type,
                     credit
-        ')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
+        ')->with(['voucherSummaryDetail.accountHead:id,name', 'voucherSummaryDetail.accountGroup:id,name'])->leftJoin('account_groups as b', 'account_group_id', '=', 'b.id')->leftJoin('account_heads as a', 'account_head_id', '=', 'a.id')->when($request->has('type'), function ($rr) use ($request) {
             $requestIdentifier = $request->type;
             $requestIdentifierArry = explode(",", $requestIdentifier);
             if (!in_array('ALL', $requestIdentifierArry))

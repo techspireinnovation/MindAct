@@ -27,7 +27,7 @@ class Sale extends Model
         'invoice_date_bs' => 'date:Y-m-d',
     ];
 
-    protected $dates = ['deleted_at', 'invoice_date_bs'];
+    protected $dates = ['deleted_at'];
 
     protected $fillable = [
         'company_id',

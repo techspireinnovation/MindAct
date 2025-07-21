@@ -878,8 +878,7 @@ class ProductController extends Controller
                     'is_active' => $data['is_active'] ? true : false,
                 ]);
 
-                // Optionally insert into product_lists table
-                // (Assuming your CSV has these fields, otherwise skip or adjust)
+
                 //   if (isset($data['quantity'])) {
                 ProductList::create([
                     'product_unique_id' => $productID,
@@ -895,7 +894,7 @@ class ProductController extends Controller
                     'is_primary' => 1,
                     'primary_measure_unit_id' => $data['primary_measure_unit_id'] ?? $data['measure_unit_id'],
                 ]);
-                //  }
+
             }
             fclose($handle);
             DB::commit();

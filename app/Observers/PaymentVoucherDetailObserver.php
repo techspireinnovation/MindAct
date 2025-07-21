@@ -37,6 +37,7 @@ class PaymentVoucherDetailObserver
             'cheque_number' => $paymentVoucherDetail->cheque_slip,
             'type' => "PAYMENT_VOUCHER",
             'account_group_id' => $bankAccountGroup?->id,
+            'is_parent' => true,
         ]);
     }
 

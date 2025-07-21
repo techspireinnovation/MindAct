@@ -2,10 +2,7 @@
 
 namespace App\Observers;
 
-use App\Models\AccountGroup;
-use App\Models\AccountHead;
 use App\Models\Sale;
-use App\Models\VoucherSummary;
 
 class SaleObserver
 {
@@ -14,8 +11,9 @@ class SaleObserver
      */
     public function created(Sale $sale): void
     {
+        /*
         $saleAccGroups = [
-            'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => ''],
+            'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount, 'payment_type' => ''],
             'Excise Duty Income' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_amount, 'payment_type' => ''],
@@ -58,25 +56,29 @@ class SaleObserver
                 $accGroup = AccountGroup::where('name', $saleAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $saleAccGroupKey)->first();
 
-                VoucherSummary::create([
-                    'date' => $sale->invoice_date,
-                    'date_bs' => $sale->invoice_date_bs,
-                    'company_id' => $sale->company_id,
-                    'branch_id' => null,
-                    'voucher_number' => "SLVOU-818200{$sale->id}",
-                    'particulars' => "Product Sale to - {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
-                    'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
-                    'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
-                    'tr_bill_number' => $sale->invoice_number,
-                    'type' => "SALE",
-                    'payment_type' => $saleAccGroups['payment_type'] ?? "SALE",
-                    'account_group_id' => $accGroup?->id,
-                    'account_head_id' => $accHead?->id,
-                ]);
+                if ($saleAccGroupValue['valueAmount'] > 0) {
+                    VoucherSummary::create([
+                        'date' => $sale->invoice_date,
+                        'date_bs' => $sale->invoice_date_bs,
+                        'company_id' => $sale->company_id,
+                        'branch_id' => null,
+                        'voucher_number' => "SLVOU-818200{$sale->id}",
+                        'particulars' => "Product Sale to - {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+                        'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
+                        'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
+                        'tr_bill_number' => $sale->invoice_number,
+                        'type' => "SALE",
+                        'payment_type' => $saleAccGroups['payment_type'],
+                        'account_group_id' => $accGroup?->id,
+                        'account_head_id' => $accHead?->id,
+                        'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             \Log::error($e);
         }
+            */
     }
 
     /**

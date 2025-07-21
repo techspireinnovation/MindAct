@@ -111,27 +111,23 @@ class PurchaseObserver
             }
 
 
-            if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null) {
+            if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null && $purchase->payment['credit'] > 0) {
                 $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
-
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $purchase->company_id,
                     'debit' => $purchase->payment['credit'],
                     'credit' => 0,
                     'particulars' => $accHead->name,
-
                 ]);
             }
 
-            if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null) {
+            if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null && $purchase->payment['cash'] > 0) {
 
                 $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
-
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $purchase->company_id,
-
                     'credit' => $purchase->payment['cash'],
                     'debit' => 0,
                     'particulars' => "Cash",
@@ -139,10 +135,9 @@ class PurchaseObserver
                 ]);
             }
 
-            if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
+            if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null && $purchase->payment['bank'] > 0) {
 
                 $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
-
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $purchase->company_id,

@@ -57,18 +57,25 @@ class PurchaseObserver
 
         switch ($purchase->customer->ledger_type) {
             case 'customer':
+
+                $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();
+                $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
+                $partyHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
 
             default:
+
+                $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
+                $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
+                $partyHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
         }
-
-        if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null)
-            $purchaseAccGroups['Cash in Hand'] = ['type' => 'credit', 'valueAmount' => $purchase->payment['cash'], 'payment_type' => 'CASH'];
 
         if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
             $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
@@ -88,7 +95,6 @@ class PurchaseObserver
                     $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
 
                 }
-
 
                 if ($purchaseAccGroupValue['valueAmount'] > 0) {
                     VoucherSummaryDetail::create([
@@ -111,16 +117,34 @@ class PurchaseObserver
             }
 
 
-            if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null && $purchase->payment['credit'] > 0) {
-                $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
-                VoucherInnerDetail::create([
+            if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null) {
+
+                VoucherSummaryDetail::create([
+                    'date' => $purchase->invoice_date,
                     'voucher_summary_id' => $voucher->id,
+                    'date_bs' => $purchase->invoice_date_bs,
                     'company_id' => $purchase->company_id,
-                    'debit' => $purchase->payment['credit'],
-                    'credit' => 0,
-                    'particulars' => $accHead->name,
+                    'branch_id' => null,
+                    'voucher_number' => "PCVOU-818200{$purchase->id}",
+                    'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
+                    'debit' => 0,
+                    'credit' => $purchase->payment['cash'],
+                    'tr_bill_number' => $purchase->purchase_bill_number,
+                    'type' => "PURCHASE",
+                    'payment_type' => "CASH",
+                    'account_group_id' => $partyAccountGroup?->id,
+                    'account_head_id' => $partyHead?->id,
                 ]);
             }
+
+            VoucherInnerDetail::create([
+                'voucher_summary_id' => $voucher->id,
+                'company_id' => $purchase->company_id,
+                'debit' => $purchase->total_amount,
+                'credit' => 0,
+                'particulars' => $partyHead->name,
+            ]);
+
 
             if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null && $purchase->payment['cash'] > 0) {
 

@@ -17,6 +17,7 @@ class StockReceive extends Model
 
     protected $fillable = [
         'company_id',
+        'stock_receive_id',
         'transfer_ref_no',
         'reference_no',
         'receive_from',
@@ -39,5 +40,10 @@ class StockReceive extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function stockReceiveDetails(): HasMany
+    {
+        return $this->hasMany(StockReceiveDetail::class, 'stock_receive_id');
     }
 }

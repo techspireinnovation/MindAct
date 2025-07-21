@@ -77,12 +77,6 @@ class PurchaseObserver
                 break;
         }
 
-        if (isset($purchase->payment['bank']) && $purchase->payment['bank'] !== null) {
-            $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
-            $accHeadBank = AccountHead::firstOrCreate(['name' => $purchase->payment['bank_name'], 'company_id' => $purchase->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($purchase->payment['bank_name']), 'is_primary' => true]);
-            $purchaseAccGroups[$accHeadBank->name] = ['type' => 'credit', 'valueAmount' => $purchase->payment['bank'], 'payment_type' => 'BANK'];
-        }
-
         try {
             foreach ($purchaseAccGroups as $purchaseAccGroupKey => $purchaseAccGroupValue) {
 
@@ -117,25 +111,25 @@ class PurchaseObserver
             }
 
 
-            if (isset($purchase->payment['cash']) && $purchase->payment['cash'] !== null) {
 
-                VoucherSummaryDetail::create([
-                    'date' => $purchase->invoice_date,
-                    'voucher_summary_id' => $voucher->id,
-                    'date_bs' => $purchase->invoice_date_bs,
-                    'company_id' => $purchase->company_id,
-                    'branch_id' => null,
-                    'voucher_number' => "PCVOU-818200{$purchase->id}",
-                    'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
-                    'debit' => 0,
-                    'credit' => $purchase->payment['cash'],
-                    'tr_bill_number' => $purchase->purchase_bill_number,
-                    'type' => "PURCHASE",
-                    'payment_type' => "CASH",
-                    'account_group_id' => $partyAccountGroup?->id,
-                    'account_head_id' => $partyHead?->id,
-                ]);
-            }
+
+            VoucherSummaryDetail::create([
+                'date' => $purchase->invoice_date,
+                'voucher_summary_id' => $voucher->id,
+                'date_bs' => $purchase->invoice_date_bs,
+                'company_id' => $purchase->company_id,
+                'branch_id' => null,
+                'voucher_number' => "PCVOU-818200{$purchase->id}",
+                'particulars' => "Product Purchased from {$purchase->customer->party_name} - Bill No. {$purchase->purchase_bill_number}",
+                'debit' => 0,
+                'credit' => $purchase->total_amount,
+                'tr_bill_number' => $purchase->purchase_bill_number,
+                'type' => "PURCHASE",
+                'payment_type' => "CASH",
+                'account_group_id' => $partyAccountGroup?->id,
+                'account_head_id' => $partyHead?->id,
+            ]);
+
 
             VoucherInnerDetail::create([
                 'voucher_summary_id' => $voucher->id,

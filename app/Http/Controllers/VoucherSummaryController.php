@@ -77,7 +77,7 @@ class VoucherSummaryController extends Controller
             $requestIdentifierArry = explode(",", $requestIdentifier);
             if (!in_array('ALL', $requestIdentifierArry))
                 $rr->whereIn('type', $requestIdentifierArry);
-        })->orderBy('date', 'desc')->paginate(200);
+        })->orderBy('created_at', 'desc')->paginate(200);
 
         return response()->json($vouchers);
     }

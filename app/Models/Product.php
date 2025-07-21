@@ -168,7 +168,8 @@ class Product extends Model
                     $query1->whereDate('purchases.invoice_date_bs', '>=', $request->from_date)->whereDate('purchases.invoice_date_bs', '<=', $request->to_date);
                 });
             })->first();
-
+        if (!$purchaseProduct->measure_unit_id)
+            return 0;
         $measureUnit = MeasureUnit::find($purchaseProduct->measure_unit_id);
         $calculatePieces = Helper::calculatePieces($purchaseProduct->quantity, $measureUnit->quantity);
         $targetQty = Helper::convertToTargetMeasureUnit($calculatePieces, 0, $this->getPrimaryMeasureUnitAttribute()->quantity);

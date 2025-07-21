@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductionSetting;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\MeasureUnit;
 use App\Models\ProductionSettingDetail;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -11,7 +14,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-
 
 
 class ProductionSettingController extends Controller
@@ -23,8 +25,6 @@ class ProductionSettingController extends Controller
 
         return response()->json($query->paginate(10));
     }
-
-
 
 
     public function store(Request $request): JsonResponse
@@ -47,7 +47,7 @@ class ProductionSettingController extends Controller
                 'product_name' => 'nullable|string|max:255',
                 'quantity' => 'nullable|numeric',
                 'measure_unit_id' => 'nullable|exists:measure_units,id',
-
+                'product_id' => 'nullable|integer|exists:products,id',
                 'product_details' => 'nullable|array',
                 'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
@@ -65,6 +65,7 @@ class ProductionSettingController extends Controller
             }
 
             $validated = $validator->validated();
+
 
             // Create the main production setting
             $productionSetting = ProductionSetting::create($validated);
@@ -94,7 +95,7 @@ class ProductionSettingController extends Controller
 
         } catch (QueryException $e) {
             DB::rollBack();
-            dd($e->getMessage());
+           
             \Log::error('Database error in Production Setting store', [
                 'error' => $e->getMessage(),
                 'request' => $request->except(['sensitive_field'])
@@ -102,7 +103,7 @@ class ProductionSettingController extends Controller
             return response()->json(['message' => 'Database error occurred.'], 500);
 
         } catch (\Exception $e) {
-            dd($e->getMessage());
+           
             DB::rollBack();
             \Log::error('Unexpected error in Production Setting store', [
                 'error' => $e->getMessage(),
@@ -112,19 +113,120 @@ class ProductionSettingController extends Controller
         }
     }
 
-
     public function show($id): JsonResponse
     {
         try {
-            $item = ProductionSetting::findOrFail($id);
-            return response()->json($item);
+            $item = ProductionSetting::with('settingDetail')->findOrFail($id);
+
+            $mainProductId = $item->product_id;
+            $settingDetails = $item->settingDetail ?? [];
+
+            // Collect all product IDs (main + detail)
+            $detailProductIds = collect($settingDetails)->pluck('product_id')->filter()->unique()->toArray();
+            $allProductIds = $detailProductIds;
+
+            if ($mainProductId) {
+                $allProductIds[] = $mainProductId;
+            }
+
+            $allProductIds = array_unique($allProductIds);
+
+            // 1) From Product table: get all measure_unit_ids for all products
+            $productUnits = Product::whereIn('id', $allProductIds)
+                ->get(['id', 'measure_unit_id']);
+            $productUnitsMap = [];
+            foreach ($productUnits as $p) {
+                if ($p->measure_unit_id) {
+                    $productUnitsMap[$p->id][] = $p->measure_unit_id;
+                }
+            }
+
+            // 2) From ProductList table: get all measure_unit_ids for all products
+            $productListUnits = ProductList::whereIn('product_id', $allProductIds)
+                ->get(['product_id', 'measure_unit_id']);
+            $productListUnitsMap = [];
+            foreach ($productListUnits as $pl) {
+                if ($pl->measure_unit_id) {
+                    $productListUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
+                }
+            }
+
+            // 3) From settingDetail explicit measure_unit_id
+            $detailUnitsMap = [];
+            foreach ($settingDetails as $detail) {
+                $productId = $detail->product_id;
+                $units = array_merge(
+                    $productUnitsMap[$productId] ?? [],
+                    $productListUnitsMap[$productId] ?? [],
+                    $detail->measure_unit_id ? [$detail->measure_unit_id] : []
+                );
+                $detailUnitsMap[$productId] = array_unique($units);
+            }
+
+            // Combine measure units for main product
+            $mainUnits = array_unique(array_merge(
+                $productUnitsMap[$mainProductId] ?? [],
+                $productListUnitsMap[$mainProductId] ?? []
+            ));
+
+            // Get all measure unit ids used anywhere (main + details)
+            $allMeasureUnitIds = array_unique(array_merge(
+                $mainUnits,
+                ...array_values($detailUnitsMap)
+            ));
+
+            // Fetch measure unit info
+            $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
+                ->get(['id', 'name', 'quantity'])
+                ->keyBy('id');
+
+            // Format main product used units
+            $mainUsedMeasureUnits = collect($mainUnits)
+                ->filter(fn($id) => isset($measureUnits[$id]))
+                ->map(fn($id) => [
+                    'id' => $id,
+                    'name' => $measureUnits[$id]->name,
+                    'quantity' => $measureUnits[$id]->quantity,
+                ])
+                ->values()
+                ->toArray();
+
+            // Format detail products used units
+            $detailUsedMeasureUnits = [];
+            foreach ($detailUnitsMap as $productId => $unitIds) {
+                $detailUsedMeasureUnits[$productId] = collect($unitIds)
+                    ->filter(fn($id) => isset($measureUnits[$id]))
+                    ->map(fn($id) => [
+                        'id' => $id,
+                        'name' => $measureUnits[$id]->name,
+                        'quantity' => $measureUnits[$id]->quantity,
+                    ])
+                    ->values()
+                    ->toArray();
+            }
+
+            // Enrich settingDetail with used_measure_units
+            $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($detailUsedMeasureUnits) {
+                return array_merge($detail->toArray(), [
+                    'used_measure_units' => $detailUsedMeasureUnits[$detail->product_id] ?? [],
+                ]);
+            });
+
+            // Add used_measure_units to main product data
+            $mainData = $item->toArray();
+            $mainData['used_measure_units'] = $mainUsedMeasureUnits;
+            $mainData['setting_detail'] = $enrichedDetails;
+
+            return response()->json([
+                'data' => $mainData,
+            ]);
+
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
-
 
 
     public function update(Request $request, $id): JsonResponse
@@ -145,6 +247,7 @@ class ProductionSettingController extends Controller
                     })
                 ],
                 'product_name' => 'nullable|string|max:255',
+                'product_id' => 'nullable|integer|exists:products,id',
                 'quantity' => 'nullable|numeric',
                 'measure_unit_id' => 'nullable|exists:measure_units,id',
 
@@ -166,6 +269,7 @@ class ProductionSettingController extends Controller
             }
 
             $data = $validator->validated();
+
 
             $productionSetting = ProductionSetting::findOrFail($id);
             $productionSetting->update($data);
@@ -239,7 +343,6 @@ class ProductionSettingController extends Controller
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
-
 
     public function destroy($id): JsonResponse
     {

@@ -8,6 +8,7 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\AreaController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
@@ -158,6 +159,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
+    Route::resource('areas', AreaController::class);
 
     Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
 
@@ -204,7 +206,10 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('stock-reconciliation', StockReconciliationController::class);
     Route::resource('production-settings', ProductionSettingController::class);
     Route::resource('production-assembles', ProductionAssembleController::class);
+    Route::get('production-settings-list', [ProductionAssembleController::class,'getProductionSettingList']);
+    Route::get('production-settings-details', [ProductionAssembleController::class,'getProductionSettingDetail']);
     Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
+    Route::get('purchase-products-shrinking-working-loss', [ShrinkingWorkingLossController::class,'getProductDetailsforShrinkingWorkingLoss']);
     Route::resource('receipt-vouchers', ReceiptVoucherController::class);
     Route::resource('payment-vouchers', PaymentVoucherController::class);
     Route::resource('voucher-summary', VoucherSummaryController::class);

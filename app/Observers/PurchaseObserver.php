@@ -38,7 +38,6 @@ class PurchaseObserver
         ]);
 
         $purchaseAccGroups = [
-            //'Purchase' => ['type' => 'debit', 'valueAmount' => $purchase->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Income' => ['type' => 'credit', 'valueAmount' => $purchase->discount_value, 'payment_type' => ''],
             'Excise Duty Expenses' => ['type' => 'debit', 'valueAmount' => $purchase->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'debit', 'valueAmount' => $purchase->vat_percent, 'payment_type' => ''],

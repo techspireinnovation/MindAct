@@ -585,7 +585,7 @@ class Helper
         $integerPart = floor($quantity);
         $decimalPart = $quantity - $integerPart;
         $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        return $integerPart * $measureUnitQuantity + $decimalPieces;
     }
 
     public static function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array

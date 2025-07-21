@@ -30,7 +30,7 @@ class VoucherSummaryController extends Controller
                     voucher_summaries.date_bs, voucher_summaries.id,
                     voucher_summaries.date,
                     voucher_summaries.tr_bill_number,
-                    voucher_summaries,ref_bill_number,
+                    voucher_summaries.ref_bill_number,
                     voucher_summaries.voucher_number,
                     a.name AS account_head,
                     b.name AS account_group,

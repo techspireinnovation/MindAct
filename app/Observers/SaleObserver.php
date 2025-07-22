@@ -11,43 +11,65 @@ class SaleObserver
      */
     public function created(Sale $sale): void
     {
-        /*
+
+        $accGroup = AccountGroup::where('name', "Sales")->first();
+        $accHead = AccountHead::where('name', "Sales")->first();
+
+        $voucher = VoucherSummary::firstOrCreate([
+            'date' => $sale->invoice_date,
+            'date_bs' => $sale->invoice_date_bs,
+            'company_id' => $sale->company_id,
+            'branch_id' => null,
+            'voucher_number' => "PCVOU-818200{$sale->id}",
+            'particulars' => "Product Sales to {$sale->customer->party_name} - Bill No. {$sale->invoice_number}",
+            'credit' => $sale->sub_total_before_discount,
+            'debit' => 0,
+            'tr_bill_number' => $sale->invoice_number,
+            'type' => "SALE",
+            'payment_type' => "SALE",
+            'ref_bill_number' => $sale->ref_number,
+            'account_group_id' => $accGroup?->id,
+            'account_head_id' => $accHead?->id,
+
+        ]);
+
         $saleAccGroups = [
-            'Sales' => ['type' => 'credit', 'valueAmount' => $sale->sub_total_before_discount, 'payment_type' => '', 'is_parent' => true],
             'Discount Expenses' => ['type' => 'debit', 'valueAmount' => $sale->discount, 'payment_type' => ''],
-            'Excise Duty Income' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
+            'Excise Duty Expenses' => ['type' => 'credit', 'valueAmount' => $sale->excise_duty, 'payment_type' => ''],
             'VAT Account' => ['type' => 'credit', 'valueAmount' => $sale->vat_amount, 'payment_type' => ''],
-            'Health insurance Income' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
-            'Fright Charge Income' => ['type' => 'credit', 'valueAmount' => $sale->freight_charge, 'payment_type' => ''],
+            'Health insurance income' => ['type' => 'credit', 'valueAmount' => $sale->health_insurance, 'payment_type' => ''],
+            'Fright charge income' => ['type' => 'credit', 'valueAmount' => $sale->freight_charge, 'payment_type' => ''],
             'Scheme Discount' => ['type' => 'debit', 'valueAmount' => $sale->discount_after_vat, 'payment_type' => ''],
         ];
 
         if ($sale->roundoff_type === 'plus') {
-            $saleAccGroups['Round Off Plus in Sales'] = ['type' => 'credit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
+            $saleAccGroups['Round Off Plus in Purchase'] = ['type' => 'debit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
         }
 
         if ($sale->roundoff_type === 'minus') {
-            $saleAccGroups['Round Off Minus in Sales'] = ['type' => 'debit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
+            $saleAccGroups['Round Off Minus in Purchase'] = ['type' => 'credit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
         }
 
         switch ($sale->customer->ledger_type) {
             case 'customer':
+
+                $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();
+                $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
+                $partyHead = AccountHead::firstOrCreate(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
-                    $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'debit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'DEBIT'];
+                    $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
+
             default:
+
+                $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
+                $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
+                $partyHead = AccountHead::firstOrCreate(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
-                    $saleAccGroups['Accounts Payable (Debtors)'] = ['type' => 'debit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'DEBIT'];
+                    $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
-        }
-
-        if (isset($sale->payment['cash']) && $sale->payment['cash'] !== null)
-            $saleAccGroups['Cash in Hand'] = ['type' => 'debit', 'valueAmount' => $sale->payment['cash'], 'payment_type' => 'CASH'];
-
-        if (isset($sale->payment['bank']) && $sale->payment['bank'] !== null) {
-            $bankAccountGroup = AccountGroup::where('name', '=', "Bank Accounts")->first();
-            $accHeadBank = AccountHead::firstOrCreate(['name' => $sale->payment['bank_name'], 'company_id' => $sale->company_id, 'account_group_id' => $bankAccountGroup->id, 'is_active' => true, 'code' => ucfirst($sale->payment['bank_name']), 'is_primary' => true]);
-            $saleAccGroups[$accHeadBank->name] = ['type' => 'debit', 'valueAmount' => $sale->payment['bank'], 'payment_type' => 'BANK'];
         }
 
         try {
@@ -56,60 +78,89 @@ class SaleObserver
                 $accGroup = AccountGroup::where('name', $saleAccGroupKey)->first();
                 $accHead = AccountHead::where('name', $saleAccGroupKey)->first();
 
+                if (!$accHead && ($saleAccGroupKey == "Accounts Receivable (Debtors)" || $saleAccGroupKey == "Accounts Payable (Creditors)")) {
+                    $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
+                    $code = $accountHead ? (int) $accountHead->code + 1 : 1;
+                    $accHead = AccountHead::firstOrCreate(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
+                }
+
                 if ($saleAccGroupValue['valueAmount'] > 0) {
-                    VoucherSummary::create([
+                    VoucherSummaryDetail::create([
                         'date' => $sale->invoice_date,
+                        'voucher_summary_id' => $voucher->id,
                         'date_bs' => $sale->invoice_date_bs,
                         'company_id' => $sale->company_id,
                         'branch_id' => null,
                         'voucher_number' => "SLVOU-818200{$sale->id}",
-                        'particulars' => "Product Sale to - {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+                        'particulars' => "Product Purchased from {$sale->customer->party_name} - Bill No. {$sale->invoice_number}",
                         'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
                         'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
                         'tr_bill_number' => $sale->invoice_number,
-                        'type' => "SALE",
-                        'payment_type' => $saleAccGroups['payment_type'],
+                        'type' => "PURCHASE",
+                        'payment_type' => $saleAccGroupValue['payment_type'] ?? "SALE",
                         'account_group_id' => $accGroup?->id,
                         'account_head_id' => $accHead?->id,
-                        'is_parent' => $saleAccGroupValue['is_parent'] ?? false,
                     ]);
                 }
+            }
+
+            VoucherSummaryDetail::create([
+                'date' => $sale->invoice_date,
+                'voucher_summary_id' => $voucher->id,
+                'date_bs' => $sale->invoice_date_bs,
+                'company_id' => $sale->company_id,
+                'branch_id' => null,
+                'voucher_number' => "PCVOU-818200{$sale->id}",
+                'particulars' => "Product Purchased from {$sale->customer->party_name} - Bill No. {$sale->invoice_number}",
+                'debit' => 0,
+                'credit' => $sale->total_amount,
+                'tr_bill_number' => $sale->invoice_number,
+                'type' => "PURCHASE",
+                'payment_type' => "CASH",
+                'account_group_id' => $partyAccountGroup?->id,
+                'account_head_id' => $partyHead?->id,
+            ]);
+
+
+            VoucherInnerDetail::create([
+                'voucher_summary_id' => $voucher->id,
+                'company_id' => $sale->company_id,
+                'debit' => $sale->total_amount,
+                'credit' => 0,
+                'particulars' => $partyHead->name,
+            ]);
+
+
+            if (isset($sale->payment['cash']) && $sale->payment['cash'] !== null && $sale->payment['cash'] > 0) {
+
+                $accHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
+                VoucherInnerDetail::create([
+                    'voucher_summary_id' => $voucher->id,
+                    'company_id' => $sale->company_id,
+                    'credit' => $sale->payment['cash'],
+                    'debit' => 0,
+                    'particulars' => "Cash",
+
+                ]);
+            }
+
+            if (isset($sale->payment['bank']) && $sale->payment['bank'] !== null && $sale->payment['bank'] > 0) {
+
+                $accHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
+                VoucherInnerDetail::create([
+                    'voucher_summary_id' => $voucher->id,
+                    'company_id' => $sale->company_id,
+                    'credit' => $sale->payment['bank'],
+                    'debit' => 0,
+                    'particulars' => $sale->payment['bank_name'],
+
+                ]);
             }
         } catch (\Exception $e) {
             \Log::error($e);
         }
-            */
+
     }
 
-    /**
-     * Handle the Purchase "updated" event.
-     */
-    public function updated(Sale $sale): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Sale "deleted" event.
-     */
-    public function deleted(Sale $sale): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Sale "restored" event.
-     */
-    public function restored(Sale $sale): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Sale "force deleted" event.
-     */
-    public function forceDeleted(Sale $sale): void
-    {
-        //
-    }
 }

@@ -21,7 +21,7 @@ class SaleObserver
             'company_id' => $sale->company_id,
             'branch_id' => null,
             'voucher_number' => "PCVOU-818200{$sale->id}",
-            'particulars' => "Product Sales to {$sale->customer->party_name} - Bill No. {$sale->invoice_number}",
+            'particulars' => "Product Sales to {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
             'credit' => $sale->sub_total_before_discount,
             'debit' => 0,
             'tr_bill_number' => $sale->invoice_number,
@@ -93,7 +93,7 @@ class SaleObserver
                         'company_id' => $sale->company_id,
                         'branch_id' => null,
                         'voucher_number' => "SLVOU-818200{$sale->id}",
-                        'particulars' => "Product Purchased from {$sale->customer->party_name} - Bill No. {$sale->invoice_number}",
+                        'particulars' => "Product Sales to {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
                         'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
                         'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
                         'tr_bill_number' => $sale->invoice_number,
@@ -113,8 +113,8 @@ class SaleObserver
                 'branch_id' => null,
                 'voucher_number' => "PCVOU-818200{$sale->id}",
                 'particulars' => "Product Purchased from {$sale->customer->party_name} - Bill No. {$sale->invoice_number}",
-                'debit' => 0,
-                'credit' => $sale->total_amount,
+                'credit' => 0,
+                'debit' => $sale->total_amount,
                 'tr_bill_number' => $sale->invoice_number,
                 'type' => "PURCHASE",
                 'payment_type' => "CASH",
@@ -126,8 +126,8 @@ class SaleObserver
             VoucherInnerDetail::create([
                 'voucher_summary_id' => $voucher->id,
                 'company_id' => $sale->company_id,
-                'debit' => $sale->total_amount,
-                'credit' => 0,
+                'credit' => $sale->total_amount,
+                'debit' => 0,
                 'particulars' => $partyHead->name,
             ]);
 
@@ -138,8 +138,8 @@ class SaleObserver
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $sale->company_id,
-                    'credit' => $sale->payment['cash'],
-                    'debit' => 0,
+                    'debit' => $sale->payment['cash'],
+                    'credit' => 0,
                     'particulars' => "Cash",
 
                 ]);
@@ -151,8 +151,8 @@ class SaleObserver
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $sale->company_id,
-                    'credit' => $sale->payment['bank'],
-                    'debit' => 0,
+                    'debit' => $sale->payment['bank'],
+                    'credit' => 0,
                     'particulars' => $sale->payment['bank_name'],
 
                 ]);

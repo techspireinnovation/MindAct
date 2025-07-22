@@ -2,7 +2,12 @@
 
 namespace App\Observers;
 
+use App\Models\AccountGroup;
+use App\Models\AccountHead;
 use App\Models\Sale;
+use App\Models\VoucherInnerDetail;
+use App\Models\VoucherSummary;
+use App\Models\VoucherSummaryDetail;
 
 class SaleObserver
 {

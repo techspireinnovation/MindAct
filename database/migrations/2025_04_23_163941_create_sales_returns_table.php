@@ -53,6 +53,13 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Check and drop the foreign key only if it exists
+        if (Schema::hasTable('sales_returns')) {
+            // This will prevent errors during rollback
+            DB::statement('ALTER TABLE `sales_returns` DROP FOREIGN KEY IF EXISTS `sales_returns_salesman_id_foreign`');
+        }
+    
         Schema::dropIfExists('sales_returns');
     }
+
 };

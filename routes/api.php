@@ -13,6 +13,8 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\RoleController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
 use App\Http\Controllers\NozzleController;
 use App\Http\Controllers\MeterReadingController;
@@ -59,9 +61,16 @@ use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
 
 
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
-Route::post('/company/login', [CompanyAdminController::class, 'login']);
+
+
+// Public routes
+Route::post('/register', [AuthController::class, 'register'])->name('register');
+Route::post('/login', [AuthController::class, 'login'])->name('auth.login'); // General login
+Route::post('/company/login', [CompanyAdminController::class, 'login'])->name('company.login'); // Company admin login
+Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdminController::class, 'selectCompany'])->name('company.select');
+
+
+
 
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
@@ -78,9 +87,11 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
 
 
-Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
+    // Route::post('/select-company', [CompanyAdminController::class, 'selectCompany']);
     // 
-
+    Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
+        Route::post('/users', [UserController::class, 'store'])->name('company.users.store');
+        Route::post('/role/store', [RoleController::class, 'store'])->name('company.role.store');
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('profile', [CompanyAdminController::class, 'profile']);
@@ -145,6 +156,14 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
         Route::get('/gross-margin-list', [ReportController::class, 'grossMarginListDetails']);
         Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
         //});
+    });
+
+
+    Route::prefix('role')->group(function () {
+       
+        Route::get('/', [RoleController::class, 'list']);
+        Route::post('/store', [RoleController::class, 'store']);
+       
     });
     Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
     Route::resource('purchases', PurchaseController::class);

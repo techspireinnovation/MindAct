@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('salesmen', function (Blueprint $table) {
             $table->id();
             $table->foreignID('company_id')->constrained('companies');
-            $table->text('salesman_id');
+            $table->unsignedBigInteger('salesman_id');
             $table->string('pan_number');
             $table->string('name');
             $table->string('address')->nullable();
@@ -40,6 +40,12 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Drop foreign keys in dependent tables
+        Schema::table('sales_returns', function (Blueprint $table) {
+            $table->dropForeign(['salesman_id']);
+        });
+
         Schema::dropIfExists('salesmen');
     }
+
 };

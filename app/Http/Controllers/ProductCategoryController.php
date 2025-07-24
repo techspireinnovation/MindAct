@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
+use Validator;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -105,38 +106,54 @@ class ProductCategoryController extends Controller
     // Store a new resource
     public function store(Request $request): JsonResponse
     {
+        try {
 
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('product_categories')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id)
-                        ->whereNull('deleted_at');
-                }),
-            ],
-            'company_id' => 'required|integer|exists:companies,id',
-            'is_primary' => 'boolean',
-            'is_active' => 'boolean'
-        ]);
-        // If is_primary is true, set all other categories for this company to not primary
-        if (!empty($validated['is_primary'])) {
-            ProductCategory::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
+            $validator = Validator::make($request->all(), [
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('product_categories')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+                    }),
+                ],
+                'company_id' => 'required|integer|exists:companies,id',
+                'is_primary' => 'boolean',
+                'is_active' => 'boolean'
+            ]);
+
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            if (!empty($validated['is_primary'])) {
+                ProductCategory::where('company_id', $validated['company_id'])
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+
+
+            $validated['is_primary'] = $validated['is_primary'] ?? false;
+            $validated['is_active'] = $validated['is_active'] ?? true;
+
+
+            $post = ProductCategory::create($validated);
+
+            return response()->json($post, 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Company not found'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
-        // Set default values if not provided
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-        $validated['is_active'] = $validated['is_active'] ?? true;
-
-
-        $post = ProductCategory::create($validated);
-
-        return response()->json($post, 201);
     }
-
     // Show a single resource
     public function show($id): JsonResponse
     {

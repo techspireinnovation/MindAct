@@ -47,10 +47,20 @@ class CompanyController extends Controller
         }
 
         try {
+            // Check for soft-deleted company with the same name
+            $existingCompany = Company::withTrashed()->where('name', $request->input('name'))->first();
+            if ($existingCompany && $existingCompany->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A company with this name exists but is soft-deleted. Please restore it or use a different name.',
+                    'company_id' => $existingCompany->id,
+                ], 409);
+            }
+
             // Define validation rules
             $validated = $request->validate([
                 // Company fields
-                'name' => 'required|string|max:255|unique:companies,name',
+                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL', // Ignore soft-deleted records
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'is_vatable' => 'nullable|boolean',
@@ -76,9 +86,11 @@ class CompanyController extends Controller
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
                 // Admin fields
-                'admin_email' => 'required|string|email|max:255|unique:users,email',
-                'admin_name' => 'required|string|max:255',
-                'password' => 'required|string|min:6|confirmed',
+                'admin_selection' => 'required|in:existing,new',
+                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
+                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
+                'admin_name' => 'required_if:admin_selection,new|string|max:255',
+                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
             ]);
 
             // Start a database transaction
@@ -154,21 +166,32 @@ class CompanyController extends Controller
                 'expiry_date' => false,
             ]);
 
-            // Create the Company Admin
-            $companyAdmin = User::create([
-                'email' => $validated['admin_email'],
-                'name' => $validated['admin_name'],
-                'password' => Hash::make($validated['password']),
-            ]);
+            // Handle admin user
+            if ($validated['admin_selection'] === 'existing') {
+                $companyAdmin = User::findOrFail($validated['existing_admin_id']);
+                // Ensure the user has company_admin role
+                $role = Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api'
+                ]);
+                if (!$companyAdmin->hasRole('company_admin')) {
+                    $companyAdmin->assignRole($role);
+                }
+            } else {
+                // Create new admin
+                $companyAdmin = User::create([
+                    'email' => $validated['admin_email'],
+                    'name' => $validated['admin_name'],
+                    'password' => Hash::make($validated['password']),
+                ]);
 
-            MainGroupStub::createMainGroups($company->id);
-
-            // Assign the company_admin role
-            $role = Role::firstOrCreate([
-                'name' => 'company_admin',
-                'guard_name' => 'api'
-            ]);
-            $companyAdmin->assignRole($role);
+                // Assign the company_admin role
+                $role = Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api'
+                ]);
+                $companyAdmin->assignRole($role);
+            }
 
             // Link the admin to the company
             CompanyUser::create([
@@ -176,10 +199,12 @@ class CompanyController extends Controller
                 'user_id' => $companyAdmin->id
             ]);
 
+            MainGroupStub::createMainGroups($company->id);
+
             // Commit the transaction
             DB::commit();
 
-            // Eager-load the purchaseMasterKey relationship without global scopes
+            // Eager-load the relationships
             $company->load([
                 'purchaseMasterKey',
                 'salesMasterKey' => function ($query) {
@@ -187,15 +212,12 @@ class CompanyController extends Controller
                 }
             ]);
 
-            MainGroupStub::createMainGroups($company->id);
-
             return response()->json([
                 'success' => true,
-                'message' => 'Company, admin, and purchase master key created successfully',
+                'message' => 'Company and admin association created successfully',
                 'data' => [
                     'company' => $company,
                     'admin' => $companyAdmin,
-                    // 'purchase_master_key' => $purchaseMaster,
                 ]
             ], 201);
 
@@ -211,12 +233,11 @@ class CompanyController extends Controller
             Log::error('Company creation failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create company, admin, or purchase master key',
+                'message' => 'Failed to create company or associate admin',
                 'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
-
 
     public function updatePurchaseMasterKey(Request $request): JsonResponse
     {

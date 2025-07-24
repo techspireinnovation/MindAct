@@ -23,6 +23,8 @@ class ProductTypeController extends Controller
     }
 
     public function productTypeList(Request $request){
+        \Log::info('Auth User in productTypeList', ['user' => auth()->user()]);
+
         try{
 
             $types = ProductType::where('company_id',$request->company_id)

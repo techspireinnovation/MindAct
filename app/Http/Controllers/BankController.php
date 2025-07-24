@@ -23,6 +23,18 @@ class BankController extends Controller
         return response()->json($query->paginate(50));
     }
 
+    public function bankList(Request $request): JsonResponse{
+        $query = Bank::where('company_id', request()->company_id)
+            ->where('is_active', true)
+            ->orderBy('name','asc')
+            ->get(['id', 'name']);
+
+        return response()->json([
+            'message' => 'Data Retrieved Successfully!!',
+            'data' => $query
+        ]);
+    }
+
     public function update(Request $request, $id): JsonResponse
     {
         try {

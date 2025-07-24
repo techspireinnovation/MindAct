@@ -8,6 +8,7 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
 use App\Http\Controllers\NozzleController;
+use App\Http\Controllers\StockReceiveController;
 use App\Http\Controllers\MeterReadingController;
 use App\Http\Controllers\DownloadController;
 use App\Http\Controllers\Event\ProductEventController;
@@ -122,6 +124,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
     Route::apiResource('banks', BankController::class);
+    Route::get('banks-lists', [BankController::class, 'bankList']);
     Route::apiResource('bank-vouchers', BankVoucherController::class);
     Route::apiResource('projects', ProjectController::class);
     Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
@@ -179,6 +182,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
     Route::apiResource('brands', BrandController::class);
     Route::resource('areas', AreaController::class);
+    Route::resource('cashes', CashController::class);
 
     Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
 
@@ -222,6 +226,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::resource('stock-entries', StockEntryController::class);
     Route::resource('stock-adjustments', StockAdjustmentController::class);
     Route::resource('stock-transfers', StockTransferController::class);
+    Route::resource('stock-receives', StockReceiveController::class);
     Route::resource('stock-reconciliation', StockReconciliationController::class);
     Route::resource('production-settings', ProductionSettingController::class);
     Route::resource('production-assembles', ProductionAssembleController::class);

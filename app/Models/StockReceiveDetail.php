@@ -20,7 +20,7 @@ class StockReceiveDetail extends Model
 
     protected $fillable = [
         'company_id',
-        
+        'stock_receive_id',
         'product_id',
         'product_name',
         'quantity',

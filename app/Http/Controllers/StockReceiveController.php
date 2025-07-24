@@ -26,52 +26,49 @@ class StockReceiveController extends Controller
     }
 
 
+
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            $StockReceive = StockReceive::findOrFail($id);
+            // Find the existing record
+            $item = StockReceive::findOrFail($id);
 
-            // Validation rules
             $validator = Validator::make($request->all(), [
                 'reference_no' => [
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('stock_receives')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->company_id)
-                                ->whereNull('deleted_at');
-                        }),
+                    Rule::unique('stock_receives')->ignore($id)->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+                    }),
                 ],
                 'transfer_ref_no' => [
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('stock_receives')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->company_id)
-                                ->whereNull('deleted_at');
-                        }),
+                    Rule::unique('stock_receives')->ignore($id)->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+                    }),
                 ],
-                'receive_from' => 'nullable|string|max:255',
-                'current_location' => 'nullable|string|max:255',
+                'receive_from' => 'nullable|numeric|max:255',
+                'current_location' => 'nullable|numeric|max:255',
                 'address' => 'nullable|string|max:255',
                 'document_no' => 'nullable|string|max:255',
                 'current_date' => 'nullable|string|max:255',
                 'current_date_bs' => 'nullable|string|max:255',
                 'stock_transfer_date' => 'nullable|string|max:255',
                 'stock_transfer_date_bs' => 'nullable|string|max:255',
-
                 'remarks' => 'nullable|string|max:255',
                 'reasons' => 'nullable|string|max:255',
                 'product_details' => 'nullable|array',
+                'product_details.*.id' => 'nullable|integer|exists:stock_receive_details,id', // Validate ID if provided
                 'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
                 'product_details.*.quantity' => 'required_with:product_details|numeric',
-
-                'product_details.*.unit' => 'required_with:product_details|string|max:50|exists:measure_units',
+                'product_details.*.measure_unit_id' => 'required_with:product_details|integer|exists:measure_units,id',
                 'product_details.*.batch_no' => 'required_with:product_details|string|max:255',
                 'product_details.*.price' => 'required_with:product_details|numeric',
                 'product_details.*.amount' => 'required_with:product_details|numeric',
@@ -87,58 +84,68 @@ class StockReceiveController extends Controller
 
             $validated = $validator->validated();
 
-            // Wrap in DB transaction
-            $StockReceive = DB::transaction(function () use ($validated, $id) {
-                $StockReceive = StockReceive::findOrFail($id);
+            $item = DB::transaction(function () use ($item, $validated) {
+                if (isset($validated['product_details'])) {
+                    $validated['product_details'] = json_encode($validated['product_details']);
+                }
 
-                // Update main record (excluding product_details temporarily)
-                $updateData = $validated;
-                unset($updateData['product_details']);
-                $StockReceive->update($updateData);
+                // Update the StockReceive record
+                $item->update($validated);
 
-                // Handle product_details if provided
-                if (!empty($validated['product_details'])) {
-                    $incomingIds = [];
+                // Handle StockReceiveDetails
+                if (isset($validated['product_details'])) {
+                    $productDetails = json_decode($validated['product_details'], true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        throw new \Exception('Invalid product details format: ' . json_last_error_msg());
+                    }
 
-                    foreach ($validated['product_details'] as $detail) {
-                        $detail['stock_transfer_id'] = $StockReceive->id;
+
+                    $existingDetails = $item->stockReceiveDetails->keyBy('id');
+
+                    $detailsToCreate = [];
+                    $idsToKeep = [];
+
+                    foreach ($productDetails as $detail) {
+                        $detail['stock_transfer_id'] = $item->id;
                         $detail['company_id'] = $validated['company_id'];
 
-                        if (!empty($detail['id'])) {
-                            $existing = StockReceiveDetail::find($detail['id']);
-                            if ($existing) {
-                                $existing->update($detail);
-                                $incomingIds[] = $existing->id;
-                            } else {
-                                $new = StockReceiveDetail::create($detail);
-                                $incomingIds[] = $new->id;
-                            }
+                        if (isset($detail['id']) && isset($existingDetails[$detail['id']])) {
+
+                            $existingDetails[$detail['id']]->update($detail);
+                            $idsToKeep[] = $detail['id'];
                         } else {
-                            $new = StockReceiveDetail::create($detail);
-                            $incomingIds[] = $new->id;
+
+                            unset($detail['id']);
+                            $detailsToCreate[] = $detail;
                         }
                     }
 
-                    // Delete removed product detail records
-                    $StockReceive->StockReceiveDetails()->whereNotIn('id', $incomingIds)->delete();
+
+                    $item->StockReceiveDetails()
+                        ->whereNotIn('id', $idsToKeep)
+                        ->delete();
+
+                    // Create new details
+                    if (!empty($detailsToCreate)) {
+                        $item->StockReceiveDetails()->createMany($detailsToCreate);
+                    }
                 }
 
-                return $StockReceive;
+                return $item;
             });
 
-            return response()->json($StockReceive->load('StockReceiveDetails'), 200);
-
+            return response()->json($item->load('StockReceiveDetails'), 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error('StockReceive not found: ' . $e->getMessage());
-            return response()->json(['error' => 'Stock transfer not found'], 404);
+            return response()->json(['error' => 'Stock receive record not found'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in Stock Transfer::update: ' . $e->getMessage());
-            return response()->json(['error' => 'Database error occurred'], 500);
+            \Log::error('QueryException in StockReceive::update: ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error('Exception in Stock Transfer::update: ' . $e->getMessage());
+            \Log::error('Exception in StockReceive::update: ' . $e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
 
 
     public function store(Request $request): JsonResponse
@@ -163,8 +170,8 @@ class StockReceiveController extends Controller
                             ->whereNull('deleted_at');
                     }),
                 ],
-                'receive_from' => 'nullable|string|max:255',
-                'current_location' => 'nullable|string|max:255',
+                'receive_from' => 'nullable|numeric|max:255',
+                'current_location' => 'nullable|numeric|max:255',
                 'address' => 'nullable|string|max:255',
                 'document_no' => 'nullable|string|max:255',
                 'current_date' => 'nullable|string|max:255',
@@ -179,7 +186,7 @@ class StockReceiveController extends Controller
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
                 'product_details.*.quantity' => 'required_with:product_details|numeric',
 
-                'product_details.*.unit' => 'required_with:product_details|string|max:50|exists:measure_units',
+                'product_details.*.measure_unit_id' => 'required_with:product_details|string|max:50|exists:measure_units,id',
                 'product_details.*.batch_no' => 'required_with:product_details|string|max:255',
                 'product_details.*.price' => 'required_with:product_details|numeric',
                 'product_details.*.amount' => 'required_with:product_details|numeric',
@@ -226,23 +233,30 @@ class StockReceiveController extends Controller
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             \Log::error('QueryException in StockReceive::store: ' . $e->getMessage());
-
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             \Log::error('Exception in Stock Transfer::store: ' . $e->getMessage());
 
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
 
+
     public function show($id): JsonResponse
     {
         try {
-            $item = StockReceive::findOrFail($id);
-            return response()->json($item);
+            $item = StockReceive::with('stockReceiveDetails')->findOrFail($id);
+            return response()->json($item, 200);
         } catch (ModelNotFoundException $e) {
+            Log::error('StockReceive::show - Record not found for ID: ' . $id . ' - ' . $e->getMessage());
             return response()->json(['error' => 'Stock Transfer not found!!'], 404);
         } catch (QueryException $e) {
+            Log::error('StockReceive::show - Query error for ID: ' . $id . ' - ' . $e->getMessage());
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            Log::error('StockReceive::show - Unexpected error for ID: ' . $id . ' - ' . $e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

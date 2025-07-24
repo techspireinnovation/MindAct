@@ -43,9 +43,9 @@ class StockTransferController extends Controller
                                 ->whereNull('deleted_at');
                         })->ignore($id),
                 ],
-                'transfer_to' => 'nullable|string|max:255',
+                'transfer_to' => 'nullable|numeric|max:255',
                 'document_no' => 'nullable|string|max:255',
-                'current_location' => 'nullable|string|max:255',
+                'current_location' => 'nullable|numeric|max:255',
                 'date_ad' => 'nullable|date',
                 'transfer_date_bs' => 'nullable|string',
                 'document_number' => 'nullable|string|max:255',
@@ -141,9 +141,9 @@ class StockTransferController extends Controller
                                 ->whereNull('deleted_at');
                         }),
                 ],
-                'transfer_to' => 'nullable|string|max:255',
+                'transfer_to' => 'nullable|numeric|max:255',
                 'document_no' => 'nullable|string|max:255',
-                'current_location' => 'nullable|string|max:255',
+                'current_location' => 'nullable|numeric|max:255',
                 'date_ad' => 'nullable|date',
                 'transfer_date_bs' => 'nullable|string',
                 'document_number' => 'nullable|string|max:255',

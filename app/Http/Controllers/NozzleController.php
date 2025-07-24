@@ -87,8 +87,6 @@ class NozzleController extends Controller
 
 
 
-
-
     public function update(Request $request, $id): JsonResponse
     {
         try {

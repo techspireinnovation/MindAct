@@ -97,6 +97,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('available-products-for-sale', [SaleController::class, 'listAvailableProducts']);
     Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
     Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
+    Route::get('customer-sales-fiscal-year-details',[SaleController::class, 'customerTotalSalePriceAmount']);
 
     //Sales Returns
 
@@ -230,6 +231,8 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
     Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
     Route::post('store-purchase-return-by-item', [PurchaseReturnController::class, 'storePurchaseReturnByInput']);
+    Route::put('/update-purchase-return-by-item/{id}', [PurchaseReturnController::class, 'updatePurchaseReturnByInput']);
+    
     Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
     Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
     Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);

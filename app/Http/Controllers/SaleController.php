@@ -2,6 +2,14 @@
 
 namespace App\Http\Controllers;
 
+
+
+use Pratiksh\Nepalidate\Services\NepaliDate;
+
+use Anuzpandey\LaravelNepaliDate\LaravelNepaliDate;
+use Pratiksh\Nepalidate\Services\EnglishDate;
+
+use NepaliCalendar;
 use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\ProductList;
@@ -112,12 +120,13 @@ class SaleController extends Controller
 
 
 
-    private function getAvailableProductsForSale($companyId)
+    private function getAvailableProductsForSale($purchaseType, $companyId)
     {
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
 
         try {
             DB::enableQueryLog();
+
 
             // Pre-fetch measure units for efficiency
             $measureUnitsCalc = MeasureUnit::where('company_id', $companyId)
@@ -141,10 +150,22 @@ class SaleController extends Controller
 
             $productIds = $products->pluck('id')->toArray();
 
+
+            if (strtolower($purchaseType) === 'capital') {
+                Log::warning('Purchase type "Capital" is not allowed', [
+                    'company_id' => $companyId,
+                    'purchase_type' => $purchaseType,
+                ]);
+                return collect([]);
+            }
+
             // Fetch purchase products
-            $purchaseProducts = PurchaseProduct::whereIn('product_id', $productIds)
-                ->where('company_id', $companyId)
-                ->whereNull('deleted_at')
+            $purchaseProducts = PurchaseProduct::whereIn('purchase_products.product_id', $productIds)
+                ->where('purchase_products.company_id', $companyId)
+                ->whereNull('purchase_products.deleted_at')
+                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                ->whereNull('purchases.deleted_at')
+                ->where('purchases.purchase_type', $purchaseType)
                 ->with([
                     'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')
                         ->where('company_id', $companyId)
@@ -281,6 +302,8 @@ class SaleController extends Controller
 
             $companyId = $request->input('company_id');
             $includeDetails = $request->boolean('include_details', false);
+            $purchaseType = $request->input('purchase_type', null);
+            // dd($purchaseType);
 
             if (auth()->check()) {
                 $user = auth()->user();
@@ -299,7 +322,7 @@ class SaleController extends Controller
 
             $products = $includeDetails
                 ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'])
-                : $this->getAvailableProductsForSale($companyId);
+                : $this->getAvailableProductsForSale($purchaseType, $companyId);
 
             return response()->json([
                 'message' => 'Available products retrieved successfully',
@@ -318,8 +341,6 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-
 
 
 
@@ -402,6 +423,107 @@ class SaleController extends Controller
     }
 
 
+
+
+    private function safeBsDate(int $year, int $month, int $day): string
+    {
+        // never start higher than 32
+        $day = min($day, 32);
+
+        while ($day > 0) {
+            $candidate = sprintf('%04d-%02d-%02d', $year, $month, $day);
+
+            try {
+                // BS → AD will throw if the date is invalid
+                EnglishDate::create($candidate)->toAD();
+                return $candidate;               // valid → done
+            } catch (\Throwable $e) {
+                $day--;                          // invalid → reduce and retry
+            }
+        }
+
+        throw new \RuntimeException("No valid day found for {$year}-{$month}");
+    }
+
+
+    public function customerTotalSalePriceAmount(Request $request)
+    {
+        try {
+
+            $customer_id = $request->input('customer_id');
+            $currentDate = Carbon::now(); // July 24, 2025
+            $currentDateBs = NepaliDate::create($currentDate)->toBS();
+
+
+
+            [$bsYear, $bsMonth, $bsDay] = array_map('intval', explode('-', $currentDateBs));
+
+
+            if ($bsMonth >= 4 || ($bsMonth === 4 && $bsDay >= 1)) { // On or after Shrawan 1
+                $fiscalBsYearStart = $bsYear;
+                $fiscalBsYearEnd = $bsYear + 1;
+            } else {
+                $fiscalBsYearStart = $bsYear - 1;
+                $fiscalBsYearEnd = $bsYear;
+            }
+
+            // Define full fiscal year dates
+            $fiscalYearStartBs = $fiscalBsYearStart . '-04-01'; // Shrawan 1
+            $asarLastDay = $fiscalBsYearEnd;
+            $lastFiscalDate = $this->safeBsDate($asarLastDay, 3, 32); // Asar 32 of the fiscal year end
+
+            $saleIds = Sale::where('company_id', $request->company_id)
+                ->where('customer_id', $customer_id)
+                ->whereNull('deleted_at')
+                ->whereBetween('invoice_date_bs', [$fiscalYearStartBs, $lastFiscalDate])
+                ->pluck('id');
+
+            $totalSoldPrice = SaleProduct::whereIn('sale_id', $saleIds)
+                ->whereNull('deleted_at')
+                ->sum('price');
+
+            $totalSoldAmount = SaleProduct::whereIn('sale_id', $saleIds)
+                ->whereNull('deleted_at')
+                ->sum('amount');
+            return response()->json([
+                'message' => 'Total sale price and amount retrieved successfully',
+                'data' => [
+                    'price' => $totalSoldPrice,
+                    'amount' => $totalSoldAmount
+                ]
+            ], 200);
+
+
+        } catch (ModelNotFoundException $e) {
+            Log::error('Data not Found', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Data nor Found !!', 'message' => config('app.debug') ? $e->getMessage() : null], 404);
+
+
+        } catch (QueryException $e) {
+            Log::error('Database query error in customerTotalSalePriceAmount', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Database query error', 'message' => config('app.debug') ? $e->getMessage() : null], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Error in customerTotalSalePriceAmount', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'An unexpected error occurred',
+                'message' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
+
+
     private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $responseUnitId = null): array
     {
         Log::debug('Fetching detailed available products with purchase products', [
@@ -414,7 +536,8 @@ class SaleController extends Controller
         try {
             DB::enableQueryLog();
 
-            // Pre-fetch measure units for efficiency
+
+
             $measureUnitsCalc = MeasureUnit::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->get()
@@ -506,9 +629,9 @@ class SaleController extends Controller
                     ->first();
             }
 
-            $primarayMeasureUnitId = MeasureUnit::where('id',$productPrimaryMeasureUnit)->first();
+            $primarayMeasureUnitId = MeasureUnit::where('id', $productPrimaryMeasureUnit)->first();
             $primaryMeasureUnitQuantity = $primarayMeasureUnitId->quantity ?? 0;
-            
+
 
 
             if ($getProductForMeasureUnits) {
@@ -603,7 +726,7 @@ class SaleController extends Controller
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice,$primaryMeasureUnitQuantity,$primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
 
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes) {
@@ -748,7 +871,7 @@ class SaleController extends Controller
                     // 'min_price' => !empty($productPurchaseProducts) ? min(array_column($productPurchaseProducts, 'price')) : 0,
                     'is_vatable' => (bool) $product->is_vatable,
                     'measure_unit_id' => $primarayMeasureUnitId->id ?? null, // No specific measure unit for pieces
-                  
+
                     'measure_unit_quantity' => $primaryMeasureUnitQuantity, // 1 piece = 1 
                     'retail_sale_price' => $retailSalePrice ?? 0,
                     'avg_price' => $avgPrice ?? 0,

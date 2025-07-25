@@ -75,10 +75,6 @@ class SalesReturnController extends Controller
 
 
 
-
-
-
-
     public function getSaleByInvoiceNumber(Request $request): JsonResponse
     {
         try {
@@ -822,6 +818,8 @@ class SalesReturnController extends Controller
 
             $companyId = $request->input('company_id');
 
+            $purchaseType = $request->input('purchase_type');
+
             Log::debug('Input parameters for sale product names', [
                 'company_id' => $companyId,
             ]);
@@ -854,7 +852,7 @@ class SalesReturnController extends Controller
             $sales = Sale::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->with([
-                    'saleProducts' => function ($query) use ($companyId) {
+                    'saleProducts' => function ($query) use ($companyId, $purchaseType) {
                         $query->select([
                             'sale_products.id',
                             'sale_products.sale_id',
@@ -865,9 +863,14 @@ class SalesReturnController extends Controller
                             'products.name as product_name',
                         ])
                             ->join('products', 'sale_products.product_id', '=', 'products.id')
+                            ->join('purchase_products', 'sale_products.purchase_product_id', '=', 'purchase_products.id')
+                            ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                             ->where('sale_products.company_id', $companyId)
                             ->whereNull('sale_products.deleted_at')
-                            ->whereNull('products.deleted_at');
+                            ->whereNull('products.deleted_at')
+                            ->whereNull('purchase_products.deleted_at')
+                            ->whereNull('purchases.deleted_at')
+                            ->where('purchases.purchase_type', $purchaseType);
                     },
                 ])
                 ->select(['id', 'company_id'])
@@ -1022,7 +1025,7 @@ class SalesReturnController extends Controller
 
             if (empty($products)) {
                 Log::warning('No available products after processing', ['company_id' => $companyId]);
-                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+                return response()->json([]);
             }
 
             // Prepare response
@@ -1044,6 +1047,7 @@ class SalesReturnController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
+
             Log::error('Database query error in getSaleProductNames', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -1052,6 +1056,7 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
+
             Log::error('Unexpected error in getSaleProductNames', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),

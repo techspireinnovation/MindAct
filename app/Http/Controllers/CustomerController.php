@@ -31,9 +31,35 @@ class CustomerController extends Controller
     {
         try {
 
-            $customer = Customer::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->pluck('party_name');
+            $type = $request->input('type') ?? null;
+
+
+            if ($type == 'purchase') {
+
+
+                $customer = Customer::where('company_id', $request->company_id)
+                    ->whereNull('deleted_at')
+                    ->whereIn('ledger_type', ['vendor', 'both'])
+                    ->get(['id', 'party_name'])
+                    ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
+                    ->values();
+            } elseif ($type == 'sales') {
+                $customer = Customer::where('company_id', $request->company_id)
+                    ->whereNull('deleted_at')
+                    ->whereIn('ledger_type', ['customer', 'both'])
+                    ->get(['id', 'party_name'])
+                    ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
+                    ->values();
+
+            } else {
+                $customer = Customer::where('company_id', $request->company_id)
+                    ->whereNull('deleted_at')
+                    ->get(['id', 'party_name'])
+                    ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
+                    ->values();
+
+            }
+
             return response()->json([
                 "message" => "Customer List Received !!",
                 "data" => $customer
@@ -46,6 +72,7 @@ class CustomerController extends Controller
             \Log::error($e);
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             \Log::error($e);
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
@@ -208,6 +235,7 @@ class CustomerController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

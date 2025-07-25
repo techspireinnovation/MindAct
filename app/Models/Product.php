@@ -30,6 +30,7 @@ class Product extends Model
         'debit_note',
         'credit_note',
         'product_unique_id',
+        'purchase_type',
         'is_active',
         'is_fixed_amount',
         'deleted_at',

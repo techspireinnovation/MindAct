@@ -206,6 +206,13 @@ class ProductionAssembleController extends Controller
                         })
                 ],
 
+                'total_rm_amount' => 'nullable|numeric',
+                'product_damage_quantity' => 'nullable|numeric',
+                'finish_product_qauntity' => 'nullable|numeric',
+                'finish_cost_per_unit' => 'nullable|numeric',
+                'product_defect_quantity' => 'nullable|numeric',
+                'total_product_cost' => 'nullable|numeric',
+
                 'product_details' => 'nullable|array',
                 'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
                 'product_details.*.product_name' => 'required_with:product_details|string|max:255',
@@ -232,7 +239,7 @@ class ProductionAssembleController extends Controller
 
         } catch (QueryException $e) {
             \Log::error('Database error in Production Assemble store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
-
+            dd($e->getMessage());
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
             \Log::error('Unexpected error in Production Assemble store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
@@ -291,6 +298,12 @@ class ProductionAssembleController extends Controller
                         })
 
                 ],
+                'total_rm_amount' => 'nullable|numeric',
+                'product_damage_quantity' => 'nullable|numeric',
+                'finish_product_qauntity' => 'nullable|numeric',
+                'finish_cost_per_unit' => 'nullable|numeric',
+                'product_defect_quantity' => 'nullable|numeric',
+                'total_product_cost' => 'nullable|numeric',
 
                 'product_details' => 'nullable|array',
                 'product_details.*.product_id' => 'required_with:product_details|integer|exists:products,id',
@@ -320,7 +333,7 @@ class ProductionAssembleController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-
+             dd($e->getMessage());
             \Log::error('Database error in Production Assemble update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {

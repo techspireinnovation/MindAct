@@ -149,7 +149,6 @@ class ProductController extends Controller
                 ], 422);
             }
 
-            // Query products with relationships
             $query = Product::with([
                 'category:id,name',
                 'subCategory:id,name',
@@ -161,46 +160,27 @@ class ProductController extends Controller
                 'productFieldValues.productField'
             ]);
 
-            // Apply filters
             $this->applyFilters($query, $request);
-
-            // Pagination
             $perPage = $request->input('per_page', 50);
             $products = $query->paginate($perPage);
-
-            // Transform products to include product_fields and exclude product_field_values
             $transformedProducts = $products->through(function ($product) {
-                // Group values by field ID
-                $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
 
-                // Get only product fields with values for this product
+                $valuesByFieldId = $product->productFieldValues->keyBy('product_field_id');
                 $productFields = ProductField::where('company_id', $product->company_id)
                     ->whereIn('id', $valuesByFieldId->keys())
                     ->get();
 
-                // Build response fields with values embedded
                 $product_fields = $productFields->map(function ($field) use ($valuesByFieldId) {
                     $fieldArray = $field->toArray();
                     $fieldArray['product_field_value'] = $valuesByFieldId->get($field->id)?->only(['id', 'value', 'created_at', 'updated_at']);
                     return $fieldArray;
                 });
-
-                // Prepare product response without product_field_values
                 $productArray = $product->toArray();
                 unset($productArray['product_field_values']);
-
-                // Add product_fields to the product array
                 $productArray['product_fields'] = $product_fields;
-
                 return $productArray;
 
             });
-
-
-            // Broadcast event
-            //broadcast(new ProductUpdated($products, 'listed'));
-
-            // Return paginated response with transformed data
             return response()->json([
                 'data' => $transformedProducts->items(),
                 'pagination' => [
@@ -462,6 +442,7 @@ class ProductController extends Controller
                 'brand_id' => 'integer|nullable|',
                 'measure_unit_id' => 'integer|exists:measure_units,id',
                 'purchase_rate' => 'numeric|nullable|',
+                'purchase_type' => 'nullable|string',
                 'purchase_rate_vat' => 'numeric|nullable|',
                 'retail_sales_price' => 'numeric|nullable|',
                 'retail_sales_price_vat' => 'numeric|nullable|',
@@ -640,6 +621,7 @@ class ProductController extends Controller
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',
             'purchase_rate' => 'nullable|numeric',
+            'purchase_type' => 'nullable|string',
             'purchase_rate_vat' => 'nullable|numeric',
             'retail_sales_price' => 'nullable|numeric',
             'retail_sales_price_vat' => 'nullable|numeric',
@@ -775,7 +757,6 @@ class ProductController extends Controller
         try {
             $item = Product::findOrFail($id);
 
-
             $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
             $hasSales = DB::table('sale_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
 
@@ -786,7 +767,7 @@ class ProductController extends Controller
 
             }
             $item->delete();
-            //broadcast(new ProductUpdated($item, 'deleted'));
+
             return response()->json(['message' => 'Product deleted!!']);
 
         } catch (ModelNotFoundException $e) {

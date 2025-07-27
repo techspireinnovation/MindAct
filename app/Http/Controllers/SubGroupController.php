@@ -21,8 +21,28 @@ class SubGroupController extends Controller
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
-        return response()->json($query->paginate(50));
+
+        $subGroups = $query->paginate(50);
+
+        $transformed = $subGroups->getCollection()->map(function ($subGroup) {
+            return [
+                'id' => $subGroup->id,
+                'name' => $subGroup->name,
+                'main_group_id' => optional($subGroup->mainGroup)->id,
+                'main_group_name' => optional($subGroup->mainGroup)->name,
+                'is_active' => $subGroup->is_active,
+                'is_primary' => $subGroup->is_primary,
+                'company_id' => $subGroup->company_id,
+                'code' => $subGroup->code,
+                'ranking_for_trial' => $subGroup->ranking_for_trial
+            ];
+        });
+
+        $subGroups->setCollection($transformed);
+
+        return response()->json($subGroups);
     }
+
 
 
     public function update(Request $request, $id): JsonResponse
@@ -103,6 +123,18 @@ class SubGroupController extends Controller
                 ],
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
+                "code" => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+
+                    }),
+
+                ],
+
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => [
                     'required',

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductFieldValue;
+use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -14,7 +15,35 @@ class ProductFieldValueController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(ProductFieldValue::paginate(50));
+        try {
+            $query = ProductFieldValue::query();
+            if (request()->has('keywords')) {
+                $query->where('value', 'LIKE', '%' . request()->input('keywords') . '%');
+            }
+
+            $fieldValues = $query->paginate(50);
+            $transformed = $fieldValues->getCollection()->map(function ($fieldValue) {
+                return [
+                    'id' => $fieldValue->id,
+                    'company_id' => $fieldValue->company_id,
+                    'product_field_id' => $fieldValue->product_field_id,
+                    'product_id' => $fieldValue->product_id,
+                    'product_name' => optional($fieldValue->product)->name,
+                    'value' => $fieldValue->value,                   
+                    'is_active' => $fieldValue->is_active,                    
+                ];
+
+            });
+            $fieldValues->setCollection($transformed);
+
+            return response()->json($fieldValues);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product Field Value not found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }
     }
 
 
@@ -24,8 +53,8 @@ class ProductFieldValueController extends Controller
             'company_id' => 'integer|exists:companies,id',
             'product_id' => 'integer|required|exists:products,id',
             'product_field_id' => 'integer|exists:product_fields,id',
-            'value' =>'string|max:255'
-           
+            'value' => 'string|max:255'
+
         ]);
         if ($validator->fails()) {
             return response()->json([

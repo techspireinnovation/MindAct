@@ -71,10 +71,6 @@ class SalesReturnController extends Controller
 
 
 
-
-
-
-
     public function getSaleByInvoiceNumber(Request $request): JsonResponse
     {
         try {
@@ -818,6 +814,8 @@ class SalesReturnController extends Controller
 
             $companyId = $request->input('company_id');
 
+            $purchaseType = $request->input('purchase_type');
+
             Log::debug('Input parameters for sale product names', [
                 'company_id' => $companyId,
             ]);
@@ -850,7 +848,7 @@ class SalesReturnController extends Controller
             $sales = Sale::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->with([
-                    'saleProducts' => function ($query) use ($companyId) {
+                    'saleProducts' => function ($query) use ($companyId, $purchaseType) {
                         $query->select([
                             'sale_products.id',
                             'sale_products.sale_id',
@@ -861,9 +859,14 @@ class SalesReturnController extends Controller
                             'products.name as product_name',
                         ])
                             ->join('products', 'sale_products.product_id', '=', 'products.id')
+                            ->join('purchase_products', 'sale_products.purchase_product_id', '=', 'purchase_products.id')
+                            ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                             ->where('sale_products.company_id', $companyId)
                             ->whereNull('sale_products.deleted_at')
-                            ->whereNull('products.deleted_at');
+                            ->whereNull('products.deleted_at')
+                            ->whereNull('purchase_products.deleted_at')
+                            ->whereNull('purchases.deleted_at')
+                            ->where('purchases.purchase_type', $purchaseType);
                     },
                 ])
                 ->select(['id', 'company_id'])
@@ -1018,7 +1021,7 @@ class SalesReturnController extends Controller
 
             if (empty($products)) {
                 Log::warning('No available products after processing', ['company_id' => $companyId]);
-                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+                return response()->json([]);
             }
 
             // Prepare response
@@ -1040,6 +1043,7 @@ class SalesReturnController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
+
             Log::error('Database query error in getSaleProductNames', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -1048,6 +1052,7 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
+
             Log::error('Unexpected error in getSaleProductNames', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -1299,14 +1304,37 @@ class SalesReturnController extends Controller
                         ]);
                     }
 
+                    // Fetch product metadata
+                    $product = Product::where('id', $productId)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->first();
+
+
+
+                    $originalProductPrice = Product::where('id', $productId)->value('purchase_rate');
+
+                    $saleProductsPrice = SaleProduct::where('product_id', $productId)->orderBy('created_at', 'desc')->pluck('price');
+                    $latestPrice = $saleProductsPrice->first();
+
+                    // Get the minimum price
+                    $minProductPrice = $saleProductsPrice->min();
+
+                    // Get the average price
+                    $avgProductPrice = $saleProductsPrice->avg();
+
                     // Initialize product entry
                     if (!isset($products[$productId])) {
                         $products[$productId] = [
                             'product_id' => $productId,
                             'product_name' => $saleProduct->product_name,
                             'product_code' => $saleProduct->product_code,
-                            'min_price' => $saleProduct->price,
-                            'amount' => $saleProduct->amount,
+                          
+                            'original_price' => $originalProductPrice ?? null,
+                            'latest_price' => $latestPrice ?? null,
+                            'min_price' => $minProductPrice ?? null,
+                            'avg_price' => $avgProductPrice ?? null,
+                            'amount' => $saleProduct->amount ?? null,
                             'is_vatable' => (bool) $saleProduct->is_vatable,
                             'used_measure_units' => $usedMeasureUnits,
                             'measure_unit_id' => $primaryMeasureUnit,
@@ -1324,6 +1352,7 @@ class SalesReturnController extends Controller
                     }
 
                     // Update min_price if lower
+
                     if ($saleProduct->price < $products[$productId]['min_price']) {
                         $products[$productId]['min_price'] = $saleProduct->price;
                     }

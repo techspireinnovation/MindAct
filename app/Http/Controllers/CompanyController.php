@@ -154,7 +154,33 @@ class CompanyController extends Controller
                 'expiry_date' => false,
             ]);
 
-            // Create the Company Admin
+            $company->productTypes()->createMany([
+                [
+                    'name' => 'Inventory',
+                    'company_id' => $company->id,
+                ],
+                [
+                    'name' => 'Goods',
+                    'company_id' => $company->id,
+                ],
+                [
+                    'name' => 'Service',
+                    'company_id' => $company->id,
+                ],
+                [
+                    'name' => 'Raw Materials',
+                    'company_id' => $company->id,
+                ]
+            ]);
+
+            $company->measureUnits()->create([
+                'name' => 'Piece',
+                'company_id' => $company->id,
+                'symbol' => 'Pcs',
+                'quantity' => 1
+            ]);
+
+        
             $companyAdmin = User::create([
                 'email' => $validated['admin_email'],
                 'name' => $validated['admin_name'],
@@ -163,23 +189,23 @@ class CompanyController extends Controller
 
             MainGroupStub::createMainGroups($company->id);
 
-            // Assign the company_admin role
+           
             $role = Role::firstOrCreate([
                 'name' => 'company_admin',
                 'guard_name' => 'api'
             ]);
             $companyAdmin->assignRole($role);
 
-            // Link the admin to the company
+            
             CompanyUser::create([
                 'company_id' => $company->id,
                 'user_id' => $companyAdmin->id
             ]);
 
-            // Commit the transaction
+           
             DB::commit();
 
-            // Eager-load the purchaseMasterKey relationship without global scopes
+        
             $company->load([
                 'purchaseMasterKey',
                 'salesMasterKey' => function ($query) {
@@ -195,7 +221,9 @@ class CompanyController extends Controller
                 'data' => [
                     'company' => $company,
                     'admin' => $companyAdmin,
-                    // 'purchase_master_key' => $purchaseMaster,
+                    'product_types' => $company->productTypes,
+                    'measure_units' => $company->measureUnits,
+                 
                 ]
             ], 201);
 

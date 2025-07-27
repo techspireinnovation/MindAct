@@ -17,7 +17,31 @@ class StockEntryController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = StockEntry::query();
-        return response()->json($query->paginate(50));
+
+        $stockEntries = $query->paginate(50);
+        $transformed = $stockEntries->getCollection()->map(function ($stockEntry) {
+            return [
+                'id' => $stockEntry->id,
+                'name' => $stockEntry->name,
+                'product_id' => $stockEntry->product_id,
+                'product_code' => $stockEntry->product_code,
+                'product_name' => $stockEntry->product_name,
+                'uom' => $stockEntry->uom,
+                'batch_no' => $stockEntry->batch_no,
+                'expiry_date' => $stockEntry->expiry_date,
+                'quantity' => $stockEntry->quantity,
+                'rate' => $stockEntry->rate,
+                'amount' => $stockEntry->amount,
+                'location_id' => $stockEntry->location_id,
+
+                'location_name' => optional($stockEntry->location)->name,
+
+            ];
+        });
+
+        $stockEntries->setCollection($transformed);
+
+        return response()->json($stockEntries);
     }
 
 
@@ -61,7 +85,7 @@ class StockEntryController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
-            dd($e->getMessage());
+
             \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
@@ -88,7 +112,7 @@ class StockEntryController extends Controller
             $validator = Validator::make($request->all(), [
                 'stock_entries' => 'required|array',
                 'stock_entries.*.id' => 'required|exists:stock_entries,id',
-               
+
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|exists:products,id',

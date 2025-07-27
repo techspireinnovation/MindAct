@@ -34,6 +34,7 @@ class ProductionAssemble extends Model
         'product_damage_quantity',
         'finish_product_qauntity',
         'finish_cost_per_unit',
+        'product_defect_quantity',
         'total_product_cost',
         'remarks',
    

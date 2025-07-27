@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -18,7 +17,7 @@ return new class extends Migration
             $table->foreignId('payment_voucher_id')->constrained('payment_vouchers')->nullable();
             $table->string('party_name')->nullable();
             $table->double('amount')->nullable();
-            $table->enum('contra_acount',['cash','bank'])->nullable();
+            $table->enum('contra_account', ['cash', 'bank'])->nullable();
             $table->string('remarks')->nullable();
             $table->string('cheque_slip')->nullable();
             $table->double('remaining_balance')->nullable();

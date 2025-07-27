@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\SaleAdditional;
 use App\Models\SaleProduct;
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\SaleObserver;
 use App\Traits\ConvertsAdToBsDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +27,7 @@ class Sale extends Model
         'invoice_date_bs' => 'date:Y-m-d',
     ];
 
-    protected $dates = ['deleted_at', 'invoice_date_bs'];
+    protected $dates = ['deleted_at'];
 
     protected $fillable = [
         'company_id',
@@ -50,7 +51,6 @@ class Sale extends Model
         'location_id',
         'salesman_id',
         'sub_total_before_discount',
-     
         'discount',
         'non_taxable_amount',
         'taxable_amount',
@@ -72,6 +72,7 @@ class Sale extends Model
 
     protected static function booted()
     {
+        self::observe(SaleObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

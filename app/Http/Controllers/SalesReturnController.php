@@ -3,30 +3,26 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
-use App\Models\PurchaseProduct;
-use App\Models\PurchaseProductReturn;
-use App\Models\PurchaseProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\SalesReturn;
-use App\Models\ProductList;
-use App\Models\Sale;
 use App\Models\MeasureUnit;
-use App\Models\SalesReturnProduct;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\PurchaseProduct;
+use App\Models\PurchaseProductFieldValue;
+use App\Models\Sale;
+use App\Models\SaleProduct;
 use App\Models\SaleReturnAdditional;
 use App\Models\SaleReturnProductFieldValue;
-use App\Models\SaleProduct;
-use App\Models\Purchase;
-use App\Models\Product;
-use DB;
+use App\Models\SalesReturn;
+use App\Models\SalesReturnProduct;
 use Carbon\Carbon;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Validator;
+use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class SalesReturnController extends Controller
 {
@@ -2656,6 +2652,7 @@ class SalesReturnController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'payment_type' => 'nullable|string|in:cash,credit,bank',
                 'sale_id' => [
@@ -3283,6 +3280,7 @@ class SalesReturnController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'payment_type' => 'nullable|string|in:cash,credit,bank',
                 'return_entire_sale' => 'nullable|boolean',

@@ -3,17 +3,18 @@
 namespace App\Observers;
 
 use App\Models\AccountGroup;
+use App\Models\PaymentVoucherDetail;
 use App\Models\ReceiptVoucherDetail;
 use App\Models\VoucherSummary;
 
-class ReceiptVoucherDetailObserver
+class PaymentVoucherDetailObserver
 {
     /**
      * Handle the ReceiptVoucherDetail "created" event.
      */
-    public function created(ReceiptVoucherDetail $receiptVoucherDetail): void
+    public function created(PaymentVoucherDetail $paymentVoucherDetail): void
     {
-        switch ($receiptVoucherDetail->customer->ledger_type) {
+        switch ($paymentVoucherDetail->customer->ledger_type) {
             case 'customer':
                 $bankAccountGroup = AccountGroup::where('name', '=', "Accounts Receivable (Debtors)")->first();
                 break;
@@ -23,18 +24,18 @@ class ReceiptVoucherDetailObserver
         }
 
         VoucherSummary::create([
-            'date' => $receiptVoucherDetail->receiptVoucher->date_ad,
-            'date_bs' => $receiptVoucherDetail->receiptVoucher->date_bs,
-            'company_id' => $receiptVoucherDetail->company_id,
+            'date' => $paymentVoucherDetail->receiptVoucher->date_ad,
+            'date_bs' => $paymentVoucherDetail->receiptVoucher->date_bs,
+            'company_id' => $paymentVoucherDetail->company_id,
             'branch_id' => null,
-            'voucher_number' => $receiptVoucherDetail->receiptVoucher->receipt_voucher_number,
-            'particulars' => $receiptVoucherDetail->remarks,
-            'payment_type' => strtoupper($receiptVoucherDetail->contra_account),
-            'credit' => $receiptVoucherDetail->amount,
-            'debit' => 0,
-            'tr_bill_number' => $receiptVoucherDetail->receiptVoucher->reference_number,
-            'cheque_number' => $receiptVoucherDetail->cheque_slip,
-            'type' => "RECEIPT_VOUCHER",
+            'voucher_number' => $paymentVoucherDetail->receiptVoucher->payment_voucher_number,
+            'particulars' => $paymentVoucherDetail->remarks,
+            'payment_type' => strtoupper($paymentVoucherDetail->contra_account),
+            'credit' => 0,
+            'debit' => $paymentVoucherDetail->amount,
+            'tr_bill_number' => $paymentVoucherDetail->receiptVoucher->reference_number,
+            'cheque_number' => $paymentVoucherDetail->cheque_slip,
+            'type' => "PAYMENT_VOUCHER",
             'account_group_id' => $bankAccountGroup?->id,
             'is_parent' => true,
         ]);

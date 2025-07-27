@@ -153,6 +153,8 @@ class SubGroupController extends Controller
             }
 
             $validated = $validator->validated();
+            $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])->orderBy('code', 'DESC')->first();
+            $validated['code'] = $lastSubGroup ? (int) ($lastSubGroup->code) + 1 : 1;
             $group = SubGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {

@@ -6,10 +6,6 @@ use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
-use App\Models\SaleReturnProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\ProductList;
-
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
@@ -18,7 +14,8 @@ use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnHistory;
 use App\Models\PurchaseReturnProductFieldValue;
 use App\Models\SaleProduct;
-
+use App\Models\SaleReturnProductFieldValue;
+use App\Models\SalesProductFieldValue;
 use App\Models\SalesReturnProduct;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -2881,6 +2878,7 @@ class PurchaseReturnController extends Controller
                 'total_amount' => 'nullable|numeric|min:0',
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.credit' => 'nullable|numeric|min:0',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'return_entire_batch' => 'nullable|boolean',
@@ -4221,6 +4219,7 @@ class PurchaseReturnController extends Controller
                 'total_amount' => 'nullable|numeric|min:0',
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.credit' => 'nullable|numeric|min:0',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'return_entire_batch' => 'nullable|boolean',

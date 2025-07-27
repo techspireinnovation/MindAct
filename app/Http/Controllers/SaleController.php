@@ -12,30 +12,25 @@ use Pratiksh\Nepalidate\Services\EnglishDate;
 use NepaliCalendar;
 use App\Helpers\Helper;
 use App\Models\MeasureUnit;
-use App\Models\ProductList;
-use App\Models\SaleAdditional;
-use App\Models\SalesReturnProduct;
-use App\Models\SaleReturnProductFieldValue;
-use App\Models\SalesProductFieldValue;
-use App\Models\PurchaseProductFieldValue;
-use App\Models\PurchaseReturnProductFieldValue;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Http\Request;
 use App\Models\Product;
+use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
-
+use App\Models\PurchaseProductFieldValue;
 use App\Models\PurchaseProductReturn;
+use App\Models\PurchaseReturnProductFieldValue;
 use App\Models\Sale;
-
+use App\Models\SaleAdditional;
 use App\Models\SaleProduct;
-
+use App\Models\SaleReturnProductFieldValue;
+use App\Models\SalesProductFieldValue;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -1095,6 +1090,7 @@ class SaleController extends Controller
                 'pan_number' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
                 'payment' => 'nullable|array',
+                'payment.bank_name' => 'nullable|string',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
                 'payment.bank' => 'nullable|numeric|min:0',
@@ -1121,17 +1117,17 @@ class SaleController extends Controller
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric|min:0',
-                'ref_number' => [
+                'ref_bill_number' => [
                     'nullable',
                     'string',
                     'max:255',
-                    Rule::unique('sales')
+                    Rule::unique('sales', 'ref_number')
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
                         }),
                 ],
-                'roundoff_amount' => 'nullable|numeric|max:255',
+                'round_off_amount' => 'nullable|numeric|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'remarks' => 'nullable|string|max:255',
                 'vat_amount' => 'nullable|numeric',
@@ -1312,7 +1308,7 @@ class SaleController extends Controller
                     'contact_number' => $validated['contact_number'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'credit_days' => $validated['credit_days'] ?? null,
-                    'ref_number' => $validated['ref_number'] ?? null,
+                    'ref_number' => $validated['ref_bill_number'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? 'INV-' . now()->format('Ymd') . '-' . rand(1000, 9999),
                     'invoice_date' => $validated['invoice_date'] ?? now(),
                     'invoice_date_bs' => $validated['invoice_date_bs'] ?? now(),
@@ -1325,10 +1321,11 @@ class SaleController extends Controller
                     'excise_duty' => $validated['excise_duty'] ?? 0,
                     'health_insurance' => $validated['health_insurance'] ?? 0,
                     'balance' => $validated['balance'] ?? 0,
+                    'payment' => $validated['payment'] ?? "",
                     'taxable_amount' => $validated['taxable_amount'] ?? 0,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? 0,
                     'ref_bill_number' => $validated['ref_bill_number'] ?? null,
-                    'roundoff_amount' => $validated['roundoff_amount'] ?? 0,
+                    'round_off_amount' => $validated['round_off_amount'] ?? 0,
                     'roundoff_type' => $validated['roundoff_type'] ?? null,
                     'remarks' => $validated['remarks'] ?? null,
                     'abvt' => $validated['abvt'] ?? false,
@@ -1865,6 +1862,7 @@ class SaleController extends Controller
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
                 'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank_name' => 'nullable|string',
                 'payment.bank' => 'nullable|numeric|min:0',
                 'invoice_number' => [
                     'required',

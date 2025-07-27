@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\AccountGroup;
 use App\Models\AccountHead;
+use App\Models\VoucherSummary;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -108,18 +109,7 @@ class AccountGroupController extends Controller
                 'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => 'integer|exists:main_groups,id',
-                'sub_group_id' => 'integer|exists:sub_groups,id',
-                'code' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('account_groups')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
-
-                    }),
-
-                ],
+                'sub_group_id' => 'integer|exists:sub_groups,id'
             ]);
 
             if ($validator->fails()) {
@@ -129,6 +119,8 @@ class AccountGroupController extends Controller
                 ], 422);
             }
             $validated = $validator->validated();
+            $lastGroup = AccountGroup::where(['sub_group_id' => $validated['sub_group_id'], 'main_group_id' => $validated['main_group_id']])->orderBy('code', 'DESC')->first();
+            $validated['code'] = $lastGroup ? (int) ($lastGroup->code) + 1 : 1;
             $group = AccountGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {
@@ -177,7 +169,7 @@ class AccountGroupController extends Controller
 
     private function checkIfUsed($id): bool
     {
-        if (AccountHead::where('account_group_id', $id)->first()) {
+        if (AccountHead::where('account_group_id', $id)->first() || VoucherSummary::where('account_group_id', $id)->first()) {
             return true;
         }
         return false;

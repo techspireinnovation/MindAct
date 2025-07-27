@@ -1308,14 +1308,37 @@ class SalesReturnController extends Controller
                         ]);
                     }
 
+                    // Fetch product metadata
+                    $product = Product::where('id', $productId)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->first();
+
+
+
+                    $originalProductPrice = Product::where('id', $productId)->value('purchase_rate');
+
+                    $saleProductsPrice = SaleProduct::where('product_id', $productId)->orderBy('created_at', 'desc')->pluck('price');
+                    $latestPrice = $saleProductsPrice->first();
+
+                    // Get the minimum price
+                    $minProductPrice = $saleProductsPrice->min();
+
+                    // Get the average price
+                    $avgProductPrice = $saleProductsPrice->avg();
+
                     // Initialize product entry
                     if (!isset($products[$productId])) {
                         $products[$productId] = [
                             'product_id' => $productId,
                             'product_name' => $saleProduct->product_name,
                             'product_code' => $saleProduct->product_code,
-                            'min_price' => $saleProduct->price,
-                            'amount' => $saleProduct->amount,
+                          
+                            'original_price' => $originalProductPrice ?? null,
+                            'latest_price' => $latestPrice ?? null,
+                            'min_price' => $minProductPrice ?? null,
+                            'avg_price' => $avgProductPrice ?? null,
+                            'amount' => $saleProduct->amount ?? null,
                             'is_vatable' => (bool) $saleProduct->is_vatable,
                             'used_measure_units' => $usedMeasureUnits,
                             'measure_unit_id' => $primaryMeasureUnit,
@@ -1333,6 +1356,7 @@ class SalesReturnController extends Controller
                     }
 
                     // Update min_price if lower
+
                     if ($saleProduct->price < $products[$productId]['min_price']) {
                         $products[$productId]['min_price'] = $saleProduct->price;
                     }

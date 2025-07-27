@@ -213,10 +213,7 @@ class PurchaseReturnController extends Controller
 
             if ($purchases->isEmpty()) {
                 Log::warning('No purchases found', ['company_id' => $companyId]);
-                return response()->json([
-                    'data' => 'Successful !!',
-                    'message' => 'No purchases with available products found',
-                ], 200);
+                return response()->json([], 200);
             }
 
             // Fetch purchase return products
@@ -1437,7 +1434,7 @@ class PurchaseReturnController extends Controller
             }
 
             if (!$request->has('purchase_type')) {
-                return response()->json(['error' => 'Missing required parameter: purchase_type'], 422);
+                return response()->json([], 200);
             }
 
             // Get unique product IDs with available quantities for return
@@ -3023,7 +3020,7 @@ class PurchaseReturnController extends Controller
                             return null;
                         }
 
-                        $fieldValues = $product->fieldValues->groupBy('quantity_index')->map(function ($group) {
+                        $fieldValues = collect($product->fieldValues ?? [])->groupBy('quantity_index')->map(function ($group) {
                             return $group->map(function ($field) {
                                 return [
                                     'purchase_product_id' => $field->purchase_product_id,

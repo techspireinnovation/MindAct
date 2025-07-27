@@ -238,6 +238,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
 
     //List and Details
+    Route::get('change-test', [SaleController::class, 'changeDate']);
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);

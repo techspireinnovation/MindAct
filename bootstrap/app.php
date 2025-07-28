@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
     'company.admin' => \App\Http\Middleware\CompanyAdminMiddleware::class,
     'super.admin' => \App\Http\Middleware\SuperAdminMiddleware::class, //
+    'company.access' => \App\Http\Middleware\CompanyAccessMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

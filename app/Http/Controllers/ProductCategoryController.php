@@ -104,10 +104,80 @@ class ProductCategoryController extends Controller
 
 
     // Store a new resource
+    // public function store(Request $request): JsonResponse
+    // {
+    //     try {
+    //         $validator = Validator::make($request->all(), [
+    //             'name' => [
+    //                 'required',
+    //                 'string',
+    //                 'max:255',
+    //                 Rule::unique('product_categories')->where(function ($query) use ($request) {
+    //                     return $query->where('company_id', $request->company_id)
+    //                         ->whereNull('deleted_at');
+    //                 }),
+    //             ],
+    //             'company_id' => 'required|integer|exists:companies,id',
+    //             'is_primary' => 'boolean',
+    //             'is_active' => 'boolean'
+    //         ]);
+
+    //         if ($validator->fails()) {
+    //             \Log::error('ProductCategoryController: Validation failed in store', [
+    //                 'errors' => $validator->errors()->toArray(),
+    //                 'request' => $request->all(),
+    //             ]);
+    //             return response()->json([
+    //                 'message' => $validator->errors()->first(),
+    //                 'errors' => $validator->errors()
+    //             ], 422);
+    //         }
+
+    //         $validated = $validator->validated();
+    //         if (!empty($validated['is_primary'])) {
+    //             ProductCategory::where('company_id', $validated['company_id'])
+    //                 ->where('is_primary', true)
+    //                 ->update(['is_primary' => false]);
+    //         }
+
+    //         $validated['is_primary'] = $validated['is_primary'] ?? false;
+    //         $validated['is_active'] = $validated['is_active'] ?? true;
+
+    //         $post = ProductCategory::create($validated);
+
+    //         return response()->json($post, 201);
+    //     } catch (ModelNotFoundException $e) {
+    //         \Log::error('ProductCategoryController: Company not found in store', [
+    //             'exception' => $e->getMessage(),
+    //             'company_id' => $request->company_id,
+    //         ]);
+    //         return response()->json(['error' => 'Company not found'], 404);
+    //     } catch (QueryException $e) {
+    //         \Log::error('ProductCategoryController: Query exception in store', [
+    //             'exception' => $e->getMessage(),
+    //             'company_id' => $request->company_id,
+    //         ]);
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error('ProductCategoryController: Unexpected error in store', [
+    //             'exception' => $e->getMessage(),
+    //             'company_id' => $request->company_id,
+    //         ]);
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     }
+    // }
+
     public function store(Request $request): JsonResponse
     {
         try {
+            // Ensure company_id is merged by middleware
+            \Log::info('ProductCategoryController: Processing store request', [
+                'request_data' => $request->all(),
+                'company_id' => $request->company_id,
+                'user_id' => Auth::guard('api')->id(),
+            ]);
 
+            // Validate request, making company_id optional
             $validator = Validator::make($request->all(), [
                 'name' => [
                     'required',
@@ -118,13 +188,17 @@ class ProductCategoryController extends Controller
                             ->whereNull('deleted_at');
                     }),
                 ],
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'sometimes|integer|exists:companies,id',
                 'is_primary' => 'boolean',
                 'is_active' => 'boolean'
             ]);
 
-
             if ($validator->fails()) {
+                \Log::error('ProductCategoryController: Validation failed in store', [
+                    'errors' => $validator->errors()->toArray(),
+                    'request' => $request->all(),
+                    'company_id' => $request->company_id,
+                ]);
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -132,28 +206,62 @@ class ProductCategoryController extends Controller
             }
 
             $validated = $validator->validated();
+
+            // Use company_id from middleware if not in validated data
+            $validated['company_id'] = $request->company_id;
+
+            // Safety check for company_id
+            if (!$validated['company_id']) {
+                \Log::error('ProductCategoryController: No company_id available', [
+                    'request' => $request->all(),
+                    'user_id' => Auth::guard('api')->id(),
+                ]);
+                return response()->json([
+                    'message' => 'Forbidden: No associated company found',
+                    'errors' => ['company_id' => ['No company associated with the user']]
+                ], 403);
+            }
+
             if (!empty($validated['is_primary'])) {
                 ProductCategory::where('company_id', $validated['company_id'])
                     ->where('is_primary', true)
                     ->update(['is_primary' => false]);
             }
 
-
             $validated['is_primary'] = $validated['is_primary'] ?? false;
             $validated['is_active'] = $validated['is_active'] ?? true;
 
-
             $post = ProductCategory::create($validated);
+
+            \Log::info('ProductCategoryController: Product category created', [
+                'product_category_id' => $post->id,
+                'company_id' => $validated['company_id'],
+                'user_id' => Auth::guard('api')->id(),
+            ]);
 
             return response()->json($post, 201);
         } catch (ModelNotFoundException $e) {
+            \Log::error('ProductCategoryController: Company not found in store', [
+                'exception' => $e->getMessage(),
+                'company_id' => $request->company_id,
+            ]);
             return response()->json(['error' => 'Company not found'], 404);
         } catch (QueryException $e) {
+            \Log::error('ProductCategoryController: Query exception in store', [
+                'exception' => $e->getMessage(),
+                'company_id' => $request->company_id,
+            ]);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
+            \Log::error('ProductCategoryController: Unexpected error in store', [
+                'exception' => $e->getMessage(),
+                'company_id' => $request->company_id,
+            ]);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+    
+    
     // Show a single resource
     public function show($id): JsonResponse
     {

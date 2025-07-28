@@ -14,6 +14,7 @@ use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GenerateCodeController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
@@ -66,6 +67,7 @@ use App\Http\Controllers\VoucherSummaryController;
 
 
 // Public routes
+
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('auth.login'); // General login
 Route::post('/company/login', [CompanyAdminController::class, 'login'])->name('company.login'); // Company admin login
@@ -89,15 +91,43 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
 
 
-    // Route::post('/select-company', [CompanyAdminController::class, 'selectCompany']);
-    // 
-    Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(function () {
+Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
+    // User management routes (company_admin only, assuming company.admin middleware enforces this)
+    Route::middleware(['company.admin'])->group(function () {
         Route::post('/users', [UserController::class, 'store'])->name('company.users.store');
-        Route::post('/role/store', [RoleController::class, 'store'])->name('company.role.store');
+        Route::get('/users', [UserController::class, 'index'])->name('company.users.index');
+        Route::put('/users/{id}', [UserController::class, 'update'])->name('company.users.update');
+        Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('company.users.destroy');
+    });
+
+    // Role management routes (company_admin only, assuming company.admin middleware enforces this)
+    Route::middleware(['company.admin'])->prefix('role')->group(function () {
+        Route::post('/store', [RoleController::class, 'store'])->name('company.role.store');
+        Route::get('/', [RoleController::class, 'index'])->name('company.role.index');
+        Route::put('/{id}', [RoleController::class, 'update'])->name('company.role.update');
+        Route::delete('/{id}', [RoleController::class, 'destroy'])->name('company.role.destroy');
+        Route::get('/roles-with-permission', [RoleController::class, 'Roleswithpermission'])->name('company.role.Roleswithpermission');
+        Route::patch('/{id}/toggle-active', [RoleController::class, 'toggleActiveStatus'])->name('company.role.toggle-active');
+        Route::get('/getById/{id}', [RoleController::class, 'getById'])->name('company.role.getById');
+    });
+
+    Route::middleware(['company.access'])->group(function () {
+        Route::get('/profile', [CompanyAdminController::class, 'profile'])->name('company.profile');
+        Route::post('/logout', [CompanyAdminController::class, 'logout'])->name('company.logout');
+        Route::put('/change-password', [CompanyAdminController::class, 'changePassword'])->name('company.change-password');
+        Route::get('/generatePurchaseBillNumber', [GenerateCodeController::class, 'generatePurchaseBillNumber']);
+        Route::get('/generatePurchaseReturnBillNumber', [GenerateCodeController::class, 'generatePurchaseReturnBillNumber']);
+        Route::get('/generateSalesBillNumber', [GenerateCodeController::class, 'generateSalesBillNumber']);
+        Route::get('/generateSalesReturnBillNumber', [GenerateCodeController::class, 'generateSalesReturnBillNumber']);
+        Route::get('/generateJournalVoucherBillNumber', [GenerateCodeController::class, 'generateJournalVoucherBillNumber']);
+        Route::get('/generatePaymentVoucherBillNumber', [GenerateCodeController::class, 'generatePaymentVoucherBillNumber']);
+        Route::get('/generateReceiptVoucherBillNumber', [GenerateCodeController::class, 'generateReceiptVoucherBillNumber']);
+        Route::get('/generateBankVoucherBillNumber', [GenerateCodeController::class, 'generateBankVoucherBillNumber']);
+        
+
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
-    Route::get('profile', [CompanyAdminController::class, 'profile']);
-    Route::get('logout', [CompanyAdminController::class, 'logout']);
+   
     Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
     Route::put('update', [CompanyController::class, 'update']);
     Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
@@ -119,7 +149,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('get-all-sales-returns-by-expiry-dates', [SalesReturnController::class, 'getSalesReturnByExpiryDate']);
     Route::resource('fixed-asset-accounts', FixedAssetAccountController::class);
     Route::apiResource('sale-additionals', SaleController::class);
-    Route::put('change-password', [CompanyAdminController::class, 'changePassword']);
+    
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
@@ -162,12 +192,14 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     });
 
 
-    Route::prefix('role')->group(function () {
        
-        Route::get('/', [RoleController::class, 'list']);
-        Route::post('/store', [RoleController::class, 'store']);
+      
        
-    });
+
+
+   
+
+
     Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
     Route::resource('purchases', PurchaseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
@@ -291,7 +323,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
         'notifications/{notification}/read',
         [NotificationController::class, 'markAsRead']
     );
-
+});
 });
 
 // forget password

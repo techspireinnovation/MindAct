@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
-use App\Observers\SaleObserver;
+use App\Observers\SaleReturnObserver;
 use App\Traits\ConvertsAdToBsDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -60,7 +60,7 @@ class SalesReturn extends Model
 
     protected static function booted()
     {
-        self::observe(SaleObserver::class);
+        self::observe(SaleReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

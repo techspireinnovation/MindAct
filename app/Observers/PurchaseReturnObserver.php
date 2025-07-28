@@ -24,7 +24,7 @@ class PurchaseReturnObserver
             'date_bs' => $purchaseReturn->invoice_date_bs,
             'company_id' => $purchaseReturn->company_id,
             'branch_id' => null,
-            'voucher_number' => "PRVOU-818200{$purchaseReturn->id}",
+            'voucher_number' => "PRVOU-828300{$purchaseReturn->id}",
             'particulars' => "Product Purchase Returned from {$purchaseReturn->customer->party_name} - Bill No. {$purchaseReturn->id}",
             'credit' => $purchaseReturn->sub_total_before_discount,
             'debit' => 0,
@@ -96,7 +96,7 @@ class PurchaseReturnObserver
                         'date_bs' => $purchaseReturn->invoice_date_bs,
                         'company_id' => $purchaseReturn->company_id,
                         'branch_id' => null,
-                        'voucher_number' => "PCVOU-818200{$purchaseReturn->id}",
+                        'voucher_number' => "PRVOU-828300{$purchaseReturn->id}",
                         'particulars' => "Product Purchase Returned from {$purchaseReturn->customer->party_name} - Bill No. {$purchaseReturn->purchase_bill_number}",
                         'debit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchaseAccGroupValue['valueAmount'] : 0,
                         'credit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchaseAccGroupValue['valueAmount'] : 0,
@@ -115,7 +115,7 @@ class PurchaseReturnObserver
                 'date_bs' => $purchaseReturn->invoice_date_bs,
                 'company_id' => $purchaseReturn->company_id,
                 'branch_id' => null,
-                'voucher_number' => "PCVOU-818200{$purchaseReturn->id}",
+                'voucher_number' => "PRVOU-828300{$purchaseReturn->id}",
                 'particulars' => "Product Purchase Returned from {$purchaseReturn->customer->party_name} - Bill No. {$purchaseReturn->purchase_bill_number}",
                 'credit' => 0,
                 'debit' => $purchaseReturn->total_amount,
@@ -137,7 +137,6 @@ class PurchaseReturnObserver
 
 
             if (isset($purchase->payment['cash']) && $purchaseReturn->payment['cash'] !== null && $purchaseReturn->payment['cash'] > 0) {
-
                 $accHead = AccountHead::where(['name' => $purchaseReturn->customer->party_name, 'company_id' => $purchaseReturn->company_id])->first();
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,

@@ -2,7 +2,12 @@
 
 namespace App\Observers;
 
-use App\Models\SalesReturn;
+use App\Models\AccountGroup;
+use App\Models\AccountHead;
+use App\Models\VoucherInnerDetail;
+use App\Models\VoucherSummary;
+use App\Models\VoucherSummaryDetail;
+
 
 class SaleReturnObserver
 {

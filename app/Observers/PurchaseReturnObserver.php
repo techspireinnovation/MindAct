@@ -61,7 +61,7 @@ class PurchaseReturnObserver
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
                 $partyHead = AccountHead::firstOrCreate(['name' => $purchaseReturn->customer->party_name, 'company_id' => $purchaseReturn->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
 
-                if (isset($purchase->payment['credit']) && $purchaseReturn->payment['credit'] !== null)
+                if (isset($purchaseReturn->payment['credit']) && $purchaseReturn->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchaseReturn->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
 
@@ -71,7 +71,7 @@ class PurchaseReturnObserver
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
                 $partyHead = AccountHead::firstOrCreate(['name' => $purchaseReturn->customer->party_name, 'company_id' => $purchaseReturn->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
 
-                if (isset($purchase->payment['credit']) && $purchaseReturn->payment['credit'] !== null)
+                if (isset($purchaseReturn->payment['credit']) && $purchaseReturn->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchaseReturn->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
         }
@@ -136,7 +136,7 @@ class PurchaseReturnObserver
             ]);
 
 
-            if (isset($purchase->payment['cash']) && $purchaseReturn->payment['cash'] !== null && $purchaseReturn->payment['cash'] > 0) {
+            if (isset($purchaseReturn->payment['cash']) && $purchaseReturn->payment['cash'] !== null && $purchaseReturn->payment['cash'] > 0) {
                 $accHead = AccountHead::where(['name' => $purchaseReturn->customer->party_name, 'company_id' => $purchaseReturn->company_id])->first();
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
@@ -148,7 +148,7 @@ class PurchaseReturnObserver
                 ]);
             }
 
-            if (isset($purchase->payment['bank']) && $purchaseReturn->payment['bank'] !== null && $purchaseReturn->payment['bank'] > 0) {
+            if (isset($purchaseReturn->payment['bank']) && $purchaseReturn->payment['bank'] !== null && $purchaseReturn->payment['bank'] > 0) {
 
                 $accHead = AccountHead::where(['name' => $purchaseReturn->customer->party_name, 'company_id' => $purchaseReturn->company_id])->first();
                 VoucherInnerDetail::create([

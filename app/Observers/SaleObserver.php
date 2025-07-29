@@ -82,7 +82,7 @@ class SaleObserver
                 $partyHead = AccountHead::firstOrCreate(['name' => $sale->customer_name, 'company_id' => $sale->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
 
                 if (isset($saleReturn->payment['credit']) && $sale->payment['credit'] !== null)
-                    $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'debit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
+                    $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'debit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
 
         }

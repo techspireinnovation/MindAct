@@ -85,7 +85,7 @@ class PurchaseObserver
                 if (!$accHead && ($purchaseAccGroupKey == "Accounts Receivable (Debtors)" || $purchaseAccGroupKey == "Accounts Payable (Creditors)")) {
                     $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
                     $code = $accountHead ? (int) $accountHead->code + 1 : 1;
-                    $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                    $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
 
                 }
 
@@ -164,37 +164,5 @@ class PurchaseObserver
         } catch (\Exception $e) {
             \Log::error($e);
         }
-    }
-
-    /**
-     * Handle the Purchase "updated" event.
-     */
-    public function updated(Purchase $purchase): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Purchase "deleted" event.
-     */
-    public function deleted(Purchase $purchase): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Purchase "restored" event.
-     */
-    public function restored(Purchase $purchase): void
-    {
-        //
-    }
-
-    /**
-     * Handle the Purchase "force deleted" event.
-     */
-    public function forceDeleted(Purchase $purchase): void
-    {
-        //
     }
 }

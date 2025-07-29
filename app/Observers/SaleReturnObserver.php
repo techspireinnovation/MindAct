@@ -145,7 +145,6 @@ class SaleReturnObserver
                     'credit' => $saleReturn->payment['cash'],
                     'debit' => 0,
                     'particulars' => "Cash",
-
                 ]);
             }
 

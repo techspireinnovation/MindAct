@@ -60,21 +60,31 @@ class SaleObserver
 
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::firstOrCreate(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                $partyHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
 
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
                     $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
 
-            default:
-
+            case 'vendor':
+            case 'both':
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::firstOrCreate(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                $partyHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
 
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
                     $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
+
+            default:
+                $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
+                $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
+                $partyHead = AccountHead::firstOrCreate(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+
+                if (isset($saleReturn->payment['credit']) && $sale->payment['credit'] !== null)
+                    $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'debit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
+                break;
+
         }
 
         try {

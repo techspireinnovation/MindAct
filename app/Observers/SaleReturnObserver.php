@@ -60,14 +60,23 @@ class SaleReturnObserver
 
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::firstOrCreate(['name' => $saleReturn->customer->party_name, 'company_id' => $saleReturn->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                $partyHead = AccountHead::where(['name' => $saleReturn->customer->party_name, 'company_id' => $saleReturn->company_id])->first();
 
-                if (isset($saleReturn->payment['credit']) && $saleReturn->payment['credit'] !== null)
-                    $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $saleReturn->payment["credit"], 'payment_type' => 'CREDIT'];
+                if (isset($sale->payment['credit']) && $saleReturn->payment['credit'] !== null)
+                    $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $saleReturn->payment["credit"], 'payment_type' => 'CREDIT'];
+                break;
+
+            case 'vendor':
+            case 'both':
+                $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
+                $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
+                $partyHead = AccountHead::where(['name' => $saleReturn->customer->party_name, 'company_id' => $saleReturn->company_id])->first();
+
+                if (isset($sale->payment['credit']) && $saleReturn->payment['credit'] !== null)
+                    $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $saleReturn->payment["credit"], 'payment_type' => 'CREDIT'];
                 break;
 
             default:
-
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
                 $partyHead = AccountHead::firstOrCreate(['name' => $saleReturn->customer->party_name, 'company_id' => $saleReturn->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);

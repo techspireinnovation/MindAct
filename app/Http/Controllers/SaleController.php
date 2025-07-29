@@ -117,8 +117,9 @@ class SaleController extends Controller
 
     private function getAvailableProductsForSale($purchaseType, $companyId)
     {
+      
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
-
+        
         try {
             DB::enableQueryLog();
 
@@ -129,6 +130,7 @@ class SaleController extends Controller
                 ->get()
                 ->keyBy('id');
 
+
             // Fetch all relevant products
             $products = Product::select(['id', 'name'])
                 ->where(function ($query) use ($companyId) {
@@ -137,6 +139,8 @@ class SaleController extends Controller
                 })
                 ->whereNull('deleted_at')
                 ->get();
+            
+            Log::info('Fetched products', ['products' => $products->pluck('name', 'id')]);
 
             if ($products->isEmpty()) {
                 Log::warning('No products found', ['company_id' => $companyId]);
@@ -144,6 +148,7 @@ class SaleController extends Controller
             }
 
             $productIds = $products->pluck('id')->toArray();
+          
 
 
             if (strtolower($purchaseType) === 'capital') {
@@ -153,6 +158,7 @@ class SaleController extends Controller
                 ]);
                 return collect([]);
             }
+           
 
             // Fetch purchase products
             $purchaseProducts = PurchaseProduct::whereIn('purchase_products.product_id', $productIds)
@@ -177,6 +183,7 @@ class SaleController extends Controller
                         ->where('company_id', $companyId)
                 ])
                 ->get();
+            // dd($purchaseProducts);    
 
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
@@ -285,7 +292,8 @@ class SaleController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer|exists:companies,id',
-                'include_details' => 'nullable|boolean'
+                'include_details' => 'nullable|boolean',
+                'purchase_type' => 'nullable|string|'
             ]);
 
             if ($validator->fails()) {
@@ -298,7 +306,8 @@ class SaleController extends Controller
             $companyId = $request->input('company_id');
             $includeDetails = $request->boolean('include_details', false);
             $purchaseType = $request->input('purchase_type', null);
-            // dd($purchaseType);
+           
+
 
             if (auth()->check()) {
                 $user = auth()->user();
@@ -421,7 +430,7 @@ class SaleController extends Controller
     {
         $dateString = $request->input('date');
 
-         $carbonDate = Carbon::parse($dateString);
+        $carbonDate = Carbon::parse($dateString);
         $currentDateBs = NepaliDate::create($carbonDate)->toBS();
         return $currentDateBs;
 
@@ -2307,7 +2316,8 @@ class SaleController extends Controller
                             $unavailableQuantityIndices = $this->getUnavailableQuantityIndices($purchaseProduct, $validated['company_id']);
                             $salesReturnedIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $purchaseProduct->saleProducts->flatMap(fn($p) => $p->saleProductReturns->pluck('id')))
                                 ->whereNull('deleted_at')
-                                ->pluck('quantity_index');
+                                ->pluck('quantity_index')
+                                ->toArray();
                             $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
 
                             foreach ($fvByIndex as $quantityIndex => $fvSet) {

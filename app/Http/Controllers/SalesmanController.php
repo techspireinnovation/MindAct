@@ -113,6 +113,8 @@ class SalesmanController extends Controller
                 'country' => 'nullable|string',
                 'state' => 'nullable|string',
                 'ward_no' => 'nullable|integer',
+                'is_active' => 'boolean',
+                'is_primary' => 'boolean',
                 'area' => 'nullable|string',
                 'mobile' => 'required|string|max:20',
                 'email' => [
@@ -134,7 +136,7 @@ class SalesmanController extends Controller
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',
-                'vdc_municipality' => 'nullable|string|max:255', // Renamed to match schema
+                'vdc_municipality' => 'nullable|string|max:255',
             ]);
 
             if ($validator->fails()) {
@@ -144,7 +146,15 @@ class SalesmanController extends Controller
                 ], 422);
             }
 
-            $salesman = Salesman::create($validator->validated());
+            $validated = $validator->validated();
+
+            if (!empty($validated['is_primary'])) {
+                Salesman::where('company_id', $validated['company_id'])
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+
+            $salesman = Salesman::create($validated);
 
             return response()->json([
                 'message' => 'Salesman created successfully',
@@ -204,6 +214,8 @@ class SalesmanController extends Controller
                         }),
                 ],
                 'name' => 'sometimes|required|string|max:255',
+                'is_active' => 'nullable|boolean',
+                'is_primary' => 'nullable|boolean',
                 'address' => 'nullable|string',
                 'country' => 'nullable|string',
                 'state' => 'nullable|string',
@@ -239,7 +251,18 @@ class SalesmanController extends Controller
                 ], 422);
             }
 
-            $salesman->update($validator->validated());
+
+            $validated = $validator->validated();
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                $affectedRows = Salesman::where('company_id', $salesman->company_id)
+                    ->where('id', '!=', $id)
+                    ->where('is_primary', true)
+                    ->whereNull('deleted_at')
+                    ->update(['is_primary' => false]);
+                \Log::info("Updated $affectedRows salesmen to is_primary = false for company_id: {$salesman->company_id}");
+            }
+
+            $salesman->update($validated);
 
             return response()->json([
                 'message' => 'Salesman updated successfully',

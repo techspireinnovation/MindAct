@@ -57,4 +57,8 @@ class Company extends Model
         return $this->hasMany(MeasureUnit::class);
     }
 
+    public function branches(){
+        return $this->hasMany(Branch::class);
+    }
+
 }

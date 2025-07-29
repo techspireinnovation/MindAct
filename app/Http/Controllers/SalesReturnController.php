@@ -1329,7 +1329,7 @@ class SalesReturnController extends Controller
                             'product_id' => $productId,
                             'product_name' => $saleProduct->product_name,
                             'product_code' => $saleProduct->product_code,
-                          
+
                             'original_price' => $originalProductPrice ?? null,
                             'latest_price' => $latestPrice ?? null,
                             'min_price' => $minProductPrice ?? null,
@@ -2624,10 +2624,14 @@ class SalesReturnController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+           
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
+                'customer_address' => 'required|string|max:255',
+                'customer_contact' => 'required|string|max:255',
+                'credit_days' => 'required|string|max:255',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number',
                 'document_number' => 'nullable|string|max:255',
@@ -2646,6 +2650,10 @@ class SalesReturnController extends Controller
                 'freight_amount' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0',
                 'discount_after_vat' => 'nullable|numeric|min:0',
+                'non_taxable_amount' => 'nullable|numeric',
+                'taxable_amount' => 'nullable|numeric',
+
+                
                 'total_amount' => 'nullable|numeric|min:0',
                 'round_of_amount' => 'nullable|numeric',
                 'roundoff_type' => 'nullable|string|max:255',
@@ -2675,6 +2683,7 @@ class SalesReturnController extends Controller
                 'sales_return_products.*.sale_product_id' => 'nullable|integer|exists:sale_products,id',
                 'sales_return_products.*.product_id' => 'required|integer|exists:products,id',
                 'sales_return_products.*.product_name' => 'nullable|string|max:255',
+                'sales_return_products.*.product_code' => 'nullable|string|max:255',
                 'sales_return_products.*.batch_no' => 'nullable|string|max:255',
                 'sales_return_products.*.mfd' => 'nullable|string|max:255',
                 'sales_return_products.*.expiry_date' => 'nullable|string|max:255',
@@ -2731,6 +2740,7 @@ class SalesReturnController extends Controller
             }
 
             $validated = $validator->validated();
+           
             Log::debug('Sales return request validated', ['request' => $validated]);
 
             $sale = Sale::when(isset($validated['sale_id']), function ($query) use ($validated) {
@@ -3019,6 +3029,8 @@ class SalesReturnController extends Controller
                         'sale_product_id' => $saleProductId,
                         'purchase_product_id' => $saleProduct->purchase_product_id,
                         'product_id' => $saleProduct->product_id,
+                        'product_name' => $product['product_name'] ?? null,
+                        'product_code' =>$product['product_code'] ?? null,
                         'quantity' => $quantity,
                         'free_quantity' => $freeQuantity,
 
@@ -3077,6 +3089,8 @@ class SalesReturnController extends Controller
                 $salesReturn = SalesReturn::create([
                     'company_id' => $validated['company_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
+                    'customer_address' => $validated['customer_address'] ?? null,
+                    'customer_name' => $validated['customer_name'] ?? null,
                     'salesman_id' => $validated['salesman_id'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? null,
                     'document_number' => $validated['document_number'] ?? null,
@@ -3092,6 +3106,8 @@ class SalesReturnController extends Controller
                     'health_insurance' => $validated['health_insurance'] ?? null,
                     'freight_amount' => $validated['freight_amount'] ?? null,
                     'discount' => $validated['discount'] ?? null,
+                    'taxable_amount' => $validated['taxable_amount'] ?? null,
+                    'non_taxable_amount' => $validated['non_taxable_amount'] ?? null,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
                     'total_amount' => $validated['total_amount'] ?? null,
                     'round_of_amount' => $validated['round_of_amount'] ?? null,
@@ -3143,6 +3159,8 @@ class SalesReturnController extends Controller
                         'sale_product_id' => $product['sale_product_id'],
                         'purchase_product_id' => $saleProduct->purchase_product_id,
                         'product_id' => $product['product_id'],
+                        'product_code' => $product['product_code'],
+                        'product_name' => $product['product_name'],
                         'quantity' => $product['quantity'],
                         'free_quantity' => $product['free_quantity'],
                         'price' => $product['price'],

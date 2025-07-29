@@ -167,7 +167,7 @@ class PurchaseController extends Controller
 
 
 
-  
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -245,8 +245,8 @@ class PurchaseController extends Controller
                     'nullable',
                     'integer',
                     Rule::when(
-                        fn ($input) => !is_null($input),
-                        Rule::exists('purchase_products', 'id')->where(fn ($query) => $query->where('purchase_id', $id))
+                        fn($input) => !is_null($input),
+                        Rule::exists('purchase_products', 'id')->where(fn($query) => $query->where('purchase_id', $id))
                     ),
                 ],
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
@@ -287,7 +287,7 @@ class PurchaseController extends Controller
                     'document_number' => $validated['document_number'] ?? null,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
-                    'purchase_type' => $validated['purchase_type']  ?? null,
+                    'purchase_type' => $validated['purchase_type'] ?? null,
                     'balance' => $validated['balance'] ?? null,
                     'invoice_date' => $validated['invoice_date'] ?? null,
                     'invoice_date_bs' => $validated['invoice_date_bs'] ?? null,
@@ -542,7 +542,8 @@ class PurchaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+
+        $validator = Validator::make($request->all(),([
             'ref_bill_number' => [
                 'required',
                 'string',
@@ -626,15 +627,21 @@ class PurchaseController extends Controller
             'purchase_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
             'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
             'purchase_products.*.field_values.*.*.quantity_type' => 'required|string|max:255',
-        ]);
+        ]));
+        if($validator->fails()){
+            return response()->json(["error"=>$validator->errors()],422);
+        }
+
+        $validated = $validator->validated();
 
         try {
             $item = DB::transaction(function () use ($validated) {
 
 
                 // Create Purchase
-                $item = Purchase::create([
-                    'customer_id' => $validated['customer_id'],
+              
+                $item = Purchase::create([                    
+                    'customer_id' => $validated['customer_id'] ?? null,
                     'customer_name' => $validated['customer_name'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'company_id' => $validated['company_id'],
@@ -650,7 +657,7 @@ class PurchaseController extends Controller
                     'batch_no' => $validated['batch_no'] ?? null,
                     'payment' => $validated['payment'] ?? null,
                     'remarks' => $validated['remarks'] ?? null,
-                    'store_id' => $validated['store_id'],
+                    'store_id' => $validated['store_id'] ?? null,
                     'bank_id' => $validated['bank_id'] ?? null,
                     'location_id' => $validated['location_id'],
                     'discount_type' => $validated['discount_type'] ?? null,
@@ -668,13 +675,15 @@ class PurchaseController extends Controller
                     'freight_amount' => $validated['freight_amount'] ?? null,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
                 ]);
+               
+               
 
 
-                // Create Purchase Products
                 if (isset($validated['purchase_products'])) {
 
 
                     foreach ($validated['purchase_products'] as $purchaseProductData) {
+
 
                         $purchasedProduct = PurchaseProduct::where('product_id', $purchaseProductData['product_id'])
                             ->where('company_id', $validated['company_id'])
@@ -686,6 +695,7 @@ class PurchaseController extends Controller
                                 $product->save();
                             }
                         }
+                       
 
                         $productId = $purchaseProductData['product_id'] ?? null;
                         $hsCode = $purchaseProductData['hs_code'] ?? null;
@@ -701,8 +711,10 @@ class PurchaseController extends Controller
 
 
                         // Create PurchaseProduct using static create method
+                     
+
                         $purchaseProduct = PurchaseProduct::create([
-                            'purchase_id' => $item->id, // Manually set the foreign key
+                            'purchase_id' => $item->id, 
                             'customer_id' => $validated['customer_id'],
                             'company_id' => $validated['company_id'],
                             'product_id' => $purchaseProductData['product_id'],
@@ -719,6 +731,7 @@ class PurchaseController extends Controller
                             'is_vatable' => $purchaseProductData['is_vatable'],
                             'measure_unit_id' => $purchaseProductData['measure_unit_id'],
                         ]);
+                  
 
                         // Create Field Values
                         if (!empty($purchaseProductData['field_values'])) {
@@ -758,6 +771,7 @@ class PurchaseController extends Controller
             Log::error('Database error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             Log::error('Unexpected error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }

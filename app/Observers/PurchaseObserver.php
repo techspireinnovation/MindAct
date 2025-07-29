@@ -84,7 +84,7 @@ class PurchaseObserver
 
                 if (!$accHead && ($purchaseAccGroupKey == "Accounts Receivable (Debtors)" || $purchaseAccGroupKey == "Accounts Payable (Creditors)")) {
                     $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
-                    $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $accountHead->code, 'is_primary' => true]);
+                    $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $accountHead->code, 'is_primary' => true])->first();
 
                 }
 

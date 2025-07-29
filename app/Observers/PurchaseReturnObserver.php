@@ -28,7 +28,7 @@ class PurchaseReturnObserver
             'particulars' => "Product Purchase Returned from {$purchaseReturn->customer->party_name} - Bill No. {$purchaseReturn->id}",
             'credit' => $purchaseReturn->sub_total_before_discount,
             'debit' => 0,
-            'tr_bill_number' => $purchaseReturn->id,
+            'tr_bill_number' => $purchaseReturn->ref_bill_no,
             'type' => "PURCHASE_RETURN",
             'payment_type' => "PURCHASE_RETURN",
             'ref_bill_number' => $purchaseReturn->ref_bill_no,

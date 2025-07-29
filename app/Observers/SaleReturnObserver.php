@@ -79,7 +79,7 @@ class SaleReturnObserver
             default:
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::firstOrCreate(['name' => $saleReturn->customer->party_name, 'company_id' => $saleReturn->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                $partyHead = AccountHead::firstOrCreate(['name' => $saleReturn->customer_name, 'company_id' => $saleReturn->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
 
                 if (isset($saleReturn->payment['credit']) && $saleReturn->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'debit', 'valueAmount' => (float) $saleReturn->payment["credit"], 'payment_type' => 'CREDIT'];

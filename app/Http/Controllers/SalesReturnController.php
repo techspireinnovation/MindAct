@@ -2624,7 +2624,6 @@ class SalesReturnController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
@@ -2652,8 +2651,6 @@ class SalesReturnController extends Controller
                 'discount_after_vat' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric',
                 'taxable_amount' => 'nullable|numeric',
-
-
                 'total_amount' => 'nullable|numeric|min:0',
                 'round_of_amount' => 'nullable|numeric',
                 'roundoff_type' => 'nullable|string|max:255',

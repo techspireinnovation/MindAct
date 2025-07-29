@@ -43,20 +43,20 @@ class SaleReturnObserver
         ]);
 
         $purchaseAccGroups = [
-            'Discount Expenses' => ['type' => 'credit', 'valueAmount' => $saleReturn->discount_value, 'payment_type' => ''],
+            'Discount Expenses' => ['type' => 'credit', 'valueAmount' => $saleReturn->discount, 'payment_type' => ''],
             'Excise Duty Expenses' => ['type' => 'debit', 'valueAmount' => $saleReturn->excise_duty, 'payment_type' => ''],
-            'VAT Account' => ['type' => 'debit', 'valueAmount' => $saleReturn->vat_percent, 'payment_type' => ''],
+            'VAT Account' => ['type' => 'debit', 'valueAmount' => $saleReturn->vat_amount, 'payment_type' => ''],
             'Health insurance Expenses' => ['type' => 'debit', 'valueAmount' => $saleReturn->health_insurance, 'payment_type' => ''],
             'Fright charge' => ['type' => 'debit', 'valueAmount' => $saleReturn->freight_amount, 'payment_type' => ''],
             'Scheme Discount Income' => ['type' => 'credit', 'valueAmount' => $saleReturn->discount_after_vat, 'payment_type' => ''],
         ];
 
         if ($saleReturn->roundoff_type === 'plus') {
-            $purchaseAccGroups['Round Off Plus in Purchase'] = ['type' => 'debit', 'valueAmount' => $saleReturn->roundoff_amount, 'payment_type' => ''];
+            $purchaseAccGroups['Round Off Plus in Purchase'] = ['type' => 'debit', 'valueAmount' => $saleReturn->round_of_amount, 'payment_type' => ''];
         }
 
         if ($saleReturn->roundoff_type === 'minus') {
-            $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'credit', 'valueAmount' => $saleReturn->roundoff_amount, 'payment_type' => ''];
+            $purchaseAccGroups['Round Off Minus in Purchase'] = ['type' => 'credit', 'valueAmount' => $saleReturn->round_of_amount, 'payment_type' => ''];
         }
 
         switch ($ledgerType) {
@@ -115,7 +115,7 @@ class SaleReturnObserver
                         'credit' => $purchaseAccGroupValue['type'] === 'debit' ? $purchaseAccGroupValue['valueAmount'] : 0,
                         'debit' => $purchaseAccGroupValue['type'] === 'credit' ? $purchaseAccGroupValue['valueAmount'] : 0,
                         'tr_bill_number' => $saleReturn->purchase_bill_number,
-                        'type' => "PURCHASE",
+                        'type' => "SALE_RETURN",
                         'payment_type' => $purchaseAccGroupValue['payment_type'] ?? "PURCHASE",
                         'account_group_id' => $accGroup?->id,
                         'account_head_id' => $accHead?->id,
@@ -134,7 +134,7 @@ class SaleReturnObserver
                 'debit' => 0,
                 'credit' => $saleReturn->total_amount,
                 'tr_bill_number' => $saleReturn->purchase_bill_number,
-                'type' => "PURCHASE",
+                'type' => "SALE_RETURN",
                 'payment_type' => "CASH",
                 'account_group_id' => $partyAccountGroup?->id,
                 'account_head_id' => $partyHead?->id,

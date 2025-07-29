@@ -21,6 +21,7 @@ class SaleObserver
         $accHead = AccountHead::where('name', "Sales")->first();
 
         $customerName = isset($sale->customer) ? $sale->customer->party_name : $sale->customer_name;
+        $ledgerType = isset($sale->customer) ? $sale->customer->ledger_type : 'custom';
 
         $voucher = VoucherSummary::firstOrCreate([
             'date' => $sale->invoice_date,
@@ -57,7 +58,7 @@ class SaleObserver
             $saleAccGroups['Round Off Minus in Purchase'] = ['type' => 'credit', 'valueAmount' => $sale->round_off_amount, 'payment_type' => ''];
         }
 
-        switch ($sale->customer->ledger_type) {
+        switch ($ledgerType) {
             case 'customer':
 
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();

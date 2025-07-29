@@ -20,13 +20,15 @@ class SaleObserver
         $accGroup = AccountGroup::where('name', "Sales")->first();
         $accHead = AccountHead::where('name', "Sales")->first();
 
+        $customerName = isset($sale->customer) ? $sale->customer->party_name : $sale->customer_name;
+
         $voucher = VoucherSummary::firstOrCreate([
             'date' => $sale->invoice_date,
             'date_bs' => $sale->invoice_date_bs,
             'company_id' => $sale->company_id,
             'branch_id' => null,
             'voucher_number' => "SLVOU-818200{$sale->id}",
-            'particulars' => "Product Sales to {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+            'particulars' => "Product Sales to {$customerName} from Bill No. {$sale->invoice_number}",
             'credit' => $sale->sub_total_before_discount,
             'debit' => 0,
             'tr_bill_number' => $sale->invoice_number,
@@ -60,7 +62,7 @@ class SaleObserver
 
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
+                $partyHead = AccountHead::where(['name' => $customerName, 'company_id' => $sale->company_id])->first();
 
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
                     $saleAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
@@ -70,7 +72,7 @@ class SaleObserver
             case 'both':
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
+                $partyHead = AccountHead::where(['name' => $customerName, 'company_id' => $sale->company_id])->first();
 
                 if (isset($sale->payment['credit']) && $sale->payment['credit'] !== null)
                     $saleAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $sale->payment["credit"], 'payment_type' => 'CREDIT'];
@@ -108,7 +110,7 @@ class SaleObserver
                         'company_id' => $sale->company_id,
                         'branch_id' => null,
                         'voucher_number' => "SLVOU-818200{$sale->id}",
-                        'particulars' => "Product Sales to {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+                        'particulars' => "Product Sales to {$customerName} from Bill No. {$sale->invoice_number}",
                         'debit' => $saleAccGroupValue['type'] === 'debit' ? $saleAccGroupValue['valueAmount'] : 0,
                         'credit' => $saleAccGroupValue['type'] === 'credit' ? $saleAccGroupValue['valueAmount'] : 0,
                         'tr_bill_number' => $sale->invoice_number,
@@ -127,7 +129,7 @@ class SaleObserver
                 'company_id' => $sale->company_id,
                 'branch_id' => null,
                 'voucher_number' => "SLVOU-818200{$sale->id}",
-                'particulars' => "Product Sales to {$sale->customer->party_name} from Bill No. {$sale->invoice_number}",
+                'particulars' => "Product Sales to {$customerName} from Bill No. {$sale->invoice_number}",
                 'credit' => 0,
                 'debit' => $sale->total_amount,
                 'tr_bill_number' => $sale->invoice_number,
@@ -149,7 +151,7 @@ class SaleObserver
 
             if (isset($sale->payment['cash']) && $sale->payment['cash'] !== null && $sale->payment['cash'] > 0) {
 
-                $accHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
+                $accHead = AccountHead::where(['name' => $customerName, 'company_id' => $sale->company_id])->first();
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $sale->company_id,
@@ -162,7 +164,7 @@ class SaleObserver
 
             if (isset($sale->payment['bank']) && $sale->payment['bank'] !== null && $sale->payment['bank'] > 0) {
 
-                $accHead = AccountHead::where(['name' => $sale->customer->party_name, 'company_id' => $sale->company_id])->first();
+                $accHead = AccountHead::where(['name' => $customerName, 'company_id' => $sale->company_id])->first();
                 VoucherInnerDetail::create([
                     'voucher_summary_id' => $voucher->id,
                     'company_id' => $sale->company_id,

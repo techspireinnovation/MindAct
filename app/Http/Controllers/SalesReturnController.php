@@ -2630,7 +2630,7 @@ class SalesReturnController extends Controller
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
                 'customer_address' => 'required|string|max:255',
-                'customer_contact' => 'required|string|max:255',
+                'customer_contact' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number',

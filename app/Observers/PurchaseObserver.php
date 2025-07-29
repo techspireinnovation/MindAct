@@ -57,10 +57,9 @@ class PurchaseObserver
 
         switch ($purchase->customer->ledger_type) {
             case 'customer':
-
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Receivable (Debtors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                $partyHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
 
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Receivable (Debtors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
@@ -70,7 +69,7 @@ class PurchaseObserver
 
                 $partyAccountGroup = AccountGroup::where(['name' => "Accounts Payable (Creditors)"])->orderBy('code', 'DESC')->first();
                 $code = $partyAccountGroup ? (int) $partyAccountGroup->code + 1 : 1;
-                $partyHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $partyAccountGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                $partyHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id])->first();
 
                 if (isset($purchase->payment['credit']) && $purchase->payment['credit'] !== null)
                     $purchaseAccGroups['Accounts Payable (Creditors)'] = ['type' => 'credit', 'valueAmount' => (float) $purchase->payment["credit"], 'payment_type' => 'CREDIT'];
@@ -85,8 +84,7 @@ class PurchaseObserver
 
                 if (!$accHead && ($purchaseAccGroupKey == "Accounts Receivable (Debtors)" || $purchaseAccGroupKey == "Accounts Payable (Creditors)")) {
                     $accountHead = AccountHead::where(['account_group_id' => $accGroup->id])->orderBy('code', 'DESC')->first();
-                    $code = $accountHead ? (int) $accountHead->code + 1 : 1;
-                    $accHead = AccountHead::firstOrCreate(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $code, 'is_primary' => true]);
+                    $accHead = AccountHead::where(['name' => $purchase->customer->party_name, 'company_id' => $purchase->company_id, 'account_group_id' => $accGroup->id, 'is_active' => true, 'code' => $accountHead->code, 'is_primary' => true])->first();
 
                 }
 

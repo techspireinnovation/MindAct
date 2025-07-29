@@ -2606,7 +2606,7 @@ class SalesReturnController extends Controller
     public function getItemByBillNumber($billNumber): JsonResponse
     {
         try {
-            $purchase = SalesReturn::where('invoice_number', $billNumber)->firstOrFail();
+            $purchase = SalesReturn::where('id', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);

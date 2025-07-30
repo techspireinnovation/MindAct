@@ -2541,7 +2541,7 @@ class SaleController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
 

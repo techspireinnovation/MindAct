@@ -2671,7 +2671,7 @@ class PurchaseReturnController extends Controller
         }
     }
 
-  
+
     private function flattenFieldValues($fieldValues, $index): array
     {
         $flattened = [];
@@ -2706,7 +2706,7 @@ class PurchaseReturnController extends Controller
         return $flattened;
     }
 
-    
+
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float
     {
         $integerPart = floor($quantity);

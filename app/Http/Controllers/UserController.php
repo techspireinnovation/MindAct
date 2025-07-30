@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\CompanyUser;
@@ -120,7 +122,119 @@ class UserController extends Controller
             ], 500);
         }
     }
+    public function userList(Request $request)
+{
+    try {
+        Log::info('UserController::userList Request', [
+            'company_id' => $request->company_id,
+            'user' => $request->user() ? $request->user()->toArray() : null,
+        ]);
 
+        if (!$request->company_id) {
+            Log::error('UserController::userList - No company_id provided');
+            return response()->json([
+                'success' => false,
+                'message' => 'Company ID is required',
+            ], 400);
+        }
+
+        $users = User::whereHas('companies', function ($query) use ($request) {
+                $query->where('company_id', $request->company_id);
+            })
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($user) => ['id' => $user->id, 'name' => $user->name])
+            ->values();
+
+        return response()->json([
+            'message' => 'User List Received !!',
+            'data' => $users
+        ]);
+    } catch (\Exception $e) {
+        Log::error('UserController::userList Error', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json([
+            'error' => 'An unexpected error occurred: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function userDetail(Request $request, $identifier): JsonResponse
+{
+    try {
+        Log::info('UserController::userDetail Request', [
+            'identifier' => $identifier,
+            'user' => $request->user() ? $request->user()->toArray() : null,
+        ]);
+
+        // Get company_id from authenticated user
+        $company_id = auth()->user()->company_id ?? null;
+        if (!$company_id) {
+            Log::error('UserController::userDetail - No company_id found for authenticated user');
+            return response()->json([
+                'success' => false,
+                'message' => 'Authenticated user must have a company_id',
+            ], 403);
+        }
+
+        // Query user by ID or name
+        $user = User::whereHas('companies', function ($query) use ($company_id) {
+                $query->where('company_id', $company_id);
+            })
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($identifier) {
+                $query->where('id', $identifier)
+                      ->orWhere('name', $identifier);
+            })
+            ->with(['branches' => function ($query) use ($company_id) {
+                $query->where('company_id', $company_id)->whereNull('deleted_at');
+            }, 'roles'])
+            ->first();
+
+        if (!$user) {
+            Log::error('UserController::userDetail - User not found', [
+                'identifier' => $identifier,
+                'company_id' => $company_id,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'User not found or does not belong to your company',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'User details retrieved successfully',
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'company_id' => $company_id,
+                    'branches' => $user->branches->map(fn($branch) => [
+                        'id' => $branch->id,
+                        'name' => $branch->name,
+                        'is_primary' => $branch->is_primary,
+                        'is_active' => $branch->is_active,
+                    ]),
+                    'roles' => $user->roles->pluck('name'),
+                ],
+            ],
+        ], 200);
+    } catch (\Exception $e) {
+        Log::error('UserController::userDetail Error', [
+            'identifier' => $identifier,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while retrieving user details: ' . $e->getMessage(),
+        ], 500);
+    }
+}
     public function index(Request $request): JsonResponse
 {
     try {
@@ -375,4 +489,9 @@ class UserController extends Controller
             ], 500);
         }
     }
+
+
+
+   
+
 }

@@ -28,8 +28,11 @@ class BrandController extends Controller
         try{
 
             $brands = Brand::where('company_id',$request->company_id)
-                                        ->whereNull('deleted_at')
-                                        ->pluck('name');
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($brand) => ['id' => $brand->id, 'name' => $brand->name])
+            ->values()
+            ->toArray();
             return response()->json(["message"=>"Brand List Received !!",
                                        "data"=>$brands
                                     ]);

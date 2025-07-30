@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\PurchaseMasterKey;
@@ -60,7 +61,7 @@ class CompanyController extends Controller
             // Define validation rules
             $validated = $request->validate([
                 // Company fields
-                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL', // Ignore soft-deleted records
+                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'is_vatable' => 'nullable|boolean',
@@ -123,6 +124,14 @@ class CompanyController extends Controller
                 'license_number' => $validated['license_number'] ?? '',
                 'activation_key' => $validated['activation_key'] ?? '',
                 'url_link' => $validated['url_link'] ?? '',
+            ]);
+
+            // Create the default branch for the company
+            $branch = Branch::create([
+                'name' => $validated['name'] . ' Main Branch',
+                'company_id' => $company->id,
+                'is_active' => true,
+                'is_primary' => true,
             ]);
 
             // Create the PurchaseMasterKey with default values
@@ -199,6 +208,9 @@ class CompanyController extends Controller
                 'user_id' => $companyAdmin->id
             ]);
 
+            // Link the admin to the branch
+            $companyAdmin->branches()->attach($branch->id);
+
             MainGroupStub::createMainGroups($company->id);
 
             // Commit the transaction
@@ -209,15 +221,17 @@ class CompanyController extends Controller
                 'purchaseMasterKey',
                 'salesMasterKey' => function ($query) {
                     $query->withoutGlobalScopes();
-                }
+                },
+                'branches'
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company and admin association created successfully',
+                'message' => 'Company, branch, and admin association created successfully',
                 'data' => [
                     'company' => $company,
                     'admin' => $companyAdmin,
+                    'branch' => $branch,
                 ]
             ], 201);
 
@@ -233,7 +247,7 @@ class CompanyController extends Controller
             Log::error('Company creation failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create company or associate admin',
+                'message' => 'Failed to create company, branch, or associate admin',
                 'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }

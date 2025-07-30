@@ -21,7 +21,76 @@ class SubGroupController extends Controller
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
-        return response()->json($query->paginate(50));
+
+        $subGroups = $query->paginate(50);
+
+        $transformed = $subGroups->getCollection()->map(function ($subGroup) {
+            return [
+                'id' => $subGroup->id,
+                'name' => $subGroup->name,
+                'main_group_id' => optional($subGroup->mainGroup)->id,
+                'main_group_name' => optional($subGroup->mainGroup)->name,
+                'is_active' => $subGroup->is_active,
+                'is_primary' => $subGroup->is_primary,
+                'company_id' => $subGroup->company_id,
+                'code' => $subGroup->code,
+                'ranking_for_trial' => $subGroup->ranking_for_trial
+            ];
+        });
+
+        $subGroups->setCollection($transformed);
+
+        return response()->json($subGroups);
+    }
+    public function subGroupList(Request $request){
+        try{
+
+            $subGroups = SubGroup::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($subGroup) => ['id' => $subGroup->id, 'name' => $subGroup->name])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Sub Group List Received !!",
+                                       "data"=>$subGroups
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Sub Group not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+    public function subGroupDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $subGroup = $request->sub_group_name;
+           $subGroupDetails = SubGroup::where('company_id',$request->company_id)
+                                         ->where('name',$subGroup)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Sub Group Details Received !!",
+                                    "data"=>$subGroupDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Sub Group not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
     }
 
 
@@ -103,6 +172,18 @@ class SubGroupController extends Controller
                 ],
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
+                "code" => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at');
+
+                    }),
+
+                ],
+
                 'company_id' => 'integer|exists:companies,id',
                 'main_group_id' => [
                     'required',

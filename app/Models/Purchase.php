@@ -26,6 +26,7 @@ class Purchase extends Model
         'pan_number',
         'company_id',
         'bank_id',
+        'purchase_type',
         'address',
         'customer_contact',
         'ref_bill_number',

@@ -23,7 +23,60 @@ class FixedAssetGroupController extends Controller
 
         return response()->json($query->paginate(50));
     }
+    public function fixedAssetGroupList(Request $request): JsonResponse
+    {
+        try {
+            $fixedAssetGroups = FixedAssetGroup::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->get(['id', 'name'])
+                ->map(fn($fixedAssetGroup) => ['id' => $fixedAssetGroup->id, 'name' => $fixedAssetGroup->name])
+                ->values()
+                ->toArray();
 
+            return response()->json([
+                "message" => "Fixed Asset Group List Received !!",
+                "data" => $fixedAssetGroups
+            ]);
+        } catch (ModelNotFoundException $e) {
+            Log::error($e);
+            return response()->json(["error" => "Fixed Asset Group not Found !!"], 404);
+        } catch (QueryException $e) {
+            Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+
+    public function fixedAssetGroupDetails(Request $request): JsonResponse
+    {
+        try {
+            $companyId = $request->company_id;
+            if (!$companyId) {
+                return response()->json(["error" => "No Company Logged In !!"], 404);
+            }
+
+            $groupName = $request->group_name;
+            $fixedAssetGroupDetails = FixedAssetGroup::where('company_id', $request->company_id)
+                ->where('name', $groupName)
+                ->whereNull('deleted_at')
+                ->firstOrFail();
+
+            return response()->json([
+                "message" => "Fixed Asset Group Details Received !!",
+                "data" => $fixedAssetGroupDetails
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Fixed Asset Group not Found !!"], 404);
+        } catch (QueryException $e) {
+            Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
     public function update(Request $request, $id): JsonResponse
     {
         try {

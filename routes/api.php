@@ -15,6 +15,7 @@ use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerateCodeController;
+use App\Http\Controllers\Master\SupplierController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
@@ -98,6 +99,9 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/users', [UserController::class, 'index'])->name('company.users.index');
         Route::put('/users/{id}', [UserController::class, 'update'])->name('company.users.update');
         Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('company.users.destroy');
+     
+        
+        
     });
 
     // Role management routes (company_admin only, assuming company.admin middleware enforces this)
@@ -112,6 +116,10 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
     Route::middleware(['company.access'])->group(function () {
+        Route::get('/userList', [UserController::class, 'userList']);
+        Route::get('/userDetail/{identifier}', [UserController::class, 'userDetail']);
+
+
         Route::get('/profile', [CompanyAdminController::class, 'profile'])->name('company.profile');
         Route::post('/logout', [CompanyAdminController::class, 'logout'])->name('company.logout');
         Route::put('/change-password', [CompanyAdminController::class, 'changePassword'])->name('company.change-password');
@@ -123,8 +131,12 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/generatePaymentVoucherBillNumber', [GenerateCodeController::class, 'generatePaymentVoucherBillNumber']);
         Route::get('/generateReceiptVoucherBillNumber', [GenerateCodeController::class, 'generateReceiptVoucherBillNumber']);
         Route::get('/generateBankVoucherBillNumber', [GenerateCodeController::class, 'generateBankVoucherBillNumber']);
+        Route::get('/generateStockAdjustmentBillNumber', [GenerateCodeController::class, 'generateStockAdjustmentBillNumber']);
         
 
+      
+
+       
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
    
@@ -138,6 +150,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     Route::get('available-products-for-sale', [SaleController::class, 'listAvailableProducts']);
     Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
     Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
+    Route::get('customer-sales-fiscal-year-details',[SaleController::class, 'customerTotalSalePriceAmount']);
 
     //Sales Returns
 
@@ -154,7 +167,6 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     Route::resource('product-types', ProductTypeController::class);
     Route::resource('branches', BranchController::class);
     Route::apiResource('banks', BankController::class);
-    Route::get('banks-lists', [BankController::class, 'bankList']);
     Route::apiResource('bank-vouchers', BankVoucherController::class);
     Route::apiResource('projects', ProjectController::class);
     Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
@@ -281,11 +293,14 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
     Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
     Route::post('store-purchase-return-by-item', [PurchaseReturnController::class, 'storePurchaseReturnByInput']);
+    Route::put('/update-purchase-return-by-item/{id}', [PurchaseReturnController::class, 'updatePurchaseReturnByInput']);
+    
     Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
     Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
     Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
 
     //List and Details
+    Route::get('change-test', [SaleController::class, 'changeDate']);
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
@@ -311,9 +326,54 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     Route::get('sub-category-list', [ProductSubCategoryController::class, 'subCategoryList']);
     Route::get('sub-category-details', [ProductSubCategoryController::class, 'subCategoryDetails']);
 
-    Route::get('brand-list', [BrandController::class, 'subCategoryList']);
-    Route::get('brand-details', [BrandController::class, 'subCategoryDetails']);
+    Route::get('brand-list', [BrandController::class, 'brandList']);
+    Route::get('brand-details', [BrandController::class, 'brandDetails']);
 
+    Route::get('store-list', [StoreController::class, 'storeList']);
+    Route::get('store-details', [StoreController::class, 'storeDetails']);
+
+
+    Route::get('supplier-list', [SupplierController::class, 'supplierList']);
+    Route::get('supplier-details', [SupplierController::class, 'supplierDetails']);
+
+    Route::get('location-list', [LocationController::class, 'locationList']);
+    Route::get('location-details', [LocationController::class, 'locationDetails']);
+
+
+    Route::get('main-group-list', [MainGroupController::class, 'mgroupList']);
+    Route::get('main-group-details', [MainGroupController::class, 'mGroupDetails']);
+
+
+    Route::get('sub-group-list', [SubGroupController::class, 'subGroupList']);
+    Route::get('sub-group-details', [SubGroupController::class, 'subGroupDetails']);
+
+    Route::get('account-group-list', [AccountGroupController::class, 'accountGroupList']);
+    Route::get('account-group-details', [AccountGroupController::class, 'accountGroupDetails']);
+
+
+    Route::get('account-head-list', [AccountHeadController::class, 'accountHeadList']);
+    Route::get('account-head-details', [AccountHeadController::class, 'accountHeadDetails']);
+
+    Route::get('product-field-list', [ProductFieldController::class, 'productFieldList']);
+    Route::get('product-field-details', [ProductFieldController::class, 'productFieldDetails']);
+
+    Route::get('product-field-value-list', [ProductFieldValueController::class, 'productFieldValueList']);
+    Route::get('product-field-value-details', [ProductFieldValueController::class, 'productFieldValueDetails']);
+
+    Route::get('product-list', [ProductController::class, 'productList']);
+    Route::get('product-details', [ProductController::class, 'productDetails']);
+
+    Route::get('bank-list', [BankController::class, 'bankList']);
+    Route::get('bank-details', [BankController::class, 'bankDetails']);
+
+    Route::get('project-list', [ProjectController::class, 'projectList']);
+    Route::get('project-details', [ProjectController::class, 'projectDetails']);
+
+    Route::get('fixed-asset-group-list', [FixedAssetGroupController::class, 'fixedAssetGroupList']);
+Route::get('fixed-asset-group-details', [FixedAssetGroupController::class, 'fixedAssetGroupDetails']);
+
+Route::get('fixed-asset-account-list', [FixedAssetAccountController::class, 'fixedAssetAccountList']);
+Route::get('fixed-asset-account-details', [FixedAssetAccountController::class, 'fixedAssetAccountDetails']);
 
     Route::get('download-file/{filename}', [DownloadController::class, 'download']);
 

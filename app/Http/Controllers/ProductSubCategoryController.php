@@ -48,8 +48,11 @@ class ProductSubCategoryController extends Controller
         try {
 
             $subCategories = ProductSubCategory::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->pluck('name');
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($subCategory) => ['id' => $subCategory->id, 'name' => $subCategory->name])
+            ->values()
+            ->toArray();
             return response()->json([
                 "message" => "Sub Category List Received !!",
                 "data" => $subCategories

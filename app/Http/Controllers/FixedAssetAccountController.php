@@ -24,6 +24,61 @@ class FixedAssetAccountController extends Controller
         return response()->json($query->paginate(50));
     }
 
+    public function fixedAssetAccountList(Request $request): JsonResponse
+    {
+        try {
+            $fixedAssetAccounts = FixedAssetAccount::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->get(['id', 'name'])
+                ->map(fn($fixedAssetAccount) => ['id' => $fixedAssetAccount->id, 'name' => $fixedAssetAccount->name])
+                ->values()
+                ->toArray();
+
+            return response()->json([
+                "message" => "Fixed Asset Account List Received !!",
+                "data" => $fixedAssetAccounts
+            ]);
+        } catch (ModelNotFoundException $e) {
+            Log::error($e);
+            return response()->json(["error" => "Fixed Asset Account not Found !!"], 404);
+        } catch (QueryException $e) {
+            Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+
+    public function fixedAssetAccountDetails(Request $request): JsonResponse
+    {
+        try {
+            $companyId = $request->company_id;
+            if (!$companyId) {
+                return response()->json(["error" => "No Company Logged In !!"], 404);
+            }
+
+            $accountName = $request->account_name;
+            $fixedAssetAccountDetails = FixedAssetAccount::where('company_id', $request->company_id)
+                ->where('name', $accountName)
+                ->whereNull('deleted_at')
+                ->firstOrFail();
+
+            return response()->json([
+                "message" => "Fixed Asset Account Details Received !!",
+                "data" => $fixedAssetAccountDetails
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Fixed Asset Account not Found !!"], 404);
+        } catch (QueryException $e) {
+            Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([

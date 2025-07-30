@@ -31,8 +31,11 @@ class SalesmanController extends Controller
         try {
 
             $salesmen = Salesman::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->pluck('name');
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($salesman) => ['id' => $salesman->id, 'name' => $salesman->name])
+            ->values()
+            ->toArray();
             return response()->json([
                 "message" => "Sales men List Received !!",
                 "data" => $salesmen

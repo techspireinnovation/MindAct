@@ -14,7 +14,7 @@ class ProductListController extends Controller
     {
         return response()->json(ProductList::paginate(50));
     }
-
+    
 
     public function store(Request $request): JsonResponse
     {

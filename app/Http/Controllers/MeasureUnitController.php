@@ -28,8 +28,11 @@ class MeasureUnitController extends Controller
         try{
 
             $units = MeasureUnit::where('company_id',$request->company_id)
-                                        ->whereNull('deleted_at')
-                                        ->pluck('name');
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($unit) => ['id' => $unit->id, 'name' => $unit->name])
+            ->values()
+            ->toArray();
             return response()->json(["message"=>"Measure Unit List Received !!",
                                        "data"=>$units
                                     ]);

@@ -29,6 +29,60 @@ class MainGroupController extends Controller
         return response()->json($mainGroupList);
     }
 
+
+
+    public function mgroupList(Request $request){
+        try{
+
+            $mainGroups = MainGroup::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->map(fn($mainGroup) => ['id' => $mainGroup->id, 'name' => $mainGroup->name])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Main Group List Received !!",
+                                       "data"=>$mainGroups
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Main Group not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function mGroupDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $mainGroup = $request->main_group_name;
+           $mainGroupDetails = MainGroup::where('company_id',$request->company_id)
+                                         ->where('name',$mainGroup)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Main Group Details Received !!",
+                                    "data"=>$mainGroupDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Main Group not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
 public function draggable(Request $request): JsonResponse
 {
     try {

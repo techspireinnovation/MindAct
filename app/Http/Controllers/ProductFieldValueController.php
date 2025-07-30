@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductFieldValue;
+use Exception;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -14,9 +15,86 @@ class ProductFieldValueController extends Controller
 
     public function index(): JsonResponse
     {
-        return response()->json(ProductFieldValue::paginate(50));
-    }
+        try {
+            $query = ProductFieldValue::query();
+            if (request()->has('keywords')) {
+                $query->where('value', 'LIKE', '%' . request()->input('keywords') . '%');
+            }
 
+            $fieldValues = $query->paginate(50);
+            $transformed = $fieldValues->getCollection()->map(function ($fieldValue) {
+                return [
+                    'id' => $fieldValue->id,
+                    'company_id' => $fieldValue->company_id,
+                    'product_field_id' => $fieldValue->product_field_id,
+                    'product_id' => $fieldValue->product_id,
+                    'product_name' => optional($fieldValue->product)->name,
+                    'value' => $fieldValue->value,                   
+                    'is_active' => $fieldValue->is_active,                    
+                ];
+
+            });
+            $fieldValues->setCollection($transformed);
+
+            return response()->json($fieldValues);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product Field Value not found!!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        }
+    }
+    public function productFieldValueList(Request $request){
+        try{
+
+            $productFieldValues = ProductFieldValue::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->get(['id', 'value'])
+            ->map(fn($productFieldValue) => ['id' => $productFieldValue->id, 'value' => $productFieldValue->value])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Product Field List Received !!",
+                                       "data"=>$productFieldValues
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Product Field Value not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+    public function productFieldValueDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $productFieldValue = $request->product_field_value;
+           $productFieldValueDetails = ProductFieldValue::where('company_id',$request->company_id)
+                                         ->where('value',$productFieldValue)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Product Field Value Details Received !!",
+                                    "data"=>$productFieldValueDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Product Field Value not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
 
     public function store(Request $request): JsonResponse
     {
@@ -24,8 +102,8 @@ class ProductFieldValueController extends Controller
             'company_id' => 'integer|exists:companies,id',
             'product_id' => 'integer|required|exists:products,id',
             'product_field_id' => 'integer|exists:product_fields,id',
-            'value' =>'string|max:255'
-           
+            'value' => 'string|max:255'
+
         ]);
         if ($validator->fails()) {
             return response()->json([

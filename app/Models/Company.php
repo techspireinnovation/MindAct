@@ -49,4 +49,17 @@ class Company extends Model
         return $this->hasOne(SalesMasterKey::class);
     }
 
+    public function productTypes(){
+        return $this->hasMany(ProductType::class);
+    }
+
+    public function measureUnits(){
+        return $this->hasMany(MeasureUnit::class);
+    }
+
+    public function branches()
+    {
+        return $this->hasMany(Branch::class);
+    }
+
 }

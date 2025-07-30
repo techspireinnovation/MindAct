@@ -29,7 +29,10 @@ class ProductTypeController extends Controller
 
             $types = ProductType::where('company_id',$request->company_id)
                                         ->whereNull('deleted_at')
-                                        ->pluck('name');
+                                        ->get(['id', 'name'])
+                                        ->map(fn($type) => ['id' => $type->id, 'name' => $type->name])
+                                        ->values()
+                                        ->toArray();
             return response()->json(["message"=>"Product Type List Received !!",
                                        "data"=>$types
                                     ]);
@@ -45,8 +48,7 @@ class ProductTypeController extends Controller
             return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
     }
-
-
+    
     public function productTypeDetails(Request $request){
         try{
 

@@ -117,9 +117,9 @@ class SaleController extends Controller
 
     private function getAvailableProductsForSale($purchaseType, $companyId)
     {
-      
+
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
-        
+
         try {
             DB::enableQueryLog();
 
@@ -139,7 +139,7 @@ class SaleController extends Controller
                 })
                 ->whereNull('deleted_at')
                 ->get();
-            
+
             Log::info('Fetched products', ['products' => $products->pluck('name', 'id')]);
 
             if ($products->isEmpty()) {
@@ -148,8 +148,8 @@ class SaleController extends Controller
             }
 
             $productIds = $products->pluck('id')->toArray();
-            
-          
+
+
 
 
             if (strtolower($purchaseType) === 'capital') {
@@ -159,33 +159,41 @@ class SaleController extends Controller
                 ]);
                 return collect([]);
             }
-           
+
 
             // Fetch purchase products
-            $purchaseProducts = PurchaseProduct::whereIn('purchase_products.product_id', $productIds)
+            $purchaseProducts = PurchaseProduct::select('purchase_products.*')   // <── essential
+                ->whereIn('purchase_products.product_id', $productIds)
                 ->where('purchase_products.company_id', $companyId)
                 ->whereNull('purchase_products.deleted_at')
-                // ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                // ->whereNull('purchases.deleted_at')
-                // ->where('purchases.purchase_type', $purchaseType)
-                // ->with([
-                //     'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')
-                //         ->where('company_id', $companyId)
-                //         ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
-                //     'saleProducts' => fn($q) => $q->whereNull('deleted_at')
-                //         ->where('company_id', $companyId)
-                //         ->with([
-                //             'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
-                //             'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
-                //                 ->where('company_id', $companyId)
-                //                 ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
-                //         ]),
-                //     'fieldValues' => fn($q) => $q->whereNull('deleted_at')
-                //         ->where('company_id', $companyId)
-                // ])
+                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                ->whereNull('purchases.deleted_at')
+                ->where('purchases.purchase_type', $purchaseType)
+
+                // eager-load relations exactly as before
+                ->with([
+                    'purchaseProductReturns' => fn($q) => $q
+                        ->whereNull('purchase_product_returns.deleted_at')
+                        ->where('purchase_product_returns.company_id', $companyId)
+                        ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
+
+                    'saleProducts' => fn($q) => $q
+                        ->whereNull('sale_products.deleted_at')
+                        ->where('sale_products.company_id', $companyId)
+                        ->with([
+                            'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
+                            'saleProductReturns' => fn($q) => $q
+                                ->whereNull('sales_return_products.deleted_at')
+                                ->where('sales_return_products.company_id', $companyId)
+                                ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
+                        ]),
+
+                    'fieldValues' => fn($q) => $q
+                        ->whereNull('purchase_product_field_values.deleted_at')
+                        ->where('purchase_product_field_values.company_id', $companyId)
+                ])
                 ->get();
-            
-         
+
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
                 return collect([]);
@@ -307,7 +315,7 @@ class SaleController extends Controller
             $companyId = $request->input('company_id');
             $includeDetails = $request->boolean('include_details', false);
             $purchaseType = $request->input('purchase_type', null);
-           
+
 
 
             if (auth()->check()) {

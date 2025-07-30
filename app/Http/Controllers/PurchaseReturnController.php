@@ -59,7 +59,7 @@ class PurchaseReturnController extends Controller
     public function getItemByBillNumber($billNumber): JsonResponse
     {
         try {
-            $purchase = PurchaseReturn::where('purchase_bill_number', '=', $billNumber)->firstOrFail();
+            $purchase = PurchaseReturn::where('id', '=', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);

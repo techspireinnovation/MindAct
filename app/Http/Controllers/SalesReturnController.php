@@ -2606,7 +2606,7 @@ class SalesReturnController extends Controller
     public function getItemByBillNumber($billNumber): JsonResponse
     {
         try {
-            $purchase = SalesReturn::where('invoice_number', $billNumber)->firstOrFail();
+            $purchase = SalesReturn::where('id', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
@@ -2652,8 +2652,10 @@ class SalesReturnController extends Controller
                 'discount_after_vat' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric',
                 'taxable_amount' => 'nullable|numeric',
+
                 'sub_total_before_discount' => 'nullable|numeric',
                 'vat_amount' => 'nullable|numeric',
+
                 'total_amount' => 'nullable|numeric|min:0',
                 'round_of_amount' => 'nullable|numeric',
                 'roundoff_type' => 'nullable|string|max:255',
@@ -3107,8 +3109,10 @@ class SalesReturnController extends Controller
                     'health_insurance' => $validated['health_insurance'] ?? null,
                     'freight_amount' => $validated['freight_amount'] ?? null,
                     'discount' => $validated['discount'] ?? null,
+
                     'sub_total_before_discount' => $validated['sub_total_before_discount'] ?? null,
                     'vat_amount' => $validated['vat_amount'] ?? null,
+
                     'taxable_amount' => $validated['taxable_amount'] ?? null,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? null,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
@@ -3241,6 +3245,7 @@ class SalesReturnController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
 
 
 

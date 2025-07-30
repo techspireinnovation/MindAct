@@ -180,7 +180,13 @@ class CompanyController extends Controller
                 'quantity' => 1
             ]);
 
-        
+            $company->branches()->create([
+                'name' => 'Main',
+                'company_id' => $company->id,
+
+            ]);
+
+
             $companyAdmin = User::create([
                 'email' => $validated['admin_email'],
                 'name' => $validated['admin_name'],
@@ -189,23 +195,23 @@ class CompanyController extends Controller
 
             MainGroupStub::createMainGroups($company->id);
 
-           
+
             $role = Role::firstOrCreate([
                 'name' => 'company_admin',
                 'guard_name' => 'api'
             ]);
             $companyAdmin->assignRole($role);
 
-            
+
             CompanyUser::create([
                 'company_id' => $company->id,
                 'user_id' => $companyAdmin->id
             ]);
 
-           
+
             DB::commit();
 
-        
+
             $company->load([
                 'purchaseMasterKey',
                 'salesMasterKey' => function ($query) {
@@ -223,7 +229,7 @@ class CompanyController extends Controller
                     'admin' => $companyAdmin,
                     'product_types' => $company->productTypes,
                     'measure_units' => $company->measureUnits,
-                 
+
                 ]
             ], 201);
 

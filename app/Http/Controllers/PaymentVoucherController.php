@@ -23,11 +23,9 @@ class PaymentVoucherController extends Controller
         return response()->json($query->paginate(10));
 
     }
-
     public function update(Request $request, $id): JsonResponse
     {
         try {
-
             $validator = Validator::make($request->all(), [
                 'company_id' => 'integer|exists:companies,id',
                 'date_ad' => 'nullable|date',
@@ -38,7 +36,6 @@ class PaymentVoucherController extends Controller
                     'max:255',
                     Rule::unique('payment_vouchers')
                         ->ignore($id)
-
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
@@ -50,7 +47,6 @@ class PaymentVoucherController extends Controller
                     'max:255',
                     Rule::unique('payment_vouchers')
                         ->ignore($id)
-
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
@@ -84,13 +80,15 @@ class PaymentVoucherController extends Controller
                 if (isset($validated['payment_voucher_list'])) {
                     $existingDetailIds = $PaymentVoucher->PaymentVoucherDetails()->pluck('id')->toArray();
                     $incomingDetailIds = collect($validated['payment_voucher_list'])->pluck('id')->filter()->toArray();
+
+                    // Set company_id for each item in payment_voucher_list
                     foreach ($validated['payment_voucher_list'] as &$detailData) {
                         $detailData['company_id'] = $validated['company_id'] ?? null;
                     }
-                    unset($detailData);
-                    unset($detailData); // break reference
-                    $validated['payment_voucher_list'] = $validated['company_id']; // Ensure company_id is set
-                    foreach ($validated['payment_voucher_list'] as &$detailData) {
+                    unset($detailData); // Break reference
+
+                    // Process payment voucher details
+                    foreach ($validated['payment_voucher_list'] as $detailData) {
                         if (isset($detailData['id']) && in_array($detailData['id'], $existingDetailIds)) {
                             $detail = PaymentVoucherDetail::find($detailData['id']);
                             $detail->update($detailData);
@@ -99,6 +97,7 @@ class PaymentVoucherController extends Controller
                         }
                     }
 
+                    // Delete details that are no longer present
                     $detailsToDelete = array_diff($existingDetailIds, $incomingDetailIds);
                     PaymentVoucherDetail::whereIn('id', $detailsToDelete)->delete();
                 }
@@ -117,11 +116,10 @@ class PaymentVoucherController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+            \Log::error($e);
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
-
 
 
     public function store(Request $request): JsonResponse

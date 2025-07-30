@@ -22,6 +22,7 @@ use App\Models\PurchaseReturnProductFieldValue;
 use App\Models\Sale;
 use App\Models\SaleAdditional;
 use App\Models\SaleProduct;
+use App\Models\SalesReturnProduct;
 use App\Models\SaleReturnProductFieldValue;
 use App\Models\SalesProductFieldValue;
 use Carbon\Carbon;
@@ -117,6 +118,7 @@ class SaleController extends Controller
 
     private function getAvailableProductsForSale($purchaseType, $companyId)
     {
+
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
 
         try {
@@ -129,6 +131,7 @@ class SaleController extends Controller
                 ->get()
                 ->keyBy('id');
 
+
             // Fetch all relevant products
             $products = Product::select(['id', 'name'])
                 ->where(function ($query) use ($companyId) {
@@ -138,12 +141,16 @@ class SaleController extends Controller
                 ->whereNull('deleted_at')
                 ->get();
 
+            Log::info('Fetched products', ['products' => $products->pluck('name', 'id')]);
+
             if ($products->isEmpty()) {
                 Log::warning('No products found', ['company_id' => $companyId]);
                 return collect([]);
             }
 
             $productIds = $products->pluck('id')->toArray();
+
+
 
 
             if (strtolower($purchaseType) === 'capital') {
@@ -154,27 +161,37 @@ class SaleController extends Controller
                 return collect([]);
             }
 
+
             // Fetch purchase products
-            $purchaseProducts = PurchaseProduct::whereIn('purchase_products.product_id', $productIds)
+            $purchaseProducts = PurchaseProduct::select('purchase_products.*')   // <── essential
+                ->whereIn('purchase_products.product_id', $productIds)
                 ->where('purchase_products.company_id', $companyId)
                 ->whereNull('purchase_products.deleted_at')
                 ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
                 ->whereNull('purchases.deleted_at')
                 ->where('purchases.purchase_type', $purchaseType)
+
+                // eager-load relations exactly as before
                 ->with([
-                    'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
+                    'purchaseProductReturns' => fn($q) => $q
+                        ->whereNull('purchase_product_returns.deleted_at')
+                        ->where('purchase_product_returns.company_id', $companyId)
                         ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
-                    'saleProducts' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
+
+                    'saleProducts' => fn($q) => $q
+                        ->whereNull('sale_products.deleted_at')
+                        ->where('sale_products.company_id', $companyId)
                         ->with([
                             'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
-                            'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
-                                ->where('company_id', $companyId)
+                            'saleProductReturns' => fn($q) => $q
+                                ->whereNull('sales_return_products.deleted_at')
+                                ->where('sales_return_products.company_id', $companyId)
                                 ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
                         ]),
-                    'fieldValues' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
+
+                    'fieldValues' => fn($q) => $q
+                        ->whereNull('purchase_product_field_values.deleted_at')
+                        ->where('purchase_product_field_values.company_id', $companyId)
                 ])
                 ->get();
 
@@ -183,7 +200,7 @@ class SaleController extends Controller
                 return collect([]);
             }
 
-            // Fetch quantity indexes
+
             $soldQuantityIndexes = SalesProductFieldValue::whereIn('sale_product_id', $purchaseProducts->flatMap(fn($pp) => $pp->saleProducts->pluck('id')))
                 ->where('company_id', $companyId)
                 ->whereNull('deleted_at')
@@ -285,7 +302,8 @@ class SaleController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer|exists:companies,id',
-                'include_details' => 'nullable|boolean'
+                'include_details' => 'nullable|boolean',
+                'purchase_type' => 'nullable|string|'
             ]);
 
             if ($validator->fails()) {
@@ -298,7 +316,8 @@ class SaleController extends Controller
             $companyId = $request->input('company_id');
             $includeDetails = $request->boolean('include_details', false);
             $purchaseType = $request->input('purchase_type', null);
-            // dd($purchaseType);
+
+
 
             if (auth()->check()) {
                 $user = auth()->user();
@@ -421,7 +440,7 @@ class SaleController extends Controller
     {
         $dateString = $request->input('date');
 
-         $carbonDate = Carbon::parse($dateString);
+        $carbonDate = Carbon::parse($dateString);
         $currentDateBs = NepaliDate::create($carbonDate)->toBS();
         return $currentDateBs;
 
@@ -1042,6 +1061,90 @@ class SaleController extends Controller
         return max(0, (int) $availablePieces); // Remove floor, cast to int
     }
 
+
+
+    private function availablePiecesForSaleUpdate(
+        PurchaseProduct $purchaseProduct,
+        float $measureUnitQty,
+        int $companyId,
+        ?int $ignoreSaleId = null
+    ): float {
+        // 1) pieces that entered via purchase
+        $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQty);
+        $freePieces = $this->calculatePieces($purchaseProduct->free_quantity ?? 0, $measureUnitQty);
+        $purchasedPieces = $regularPieces + $freePieces;
+
+        // 2) pieces already returned to supplier
+        $purchaseReturnedPieces = $purchaseProduct->purchaseProductReturns()
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $ret) =>
+                $carry
+                + $this->calculatePieces($ret->quantity ?? 0, $ret->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($ret->free_quantity ?? 0, $ret->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+        // 3) pieces already sold (ignore the sale we are editing)
+        $soldPieces = $purchaseProduct->saleProducts()
+            ->where('company_id', $companyId)
+            ->when($ignoreSaleId, fn($q, $id) => $q->where('sale_id', '!=', $id))
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $sale) =>
+                $carry
+                + $this->calculatePieces($sale->quantity ?? 0, $sale->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($sale->free_quantity ?? 0, $sale->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+        // 4) pieces returned by customers (adds back to stock)
+        $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
+            ->whereHas(
+                'saleProduct',
+                fn($q) =>
+                $q->where('purchase_product_id', $purchaseProduct->id)
+                    ->where('company_id', $companyId)
+            )
+            ->when(
+                $ignoreSaleId,
+                fn($q, $id) =>
+                // ignore returns that belong to the sale we are editing
+                $q->whereHas('saleProduct.sale', fn($sq) => $sq->where('id', '!=', $id))
+            )
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $ret) =>
+                $carry
+                + $this->calculatePieces($ret->quantity ?? 0, $ret->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($ret->free_quantity ?? 0, $ret->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces);
+
+        Log::debug('Available pieces for sale update', [
+            'purchase_product_id' => $purchaseProduct->id,
+            'purchased' => $purchasedPieces,
+            'purchaseRet' => $purchaseReturnedPieces,
+            'sold' => $soldPieces,
+            'custReturned' => $customerReturnedPieces,
+            'available' => $available,
+        ]);
+
+        return $available;
+    }
 
 
 
@@ -1963,105 +2066,106 @@ class SaleController extends Controller
             $hasBatchIdentifier = isset($validated['purchase_id']) || isset($validated['purchase_bill_number']) || isset($validated['batch_no_sale']);
             $sellEntireBatch = $validated['sell_entire_batch'] ?? false;
 
-            if ($sellEntireBatch || $hasBatchIdentifier) {
-                if ($sellEntireBatch && !$hasBatchIdentifier) {
-                    return response()->json(['error' => 'At least one batch identifier is required when sell_entire_batch is true'], 422);
-                }
+            // if ($sellEntireBatch || $hasBatchIdentifier) {
+            //     if ($sellEntireBatch && !$hasBatchIdentifier) {
+            //         return response()->json(['error' => 'At least one batch identifier is required when sell_entire_batch is true'], 422);
+            //     }
 
-                $purchaseProducts = collect();
-                if (isset($validated['purchase_id'])) {
-                    $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $validated['purchase_id'])
-                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                        ->where('purchases.company_id', $validated['company_id'])
-                        ->whereNull('purchase_products.deleted_at')
-                        ->select('purchase_products.*')
-                        ->distinct()
-                        ->get();
-                } elseif (isset($validated['purchase_bill_number'])) {
-                    $purchase = Purchase::where('purchase_bill_number', $validated['purchase_bill_number'])
-                        ->where('company_id', $validated['company_id'])
-                        ->first();
-                    if (!$purchase) {
-                        return response()->json(['error' => 'Purchase with specified bill number not found'], 422);
-                    }
-                    $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $purchase->id)
-                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                        ->whereNull('purchase_products.deleted_at')
-                        ->select('purchase_products.*')
-                        ->distinct()
-                        ->get();
-                } elseif (isset($validated['batch_no_sale'])) {
-                    $purchaseProducts = PurchaseProduct::whereHas('purchase', function ($query) use ($validated) {
-                        $query->where('batch_no', $validated['batch_no_sale'])
-                            ->where('company_id', $validated['company_id']);
-                    })
-                        ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                        ->whereNull('purchase_products.deleted_at')
-                        ->select('purchase_products.*')
-                        ->distinct()
-                        ->get();
-                }
+            //     $purchaseProducts = collect();
+            //     if (isset($validated['purchase_id'])) {
+            //         $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $validated['purchase_id'])
+            //             ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+            //             ->where('purchases.company_id', $validated['company_id'])
+            //             ->whereNull('purchase_products.deleted_at')
+            //             ->select('purchase_products.*')
+            //             ->distinct()
+            //             ->get();
+            //     } elseif (isset($validated['purchase_bill_number'])) {
+            //         $purchase = Purchase::where('purchase_bill_number', $validated['purchase_bill_number'])
+            //             ->where('company_id', $validated['company_id'])
+            //             ->first();
+            //         if (!$purchase) {
+            //             return response()->json(['error' => 'Purchase with specified bill number not found'], 422);
+            //         }
+            //         $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $purchase->id)
+            //             ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+            //             ->whereNull('purchase_products.deleted_at')
+            //             ->select('purchase_products.*')
+            //             ->distinct()
+            //             ->get();
+            //     } elseif (isset($validated['batch_no_sale'])) {
+            //         $purchaseProducts = PurchaseProduct::whereHas('purchase', function ($query) use ($validated) {
+            //             $query->where('batch_no', $validated['batch_no_sale'])
+            //                 ->where('company_id', $validated['company_id']);
+            //         })
+            //             ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+            //             ->whereNull('purchase_products.deleted_at')
+            //             ->select('purchase_products.*')
+            //             ->distinct()
+            //             ->get();
+            //     }
 
-                if ($purchaseProducts->isEmpty()) {
-                    return response()->json(['error' => 'No products found for the specified purchase ID, bill number, or batch number'], 422);
-                }
+            //     if ($purchaseProducts->isEmpty()) {
+            //         return response()->json(['error' => 'No products found for the specified purchase ID, bill number, or batch number'], 422);
+            //     }
 
-                if ($sellEntireBatch) {
-                    $validated['sale_products'] = $purchaseProducts->map(function ($product) use ($validated) {
-                        $productModel = Product::find($product->product_id);
-                        $measureUnit = MeasureUnit::find($product->measure_unit_id);
-                        if (!$measureUnit) {
-                            return null;
-                        }
-                        $measureUnitQuantity = $measureUnit->quantity ?? 1;
-                        $totalAvailablePieces = $this->calculateAvailablePieces($product, $measureUnitQuantity, $validated['company_id']);
-                        if ($totalAvailablePieces <= 0) {
-                            return null;
-                        }
-                        [$quantityInUOM, $freeQuantityInUOM] = $this->convertToTargetMeasureUnit($totalAvailablePieces, 0, $measureUnitQuantity);
-                        $fieldValues = DB::table('purchase_product_field_values')
-                            ->where('purchase_product_id', $product->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->select('product_field_id', 'value', 'quantity_index')
-                            ->orderBy('quantity_index', 'asc')
-                            ->get()
-                            ->map(function ($fv) use ($product) {
-                                return [
-                                    'product_field_id' => $fv->product_field_id,
-                                    'value' => $fv->value,
-                                    'quantity_index' => $fv->quantity_index,
-                                    'quantity_type' => 'regular',
-                                    'purchase_product_id' => $product->id
-                                ];
-                            })->toArray();
+            //     if ($sellEntireBatch) {
+            //         $validated['sale_products'] = $purchaseProducts->map(function ($product) use ($validated) {
+            //             $productModel = Product::find($product->product_id);
+            //             $measureUnit = MeasureUnit::find($product->measure_unit_id);
+            //             if (!$measureUnit) {
+            //                 return null;
+            //             }
+            //             $measureUnitQuantity = $measureUnit->quantity ?? 1;
+            //             $totalAvailablePieces = $this->calculateAvailablePieces($product, $measureUnitQuantity, $validated['company_id']);
+            //             if ($totalAvailablePieces <= 0) {
+            //                 return null;
+            //             }
+            //             [$quantityInUOM, $freeQuantityInUOM] = $this->convertToTargetMeasureUnit($totalAvailablePieces, 0, $measureUnitQuantity);
+            //             $fieldValues = DB::table('purchase_product_field_values')
+            //                 ->where('purchase_product_id', $product->id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->whereNull('deleted_at')
+            //                 ->select('product_field_id', 'value', 'quantity_index')
+            //                 ->orderBy('quantity_index', 'asc')
+            //                 ->get()
+            //                 ->map(function ($fv) use ($product) {
+            //                     return [
+            //                         'product_field_id' => $fv->product_field_id,
+            //                         'value' => $fv->value,
+            //                         'quantity_index' => $fv->quantity_index,
+            //                         'quantity_type' => 'regular',
+            //                         'purchase_product_id' => $product->id
+            //                     ];
+            //                 })->toArray();
 
-                        return [
-                            'product_id' => $product->product_id,
-                            'product_name' => $productModel->name ?? $product->product_name,
-                            'purchase_product_id' => $product->id,
-                            'quantity' => $quantityInUOM,
-                            'free_quantity' => $freeQuantityInUOM,
-                            'price' => $productModel->price ?? $product->price,
-                            'amount' => $product->amount,
-                            'discount_percent' => $product->discount_percent ?? 0,
-                            'discount_amount' => $product->discount_amount ?? 0,
-                            'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
-                            'measure_unit_id' => $product->measure_unit_id,
-                            'mfd' => $product->mfd,
-                            'batch_no' => 'BATCH-' . $product->id . '-' . now()->format('Ymd'),
-                            'expiry_date' => $product->expiry_date,
-                            'field_values' => $fieldValues,
-                        ];
-                    })->filter()->values()->toArray();
+            //             return [
+            //                 'product_id' => $product->product_id,
+            //                 'product_name' => $productModel->name ?? $product->product_name,
+            //                 'purchase_product_id' => $product->id,
+            //                 'quantity' => $quantityInUOM,
+            //                 'free_quantity' => $freeQuantityInUOM,
+            //                 'price' => $productModel->price ?? $product->price,
+            //                 'amount' => $product->amount,
+            //                 'discount_percent' => $product->discount_percent ?? 0,
+            //                 'discount_amount' => $product->discount_amount ?? 0,
+            //                 'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
+            //                 'measure_unit_id' => $product->measure_unit_id,
+            //                 'mfd' => $product->mfd,
+            //                 'batch_no' => 'BATCH-' . $product->id . '-' . now()->format('Ymd'),
+            //                 'expiry_date' => $product->expiry_date,
+            //                 'field_values' => $fieldValues,
+            //             ];
+            //         })->filter()->values()->toArray();
 
-                    Log::debug('Sale products for entire batch', ['sale_products' => $validated['sale_products']]);
+            //         Log::debug('Sale products for entire batch', ['sale_products' => $validated['sale_products']]);
 
-                    if (empty($validated['sale_products'])) {
-                        return response()->json(['error' => 'No available stock for the specified batch'], 422);
-                    }
-                }
-            }
+            //         if (empty($validated['sale_products'])) {
+            //             return response()->json(['error' => 'No available stock for the specified batch'], 422);
+            //         }
+            //     }
+            // }
+
 
             $sale = DB::transaction(function () use ($validated, $id) {
                 // Check if sale exists
@@ -2307,7 +2411,8 @@ class SaleController extends Controller
                             $unavailableQuantityIndices = $this->getUnavailableQuantityIndices($purchaseProduct, $validated['company_id']);
                             $salesReturnedIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $purchaseProduct->saleProducts->flatMap(fn($p) => $p->saleProductReturns->pluck('id')))
                                 ->whereNull('deleted_at')
-                                ->pluck('quantity_index');
+                                ->pluck('quantity_index')
+                                ->toArray();
                             $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
 
                             foreach ($fvByIndex as $quantityIndex => $fvSet) {

@@ -2624,6 +2624,7 @@ class SalesReturnController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
                 'customer_id' => 'nullable|exists:customers,id',
@@ -2651,6 +2652,10 @@ class SalesReturnController extends Controller
                 'discount_after_vat' => 'nullable|numeric|min:0',
                 'non_taxable_amount' => 'nullable|numeric',
                 'taxable_amount' => 'nullable|numeric',
+
+                'sub_total_before_discount' => 'nullable|numeric',
+                'vat_amount' => 'nullable|numeric',
+
                 'total_amount' => 'nullable|numeric|min:0',
                 'round_of_amount' => 'nullable|numeric',
                 'roundoff_type' => 'nullable|string|max:255',
@@ -3083,6 +3088,7 @@ class SalesReturnController extends Controller
             }
 
             $salesReturn = DB::transaction(function () use ($validated) {
+               
                 $salesReturn = SalesReturn::create([
                     'company_id' => $validated['company_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
@@ -3103,6 +3109,10 @@ class SalesReturnController extends Controller
                     'health_insurance' => $validated['health_insurance'] ?? null,
                     'freight_amount' => $validated['freight_amount'] ?? null,
                     'discount' => $validated['discount'] ?? null,
+
+                    'sub_total_before_discount' => $validated['sub_total_before_discount'] ?? null,
+                    'vat_amount' => $validated['vat_amount'] ?? null,
+
                     'taxable_amount' => $validated['taxable_amount'] ?? null,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? null,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
@@ -3111,9 +3121,11 @@ class SalesReturnController extends Controller
                     'roundoff_type' => $validated['roundoff_type'] ?? null,
                     'payment_type' => $validated['payment_type'] ?? null,
                     'sale_id' => $validated['sale_id'],
-                    'cash' => $validated['payment']['cash'] ?? 0,
-                    'credit' => $validated['payment']['credit'] ?? 0,
-                    'bank' => $validated['payment']['bank'] ?? 0,
+                    'payment' => [
+                        'cash' => $validated['payment']['cash'] ?? null,
+                        'credit' => $validated['payment']['credit'] ?? null,
+                        'bank' => $validated['payment']['bank'] ?? null,
+                    ],
                 ]);
 
                 Log::debug('Sales return created', ['sales_return_id' => $salesReturn->id]);

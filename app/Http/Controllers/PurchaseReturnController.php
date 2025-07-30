@@ -2671,7 +2671,7 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    // Helper method for robust field value flattening
+
     private function flattenFieldValues($fieldValues, $index): array
     {
         $flattened = [];
@@ -2706,7 +2706,7 @@ class PurchaseReturnController extends Controller
         return $flattened;
     }
 
-    // Existing helper methods
+
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float
     {
         $integerPart = floor($quantity);
@@ -2740,7 +2740,6 @@ class PurchaseReturnController extends Controller
 
         return max(0, ($regularPieces + $freePieces) - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces);
     }
-
 
 
     private function calculateAvailablePiecesForUpdate($purchaseProduct, float $measureUnitQuantity, int $companyId, $purchaseBillNumber = null, $purchaseId = null): float
@@ -5446,7 +5445,7 @@ class PurchaseReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
 }

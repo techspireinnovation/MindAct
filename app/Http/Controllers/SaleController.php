@@ -148,6 +148,7 @@ class SaleController extends Controller
             }
 
             $productIds = $products->pluck('id')->toArray();
+            
           
 
 
@@ -164,27 +165,27 @@ class SaleController extends Controller
             $purchaseProducts = PurchaseProduct::whereIn('purchase_products.product_id', $productIds)
                 ->where('purchase_products.company_id', $companyId)
                 ->whereNull('purchase_products.deleted_at')
-                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                ->whereNull('purchases.deleted_at')
-                ->where('purchases.purchase_type', $purchaseType)
-                ->with([
-                    'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
-                        ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
-                    'saleProducts' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
-                        ->with([
-                            'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
-                            'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
-                                ->where('company_id', $companyId)
-                                ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
-                        ]),
-                    'fieldValues' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
-                ])
+                // ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+                // ->whereNull('purchases.deleted_at')
+                // ->where('purchases.purchase_type', $purchaseType)
+                // ->with([
+                //     'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')
+                //         ->where('company_id', $companyId)
+                //         ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
+                //     'saleProducts' => fn($q) => $q->whereNull('deleted_at')
+                //         ->where('company_id', $companyId)
+                //         ->with([
+                //             'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
+                //             'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
+                //                 ->where('company_id', $companyId)
+                //                 ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
+                //         ]),
+                //     'fieldValues' => fn($q) => $q->whereNull('deleted_at')
+                //         ->where('company_id', $companyId)
+                // ])
                 ->get();
-            // dd($purchaseProducts);    
-
+            
+         
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
                 return collect([]);

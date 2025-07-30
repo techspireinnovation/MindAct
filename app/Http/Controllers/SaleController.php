@@ -957,6 +957,7 @@ class SaleController extends Controller
     private function calculateAvailablePieces($purchaseProduct, int $companyId, $measureUnitsCalc): int
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
+       
         Log::debug('Measure unit quantity', [
             'purchase_product_id' => $purchaseProduct->id,
             'measure_unit_id' => $purchaseProduct->measure_unit_id,
@@ -1064,7 +1065,7 @@ class SaleController extends Controller
 
 
     private function availablePiecesForSaleUpdate(
-        PurchaseProduct $purchaseProduct,
+         $purchaseProduct,
         float $measureUnitQty,
         int $companyId,
         ?int $ignoreSaleId = null
@@ -2066,105 +2067,6 @@ class SaleController extends Controller
             $hasBatchIdentifier = isset($validated['purchase_id']) || isset($validated['purchase_bill_number']) || isset($validated['batch_no_sale']);
             $sellEntireBatch = $validated['sell_entire_batch'] ?? false;
 
-            // if ($sellEntireBatch || $hasBatchIdentifier) {
-            //     if ($sellEntireBatch && !$hasBatchIdentifier) {
-            //         return response()->json(['error' => 'At least one batch identifier is required when sell_entire_batch is true'], 422);
-            //     }
-
-            //     $purchaseProducts = collect();
-            //     if (isset($validated['purchase_id'])) {
-            //         $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $validated['purchase_id'])
-            //             ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-            //             ->where('purchases.company_id', $validated['company_id'])
-            //             ->whereNull('purchase_products.deleted_at')
-            //             ->select('purchase_products.*')
-            //             ->distinct()
-            //             ->get();
-            //     } elseif (isset($validated['purchase_bill_number'])) {
-            //         $purchase = Purchase::where('purchase_bill_number', $validated['purchase_bill_number'])
-            //             ->where('company_id', $validated['company_id'])
-            //             ->first();
-            //         if (!$purchase) {
-            //             return response()->json(['error' => 'Purchase with specified bill number not found'], 422);
-            //         }
-            //         $purchaseProducts = PurchaseProduct::where('purchase_products.purchase_id', $purchase->id)
-            //             ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-            //             ->whereNull('purchase_products.deleted_at')
-            //             ->select('purchase_products.*')
-            //             ->distinct()
-            //             ->get();
-            //     } elseif (isset($validated['batch_no_sale'])) {
-            //         $purchaseProducts = PurchaseProduct::whereHas('purchase', function ($query) use ($validated) {
-            //             $query->where('batch_no', $validated['batch_no_sale'])
-            //                 ->where('company_id', $validated['company_id']);
-            //         })
-            //             ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-            //             ->whereNull('purchase_products.deleted_at')
-            //             ->select('purchase_products.*')
-            //             ->distinct()
-            //             ->get();
-            //     }
-
-            //     if ($purchaseProducts->isEmpty()) {
-            //         return response()->json(['error' => 'No products found for the specified purchase ID, bill number, or batch number'], 422);
-            //     }
-
-            //     if ($sellEntireBatch) {
-            //         $validated['sale_products'] = $purchaseProducts->map(function ($product) use ($validated) {
-            //             $productModel = Product::find($product->product_id);
-            //             $measureUnit = MeasureUnit::find($product->measure_unit_id);
-            //             if (!$measureUnit) {
-            //                 return null;
-            //             }
-            //             $measureUnitQuantity = $measureUnit->quantity ?? 1;
-            //             $totalAvailablePieces = $this->calculateAvailablePieces($product, $measureUnitQuantity, $validated['company_id']);
-            //             if ($totalAvailablePieces <= 0) {
-            //                 return null;
-            //             }
-            //             [$quantityInUOM, $freeQuantityInUOM] = $this->convertToTargetMeasureUnit($totalAvailablePieces, 0, $measureUnitQuantity);
-            //             $fieldValues = DB::table('purchase_product_field_values')
-            //                 ->where('purchase_product_id', $product->id)
-            //                 ->where('company_id', $validated['company_id'])
-            //                 ->whereNull('deleted_at')
-            //                 ->select('product_field_id', 'value', 'quantity_index')
-            //                 ->orderBy('quantity_index', 'asc')
-            //                 ->get()
-            //                 ->map(function ($fv) use ($product) {
-            //                     return [
-            //                         'product_field_id' => $fv->product_field_id,
-            //                         'value' => $fv->value,
-            //                         'quantity_index' => $fv->quantity_index,
-            //                         'quantity_type' => 'regular',
-            //                         'purchase_product_id' => $product->id
-            //                     ];
-            //                 })->toArray();
-
-            //             return [
-            //                 'product_id' => $product->product_id,
-            //                 'product_name' => $productModel->name ?? $product->product_name,
-            //                 'purchase_product_id' => $product->id,
-            //                 'quantity' => $quantityInUOM,
-            //                 'free_quantity' => $freeQuantityInUOM,
-            //                 'price' => $productModel->price ?? $product->price,
-            //                 'amount' => $product->amount,
-            //                 'discount_percent' => $product->discount_percent ?? 0,
-            //                 'discount_amount' => $product->discount_amount ?? 0,
-            //                 'is_vatable' => $productModel->is_vatable ?? $product->is_vatable,
-            //                 'measure_unit_id' => $product->measure_unit_id,
-            //                 'mfd' => $product->mfd,
-            //                 'batch_no' => 'BATCH-' . $product->id . '-' . now()->format('Ymd'),
-            //                 'expiry_date' => $product->expiry_date,
-            //                 'field_values' => $fieldValues,
-            //             ];
-            //         })->filter()->values()->toArray();
-
-            //         Log::debug('Sale products for entire batch', ['sale_products' => $validated['sale_products']]);
-
-            //         if (empty($validated['sale_products'])) {
-            //             return response()->json(['error' => 'No available stock for the specified batch'], 422);
-            //         }
-            //     }
-            // }
 
 
             $sale = DB::transaction(function () use ($validated, $id) {
@@ -2503,8 +2405,9 @@ class SaleController extends Controller
                             $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
                             $purchaseMeasureUnit = MeasureUnit::findOrFail($purchaseProduct->measure_unit_id);
                             $purchaseMeasureUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
-                            $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id']);
-
+                           
+                            $totalAvailablePieces = $this->availablePiecesForSaleUpdate($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id'], $sale->id );
+                            
                             if ($totalAvailablePieces < 0) {
                                 throw new \Exception("Negative stock for purchase_product_id {$purchaseProduct->id} at index {$index}.");
                             }
@@ -2628,8 +2531,6 @@ class SaleController extends Controller
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
-
-
 
 
     public function show($id): JsonResponse

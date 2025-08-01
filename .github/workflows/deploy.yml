@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [main] # or your deployment branch
+    branches: [feat/new-ps1] # or your deployment branch
 
 jobs:
   deploy:

@@ -12,10 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Fix workspace ownership
-        run: |
-          sudo chown -R $USER:$USER .
-          chmod -R 775 storage bootstrap/cache
+        
 
       - name: Deploy to VPS via SSH
         uses: appleboy/ssh-action@master
@@ -26,6 +23,9 @@ jobs:
           port: 2025
           script: |
             cd ${{ secrets.PROJECT_PATH }}
+
+            sudo chown -R $(whoami):$(whoami) storage bootstrap/cache
+            chmod -R 775 storage bootstrap/cache
             git stash
             git pull origin main
             # Add any build or restart commands here, e.g.:

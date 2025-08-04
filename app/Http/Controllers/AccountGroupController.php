@@ -26,6 +26,32 @@ class AccountGroupController extends Controller
         return response()->json($query->paginate(50));
     }
 
+    public function accountGroupList(Request $request): JsonResponse
+    {
+        try {
+
+            $accountGroup = AccountGroup::where('company_id', $request->company_id)
+                ->where('is_active', 1)->get();
+
+
+            return response()->json([
+                'message' => 'List Received Sucessfully !!',
+                'data' => $accountGroup
+            ], 200);
+
+
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
+        }
+
+    }
+
+
 
     public function update(Request $request, $id): JsonResponse
     {

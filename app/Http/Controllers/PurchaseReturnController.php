@@ -2926,6 +2926,7 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
                 'purchase_return_products.*.field_values.*.*.quantity_type' => 'required_if:field_values,array|string|max:255',
             ]);
+            $validated['purchase_return_products'] = $validated['purchase_return_products'] ?? [];
 
             if ($validator->fails()) {
                 return response()->json([

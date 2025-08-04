@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\JournalVoucher;
+use App\Models\MainGroup;
+use App\Models\SubGroup;
 use App\Models\JournalVoucherTransaction;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -46,6 +48,11 @@ class JournalVoucherController extends Controller
         // Step 5: Return transformed paginated response
         return response()->json($data);
     }
+
+
+   
+
+    
 
 
     public function print(Request $request): JsonResponse

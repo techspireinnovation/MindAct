@@ -124,9 +124,17 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::resource('sales', SaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
 
-    // Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
 
-    Route::resource('fixed-asset-accounts', FixedAssetGroupController::class);
+    //Journal Voucher List for Needed Components
+
+    Route::get('main-group-lists',[JournalVoucherController::class, 'mainGroupList']);
+    Route::get('sub-group-lists',[SubGroupController::class, 'subGroupList']);
+    Route::get('account-group-lists',[AccountGroupController::class, 'accountGroupList']);
+    Route::get('account-head-lists',[AccountHeadController::class, 'accountHeadList']);
+
+    Route::get('areas-list',[AreaController::class, 'areaList']);
+
+
     Route::get('sales-returns/get-by-bill-number/{billNumber}', [SalesReturnController::class, 'getItemByBillNumber']);
 
     Route::resource('sales-returns', SalesReturnController::class);
@@ -158,6 +166,7 @@ Route::middleware(['auth:sanctum', 'company.admin'])->prefix('company')->group(f
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
     Route::get('main-groups-list', [MainGroupController::class,'mainGroupList']);
+    Route::get('main-group-lists', [MainGroupController::class,'mainGroupListDetails']);
     Route::post('sub-groups-update-ranking', [MainGroupController::class,'draggable']);
     Route::get('sub-groups-of-main', [MainGroupController::class,'subGroupOfMainGroup']);
     Route::resource('purchase-returns', PurchaseReturnController::class);

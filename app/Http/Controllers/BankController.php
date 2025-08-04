@@ -137,10 +137,9 @@ class BankController extends Controller
             'company_id' => 'required|integer|exists:companies,id'
         ]);
 
-        if (!empty($validated['is_primary'])) {
+        if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
             Bank::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
+                ->update(['is_primary' => 0]);
         }
 
         $validated['is_primary'] = $validated['is_primary'] ?? false;

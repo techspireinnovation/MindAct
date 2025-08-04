@@ -157,18 +157,22 @@ class CompanyController extends Controller
             $company->productTypes()->createMany([
                 [
                     'name' => 'Inventory',
+                    'delete_status' => 0,
                     'company_id' => $company->id,
                 ],
                 [
-                    'name' => 'Goods',
+                    'name' => 'Assets',
+                    'delete_status' => 0,
                     'company_id' => $company->id,
                 ],
                 [
                     'name' => 'Service',
+                    'delete_status' => 0,
                     'company_id' => $company->id,
                 ],
                 [
                     'name' => 'Raw Materials',
+                    'delete_status' => 0,
                     'company_id' => $company->id,
                 ]
             ]);

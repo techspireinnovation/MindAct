@@ -35,6 +35,7 @@ class Customer extends Model
         'area',
         'city',
         'bank_name',
+        'bank_id',
         'bank_account_number',
         'is_active'
     ];
@@ -43,7 +44,7 @@ class Customer extends Model
 
     protected static function booted()
     {
-        self::observe(CustomerObserver::class);
+        // self::observe(CustomerObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

@@ -96,11 +96,17 @@ class FixedAssetAccountController extends Controller
                 'company_id' => 'integer|exists:companies,id'
             ]);
 
+           
+
             DB::transaction(function () use ($validated, $id, &$item) {
                 $item = FixedAssetAccount::findOrFail($id);
-                $item->update($validated);
+                 $item->update($validated);
+               
             });
-            return response()->json(['message' => 'Fixed Asset Group Updated']);
+            return response()->json([
+                'message' => 'Fixed Asset Group Updated',
+                'data' => $item->fresh()
+            ]);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);

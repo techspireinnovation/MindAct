@@ -21,6 +21,9 @@ class SubGroupController extends Controller
         if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
+        $query->orderBy('main_group_id', 'asc')
+            ->orderBy('ranking_for_trial', 'asc');
+
 
         $subGroups = $query->paginate(50);
 
@@ -41,6 +44,32 @@ class SubGroupController extends Controller
         $subGroups->setCollection($transformed);
 
         return response()->json($subGroups);
+    }
+
+
+    public function subGroupList(Request $request): JsonResponse
+    {
+        try {
+
+            $subGroup = SubGroup::where('company_id', $request->company_id)
+                ->where('is_active', 1)->get();
+
+
+            return response()->json([
+                'message' => 'List Received Sucessfully !!',
+                'data' => $subGroup
+            ], 200);
+
+
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
+        }
+
     }
 
 
@@ -72,7 +101,7 @@ class SubGroupController extends Controller
                     }),
                 ],
                 'code' => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('sub_groups')
@@ -83,7 +112,7 @@ class SubGroupController extends Controller
 
                         }),
                 ],
-                'ranking_for_trial' => 'integer|max:255'
+               
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -124,7 +153,7 @@ class SubGroupController extends Controller
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
                 "code" => [
-                    'required',
+                    'nullable',
                     'string',
                     'max:255',
                     Rule::unique('sub_groups')->where(function ($query) use ($request) {
@@ -143,7 +172,7 @@ class SubGroupController extends Controller
                         return $query->where('company_id', $request->input('company_id'));
                     }),
                 ],
-                'ranking_for_trial' => 'string|max:255'
+
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -154,14 +183,25 @@ class SubGroupController extends Controller
 
             $validated = $validator->validated();
             $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])->orderBy('code', 'DESC')->first();
+
+            $rankingForTrial = Subgroup::where('company_id', $request->company_id)
+                ->where('main_group_id',$validated['main_group_id'])
+                ->orderBy('ranking_for_trial', 'desc')
+                ->first();
+            $newrankingForTrial = $rankingForTrial ? $rankingForTrial->ranking_for_trial + 1 : 1;
+            $validated['ranking_for_trial'] = $newrankingForTrial;
+
             $validated['code'] = $lastSubGroup ? (int) ($lastSubGroup->code) + 1 : 1;
+
             $group = SubGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Sub Group not found!!'], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

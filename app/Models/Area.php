@@ -16,6 +16,8 @@ class Area extends Model
         'name',
         'company_id',
         'is_active',
+        'is_primary',
+        'delete_status'
 
     ];
     protected $dates = ['deleted_at'];

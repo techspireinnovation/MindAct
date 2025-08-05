@@ -84,6 +84,7 @@ class BankController extends Controller
         try {
             $item = Bank::findOrFail($id);
 
+
             $validator = Validator::make($request->all(), [
                 'name' => [
                     'required',
@@ -102,15 +103,22 @@ class BankController extends Controller
                 'class' => 'nullable|string|max:255',
                 'number' => 'nullable|string|max:255',
                 'swift' => 'nullable|string|max:255',
+                'address' => 'nullable|string|max:255',
+                'class' => 'nullable|string|max:255',
+                'number' => 'nullable|string|max:255',
+                'swift' => 'nullable|string|max:255',
                 'company_id' => 'required|integer|exists:companies,id'
             ]);
+
 
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
             }
 
+
             $validated = $validator->validated();
 
+            // Handle is_primary logic: Set other banks' is_primary to false if this one is true
             // Handle is_primary logic: Set other banks' is_primary to false if this one is true
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 Bank::where('company_id', $item->company_id)
@@ -119,6 +127,19 @@ class BankController extends Controller
                     ->update(['is_primary' => false]);
             }
 
+            // Explicitly set nullable fields to null if not provided in the request
+            $updateData = [
+                'name' => $validated['name'],
+                'is_active' => (bool) $validated['is_active'],
+                'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
+                'company_id' => $validated['company_id'],
+                'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
+                'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
+                'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
+                'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
+            ];
+
+            $item->update($updateData);
             // Explicitly set nullable fields to null if not provided in the request
             $updateData = [
                 'name' => $validated['name'],
@@ -166,13 +187,16 @@ class BankController extends Controller
             'class' => 'nullable|string|max:255',
             'number' => 'nullable|string|max:255',
             'swift' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:255',
+            'class' => 'nullable|string|max:255',
+            'number' => 'nullable|string|max:255',
+            'swift' => 'nullable|string|max:255',
             'company_id' => 'required|integer|exists:companies,id'
         ]);
 
-        if (!empty($validated['is_primary'])) {
+        if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
             Bank::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
+                ->update(['is_primary' => 0]);
         }
 
         $validated['is_primary'] = $validated['is_primary'] ?? false;

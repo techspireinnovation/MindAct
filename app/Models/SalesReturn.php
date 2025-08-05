@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
+use App\Observers\SaleReturnObserver;
 use App\Traits\ConvertsAdToBsDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -44,6 +45,7 @@ class SalesReturn extends Model
         'store_id',
         'location_id',
         'sub_total_before_discount',
+        'vat_amount',
         'discount',
         'non_taxable_amount',
         'taxable_amount',
@@ -55,10 +57,12 @@ class SalesReturn extends Model
         'round_of_amount',
         'roundoff_type',
         'payment',
+
     ];
 
     protected static function booted()
     {
+        // self::observe(SaleReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

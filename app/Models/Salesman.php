@@ -37,6 +37,8 @@ class Salesman extends Model
         'nationality',
         'zone',
         'district',
+        'is_primary',
+        'is_active',
         'vdc_municipality'
     ];
 }

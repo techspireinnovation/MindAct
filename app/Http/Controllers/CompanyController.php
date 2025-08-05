@@ -415,7 +415,7 @@ class CompanyController extends Controller
                 $companyAdmin->assignRole($role);
             }
 
-            // Link the admin to the company
+
             CompanyUser::create([
                 'company_id' => $company->id,
                 'user_id' => $companyAdmin->id

@@ -59,7 +59,7 @@ class PurchaseReturnController extends Controller
     public function getItemByBillNumber($billNumber): JsonResponse
     {
         try {
-            $purchase = PurchaseReturn::where('purchase_bill_number', '=', $billNumber)->firstOrFail();
+            $purchase = PurchaseReturn::where('id', '=', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
@@ -2671,7 +2671,7 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    // Helper method for robust field value flattening
+
     private function flattenFieldValues($fieldValues, $index): array
     {
         $flattened = [];
@@ -2706,7 +2706,7 @@ class PurchaseReturnController extends Controller
         return $flattened;
     }
 
-    // Existing helper methods
+
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float
     {
         $integerPart = floor($quantity);
@@ -2740,7 +2740,6 @@ class PurchaseReturnController extends Controller
 
         return max(0, ($regularPieces + $freePieces) - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces);
     }
-
 
 
     private function calculateAvailablePiecesForUpdate($purchaseProduct, float $measureUnitQuantity, int $companyId, $purchaseBillNumber = null, $purchaseId = null): float
@@ -2927,6 +2926,7 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
                 'purchase_return_products.*.field_values.*.*.quantity_type' => 'required_if:field_values,array|string|max:255',
             ]);
+            $validated['purchase_return_products'] = $validated['purchase_return_products'] ?? [];
 
             if ($validator->fails()) {
                 return response()->json([
@@ -5446,7 +5446,7 @@ class PurchaseReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
 }

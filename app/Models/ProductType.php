@@ -12,12 +12,14 @@ class ProductType extends Model
 
     protected $casts = [
         'is_active' => 'boolean',
-        'is_primary' => 'boolean'
+        'is_primary' => 'boolean',
+        'delete_status' => 'boolean'
     ];
     protected $fillable = [
         'name',
         'is_active',
         'is_primary',
+        'delete_status',
         'deleted_at',
         'company_id',
     ];

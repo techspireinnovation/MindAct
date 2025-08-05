@@ -168,7 +168,7 @@ class AccountHeadController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            return response()->json(['error' => 'An Unexpected error occurred!!'], 500);
         }
     }
 

@@ -6,6 +6,7 @@ use App\Models\Customer;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 use Illuminate\Validation\Rule;
@@ -148,6 +149,7 @@ class CustomerController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        DB::beginTransaction();
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|exists:companies,id',
@@ -178,9 +180,10 @@ class CustomerController extends Controller
                 'district' => 'nullable|string|max:255',
                 'ledger_type' => 'nullable|in:customer,vendor,both',
                 'address' => 'nullable|string',
-                'phone' => 'required|string|max:20',
+                'phone' => 'nullable|digits:10',
                 'email' => [
                     'nullable',
+                    'email',
                     'string',
                     'max:255',
                     Rule::unique('customers')
@@ -199,6 +202,7 @@ class CustomerController extends Controller
                 'ward_no' => 'nullable|string|max:255',
                 'area' => 'nullable|string|max:100',
                 'bank_name' => 'nullable|string|max:255',
+                'bank_id' => 'nullable|numeric',
                 'bank_account_number' => 'nullable|string|max:255',
                 'is_active' => 'nullable|boolean',
             ]);
@@ -211,6 +215,7 @@ class CustomerController extends Controller
             }
 
             $customer = Customer::create($validator->validated());
+            DB::commit();
 
             return response()->json([
                 'message' => 'Customer created successfully',
@@ -218,11 +223,16 @@ class CustomerController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
+            DB::rollBack();
             \Log::error($e);
+
+            dd($e->getMessage());
 
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            DB::rollBack();
+  
+
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -274,10 +284,11 @@ class CustomerController extends Controller
                 'billing_address' => 'nullable|string',
                 'ledger_type' => 'nullable|in:customer,vendor,both',
                 'address' => 'nullable|string',
-                'phone' => 'required|string|max:20',
+                'phone' => 'nullable|digits:10',
                 'email' => [
                     'nullable',
                     'string',
+                    'email',
                     'max:255',
                     Rule::unique('customers')
                         ->ignore($id)
@@ -295,6 +306,7 @@ class CustomerController extends Controller
                 'ward_no' => 'nullable|string|max:255',
                 'area' => 'nullable|string|max:100',
                 'bank_name' => 'nullable|string|max:255',
+                'bank_id' => 'nullable|numeric',
                 'bank_account_number' => 'nullable|string|max:255',
                 'is_active' => 'nullable|boolean',
             ]);

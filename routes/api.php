@@ -77,18 +77,39 @@ Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdmin
 
 
 
+// Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
+//     Route::get('profile', [AuthController::class, 'profile']);
+//     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
+//     Route::put('change-password', [AuthController::class, 'changePassword']);
+//     Route::put('update', [AuthController::class, 'update']);
+//     Route::get('logout', [AuthController::class, 'logout']);
+//     Route::post('/upload', [FileUploadController::class, 'upload']);
+//     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
+//     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
+    
+//     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
+//     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
+    
+// });
+
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
     Route::put('change-password', [AuthController::class, 'changePassword']);
     Route::put('update', [AuthController::class, 'update']);
     Route::get('logout', [AuthController::class, 'logout']);
-    Route::apiResource('companies', CompanyController::class);
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
-});
+    
+    // Custom routes before apiResource to avoid conflicts
+    Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
 
+    Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
+    Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
+    Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
+
+});
 
 
 
@@ -99,6 +120,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/users', [UserController::class, 'index'])->name('company.users.index');
         Route::put('/users/{id}', [UserController::class, 'update'])->name('company.users.update');
         Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('company.users.destroy');
+      
      
         
         
@@ -113,6 +135,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/roles-with-permission', [RoleController::class, 'Roleswithpermission'])->name('company.role.Roleswithpermission');
         Route::patch('/{id}/toggle-active', [RoleController::class, 'toggleActiveStatus'])->name('company.role.toggle-active');
         Route::get('/getById/{id}', [RoleController::class, 'getById'])->name('company.role.getById');
+     
     });
 
     Route::middleware(['company.access'])->group(function () {
@@ -142,6 +165,9 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
    
     Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
     Route::put('update', [CompanyController::class, 'update']);
+
+
+
     Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
     Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
     Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
@@ -304,6 +330,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
     Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
+    
 
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
     Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);

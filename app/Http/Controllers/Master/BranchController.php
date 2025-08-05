@@ -59,6 +59,7 @@ class BranchController extends Controller
 
             $branches = Branch::where('company_id',$request->company_id)
                                         ->whereNull('deleted_at')
+                                        ->where('is_active', 1)
                                         ->get(['id', 'name'])
                                         ->map(fn($branch) => ['id' => $branch->id, 'name' => $branch->name])
                                         ->values()

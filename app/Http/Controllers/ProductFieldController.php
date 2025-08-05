@@ -26,6 +26,7 @@ class ProductFieldController extends Controller
 
             $productFields = ProductField::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($productField) => ['id' => $productField->id, 'name' => $productField->name])
             ->values()

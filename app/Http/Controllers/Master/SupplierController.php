@@ -29,6 +29,7 @@ class SupplierController extends Controller
 
             $suppliers = Supplier::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($supplier) => ['id' => $supplier->id, 'name' => $supplier->name])
             ->values()

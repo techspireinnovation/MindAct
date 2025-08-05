@@ -47,6 +47,7 @@ class SubGroupController extends Controller
 
             $subGroups = SubGroup::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($subGroup) => ['id' => $subGroup->id, 'name' => $subGroup->name])
             ->values()

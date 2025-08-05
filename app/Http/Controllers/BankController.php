@@ -28,6 +28,7 @@ class BankController extends Controller
             try {
                 $banks = Bank::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->get(['id', 'name'])
                     ->map(fn($bank) => ['id' => $bank->id, 'name' => $bank->name])
                     ->values()

@@ -37,6 +37,7 @@ class MainGroupController extends Controller
             $mainGroups = MainGroup::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
             ->get(['id', 'name'])
+            ->where('is_active', 1)
             ->map(fn($mainGroup) => ['id' => $mainGroup->id, 'name' => $mainGroup->name])
             ->values()
             ->toArray();

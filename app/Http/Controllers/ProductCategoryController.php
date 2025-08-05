@@ -48,6 +48,7 @@ class ProductCategoryController extends Controller
     
             $categories = ProductCategory::where('company_id', $companyId)
                 ->whereNull('deleted_at')
+                ->where('is_active', 1)
                 ->get(['id', 'name'])
                 ->map(fn($category) => ['id' => $category->id, 'name' => $category->name])
                 ->values()

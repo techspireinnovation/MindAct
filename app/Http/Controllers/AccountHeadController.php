@@ -30,6 +30,7 @@ class AccountHeadController extends Controller
 
             $accountHeads = AccountHead::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($accountHead) => ['id' => $accountHead->id, 'name' => $accountHead->name])
             ->values()

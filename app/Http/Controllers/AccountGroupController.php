@@ -30,6 +30,7 @@ class AccountGroupController extends Controller
 
             $accountGroups = AccountGroup::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($accountGroup) => ['id' => $accountGroup->id, 'name' => $accountGroup->name])
             ->values()

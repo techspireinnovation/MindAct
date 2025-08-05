@@ -28,6 +28,7 @@ class StoreController extends Controller
 
             $stores = Store::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($store) => ['id' => $store->id, 'name' => $store->name])
             ->values()

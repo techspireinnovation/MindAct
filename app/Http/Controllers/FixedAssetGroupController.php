@@ -28,6 +28,7 @@ class FixedAssetGroupController extends Controller
         try {
             $fixedAssetGroups = FixedAssetGroup::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')
+                ->where('is_active', 1)
                 ->get(['id', 'name'])
                 ->map(fn($fixedAssetGroup) => ['id' => $fixedAssetGroup->id, 'name' => $fixedAssetGroup->name])
                 ->values()

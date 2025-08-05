@@ -211,6 +211,7 @@ class ProductController extends Controller
 
             $products = Product::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($product) => ['id' => $product->id, 'name' => $product->name])
             ->values()

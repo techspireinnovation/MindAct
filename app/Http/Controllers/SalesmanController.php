@@ -32,6 +32,7 @@ class SalesmanController extends Controller
 
             $salesmen = Salesman::where('company_id', $request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($salesman) => ['id' => $salesman->id, 'name' => $salesman->name])
             ->values()

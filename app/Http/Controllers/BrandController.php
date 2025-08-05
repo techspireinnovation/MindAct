@@ -29,6 +29,7 @@ class BrandController extends Controller
 
             $brands = Brand::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'name'])
             ->map(fn($brand) => ['id' => $brand->id, 'name' => $brand->name])
             ->values()

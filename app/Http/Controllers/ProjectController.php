@@ -28,6 +28,7 @@ class ProjectController extends Controller
         try {
             $projects = Project::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')
+                ->where('is_active', 1)
                 ->get(['id', 'name'])
                 ->map(fn($project) => ['id' => $project->id, 'name' => $project->name])
                 ->values()

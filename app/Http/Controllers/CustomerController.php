@@ -39,6 +39,7 @@ class CustomerController extends Controller
 
                 $customer = Customer::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->whereIn('ledger_type', ['vendor', 'both'])
                     ->get(['id', 'party_name'])
                     ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
@@ -46,6 +47,7 @@ class CustomerController extends Controller
             } elseif ($type == 'sales') {
                 $customer = Customer::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->whereIn('ledger_type', ['customer', 'both'])
                     ->get(['id', 'party_name'])
                     ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
@@ -54,6 +56,7 @@ class CustomerController extends Controller
             } else {
                 $customer = Customer::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->get(['id', 'party_name'])
                     ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
                     ->values();

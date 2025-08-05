@@ -50,6 +50,7 @@ class ProductFieldValueController extends Controller
 
             $productFieldValues = ProductFieldValue::where('company_id',$request->company_id)
             ->whereNull('deleted_at')
+            ->where('is_active', 1)
             ->get(['id', 'value'])
             ->map(fn($productFieldValue) => ['id' => $productFieldValue->id, 'value' => $productFieldValue->value])
             ->values()

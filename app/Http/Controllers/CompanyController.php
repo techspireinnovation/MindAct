@@ -34,6 +34,219 @@ class CompanyController extends Controller
 
         return response()->json($query->paginate(50));
     }
+    public function companyList(Request $request): JsonResponse
+    {
+        // Check if the user is a super_admin
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
+
+        try {
+            $companies = Company::whereNull('deleted_at')
+                ->get(['id', 'name'])
+                ->map(fn($company) => ['id' => $company->id, 'name' => $company->name])
+                ->values()
+                ->toArray();
+
+            if (empty($companies)) {
+                \Log::info('No companies found in companyList', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No companies found',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company list retrieved successfully',
+                'data' => $companies
+            ], 200);
+        } catch (QueryException $e) {
+            \Log::error('Database error in companyList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in companyList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+    public function companyDetails(Request $request): JsonResponse
+    {
+        // Check if the user is a super_admin
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
+
+        try {
+            $companyName = $request->input('name');
+
+            if (!$companyName) {
+                \Log::info('Company name not provided in companyDetails', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company name is required',
+                ], 400);
+            }
+
+            $query = Company::where('name', $companyName)
+                ->whereNull('deleted_at');
+            \Log::info('companyDetails query', [
+                'name' => $companyName,
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+
+            $company = $query->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company details retrieved successfully',
+                'data' => $company
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            \Log::info('Company not found in companyDetails', [
+                'name' => $companyName,
+                'user_id' => $user->id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found',
+            ], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in companyDetails: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in companyDetails: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+    public function companyBranchList(Request $request): JsonResponse
+    {
+        // Check if the user is a super_admin
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
+
+        try {
+            // Validate input parameters
+            $companyId = $request->input('id');
+            $companyName = $request->input('name');
+
+            if (!$companyId && !$companyName) {
+                \Log::info('No parameters provided in companyBranchList', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Either company ID or name is required',
+                ], 400);
+            }
+
+            \Log::info('companyBranchList called', [
+                'user_id' => $user->id,
+                'company_id' => $companyId,
+                'company_name' => $companyName
+            ]);
+
+            // Build query based on provided parameter
+            $query = Company::whereNull('deleted_at')
+                ->with(['branches' => function ($query) {
+                    $query->whereNull('deleted_at')
+                         ->where('is_active', 1)
+                         ->select('id', 'name', 'company_id');
+                }])
+                ->select('id', 'name');
+
+            if ($companyId) {
+                $query->where('id', $companyId);
+            } elseif ($companyName) {
+                $query->where('name', $companyName);
+            }
+
+            \Log::info('companyBranchList query', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+
+            $company = $query->firstOrFail();
+
+            // Check if company has active branches
+            if ($company->branches->isEmpty()) {
+                \Log::info('No active branches found for company in companyBranchList', [
+                    'company_id' => $company->id,
+                    'company_name' => $company->name,
+                    'user_id' => $user->id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active branches found for the specified company',
+                ], 404);
+            }
+
+            // Format response
+            $result = [
+                'id' => $company->id,
+                'name' => $company->name,
+                'branches' => $company->branches->map(function ($branch) {
+                    return [
+                        'id' => $branch->id,
+                        'name' => $branch->name
+                    ];
+                })->values()->toArray()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company and branch details retrieved successfully',
+                'data' => $result
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            \Log::info('Company not found in companyBranchList', [
+                'id' => $companyId,
+                'name' => $companyName,
+                'user_id' => $user->id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found with provided ID or name',
+            ], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in companyBranchList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in companyBranchList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
 
     // Store a new resource
     public function store(Request $request): JsonResponse

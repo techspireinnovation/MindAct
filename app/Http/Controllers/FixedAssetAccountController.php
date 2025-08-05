@@ -29,6 +29,7 @@ class FixedAssetAccountController extends Controller
         try {
             $fixedAssetAccounts = FixedAssetAccount::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')
+                ->where('is_active', 1)
                 ->get(['id', 'name'])
                 ->map(fn($fixedAssetAccount) => ['id' => $fixedAssetAccount->id, 'name' => $fixedAssetAccount->name])
                 ->values()

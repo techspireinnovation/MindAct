@@ -29,6 +29,7 @@ class ProductTypeController extends Controller
 
             $types = ProductType::where('company_id',$request->company_id)
                                         ->whereNull('deleted_at')
+                                        ->where('is_active', 1)
                                         ->get(['id', 'name'])
                                         ->map(fn($type) => ['id' => $type->id, 'name' => $type->name])
                                         ->values()

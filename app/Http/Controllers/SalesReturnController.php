@@ -10,6 +10,7 @@ use App\Models\PurchaseProduct;
 use App\Models\PurchaseProductFieldValue;
 use App\Models\Sale;
 use App\Models\SaleProduct;
+
 use App\Models\SaleReturnAdditional;
 use App\Models\SaleReturnProductFieldValue;
 use App\Models\SalesReturn;
@@ -642,7 +643,7 @@ class SalesReturnController extends Controller
                 ])
                 ->first();
 
-            // Return 404 if sale not found
+          
             if (!$sale) {
                 Log::warning('Sale not found for ref number', [
                     'ref_number' => $request->ref_number,
@@ -651,7 +652,7 @@ class SalesReturnController extends Controller
                 return response()->json(['error' => 'Sale not found'], 404);
             }
 
-            // If no products with remaining quantity, return not found
+            
             if (empty($sale->saleProducts)) {
                 Log::warning('No available products for sale', [
                     'ref_number' => $request->ref_number,
@@ -661,19 +662,19 @@ class SalesReturnController extends Controller
                 return response()->json(['error' => 'No available products for this sale'], 404);
             }
 
-            // Transform field_values and calculate remaining quantities
+            
             $saleData = $sale->toArray();
             foreach ($saleData['sale_products'] as &$product) {
-                // Calculate remaining quantity
+             
                 $totalReturned = SalesReturnProduct::where('sale_product_id', $product['id'])
                     ->whereNull('deleted_at')
                     ->sum(DB::raw('quantity + COALESCE(free_quantity, 0)'));
                 $product['remaining_quantity'] = ($product['quantity'] + ($product['free_quantity'] ?? 0)) - $totalReturned;
 
-                // Include purchase_product_id
+               
                 $product['purchase_product_id'] = $product['purchase_product_id'] ?? null;
 
-                // Get quantity indices of already returned field_values
+            
                 $unavailableQuantityIndices = [];
                 if (!empty($product['sale_product_returns'])) {
                     $returnIds = array_column($product['sale_product_returns'], 'id');
@@ -684,7 +685,7 @@ class SalesReturnController extends Controller
                     $unavailableQuantityIndices = array_unique($unavailableQuantityIndices);
                 }
 
-                // Group field_values by quantity_index, excluding returned ones
+              
                 $groupedFieldValues = [];
                 foreach ($product['field_values'] as $fieldValue) {
                     $quantityIndex = $fieldValue['quantity_index'];
@@ -702,16 +703,16 @@ class SalesReturnController extends Controller
                 }
                 $product['field_values'] = array_values($groupedFieldValues);
 
-                // Clean up sale_product_returns from the response
+               
                 unset($product['sale_product_returns']);
             }
 
-            // Filter out products with no field_values or no remaining quantity
+       
             $saleData['sale_products'] = array_filter($saleData['sale_products'], function ($product) {
                 return !empty($product['field_values']) && $product['remaining_quantity'] > 0;
             });
 
-            // If no products remain after filtering, return not found
+           
             if (empty($saleData['sale_products'])) {
                 Log::warning('No available products after filtering', [
                     'ref_number' => $request->ref_number,
@@ -3326,7 +3327,7 @@ class SalesReturnController extends Controller
                     'required_without:sale_invoice_number',
                     'integer',
                     'exists:sales,id',
-                    Rule::exists('sales')->where(function ($query) use ($request) {
+                    Rule::exists('sales','id')->where(function ($query) use ($request) {
                         return $query->where('company_id', $request->company_id)->whereNull('deleted_at');
                     }),
                 ],
@@ -3391,6 +3392,7 @@ class SalesReturnController extends Controller
             ]);
 
             if ($validator->fails()) {
+               
                 Log::error('Validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'message' => $validator->errors()->first(),
@@ -3399,6 +3401,7 @@ class SalesReturnController extends Controller
             }
 
             $validated = $validator->validated();
+           
 
             Log::debug('Sales return update request validated', ['request' => $validated, 'sales_return_id' => $id]);
 
@@ -3406,6 +3409,8 @@ class SalesReturnController extends Controller
                 ->where('company_id', $validated['company_id'])
                 ->whereNull('deleted_at')
                 ->first();
+                
+           
 
             if (!$salesReturn) {
                 Log::error('Sales return not found', ['sales_return_id' => $id, 'company_id' => $validated['company_id']]);
@@ -3830,7 +3835,7 @@ class SalesReturnController extends Controller
                     Log::debug('Sales return additional deleted', ['sales_return_id' => $salesReturn->id]);
                 }
 
-                SaleReturnProduct::where('sales_return_id', $salesReturn->id)
+                SalesReturnProduct::where('sales_return_id', $salesReturn->id)
                     ->where('company_id', $validated['company_id'])
                     ->delete();
 

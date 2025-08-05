@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 use App\Models\ProductCategory;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -229,20 +230,31 @@ class ProductCategoryController extends Controller
         }
     }
 
-    // Delete a resource
+
     public function destroy($id): JsonResponse
     {
         try {
 
             $product_category = ProductCategory::findorFail($id);
 
-            $product_category->delete();
+            $products = Product::where('category_id', $product_category->id)->get();
 
-            return response()->json(['message' => 'Product Category deleted!!']);
 
-        } catch (ModelNotFoundException) {
+            if ($products->isNotEmpty()) {
+                return response()->json(['message' => 'Item Cannot be deleted !!'], 403);
+            } else {
+
+                $product_category->delete();
+
+                return response()->json(['message' => 'Product Category deleted!!']);
+            }
+
+        } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product Category not found'], 404);
-        } catch (QueryException) {
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+
+        } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
 
         }

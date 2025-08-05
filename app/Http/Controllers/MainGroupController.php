@@ -29,6 +29,33 @@ class MainGroupController extends Controller
         return response()->json($mainGroupList);
     }
 
+
+     public function mainGroupListDetails(Request $request): JsonResponse
+    {
+        try {
+
+            $mainGroup = MainGroup::where('company_id', $request->company_id)
+                ->where('is_active', 1)->get();
+
+
+            return response()->json([
+                'message' => 'List Received Sucessfully !!',
+                'data' => $mainGroup
+            ], 200);
+
+
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
+        }
+
+    }
+
+
 public function draggable(Request $request): JsonResponse
 {
     try {

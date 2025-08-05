@@ -24,6 +24,29 @@ class AreaController extends Controller
     }
 
 
+    public function areaList(Request $request): JsonResponse
+    {
+        try {
+
+            $area = Area::where('company_id', $request->company_id)
+                ->where('is_active', 1)->get();
+
+            return response()->json([
+                'message' => 'List Received Sucessfully !!',
+                'data' => $area
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
+        }
+
+    }
+
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -43,6 +66,7 @@ class AreaController extends Controller
                 ],
 
                 'company_id' => 'integer|exists:companies,id',
+                'is_primary' => 'boolean',
                 'is_active' => 'boolean|nullable',
             ]);
             if ($validator->fails()) {
@@ -52,6 +76,13 @@ class AreaController extends Controller
                 ], 422);
             }
             $validated = $validator->validated();
+
+            if (isset($validated['is_primary']) && $validated['is_primary'] == true) {
+                Area::where('company_id', $area->company_id)
+                    ->where('id', '!=', $id)
+
+                    ->update(['is_primary' => false]);
+            }
 
             $area->update($validated);
             return response()->json($area);
@@ -85,7 +116,7 @@ class AreaController extends Controller
                 ],
 
                 'company_id' => 'integer|exists:companies,id',
-
+                'is_primary' => 'boolean',
                 'is_active' => 'boolean|nullable',
             ]);
 
@@ -95,13 +126,22 @@ class AreaController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
+
+
             $validated = $validator->validated();
+
+            if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
+                Area::where('company_id', $validated['company_id'])
+                    ->update(['is_primary' => 0]);
+            }
+
             $area = Area::create($validated);
             return response()->json($area, 201);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             \Log::error($e);
             return response()->json(['error' => 'Database  error occurred!!'], 500);
         } catch (\Exception $e) {

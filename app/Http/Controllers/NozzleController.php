@@ -114,7 +114,7 @@ class NozzleController extends Controller
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors(),
 
-                ]);
+                ],422);
 
             }
             $validated = $validator->validated();

@@ -24,7 +24,8 @@ jobs:
           script: |
             cd ${{ secrets.PROJECT_PATH }}
 
-           
+            sudo chown -R $(whoami):$(whoami) storage bootstrap/cache
+            chmod -R 775 storage bootstrap/cache
             git stash
             git pull origin main
             # Add any build or restart commands here, e.g.:

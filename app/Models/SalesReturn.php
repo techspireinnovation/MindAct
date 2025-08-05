@@ -57,12 +57,12 @@ class SalesReturn extends Model
         'round_of_amount',
         'roundoff_type',
         'payment',
-        
+
     ];
 
     protected static function booted()
     {
-        self::observe(SaleReturnObserver::class);
+        // self::observe(SaleReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

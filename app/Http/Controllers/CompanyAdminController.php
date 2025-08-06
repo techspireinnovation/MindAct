@@ -415,7 +415,6 @@ class CompanyAdminController extends Controller
     }
     public function getUserCompaniesAndBranches($userId)
     {
-        // Find the user
         $user = User::find($userId);
 
         if (!$user) {
@@ -425,7 +424,6 @@ class CompanyAdminController extends Controller
             ], 404);
         }
 
-        // Get companies associated with the user
         $companies = CompanyUser::where('user_id', $user->id)
             ->with([
                 'company' => function ($query) {
@@ -444,7 +442,6 @@ class CompanyAdminController extends Controller
             ], 403);
         }
 
-        // Get branches (role-based logic remains the same)
         $branches = $user->hasRole('company_admin')
             ? Branch::whereIn('company_id', $companies->pluck('id'))
                 ->whereNull('deleted_at')

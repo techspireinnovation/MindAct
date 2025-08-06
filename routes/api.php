@@ -72,25 +72,11 @@ use App\Http\Controllers\VoucherSummaryController;
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('auth.login'); // General login
 Route::post('/company/login', [CompanyAdminController::class, 'login'])->name('company.login'); // Company admin login
-Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdminController::class, 'selectCompany'])->name('company.select');
+Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdminController::class, 'selectCompany']);
 
 
-
-
-// Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
-//     Route::get('profile', [AuthController::class, 'profile']);
-//     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
-//     Route::put('change-password', [AuthController::class, 'changePassword']);
-//     Route::put('update', [AuthController::class, 'update']);
-//     Route::get('logout', [AuthController::class, 'logout']);
-//     Route::post('/upload', [FileUploadController::class, 'upload']);
-//     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
-//     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
-    
-//     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
-//     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
-    
-// });
+Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
+Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
 
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
@@ -101,12 +87,12 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
-    
-    // Custom routes before apiResource to avoid conflicts
+
     Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
+    
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
 
 });
@@ -120,10 +106,10 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/users', [UserController::class, 'index'])->name('company.users.index');
         Route::put('/users/{id}', [UserController::class, 'update'])->name('company.users.update');
         Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('company.users.destroy');
-      
-     
-        
-        
+
+
+
+
     });
 
     // Role management routes (company_admin only, assuming company.admin middleware enforces this)
@@ -135,7 +121,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/roles-with-permission', [RoleController::class, 'Roleswithpermission'])->name('company.role.Roleswithpermission');
         Route::patch('/{id}/toggle-active', [RoleController::class, 'toggleActiveStatus'])->name('company.role.toggle-active');
         Route::get('/getById/{id}', [RoleController::class, 'getById'])->name('company.role.getById');
-     
+
     });
 
     Route::middleware(['company.access'])->group(function () {
@@ -155,271 +141,271 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/generateReceiptVoucherBillNumber', [GenerateCodeController::class, 'generateReceiptVoucherBillNumber']);
         Route::get('/generateBankVoucherBillNumber', [GenerateCodeController::class, 'generateBankVoucherBillNumber']);
         Route::get('/generateStockAdjustmentBillNumber', [GenerateCodeController::class, 'generateStockAdjustmentBillNumber']);
-        
-
-      
-
-       
-    Route::post('/upload', [FileUploadController::class, 'upload']);
-    Route::get('/download/{filename}', [FileUploadController::class, 'download']);
-   
-    Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
-    Route::put('update', [CompanyController::class, 'update']);
 
 
 
-    Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
-    Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
-    Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
-    Route::get('get-all-sales-expiry-dates', [SaleController::class, 'getAllExpiryDates']);
-    Route::get('get-all-sales-by-expiry-dates', [SaleController::class, 'getSalesByExpiryDate']);
-    Route::get('available-products-for-sale', [SaleController::class, 'listAvailableProducts']);
-    Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
-    Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
-    Route::get('customer-sales-fiscal-year-details',[SaleController::class, 'customerTotalSalePriceAmount']);
-
-    //Sales Returns
 
 
-    Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
-    Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
-    Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
-    Route::get('get-all-sales-returns-expiry-dates', [SalesReturnController::class, 'getAllExpiryDates']);
-    Route::get('get-all-sales-returns-by-expiry-dates', [SalesReturnController::class, 'getSalesReturnByExpiryDate']);
-    Route::resource('fixed-asset-accounts', FixedAssetAccountController::class);
-    Route::apiResource('sale-additionals', SaleController::class);
-    
-    Route::apiResource('product-categories', ProductCategoryController::class);
-    Route::resource('product-types', ProductTypeController::class);
-    Route::resource('branches', BranchController::class);
-    Route::apiResource('banks', BankController::class);
-    Route::apiResource('bank-vouchers', BankVoucherController::class);
-    Route::apiResource('projects', ProjectController::class);
-    Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
-    Route::apiResource('journal-vouchers', JournalVoucherController::class);
-    Route::resource('customers', CustomerController::class);
-    Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
-    Route::resource('sales', SaleController::class);
-    Route::resource('fixed-asset-group', FixedAssetGroupController::class);
+        Route::post('/upload', [FileUploadController::class, 'upload']);
+        Route::get('/download/{filename}', [FileUploadController::class, 'download']);
+
+        Route::get('auto-numbers', [AutoNumberController::class, 'getAutoNumbers']);
+        Route::put('update', [CompanyController::class, 'update']);
 
 
-    //Journal Voucher List for Needed Components
 
-    Route::get('main-group-lists',[JournalVoucherController::class, 'mainGroupList']);
-    Route::get('sub-group-lists',[SubGroupController::class, 'subGroupList']);
-    Route::get('account-group-lists',[AccountGroupController::class, 'accountGroupList']);
-    Route::get('account-head-lists',[AccountHeadController::class, 'accountHeadList']);
+        Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
+        Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
+        Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
+        Route::get('get-all-sales-expiry-dates', [SaleController::class, 'getAllExpiryDates']);
+        Route::get('get-all-sales-by-expiry-dates', [SaleController::class, 'getSalesByExpiryDate']);
+        Route::get('available-products-for-sale', [SaleController::class, 'listAvailableProducts']);
+        Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
+        Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
+        Route::get('customer-sales-fiscal-year-details', [SaleController::class, 'customerTotalSalePriceAmount']);
 
-    Route::get('areas-list',[AreaController::class, 'areaList']);
-
-
-    Route::get('sales-returns/get-by-bill-number/{billNumber}', [SalesReturnController::class, 'getItemByBillNumber']);
-
-    Route::resource('sales-returns', SalesReturnController::class);
-    Route::resource('sale-products', SaleProductController::class);
-    Route::resource('measure-units', MeasureUnitController::class);
-    Route::apiResource('products', ProductController::class);
-    Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
+        //Sales Returns
 
 
-    Route::prefix('reports')->group(function () {
-        //Route::middleware(['can:print'])->group(function () {
-        Route::get('/stock-register', [ReportController::class, 'stockRegisterDetails']);
-        Route::get('/product-list', [ReportController::class, 'productListDetails']);
-        Route::get('/product-price-list', [ReportController::class, 'productPriceListDetails']);
-        Route::get('/vendor-supplier-list', [ReportController::class, 'vendorSupplierListDetails']);
-        Route::get('/stock-ledger-list', [ReportController::class, 'stockLedgerListDetails']);
-        Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
-        Route::get('/vat-return-data-list', [ReportController::class, 'vatReturnDataListDetails']);
-        Route::get('/gross-profit-ratio-list', [ReportController::class, 'grossProfitRatioListDetails']);
-        Route::get('/gross-margin-list', [ReportController::class, 'grossMarginListDetails']);
-        Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
-        //});
+        Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
+        Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
+        Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
+        Route::get('get-all-sales-returns-expiry-dates', [SalesReturnController::class, 'getAllExpiryDates']);
+        Route::get('get-all-sales-returns-by-expiry-dates', [SalesReturnController::class, 'getSalesReturnByExpiryDate']);
+        Route::resource('fixed-asset-accounts', FixedAssetAccountController::class);
+        Route::apiResource('sale-additionals', SaleController::class);
+
+        Route::apiResource('product-categories', ProductCategoryController::class);
+        Route::resource('product-types', ProductTypeController::class);
+        Route::resource('branches', BranchController::class);
+        Route::apiResource('banks', BankController::class);
+        Route::apiResource('bank-vouchers', BankVoucherController::class);
+        Route::apiResource('projects', ProjectController::class);
+        Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
+        Route::apiResource('journal-vouchers', JournalVoucherController::class);
+        Route::resource('customers', CustomerController::class);
+        Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
+        Route::resource('sales', SaleController::class);
+        Route::resource('fixed-asset-group', FixedAssetGroupController::class);
+
+
+        //Journal Voucher List for Needed Components
+
+        Route::get('main-group-lists', [JournalVoucherController::class, 'mainGroupList']);
+        Route::get('sub-group-lists', [SubGroupController::class, 'subGroupList']);
+        Route::get('account-group-lists', [AccountGroupController::class, 'accountGroupList']);
+        Route::get('account-head-lists', [AccountHeadController::class, 'accountHeadList']);
+
+        Route::get('areas-list', [AreaController::class, 'areaList']);
+
+
+        Route::get('sales-returns/get-by-bill-number/{billNumber}', [SalesReturnController::class, 'getItemByBillNumber']);
+
+        Route::resource('sales-returns', SalesReturnController::class);
+        Route::resource('sale-products', SaleProductController::class);
+        Route::resource('measure-units', MeasureUnitController::class);
+        Route::apiResource('products', ProductController::class);
+        Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
+
+
+        Route::prefix('reports')->group(function () {
+            //Route::middleware(['can:print'])->group(function () {
+            Route::get('/stock-register', [ReportController::class, 'stockRegisterDetails']);
+            Route::get('/product-list', [ReportController::class, 'productListDetails']);
+            Route::get('/product-price-list', [ReportController::class, 'productPriceListDetails']);
+            Route::get('/vendor-supplier-list', [ReportController::class, 'vendorSupplierListDetails']);
+            Route::get('/stock-ledger-list', [ReportController::class, 'stockLedgerListDetails']);
+            Route::get('/cbms-vat-return-list', [ReportController::class, 'cbmsVatReturnListDetails']);
+            Route::get('/vat-return-data-list', [ReportController::class, 'vatReturnDataListDetails']);
+            Route::get('/gross-profit-ratio-list', [ReportController::class, 'grossProfitRatioListDetails']);
+            Route::get('/gross-margin-list', [ReportController::class, 'grossMarginListDetails']);
+            Route::get('/purchase-sales-book-list', [ReportController::class, 'purchaseSalesBookListDetail']);
+            //});
+        });
+
+
+
+
+
+
+
+
+
+
+        Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
+        Route::resource('purchases', PurchaseController::class);
+        Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
+
+        Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
+        Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
+        Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
+        Route::get('main-groups-list', [MainGroupController::class, 'mainGroupList']);
+        Route::get('main-group-lists', [MainGroupController::class, 'mainGroupListDetails']);
+        Route::post('sub-groups-update-ranking', [MainGroupController::class, 'draggable']);
+        Route::get('sub-groups-of-main', [MainGroupController::class, 'subGroupOfMainGroup']);
+        Route::resource('purchase-returns', PurchaseReturnController::class);
+        Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
+        Route::apiResource('brands', BrandController::class);
+        Route::resource('areas', AreaController::class);
+        Route::resource('cashes', CashController::class);
+
+        Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
+
+        Route::apiResource('stores', StoreController::class);
+
+        Route::apiResource('locations', LocationController::class);
+        Route::apiResource('main-groups', MainGroupController::class);
+        Route::apiResource('sub-groups', SubGroupController::class);
+        Route::apiResource('account-groups', AccountGroupController::class);
+        Route::apiResource('account-heads', AccountHeadController::class);
+        Route::apiResource('product-fields', ProductFieldController::class);
+        Route::apiResource('product-field-values', ProductFieldValueController::class);
+        Route::apiResource('sales-returns', SalesReturnController::class);
+        Route::apiResource('product-lists', ProductListController::class);
+
+        Route::apiResource('sale-additionals', SaleAdditionalController::class);
+        Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
+        Route::get('filter-barcode', [ProductController::class, 'filterbyBarcode']);
+        Route::get('get-product-names', [ProductController::class, 'getProductNames']);
+        Route::get('get-products-by-name', [ProductController::class, 'getProductsByName']);
+        Route::get('get-product-detail-by-name', [ProductController::class, 'getProductDetailsByNames']);
+        Route::put('purchase-masters-update', [CompanyController::class, 'updatePurchaseMasterKey']);
+        Route::get('get-purchase-masters', [CompanyController::class, 'getPurchaseMasterKey']);
+        Route::get('get-sales-masters', [CompanyController::class, 'getSalesMasterKey']);
+        Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
+        Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
+        Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);
+        Route::get('get-ref-bill-numbers', [PurchaseController::class, 'getRefBillNumber']);
+        Route::get('get-purchase-by-ref-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByRefBillNumber']);
+        Route::get('get-purchase-product-names', [PurchaseReturnController::class, 'getProductNames']);
+        Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
+        Route::get('get-provinces-with-districts', [NepalLocationPackageController::class, 'ProvinceWithDistrict']);
+        Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
+        Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
+        Route::get('get-purchase-product-details-by-names', [PurchaseReturnController::class, 'getPurchaseProductDetails']);
+        Route::get('get-sales-ref-numbers', [SalesReturnController::class, 'listAvailableRefNumbers']);
+        Route::get('get-sales-by-ref-numbers', [SalesReturnController::class, 'getSaleByRefNumber']);
+        Route::get('get-sales-invoice-numbers', [SalesReturnController::class, 'listAvailableInvoiceNumbers']);
+        Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
+        Route::resource('salesman', SalesmanController::class);
+        Route::resource('stock-entries', StockEntryController::class);
+        Route::resource('stock-adjustments', StockAdjustmentController::class);
+        Route::resource('stock-transfers', StockTransferController::class);
+        Route::resource('stock-receives', StockReceiveController::class);
+        Route::resource('stock-reconciliation', StockReconciliationController::class);
+        Route::resource('production-settings', ProductionSettingController::class);
+        Route::resource('production-assembles', ProductionAssembleController::class);
+        Route::get('production-settings-list', [ProductionAssembleController::class, 'getProductionSettingList']);
+        Route::get('production-settings-details', [ProductionAssembleController::class, 'getProductionSettingDetail']);
+        Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
+        Route::get('purchase-products-shrinking-working-loss', [ShrinkingWorkingLossController::class, 'getProductDetailsforShrinkingWorkingLoss']);
+        Route::resource('receipt-vouchers', ReceiptVoucherController::class);
+        Route::resource('payment-vouchers', PaymentVoucherController::class);
+        Route::resource('voucher-summary', VoucherSummaryController::class);
+        Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
+        Route::resource('company-staff', StaffController::class);
+        Route::resource('work-shifts', WorkShiftController::class);
+        Route::resource('nozzles', NozzleController::class);
+        Route::resource('meter-readings', MeterReadingController::class);
+        Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
+        Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
+        Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);
+        Route::get('get-all-purchase-product-code', [PurchaseReturnController::class, 'getPurchaseProductUniqueId']);
+        Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
+        Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
+        Route::post('store-purchase-return-by-item', [PurchaseReturnController::class, 'storePurchaseReturnByInput']);
+        Route::put('/update-purchase-return-by-item/{id}', [PurchaseReturnController::class, 'updatePurchaseReturnByInput']);
+
+        Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
+        Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
+        Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
+
+        //List and Details
+        Route::get('change-test', [SaleController::class, 'changeDate']);
+        Route::get('get-all-customers', [CustomerController::class, 'customerList']);
+        Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
+        Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
+
+
+        Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
+        Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
+
+
+        Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+        Route::get('product-type-details', [ProductTypeController::class, 'productTypeDetails']);
+
+        Route::get('branch-list', [BranchController::class, 'branchList']);
+        Route::get('branch-details', [BranchController::class, 'branchDetails']);
+
+
+        Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);
+        Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
+
+
+        Route::get('unit-list', [MeasureUnitController::class, 'unitList']);
+        Route::get('unit-details', [MeasureUnitController::class, 'unitDetails']);
+
+        Route::get('sub-category-list', [ProductSubCategoryController::class, 'subCategoryList']);
+        Route::get('sub-category-details', [ProductSubCategoryController::class, 'subCategoryDetails']);
+
+        Route::get('brand-list', [BrandController::class, 'brandList']);
+        Route::get('brand-details', [BrandController::class, 'brandDetails']);
+
+        Route::get('store-list', [StoreController::class, 'storeList']);
+        Route::get('store-details', [StoreController::class, 'storeDetails']);
+
+
+        Route::get('supplier-list', [SupplierController::class, 'supplierList']);
+        Route::get('supplier-details', [SupplierController::class, 'supplierDetails']);
+
+        Route::get('location-list', [LocationController::class, 'locationList']);
+        Route::get('location-details', [LocationController::class, 'locationDetails']);
+
+
+        Route::get('main-group-list', [MainGroupController::class, 'mgroupList']);
+        Route::get('main-group-details', [MainGroupController::class, 'mGroupDetails']);
+
+
+        Route::get('sub-group-list', [SubGroupController::class, 'subGroupList']);
+        Route::get('sub-group-details', [SubGroupController::class, 'subGroupDetails']);
+
+        Route::get('account-group-list', [AccountGroupController::class, 'accountGroupList']);
+        Route::get('account-group-details', [AccountGroupController::class, 'accountGroupDetails']);
+
+
+        Route::get('account-head-list', [AccountHeadController::class, 'accountHeadList']);
+        Route::get('account-head-details', [AccountHeadController::class, 'accountHeadDetails']);
+
+        Route::get('product-field-list', [ProductFieldController::class, 'productFieldList']);
+        Route::get('product-field-details', [ProductFieldController::class, 'productFieldDetails']);
+
+        Route::get('product-field-value-list', [ProductFieldValueController::class, 'productFieldValueList']);
+        Route::get('product-field-value-details', [ProductFieldValueController::class, 'productFieldValueDetails']);
+
+        Route::get('product-list', [ProductController::class, 'productList']);
+        Route::get('product-details', [ProductController::class, 'productDetails']);
+
+        Route::get('bank-list', [BankController::class, 'bankList']);
+        Route::get('bank-details', [BankController::class, 'bankDetails']);
+
+        Route::get('project-list', [ProjectController::class, 'projectList']);
+        Route::get('project-details', [ProjectController::class, 'projectDetails']);
+
+        Route::get('fixed-asset-group-list', [FixedAssetGroupController::class, 'fixedAssetGroupList']);
+        Route::get('fixed-asset-group-details', [FixedAssetGroupController::class, 'fixedAssetGroupDetails']);
+
+        Route::get('fixed-asset-account-list', [FixedAssetAccountController::class, 'fixedAssetAccountList']);
+        Route::get('fixed-asset-account-details', [FixedAssetAccountController::class, 'fixedAssetAccountDetails']);
+
+        Route::get('download-file/{filename}', [DownloadController::class, 'download']);
+
+        Route::apiResource('notifications', NotificationController::class)
+            ->only(['index', 'update', 'destroy']);
+        Route::patch(
+            'notifications/{notification}/read',
+            [NotificationController::class, 'markAsRead']
+        );
     });
-
-
-       
-      
-       
-
-
-   
-
-
-    Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
-    Route::resource('purchases', PurchaseController::class);
-    Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
-
-    Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
-    Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
-    Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
-    Route::get('main-groups-list', [MainGroupController::class,'mainGroupList']);
-    Route::get('main-group-lists', [MainGroupController::class,'mainGroupListDetails']);
-    Route::post('sub-groups-update-ranking', [MainGroupController::class,'draggable']);
-    Route::get('sub-groups-of-main', [MainGroupController::class,'subGroupOfMainGroup']);
-    Route::resource('purchase-returns', PurchaseReturnController::class);
-    Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
-    Route::apiResource('brands', BrandController::class);
-    Route::resource('areas', AreaController::class);
-    Route::resource('cashes', CashController::class);
-
-    Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
-
-    Route::apiResource('stores', StoreController::class);
-
-    Route::apiResource('locations', LocationController::class);
-    Route::apiResource('main-groups', MainGroupController::class);
-    Route::apiResource('sub-groups', SubGroupController::class);
-    Route::apiResource('account-groups', AccountGroupController::class);
-    Route::apiResource('account-heads', AccountHeadController::class);
-    Route::apiResource('product-fields', ProductFieldController::class);
-    Route::apiResource('product-field-values', ProductFieldValueController::class);
-    Route::apiResource('sales-returns', SalesReturnController::class);
-    Route::apiResource('product-lists', ProductListController::class);
-
-    Route::apiResource('sale-additionals', SaleAdditionalController::class);
-    Route::post('broadcast-product-update', [ProductEventController::class, 'index']);
-    Route::get('filter-barcode', [ProductController::class, 'filterbyBarcode']);
-    Route::get('get-product-names', [ProductController::class, 'getProductNames']);
-    Route::get('get-products-by-name', [ProductController::class, 'getProductsByName']);
-    Route::get('get-product-detail-by-name', [ProductController::class, 'getProductDetailsByNames']);
-    Route::put('purchase-masters-update', [CompanyController::class, 'updatePurchaseMasterKey']);
-    Route::get('get-purchase-masters', [CompanyController::class, 'getPurchaseMasterKey']);
-    Route::get('get-sales-masters', [CompanyController::class, 'getSalesMasterKey']);
-    Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
-    Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
-    Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);
-    Route::get('get-ref-bill-numbers', [PurchaseController::class, 'getRefBillNumber']);
-    Route::get('get-purchase-by-ref-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByRefBillNumber']);
-    Route::get('get-purchase-product-names', [PurchaseReturnController::class, 'getProductNames']);
-    Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
-    Route::get('get-provinces-with-districts', [NepalLocationPackageController::class, 'ProvinceWithDistrict']);
-    Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
-    Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
-    Route::get('get-purchase-product-details-by-names', [PurchaseReturnController::class, 'getPurchaseProductDetails']);
-    Route::get('get-sales-ref-numbers', [SalesReturnController::class, 'listAvailableRefNumbers']);
-    Route::get('get-sales-by-ref-numbers', [SalesReturnController::class, 'getSaleByRefNumber']);
-    Route::get('get-sales-invoice-numbers', [SalesReturnController::class, 'listAvailableInvoiceNumbers']);
-    Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
-    Route::resource('salesman', SalesmanController::class);
-    Route::resource('stock-entries', StockEntryController::class);
-    Route::resource('stock-adjustments', StockAdjustmentController::class);
-    Route::resource('stock-transfers', StockTransferController::class);
-    Route::resource('stock-receives', StockReceiveController::class);
-    Route::resource('stock-reconciliation', StockReconciliationController::class);
-    Route::resource('production-settings', ProductionSettingController::class);
-    Route::resource('production-assembles', ProductionAssembleController::class);
-    Route::get('production-settings-list', [ProductionAssembleController::class,'getProductionSettingList']);
-    Route::get('production-settings-details', [ProductionAssembleController::class,'getProductionSettingDetail']);
-    Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
-    Route::get('purchase-products-shrinking-working-loss', [ShrinkingWorkingLossController::class,'getProductDetailsforShrinkingWorkingLoss']);
-    Route::resource('receipt-vouchers', ReceiptVoucherController::class);
-    Route::resource('payment-vouchers', PaymentVoucherController::class);
-    Route::resource('voucher-summary', VoucherSummaryController::class);
-    Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
-    Route::resource('company-staff', StaffController::class);
-    Route::resource('work-shifts', WorkShiftController::class);
-    Route::resource('nozzles', NozzleController::class);
-    Route::resource('meter-readings', MeterReadingController::class);
-    Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
-    Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
-    Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);
-    Route::get('get-all-purchase-product-code', [PurchaseReturnController::class, 'getPurchaseProductUniqueId']);
-    Route::get('get-all-purchase-bar-code', [PurchaseReturnController::class, 'getPurchaseProductBarcode']);
-    Route::get('get-all-purchase-product-details-by-input', [PurchaseReturnController::class, 'getProductDetailsByInput']);
-    Route::post('store-purchase-return-by-item', [PurchaseReturnController::class, 'storePurchaseReturnByInput']);
-    Route::put('/update-purchase-return-by-item/{id}', [PurchaseReturnController::class, 'updatePurchaseReturnByInput']);
-    
-    Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
-    Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
-    Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
-
-    //List and Details
-    Route::get('change-test', [SaleController::class, 'changeDate']);
-    Route::get('get-all-customers', [CustomerController::class, 'customerList']);
-    Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
-    Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
-    
-
-    Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
-    Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
-
-
-    Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
-    Route::get('product-type-details', [ProductTypeController::class, 'productTypeDetails']);
-
-    Route::get('branch-list', [BranchController::class, 'branchList']);
-    Route::get('branch-details', [BranchController::class, 'branchDetails']);
-
-
-    Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);
-    Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
-
-
-    Route::get('unit-list', [MeasureUnitController::class, 'unitList']);
-    Route::get('unit-details', [MeasureUnitController::class, 'unitDetails']);
-
-    Route::get('sub-category-list', [ProductSubCategoryController::class, 'subCategoryList']);
-    Route::get('sub-category-details', [ProductSubCategoryController::class, 'subCategoryDetails']);
-
-    Route::get('brand-list', [BrandController::class, 'brandList']);
-    Route::get('brand-details', [BrandController::class, 'brandDetails']);
-
-    Route::get('store-list', [StoreController::class, 'storeList']);
-    Route::get('store-details', [StoreController::class, 'storeDetails']);
-
-
-    Route::get('supplier-list', [SupplierController::class, 'supplierList']);
-    Route::get('supplier-details', [SupplierController::class, 'supplierDetails']);
-
-    Route::get('location-list', [LocationController::class, 'locationList']);
-    Route::get('location-details', [LocationController::class, 'locationDetails']);
-
-
-    Route::get('main-group-list', [MainGroupController::class, 'mgroupList']);
-    Route::get('main-group-details', [MainGroupController::class, 'mGroupDetails']);
-
-
-    Route::get('sub-group-list', [SubGroupController::class, 'subGroupList']);
-    Route::get('sub-group-details', [SubGroupController::class, 'subGroupDetails']);
-
-    Route::get('account-group-list', [AccountGroupController::class, 'accountGroupList']);
-    Route::get('account-group-details', [AccountGroupController::class, 'accountGroupDetails']);
-
-
-    Route::get('account-head-list', [AccountHeadController::class, 'accountHeadList']);
-    Route::get('account-head-details', [AccountHeadController::class, 'accountHeadDetails']);
-
-    Route::get('product-field-list', [ProductFieldController::class, 'productFieldList']);
-    Route::get('product-field-details', [ProductFieldController::class, 'productFieldDetails']);
-
-    Route::get('product-field-value-list', [ProductFieldValueController::class, 'productFieldValueList']);
-    Route::get('product-field-value-details', [ProductFieldValueController::class, 'productFieldValueDetails']);
-
-    Route::get('product-list', [ProductController::class, 'productList']);
-    Route::get('product-details', [ProductController::class, 'productDetails']);
-
-    Route::get('bank-list', [BankController::class, 'bankList']);
-    Route::get('bank-details', [BankController::class, 'bankDetails']);
-
-    Route::get('project-list', [ProjectController::class, 'projectList']);
-    Route::get('project-details', [ProjectController::class, 'projectDetails']);
-
-    Route::get('fixed-asset-group-list', [FixedAssetGroupController::class, 'fixedAssetGroupList']);
-Route::get('fixed-asset-group-details', [FixedAssetGroupController::class, 'fixedAssetGroupDetails']);
-
-Route::get('fixed-asset-account-list', [FixedAssetAccountController::class, 'fixedAssetAccountList']);
-Route::get('fixed-asset-account-details', [FixedAssetAccountController::class, 'fixedAssetAccountDetails']);
-
-    Route::get('download-file/{filename}', [DownloadController::class, 'download']);
-
-    Route::apiResource('notifications', NotificationController::class)
-        ->only(['index', 'update', 'destroy']);
-    Route::patch(
-        'notifications/{notification}/read',
-        [NotificationController::class, 'markAsRead']
-    );
-});
 });
 
 // forget password

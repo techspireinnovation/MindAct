@@ -23,7 +23,288 @@ use Spatie\Permission\Models\Role;
 
 class CompanyController extends Controller
 {
+    public function store(Request $request): JsonResponse
+    {
+       
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
 
+        try {
+           
+            $existingCompany = Company::withTrashed()->where('name', $request->input('name'))->first();
+            if ($existingCompany && $existingCompany->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'A company with this name exists but is soft-deleted. Please restore it or use a different name.',
+                    'company_id' => $existingCompany->id,
+                ], 409);
+            }
+
+           
+            $validated = $request->validate([
+              
+                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
+                'licence_issue_date' => 'nullable|string|max:255',
+                'working_date' => 'nullable|string|max:255',
+                'is_vatable' => 'nullable|boolean',
+                'reg_number' => 'nullable|string|max:255',
+                'full_address' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|string|max:255',
+                'vat_number' => 'nullable|string|max:255',
+                'email_address' => 'nullable|string|email|max:255',
+                'website' => 'nullable|string|max:255',
+                'fax' => 'nullable|string|max:255',
+                'logo' => 'nullable|string|max:255',
+                'province' => 'nullable|string|max:255',
+                'district' => 'nullable|string|max:255',
+                'palika_name' => 'nullable|string|max:255',
+                'ward_number' => 'nullable|string|max:255',
+                'contact_number' => 'nullable|string|max:255',
+                'contact_person' => 'nullable|string|max:255',
+                'contact_person_position' => 'nullable|string|max:255',
+                'agreement_holder_name' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:255',
+                'position' => 'nullable|string|max:255',
+                'license_number' => 'nullable|string|max:255',
+                'activation_key' => 'nullable|string|max:255',
+                'url_link' => 'nullable|string|max:255',
+                // Admin fields
+                'admin_selection' => 'required|in:existing,new',
+                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
+                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
+                'admin_name' => 'required_if:admin_selection,new|string|max:255',
+                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
+            ]);
+
+           
+            DB::beginTransaction();
+
+          
+            $company = Company::create([
+                'name' => $validated['name'],
+                'licence_issue_date' => $validated['licence_issue_date'] ?? '',
+                'working_date' => $validated['working_date'] ?? '',
+                'reg_number' => $validated['reg_number'] ?? '',
+                'pan_number' => $validated['pan_number'] ?? '',
+                'is_vatable' => $validated['is_vatable'] ?? '',
+                'vat_number' => $validated['vat_number'] ?? '',
+                'full_address' => $validated['full_address'] ?? '',
+                'email_address' => $validated['email_address'] ?? '',
+                'website' => $validated['website'] ?? '',
+                'fax' => $validated['fax'] ?? '',
+                'logo' => $validated['logo'] ?? '',
+                'province' => $validated['province'] ?? '',
+                'district' => $validated['district'] ?? '',
+                'palika_name' => $validated['palika_name'] ?? '',
+                'ward_number' => $validated['ward_number'] ?? '',
+                'contact_number' => $validated['contact_number'] ?? '',
+                'contact_person' => $validated['contact_person'] ?? '',
+                'contact_person_position' => $validated['contact_person_position'] ?? '',
+                'agreement_holder_name' => $validated['agreement_holder_name'] ?? '',
+                'phone' => $validated['phone'] ?? '',
+                'position' => $validated['position'] ?? '',
+                'license_number' => $validated['license_number'] ?? '',
+                'activation_key' => $validated['activation_key'] ?? '',
+                'url_link' => $validated['url_link'] ?? '',
+            ]);
+
+           
+            $branch = Branch::create([
+                'name' => $validated['name'] . ' Main Branch',
+                'company_id' => $company->id,
+                'is_active' => true,
+                'is_primary' => true,
+            ]);
+
+           
+            $company->purchaseMasterKey()->withoutGlobalScopes()->create([
+                'company_id' => $company->id,
+                'product_code' => false,
+                'free' => false,
+                'discount_percent' => false,
+                'discount_amount' => false,
+                'discount' => false,
+                'excise_duty' => false,
+                'health_insurance' => false,
+                'freight_charge' => false,
+                'batch_no' => false,
+                'discount_after_vat' => false,
+                'expiry_date' => false,
+                'mfd' => false,
+            ]);
+
+            $company->salesMasterKey()->withoutGlobalScopes()->create([
+                'company_id' => $company->id,
+                'salesman' => false,
+                'product_code' => false,
+                'credit_days' => false,
+                'balance' => false,
+                'store' => false,
+                'location' => false,
+                'direct_whatsapp_system' => false,
+                'bill_type' => false,
+                'free' => false,
+                'discount' => false,
+                'discount_percent' => false,
+                'discount_amount' => false,
+                'additional' => false,
+                'mfd' => false,
+                'excise_duty' => false,
+                'health_insurance' => false,
+                'freight_charge' => false,
+                'batch_no' => false,
+                'discount_after_vat' => false,
+                'expiry_date' => false,
+            ]);
+
+            
+            $company->productTypes()->createMany([
+                [
+                    'name' => 'Inventory',
+                    'delete_status' => 0,
+                    'company_id' => $company->id,
+                ],
+                [
+                    'name' => 'Assets',
+                    'delete_status' => 0,
+                    'company_id' => $company->id,
+                ],
+                [
+                    'name' => 'Service',
+                    'delete_status' => 0,
+                    'company_id' => $company->id,
+                ],
+                [
+                    'name' => 'Raw Materials',
+                    'delete_status' => 0,
+                    'company_id' => $company->id,
+                ]
+            ]);
+
+            
+            $company->measureUnits()->create([
+                'name' => 'Piece',
+                'company_id' => $company->id,
+                'symbol' => 'Pcs',
+                'quantity' => 1
+            ]);
+
+            
+            if ($validated['admin_selection'] === 'existing') {
+                $companyAdmin = User::findOrFail($validated['existing_admin_id']);
+               
+                $role = Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api'
+                ]);
+                if (!$companyAdmin->hasRole('company_admin')) {
+                    $companyAdmin->assignRole($role);
+                }
+            } else {
+              
+                $companyAdmin = User::create([
+                    'email' => $validated['admin_email'],
+                    'name' => $validated['admin_name'],
+                    'password' => Hash::make($validated['password']),
+                ]);
+
+               
+                $role = Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api'
+                ]);
+                $companyAdmin->assignRole($role);
+            }
+
+            CompanyUser::create([
+                'company_id' => $company->id,
+                'user_id' => $companyAdmin->id
+            ]);
+
+         
+            $companyAdmin->branches()->attach($branch->id);
+
+            MainGroupStub::createMainGroups($company->id);
+
+           
+            DB::commit();
+
+           
+            $company->load([
+                'purchaseMasterKey',
+                'salesMasterKey' => function ($query) {
+                    $query->withoutGlobalScopes();
+                },
+                'branches'
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company, branch, and admin association created successfully',
+                'data' => [
+                    'company' => $company,
+                    'admin' => $companyAdmin,
+                    'branch' => $branch,
+                ]
+            ], 201);
+
+        } catch (ValidationException $e) {
+            \Log::error($e);
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation error',
+                'errors' => $e->errors()
+            ], 422);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Company creation failed: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to create company, branch, or associate admin',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+    // public function listCompanyAdmins(Request $request)
+    // {
+    //     // Check if the user is a super_admin
+    //     $user = Auth::user();
+    //     if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Unauthorized: Super admin required',
+    //         ], 403);
+    //     }
+    
+    //     try {
+    //         // Fetch active, non-deleted users with company_admin role
+    //         $companyAdmins = User::where('is_active', 1)
+    //             ->whereNull('deleted_at')
+    //             ->whereHas('roles', function ($query) {
+    //                 $query->where('name', 'company_admin');
+    //             })
+    //             ->select('id', 'name')
+    //             ->get();
+    
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Company admins retrieved successfully',
+    //             'data' => $companyAdmins,
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         Log::error('Failed to retrieve company admins: ' . $e->getMessage());
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to retrieve company admins',
+    //             'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
+    //         ], 500);
+    //     }
+    // }
     public function index(Request $request): JsonResponse
     {
         $query = Company::query();
@@ -82,7 +363,6 @@ class CompanyController extends Controller
 
     public function companyDetails(Request $request): JsonResponse
     {
-        // Check if the user is a super_admin
         $user = Auth::user();
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
@@ -249,223 +529,7 @@ class CompanyController extends Controller
     }
 
     // Store a new resource
-    public function store(Request $request): JsonResponse
-    {
-        // Check if the user is a super_admin
-        $user = Auth::user();
-        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized: Super admin required',
-            ], 403);
-        }
-
-        try {
-            // Check for soft-deleted company with the same name
-            $existingCompany = Company::withTrashed()->where('name', $request->input('name'))->first();
-            if ($existingCompany && $existingCompany->trashed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A company with this name exists but is soft-deleted. Please restore it or use a different name.',
-                    'company_id' => $existingCompany->id,
-                ], 409);
-            }
-
-            // Define validation rules
-            $validated = $request->validate([
-                // Company fields
-                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
-                'licence_issue_date' => 'nullable|string|max:255',
-                'working_date' => 'nullable|string|max:255',
-                'is_vatable' => 'nullable|boolean',
-                'reg_number' => 'nullable|string|max:255',
-                'full_address' => 'nullable|string|max:255',
-                'pan_number' => 'nullable|string|max:255',
-                'vat_number' => 'nullable|string|max:255',
-                'email_address' => 'nullable|string|email|max:255',
-                'website' => 'nullable|string|max:255',
-                'fax' => 'nullable|string|max:255',
-                'logo' => 'nullable|string|max:255',
-                'province' => 'nullable|string|max:255',
-                'district' => 'nullable|string|max:255',
-                'palika_name' => 'nullable|string|max:255',
-                'ward_number' => 'nullable|string|max:255',
-                'contact_number' => 'nullable|string|max:255',
-                'contact_person' => 'nullable|string|max:255',
-                'contact_person_position' => 'nullable|string|max:255',
-                'agreement_holder_name' => 'nullable|string|max:255',
-                'phone' => 'nullable|string|max:255',
-                'position' => 'nullable|string|max:255',
-                'license_number' => 'nullable|string|max:255',
-                'activation_key' => 'nullable|string|max:255',
-                'url_link' => 'nullable|string|max:255',
-                // Admin fields
-                'admin_selection' => 'required|in:existing,new',
-                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
-                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
-                'admin_name' => 'required_if:admin_selection,new|string|max:255',
-                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
-            ]);
-
-            // Start a database transaction
-            DB::beginTransaction();
-
-            // Create the Company
-            $company = Company::create([
-                'name' => $validated['name'],
-                'licence_issue_date' => $validated['licence_issue_date'] ?? '',
-                'working_date' => $validated['working_date'] ?? '',
-                'reg_number' => $validated['reg_number'] ?? '',
-                'pan_number' => $validated['pan_number'] ?? '',
-                'is_vatable' => $validated['is_vatable'] ?? '',
-                'vat_number' => $validated['vat_number'] ?? '',
-                'full_address' => $validated['full_address'] ?? '',
-                'email_address' => $validated['email_address'] ?? '',
-                'website' => $validated['website'] ?? '',
-                'fax' => $validated['fax'] ?? '',
-                'logo' => $validated['logo'] ?? '',
-                'province' => $validated['province'] ?? '',
-                'district' => $validated['district'] ?? '',
-                'palika_name' => $validated['palika_name'] ?? '',
-                'ward_number' => $validated['ward_number'] ?? '',
-                'contact_number' => $validated['contact_number'] ?? '',
-                'contact_person' => $validated['contact_person'] ?? '',
-                'contact_person_position' => $validated['contact_person_position'] ?? '',
-                'agreement_holder_name' => $validated['agreement_holder_name'] ?? '',
-                'phone' => $validated['phone'] ?? '',
-                'position' => $validated['position'] ?? '',
-                'license_number' => $validated['license_number'] ?? '',
-                'activation_key' => $validated['activation_key'] ?? '',
-                'url_link' => $validated['url_link'] ?? '',
-            ]);
-
-            // Create the default branch for the company
-            $branch = Branch::create([
-                'name' => $validated['name'] . ' Main Branch',
-                'company_id' => $company->id,
-                'is_active' => true,
-                'is_primary' => true,
-            ]);
-
-            // Create the PurchaseMasterKey with default values
-            $company->purchaseMasterKey()->withoutGlobalScopes()->create([
-                'company_id' => $company->id,
-                'product_code' => false,
-                'free' => false,
-                'discount_percent' => false,
-                'discount_amount' => false,
-                'discount' => false,
-                'excise_duty' => false,
-                'health_insurance' => false,
-                'freight_charge' => false,
-                'batch_no' => false,
-                'discount_after_vat' => false,
-                'expiry_date' => false,
-                'mfd' => false,
-            ]);
-
-            $company->salesMasterKey()->withoutGlobalScopes()->create([
-                'company_id' => $company->id,
-                'salesman' => false,
-                'product_code' => false,
-                'credit_days' => false,
-                'balance' => false,
-                'store' => false,
-                'location' => false,
-                'direct_whatsapp_system' => false,
-                'bill_type' => false,
-                'free' => false,
-                'discount' => false,
-                'discount_percent' => false,
-                'discount_amount' => false,
-                'additional' => false,
-                'mfd' => false,
-                'excise_duty' => false,
-                'health_insurance' => false,
-                'freight_charge' => false,
-                'batch_no' => false,
-                'discount_after_vat' => false,
-                'expiry_date' => false,
-            ]);
-
-            // Handle admin user
-            if ($validated['admin_selection'] === 'existing') {
-                $companyAdmin = User::findOrFail($validated['existing_admin_id']);
-                // Ensure the user has company_admin role
-                $role = Role::firstOrCreate([
-                    'name' => 'company_admin',
-                    'guard_name' => 'api'
-                ]);
-                if (!$companyAdmin->hasRole('company_admin')) {
-                    $companyAdmin->assignRole($role);
-                }
-            } else {
-                // Create new admin
-                $companyAdmin = User::create([
-                    'email' => $validated['admin_email'],
-                    'name' => $validated['admin_name'],
-                    'password' => Hash::make($validated['password']),
-                ]);
-
-                // Assign the company_admin role
-                $role = Role::firstOrCreate([
-                    'name' => 'company_admin',
-                    'guard_name' => 'api'
-                ]);
-                $companyAdmin->assignRole($role);
-            }
-
-
-            CompanyUser::create([
-                'company_id' => $company->id,
-                'user_id' => $companyAdmin->id
-            ]);
-
-            // Link the admin to the branch
-            $companyAdmin->branches()->attach($branch->id);
-
-            MainGroupStub::createMainGroups($company->id);
-
-            // Commit the transaction
-            DB::commit();
-
-            // Eager-load the relationships
-            $company->load([
-                'purchaseMasterKey',
-                'salesMasterKey' => function ($query) {
-                    $query->withoutGlobalScopes();
-                },
-                'branches'
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Company, branch, and admin association created successfully',
-                'data' => [
-                    'company' => $company,
-                    'admin' => $companyAdmin,
-                    'branch' => $branch,
-                ]
-            ], 201);
-
-        } catch (ValidationException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Company creation failed: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create company, branch, or associate admin',
-                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
-            ], 500);
-        }
-    }
-
+    
     public function updatePurchaseMasterKey(Request $request): JsonResponse
     {
         try {

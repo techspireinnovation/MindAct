@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProductType;
+use App\Models\Product;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
@@ -166,6 +167,13 @@ class ProductTypeController extends Controller
     {
         try {
             $item = ProductType::findOrFail($id);
+
+            $products = Product::where('product_type_id',$item->id)->get();
+
+            if($products->isNotEmpty()){
+                return response()->json(['error'=>'Product Cannot be Deleted'],403);
+            }
+
             $item->delete();
             return response()->json(['message' => 'Product Type deleted!!'], 200);
         } catch (ModelNotFoundException $e) {

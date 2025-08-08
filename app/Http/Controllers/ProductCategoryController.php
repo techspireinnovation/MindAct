@@ -241,7 +241,10 @@ class ProductCategoryController extends Controller
 
 
             if ($products->isNotEmpty()) {
-                return response()->json(['message' => 'Item Cannot be deleted !!'], 403);
+                return response()->json([
+                    'error' => 'Item Cannot be deleted !!',
+                    
+                ], 403);
             } else {
 
                 $product_category->delete();

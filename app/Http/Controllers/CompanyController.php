@@ -36,14 +36,6 @@ class CompanyController extends Controller
 
         try {
 
-            $existingCompany = Company::withTrashed()->where('name', $request->input('name'))->first();
-            if ($existingCompany && $existingCompany->trashed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'A company with this name exists but is soft-deleted. Please restore it or use a different name.',
-                    'company_id' => $existingCompany->id,
-                ], 409);
-            }
 
 
             $validated = $request->validate([
@@ -270,41 +262,7 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-    // public function listCompanyAdmins(Request $request)
-    // {
-    //     // Check if the user is a super_admin
-    //     $user = Auth::user();
-    //     if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Unauthorized: Super admin required',
-    //         ], 403);
-    //     }
-
-    //     try {
-    //         // Fetch active, non-deleted users with company_admin role
-    //         $companyAdmins = User::where('is_active', 1)
-    //             ->whereNull('deleted_at')
-    //             ->whereHas('roles', function ($query) {
-    //                 $query->where('name', 'company_admin');
-    //             })
-    //             ->select('id', 'name')
-    //             ->get();
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Company admins retrieved successfully',
-    //             'data' => $companyAdmins,
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         Log::error('Failed to retrieve company admins: ' . $e->getMessage());
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve company admins',
-    //             'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
-    //         ], 500);
-    //     }
-    // }
+   
     public function index(Request $request): JsonResponse
     {
         $query = Company::query();
@@ -888,21 +846,21 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-    /**
-     * Update the specified company and its admin user in storage.
-     */
+  
+  
     public function update(Request $request): JsonResponse
     {
         try {
             $user = Auth::user();
-            if (!$user->hasRole('company_admin') || !$user->tokenCan('company_admin')) {
+            if (!$user || (!$user->hasRole('super_admin') && !$user->hasRole('company_admin')) || 
+                !($user->tokenCan('super_admin') || $user->tokenCan('company_admin'))) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized: Not a company admin',
+                    'message' => 'Unauthorized: Super admin or company admin required',
                 ], 403);
             }
-            $companyUser = CompanyUser::where('user_id', $user->id)->first();
 
+            $companyUser = CompanyUser::where('user_id', $user->id)->first();
             if (!$companyUser || !$companyUser->company) {
                 return response()->json([
                     'success' => false,
@@ -911,12 +869,14 @@ class CompanyController extends Controller
             }
 
             $company = $companyUser->company;
+
+        
             $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id,
+                'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id . ',id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
-                'reg_number' => 'nullable|string|max:255',
                 'is_vatable' => 'nullable|boolean',
+                'reg_number' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
                 'vat_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
@@ -937,50 +897,151 @@ class CompanyController extends Controller
                 'license_number' => 'nullable|string|max:255',
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
-                'admin_name' => 'sometimes|required|string|max:255',
-                'admin_email' => 'sometimes|required|string|max:255|unique:users,email,' . $user->id,
+                // Admin fields
+                'admin_selection' => 'sometimes|required|in:existing,new',
+                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
+                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
+                'admin_name' => 'required_if:admin_selection,new|string|max:255',
+                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
             ]);
 
+            DB::beginTransaction();
 
-            $company->update($validated);
+            // Update company details
+            $company->update([
+                'name' => $validated['name'] ?? $company->name,
+                'licence_issue_date' => $validated['licence_issue_date'] ?? $company->licence_issue_date,
+                'working_date' => $validated['working_date'] ?? $company->working_date,
+                'reg_number' => $validated['reg_number'] ?? $company->reg_number,
+                'pan_number' => $validated['pan_number'] ?? $company->pan_number,
+                'is_vatable' => $validated['is_vatable'] ?? $company->is_vatable,
+                'vat_number' => $validated['vat_number'] ?? $company->vat_number,
+                'full_address' => $validated['full_address'] ?? $company->full_address,
+                'email_address' => $validated['email_address'] ?? $company->email_address,
+                'website' => $validated['website'] ?? $company->website,
+                'fax' => $validated['fax'] ?? $company->fax,
+                'logo' => $validated['logo'] ?? $company->logo,
+                'province' => $validated['province'] ?? $company->province,
+                'district' => $validated['district'] ?? $company->district,
+                'palika_name' => $validated['palika_name'] ?? $company->palika_name,
+                'ward_number' => $validated['ward_number'] ?? $company->ward_number,
+                'contact_number' => $validated['contact_number'] ?? $company->contact_number,
+                'contact_person' => $validated['contact_person'] ?? $company->contact_person,
+                'contact_person_position' => $validated['contact_person_position'] ?? $company->contact_person_position,
+                'agreement_holder_name' => $validated['agreement_holder_name'] ?? $company->agreement_holder_name,
+                'phone' => $validated['phone'] ?? $company->phone,
+                'position' => $validated['position'] ?? $company->position,
+                'license_number' => $validated['license_number'] ?? $company->license_number,
+                'activation_key' => $validated['activation_key'] ?? $company->activation_key,
+                'url_link' => $validated['url_link'] ?? $company->url_link,
+            ]);
 
-            $userUpdates = [];
-            if ($request->has('admin_name')) {
-                $userUpdates['name'] = $validated['admin_name'];
+            // Handle admin updates
+            if (isset($validated['admin_selection'])) {
+                $branch = $company->branches()->where('is_primary', true)->first();
+                if (!$branch) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No primary branch found for the company',
+                    ], 404);
+                }
+
+                if ($validated['admin_selection'] === 'existing') {
+                    $companyAdmin = User::find($validated['existing_admin_id']);
+                    if (!$companyAdmin) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Existing admin not found',
+                        ], 404);
+                    }
+
+                    $role = Role::firstOrCreate([
+                        'name' => 'company_admin',
+                        'guard_name' => 'api'
+                    ]);
+                    if (!$companyAdmin->hasRole('company_admin')) {
+                        $companyAdmin->assignRole($role);
+                    }
+
+                    // Remove existing CompanyUser associations for this company
+                    CompanyUser::where('company_id', $company->id)->delete();
+
+                    // Create new CompanyUser association
+                    CompanyUser::create([
+                        'company_id' => $company->id,
+                        'user_id' => $companyAdmin->id
+                    ]);
+
+                    // Sync branch for the existing admin
+                    $companyAdmin->branches()->sync([$branch->id]);
+                } else {
+                    $companyAdmin = User::create([
+                        'email' => $validated['admin_email'],
+                        'name' => $validated['admin_name'],
+                        'password' => Hash::make($validated['password']),
+                    ]);
+
+                    $role = Role::firstOrCreate([
+                        'name' => 'company_admin',
+                        'guard_name' => 'api'
+                    ]);
+                    $companyAdmin->assignRole($role);
+
+                    // Remove existing CompanyUser associations for this company
+                    CompanyUser::where('company_id', $company->id)->delete();
+
+                    // Create new CompanyUser association
+                    CompanyUser::create([
+                        'company_id' => $company->id,
+                        'user_id' => $companyAdmin->id
+                    ]);
+
+                    // Sync branch for the new admin
+                    $companyAdmin->branches()->sync([$branch->id]);
+                }
+            } else {
+                $companyAdmin = $user; // Default to current user if no admin selection
             }
-            if ($request->has('admin_email')) {
-                $userUpdates['email'] = $validated['admin_email'];
-            }
-            if (!empty($userUpdates)) {
-                $user->update($userUpdates);
-            }
+
+            DB::commit();
+
+            $company->load([
+                'purchaseMasterKey',
+                'salesMasterKey' => function ($query) {
+                    $query->withoutGlobalScopes();
+                },
+                'branches'
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company details updated successfully',
+                'message' => 'Company and admin details updated successfully',
                 'data' => [
-                    'company' => $company->fresh(),
-                    'user' => $user->fresh(),
-                ],
+                    'company' => $company,
+                    'admin' => $companyAdmin,
+                    'branch' => $company->branches()->where('is_primary', true)->first(),
+                ]
             ], 200);
 
         } catch (ValidationException $e) {
-            \Log::error($e);
+            Log::error('Validation error during company update: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $e->errors(),
+                'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error($e);
+            DB::rollBack();
+            Log::error('Company update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred',
-                'error' => $e->getMessage(),
+                'message' => 'Failed to update company or admin details',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
-
     public function show($id)
     {
         try {

@@ -16,6 +16,7 @@ use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerateCodeController;
 use App\Http\Controllers\Master\SupplierController;
+use App\Http\Controllers\MasterUserController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
@@ -63,6 +64,7 @@ use App\Http\Controllers\StockTransferController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
+use App\Http\Middleware\SuperAdminMiddleware;
 
 
 
@@ -94,10 +96,12 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
     
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-
+    // Route::post('/master-users', [MasterUserController::class, 'createMasterUser']);
+    // Route::patch('/master-users/{id}', [MasterUserController::class, 'updateMasterUser']);
 });
 
-
+Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
+     ->post('/master-users', [MasterUserController::class, 'store']);
 
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     // User management routes (company_admin only, assuming company.admin middleware enforces this)

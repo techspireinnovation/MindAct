@@ -40,6 +40,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Company::class, 'company_users', 'user_id', 'company_id');
     }
+    
 
 
     // public function company()
@@ -56,6 +57,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Branch::class, 'branch_user', 'user_id', 'branch_id');
     }
+  
 
     public function getCompanyIdAttribute()
     {

@@ -40,7 +40,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Company::class, 'company_users', 'user_id', 'company_id');
     }
-    
+
 
 
     // public function company()
@@ -57,10 +57,18 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Branch::class, 'branch_user', 'user_id', 'branch_id');
     }
-  
+
 
     public function getCompanyIdAttribute()
     {
         return $this->companies()->first()?->id;
+    }
+    public function company_admins()
+    {
+        return User::query()
+            ->role('company_admin')
+            ->whereHas('companies', function ($q) {
+                $q->whereIn('companies.id', $this->companies()->pluck('companies.id'));
+            });
     }
 }

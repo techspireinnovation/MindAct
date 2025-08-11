@@ -15,6 +15,8 @@ class CompanyAdminController extends Controller
 {
 
 
+
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -31,28 +33,37 @@ class CompanyAdminController extends Controller
         }
 
         if (!Auth::attempt($request->only('email', 'password'))) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid credentials',
-            ], 401);
+            return response()->json(['success' => false, 'message' => 'Invalid credentials'], 401);
         }
 
         $user = Auth::user();
 
         if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
             Auth::logout();
+            return response()->json(['success' => false, 'message' => 'Not authorised for company access'], 403);
+        }
+
+        $tempToken = $user->createToken('TempToken', ['company_access'], now()->addMinutes(30))->plainTextToken;
+        if ($user->hasRole('master_user')) {
+            $admins = User::whereHas('roles', fn($q) => $q->where('name', 'company_admin'))
+                ->whereHas('companies', fn($q) => $q->whereIn('companies.id', $user->companies()->pluck('companies.id')))
+                ->select('id', 'name', 'email')
+                ->get();
+
             return response()->json([
-                'success' => false,
-                'message' => 'Login failed. Not authorized for company access',
-            ], 403);
+                'success' => true,
+                'step' => 'choose_admin',
+                'message' => 'Please choose a company-admin to impersonate.',
+                'data' => [
+                    'user' => $user->only('id', 'name', 'email'),
+                    'admins' => $admins,
+                    'token' => $tempToken,
+                ],
+            ]);
         }
 
         $companies = CompanyUser::where('user_id', $user->id)
-            ->with([
-                'company' => function ($query) {
-                    $query->select('id', 'name', 'is_vatable')->whereNull('deleted_at');
-                }
-            ])
+            ->with('company:id,name,is_vatable')
             ->get()
             ->pluck('company')
             ->filter()
@@ -60,44 +71,74 @@ class CompanyAdminController extends Controller
 
         if ($companies->isEmpty()) {
             Auth::logout();
-            return response()->json([
-                'success' => false,
-                'message' => 'No companies associated with this user',
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'No companies linked'], 403);
         }
-
 
         $branches = $user->hasAnyRole(['company_admin', 'master_user'])
             ? Branch::whereIn('company_id', $companies->pluck('id'))
-                ->whereNull('deleted_at')
                 ->where('is_active', true)
                 ->select('id', 'name', 'company_id')
                 ->get()
             : $user->branches()
-                ->whereNull('branches.deleted_at')
-                ->where('branches.is_active', true)
+                ->where('is_active', true)
                 ->select('branches.id', 'branches.name', 'branches.company_id')
                 ->get();
 
-        $tempToken = $user->createToken('TempAuthToken', ['company_access'])->plainTextToken;
-
         return response()->json([
             'success' => true,
-            'message' => 'Authentication successful. Please select a company and branch.',
+            'step' => 'choose_company_branch',
+            'message' => 'Pick a company and branch.',
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->hasRole('company_admin') ? 'company_admin' : ($user->hasRole('master_user') ? 'master_user' : 'company_user'),
-                ],
+                'user' => $user->only('id', 'name', 'email'),
+                'role' => $user->getRoleNames()->first(),
                 'companies' => $companies,
                 'branches' => $branches,
                 'token' => $tempToken,
             ],
-        ], 200);
+        ]);
     }
 
+
+    public function selectAdmin(Request $request)
+    {
+        $user = $request->user();
+        if (!$user || !$user->hasRole('master_user')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
+        }
+
+        $request->validate([
+            'admin_id' => 'required|exists:users,id',
+        ]);
+
+        $valid = CompanyUser::where('user_id', $request->admin_id)
+            ->whereIn('company_id', $user->companies()->pluck('companies.id'))
+            ->exists();
+
+        if (!$valid) {
+            return response()->json(['success' => false, 'message' => 'Invalid admin selection'], 422);
+        }
+
+        $companies = CompanyUser::where('user_id', $request->admin_id)
+            ->with('company:id,name,is_vatable')
+            ->get()
+            ->pluck('company');
+
+        $branches = Branch::whereIn('company_id', $companies->pluck('id'))
+            ->where('is_active', true)
+            ->select('id', 'name', 'company_id')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'step' => 'choose_company_branch',
+            'message' => 'Now choose a company and branch.',
+            'data' => [
+                'admin_id' => $request->admin_id,
+                'companies' => $companies,
+                'branches' => $branches,
+            ],
+        ]);
+    }
     /**
      * Select a company and branch for the authenticated user.
      *
@@ -240,6 +281,56 @@ class CompanyAdminController extends Controller
             ],
         ], 200);
     }
+
+
+
+    public function tree(Request $request)
+    {
+        $master = Auth::guard('api')->user();
+
+        if (!$master || !$master->hasRole('master_user')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
+        }
+
+
+        $companyIds = $master->companies()->pluck('companies.id');
+
+        $admins = User::query()
+            ->role('company_admin')
+            ->whereHas('companies', fn($q) => $q->whereIn('companies.id', $companyIds))
+            ->with([
+                'companies' => fn($q) => $q->select('companies.id', 'companies.name')
+                    ->whereNull('companies.deleted_at'),
+                'companies.branches' => fn($q) => $q->select('branches.id', 'branches.name', 'branches.company_id')
+                    ->where('branches.is_active', true)
+                    ->whereNull('branches.deleted_at')
+            ])
+            ->select('id', 'name', 'email')
+            ->get()
+            ->map(function ($admin) {
+                return [
+                    'admin_id' => $admin->id,
+                    'admin_name' => $admin->name,
+                    'admin_email' => $admin->email,
+                    'companies' => $admin->companies->map(function ($company) {
+                        return [
+                            'company_id' => $company->id,
+                            'company_name' => $company->name,
+                            'branches' => $company->branches->map(fn($b) => [
+                                'branch_id' => $b->id,
+                                'branch_name' => $b->name,
+                            ]),
+                        ];
+                    }),
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'data' => $admins,
+        ]);
+    }
+
     public function getUserCompaniesAndBranches($userId)
     {
         $user = User::find($userId);
@@ -646,39 +737,40 @@ class CompanyAdminController extends Controller
         $user = Auth::guard('api')->user();
 
         if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
-            \Log::error('logout Auth Failed', [
-                'user' => $user,
-                'has_role' => $user ? $user->hasAnyRole(['company_admin', 'company_user', 'master_user']) : false,
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized: Not authorized for company access',
-            ], 403);
+            return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
         }
 
-        // Extract company_id and branch_id for logging
-        $currentToken = $user->currentAccessToken();
-        $abilities = $currentToken->abilities;
-        $companyId = null;
-        $branchId = null;
+        $token = $user->currentAccessToken();
+        $companyId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'company:'));
+        $branchId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'branch:'));
 
-        foreach ($abilities as $ability) {
-            if (strpos($ability, 'company:') === 0) {
-                $companyId = str_replace('company:', '', $ability);
-            } elseif (strpos($ability, 'branch:') === 0) {
-                $branchId = str_replace('branch:', '', $ability);
-            }
-        }
-
-        \Log::info('logout Request', [
+        \Log::info('Logout', [
             'user_id' => $user->id,
+            'role' => $user->getRoleNames()->first(),
             'company_id' => $companyId,
             'branch_id' => $branchId,
-            'has_company_access' => $user->hasAnyRole(['company_admin', 'company_user', 'master_user']),
         ]);
 
-        // Revoke all tokens for the user
         $user->tokens()->delete();
+
+        if ($user->hasRole('master_user')) {
+            $tempToken = $user->createToken('TempToken', ['company_access'], now()->addMinutes(30))->plainTextToken;
+
+            $admins = User::role('company_admin')
+                ->whereHas('companies', fn($q) => $q->whereIn('companies.id', $user->companies()->pluck('companies.id')))
+                ->select('id', 'name', 'email')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'step' => 'choose_admin',
+                'message' => 'Logged out. Choose another admin or the same.',
+                'data' => [
+                    'admins' => $admins,
+                    'token' => $tempToken,
+                ],
+            ]);
+        }
 
         return response()->json([
             'success' => true,

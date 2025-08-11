@@ -74,9 +74,10 @@ use App\Http\Middleware\SuperAdminMiddleware;
 Route::post('/register', [AuthController::class, 'register'])->name('register');
 Route::post('/login', [AuthController::class, 'login'])->name('auth.login'); // General login
 Route::post('/company/login', [CompanyAdminController::class, 'login'])->name('company.login'); // Company admin login
+Route::middleware(['auth:sanctum'])->post('/select-admin', [CompanyAdminController::class, 'selectAdmin']);
 Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdminController::class, 'selectCompany']);
-
-
+Route::middleware(['auth:sanctum'])
+     ->get('/master/company-admin-tree', [CompanyAdminController::class, 'tree']);
 Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
 Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
 
@@ -96,12 +97,12 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
     
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-    // Route::post('/master-users', [MasterUserController::class, 'createMasterUser']);
-    // Route::patch('/master-users/{id}', [MasterUserController::class, 'updateMasterUser']);
+    
 });
 
 Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
-     ->post('/master-users', [MasterUserController::class, 'store']);
+     ->apiResource('master-users', MasterUserController::class)
+     ->only(['index', 'store', 'show', 'update', 'destroy']);
 
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     // User management routes (company_admin only, assuming company.admin middleware enforces this)

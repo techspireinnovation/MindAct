@@ -210,7 +210,7 @@ class SalesReturnController extends Controller
                 ])
                 ->get();
 
-            // Build a set of returned field values for filtering
+
             $returnedFieldValues = [];
             foreach ($salesReturnProducts as $returnProduct) {
                 $saleProductId = $returnProduct->sale_product_id;
@@ -509,7 +509,7 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+
             Log::error('Unexpected error in getSaleByInvoiceNumber', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
@@ -2417,6 +2417,587 @@ class SalesReturnController extends Controller
     }
 
 
+    public function updateItemWise(Request $request, $id): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'company_id' => 'required|exists:companies,id',
+                'customer_id' => 'nullable|exists:customers,id',
+                'salesman_id' => 'nullable|exists:salesmen,id',
+                'sale_id' => 'nullable|exists:sales,id',
+                'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number,' . $id,
+                'document_number' => 'nullable|string|max:255',
+                'batch_no' => 'nullable|string|max:255|unique:sales_returns,batch_no,' . $id,
+                'balance' => 'nullable|numeric|min:0',
+                'invoice_date' => 'nullable|date',
+                'invoice_date_bs' => 'nullable|string|max:255',
+                'remarks' => 'nullable|string|max:255',
+                'reason' => 'required|string|in:damaged,defective,incorrect,expired,other',
+                'store_id' => 'nullable|exists:stores,id',
+                'location_id' => 'nullable|exists:locations,id',
+                'return_bill_no' => 'nullable|string|max:255',
+                'excise_duty' => 'nullable|numeric|min:0',
+                'health_insurance' => 'nullable|numeric|min:0',
+                'freight_amount' => 'nullable|numeric|min:0',
+                'discount' => 'nullable|numeric|min:0',
+                'sub_total_before_discount' => 'nullable|numeric|min:0',
+                'taxable_amount' => 'nullable|numeric|min:0',
+                'non_taxable_amount' => 'nullable|numeric|min:0',
+                'discount_after_vat' => 'nullable|numeric|min:0',
+                'total_amount' => 'nullable|numeric|min:0',
+                'round_of_amount' => 'nullable|numeric',
+                'roundoff_type' => 'nullable|string|max:255',
+                'payment' => 'nullable|array',
+                'payment.cash' => 'nullable|numeric|min:0',
+                'payment.credit' => 'nullable|numeric|min:0',
+                'payment.bank' => 'nullable|numeric|min:0',
+                'payment_type' => 'nullable|string|in:cash,credit,bank',
+                'sales_return_products' => 'array|min:1',
+                'sales_return_products.*.sale_product_id' => 'nullable|integer|exists:sale_products,id',
+                'sales_return_products.*.purchase_product_id' => 'nullable|integer|exists:purchase_products,id',
+                'sales_return_products.*.product_id' => 'nullable|exists:products,id',
+                'sales_return_products.*.product_name' => 'nullable|string|max:255',
+                'sales_return_products.*.barcode' => 'nullable|string|max:255',
+                'sales_return_products.*.quantity' => 'required|numeric|min:0',
+                'sales_return_products.*.free_quantity' => 'nullable|numeric|min:0',
+                'sales_return_products.*.price' => 'nullable|numeric|min:0',
+                'sales_return_products.*.amount' => 'nullable|numeric|min:0',
+                'sales_return_products.*.discount_percent' => 'nullable|numeric|min:0|max:100',
+                'sales_return_products.*.discount_amount' => 'nullable|numeric|min:0',
+                'sales_return_products.*.is_vatable' => 'nullable|boolean',
+                'sales_return_products.*.measure_unit_id' => 'required|exists:measure_units,id',
+                'sales_return_products.*.batch_no' => 'nullable|string|max:255',
+                'sales_return_products.*.mfd' => 'nullable|string|max:255',
+                'sales_return_products.*.expiry_date' => 'nullable|string|max:255',
+                'sales_return_products.*.field_values' => 'nullable|array',
+                'sales_return_products.*.field_values.*' => 'array|min:1',
+                'sales_return_products.*.field_values.*.*.purchase_product_id' => 'nullable|integer|exists:purchase_products,id',
+                'sales_return_products.*.field_values.*.*.sale_product_id' => 'required_if:sales_return_products.*.field_values,exists|integer|exists:sale_products,id',
+                'sales_return_products.*.field_values.*.*.product_field_id' => 'required_if:sales_return_products.*.field_values,exists|integer|exists:product_fields,id',
+                'sales_return_products.*.field_values.*.*.value' => 'required_if:sales_return_products.*.field_values,exists|string|max:255',
+                'sales_return_products.*.field_values.*.*.quantity_index' => 'required_if:sales_return_products.*.field_values,exists|integer|min:0',
+                'sales_return_products.*.field_values.*.*.quantity_type' => 'required_if:sales_return_products.*.field_values,exists|string|in:regular,free',
+                'sales_return_additional' => 'nullable|array',
+                'sales_return_additional.place' => 'nullable|string|max:255',
+                'sales_return_additional.transport' => 'nullable|string|max:255',
+                'sales_return_additional.vehicle_number' => 'nullable|string|max:255',
+                'sales_return_additional.vehicle_name' => 'nullable|string|max:255',
+                'sales_return_additional.driver_name' => 'nullable|string|max:255',
+                'sales_return_additional.return_code' => 'required_if:sales_return_additional,exists|string|max:255',
+                'sales_return_additional.driver_contact_number' => 'nullable|string|max:255',
+                'sales_return_additional.return_date' => 'nullable|date',
+                'sales_return_additional.return_time' => 'nullable|date_format:H:i:s',
+            ]);
+
+
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()->toArray()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+
+            $salesReturn = DB::transaction(function () use ($validated, $id) {
+                // Fetch measure units
+                $measureUnits = MeasureUnit::whereIn('id', collect($validated['sales_return_products'] ?? [])
+                    ->pluck('measure_unit_id')
+                    ->unique()
+                    ->toArray())
+                    ->get()
+                    ->keyBy('id')
+                    ->map(function ($unit) {
+                        return (object) ['quantity' => $unit->quantity ?? 1];
+                    })->toArray();
+
+                // Fetch the sales return
+                $salesReturn = SalesReturn::where('id', $id)
+                    ->where('company_id', $validated['company_id'])
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if (!$salesReturn) {
+                    throw new \Exception("Sales return ID {$id} not found");
+                }
+
+                // Delete existing sales return products and their field values
+                $productsToDelete = SalesReturnProduct::where('sales_return_id', $salesReturn->id)
+                    ->where('company_id', $validated['company_id'])
+                    ->get();
+
+                if ($productsToDelete->isNotEmpty()) {
+                    $productsToDelete->each(function ($product) {
+                        SaleReturnProductFieldValue::where('sale_return_product_id', $product->id)
+                            ->where('company_id', $product->company_id)
+                            ->delete();
+                    });
+
+                    SalesReturnProduct::where('sales_return_id', $salesReturn->id)
+                        ->where('company_id', $validated['company_id'])
+                        ->delete();
+                }
+
+                Log::debug('Existing sales return products and their field values deleted', [
+                    'sales_return_id' => $salesReturn->id
+                ]);
+
+                // Fetch all sale products for the company
+                $allSaleProducts = SaleProduct::where('company_id', $validated['company_id'])
+                    ->whereNull('deleted_at')
+                    ->with(['measureUnit', 'saleProductReturns' => fn($q) => $q->where('company_id', $validated['company_id'])->whereNull('deleted_at')])
+                    ->get();
+
+                if ($allSaleProducts->isEmpty()) {
+                    throw new \Exception("No products found for the company");
+                }
+
+                $salesReturnProducts = [];
+
+                foreach ($validated['sales_return_products'] as $index => $product) {
+                    if (empty($product['product_id']) && empty($product['product_name']) && empty($product['barcode'])) {
+                        throw new \Exception("At least one of product_id, product_name, or barcode must be provided for sales_return_products at index {$index}");
+                    }
+
+                    $measureUnitId = $product['measure_unit_id'];
+                    $returnMeasureUnitData = $measureUnits[$measureUnitId] ?? MeasureUnit::find($measureUnitId);
+                    $returnMeasureUnitQuantity = $returnMeasureUnitData->quantity ?? 1;
+
+                    if (!$returnMeasureUnitQuantity) {
+                        throw new \Exception("Invalid measure unit ID {$measureUnitId} at index {$index}");
+                    }
+
+                    // Calculate expected pieces
+                    $expectedRegular = (float) ($product['quantity'] ?? 0);
+                    $expectedFree = (float) ($product['free_quantity'] ?? 0);
+                    $expectedRegularPieces = $this->calculatePieces($expectedRegular, $returnMeasureUnitQuantity);
+                    $expectedFreePieces = $this->calculatePieces($expectedFree, $returnMeasureUnitQuantity);
+
+                    $expectedTotalPieces = $expectedRegularPieces + $expectedFreePieces;
+
+                    Log::debug('Piece calculation', [
+                        'index' => $index,
+                        'product_id' => $product['product_id'] ?? null,
+                        'product_name' => $product['product_name'] ?? null,
+                        'barcode' => $product['barcode'] ?? null,
+                        'quantity' => $expectedRegular,
+                        'free_quantity' => $expectedFree,
+                        'measure_unit_id' => $measureUnitId,
+                        'measure_unit_quantity' => $returnMeasureUnitQuantity,
+                        'regular_pieces' => $expectedRegularPieces,
+                        'free_pieces' => $expectedFreePieces,
+                        'total_pieces' => $expectedTotalPieces,
+                    ]);
+
+                    // Validate field values against total pieces
+                    $fieldValuesFlat = !empty($product['field_values']) ? $this->flattenFieldValues($product['field_values'], $index) : [];
+                    $totalFieldValueSets = count($product['field_values']);
+
+                    if (!empty($fieldValuesFlat) && $totalFieldValueSets != $expectedTotalPieces) {
+                        throw new \Exception("Field values total quantity mismatch at index {$index}. Expected total: {$expectedTotalPieces} pieces; Found: {$totalFieldValueSets} pieces");
+                    }
+
+                    // Validate field values against available sale product field values
+                    if (!empty($fieldValuesFlat)) {
+                        foreach ($fieldValuesFlat as $fv) {
+                            $saleProductId = $fv['sale_product_id'];
+                            $quantityIndex = $fv['quantity_index'];
+                            $availableFv = $availableFieldValues[$saleProductId][$quantityIndex] ?? [];
+
+                            if (empty($availableFv)) {
+                                throw new \Exception("Invalid field value for sale_product_id {$saleProductId} at quantity_index {$quantityIndex} at index {$index}. Not available for return.");
+                            }
+
+                            $fvMatch = collect($availableFv)->firstWhere(function ($available) use ($fv) {
+                                return $available['product_field_id'] == $fv['product_field_id'] &&
+                                    $available['value'] == $fv['value'];
+                            });
+
+                            if (!$fvMatch) {
+                                throw new \Exception("Field value mismatch for sale_product_id {$saleProductId} at quantity_index {$quantityIndex} at index {$index}.");
+                            }
+                        }
+                    }
+
+                    $filteredSaleProducts = $allSaleProducts->filter(function ($saleProduct) use ($product) {
+                        return ($product['product_id'] && $saleProduct->product_id == $product['product_id']) ||
+                            ($product['product_name'] && str_contains(strtolower($saleProduct->name), strtolower($product['product_name']))) ||
+                            ($product['barcode'] && $saleProduct->product_code == $product['barcode']);
+                    })->sortBy('created_at');
+
+                    if ($filteredSaleProducts->isEmpty()) {
+                        throw new \Exception("No sale products found for product criteria at index {$index}");
+                    }
+
+                    $hasFieldValues = !empty($product['field_values']);
+                    $saleProductIds = $hasFieldValues ? array_unique(array_column($fieldValuesFlat, 'sale_product_id')) : [];
+
+                    if (!$hasFieldValues && isset($product['sale_product_id'])) {
+                        $saleProductIds = [$product['sale_product_id']];
+                    }
+
+                    if (empty($saleProductIds) && $hasFieldValues) {
+                        throw new \Exception("No valid sale product IDs found in field values at index {$index}");
+                    }
+
+                    if (empty($saleProductIds)) {
+                        // Apply strict FIFO: Track allocated pieces across all products in this payload
+                        static $allocatedPiecesBySaleProduct = [];
+
+                        $fifoSaleProducts = $filteredSaleProducts->filter(function ($saleProduct) use ($validated,$measureUnits, &$allocatedPiecesBySaleProduct) {
+                            $measureUnitID = $saleProduct->measure_unit_id ?? 1;
+                            $measureUnit = MeasureUnit::where('id', $measureUnitID)->first();
+                            $measureUnitsCalc = $measureUnit->quantity ?? 1;
+
+                            $availablePieces = $this->calculateAvailablePiecesForfifo($saleProduct, $validated['company_id'], $measureUnitsCalc);
+                            // Subtract previously allocated pieces in this request
+                            $previouslyAllocated = $allocatedPiecesBySaleProduct[$saleProduct->id] ?? 0;
+                            $remainingAvailable = $availablePieces - $previouslyAllocated;
+                            Log::debug('Calculated available pieces after allocation', [
+                                'sale_product_id' => $saleProduct->id,
+                                'total_sold' => $saleProduct->quantity + ($saleProduct->free_quantity ?? 0),
+                                'returned' => $saleProduct->saleProductReturns->sum(fn($return) => $return->quantity + ($return->free_quantity ?? 0)),
+                                'available' => $availablePieces,
+                                'previously_allocated' => $previouslyAllocated,
+                                'remaining_available' => $remainingAvailable
+                            ]);
+                            return $remainingAvailable > 0;
+                        })->sortBy('created_at')->values();
+
+                        if ($fifoSaleProducts->isEmpty()) {
+                            throw new \Exception("No available sale product found for criteria at index {$index}");
+                        }
+
+                        $remainingRegularPieces = $expectedRegularPieces;
+                        $remainingFreePieces = $expectedFreePieces;
+                        $remainingTotalPieces = $expectedRegularPieces + $expectedFreePieces;
+                        $allocations = [];
+
+                        foreach ($fifoSaleProducts as $saleProduct) {
+                            // Skip if no pieces remain to allocate
+                            if ($remainingTotalPieces <= 0) {
+                                break;
+                            }
+
+                            $measureUnitId = $saleProduct->measure_unit_id;
+                            $measureUnitData = $measureUnits[$measureUnitId] ?? MeasureUnit::find($measureUnitId);
+                            $saleMeasureUnitQuantity = $measureUnitData->quantity ?? 1;
+
+                            $availablePiecesFifo = $this->calculateAvailablePiecesForFifo($saleProduct, $validated['company_id'], $saleMeasureUnitQuantity);
+                            // Subtract previously allocated pieces
+                            $previouslyAllocated = $allocatedPiecesBySaleProduct[$saleProduct->id] ?? 0;
+                            $availablePiecesFifo -= $previouslyAllocated;
+
+                            // Continue allocating from this sale_product_id until it's exhausted
+                            while ($availablePiecesFifo > 0 && $remainingTotalPieces > 0) {
+                                $allocateTotalPieces = min($remainingTotalPieces, $availablePiecesFifo);
+                                $allocateRegularPieces = min($remainingRegularPieces, $allocateTotalPieces);
+                                $allocateFreePieces = min($remainingFreePieces, $allocateTotalPieces - $allocateRegularPieces);
+
+                                if ($allocateTotalPieces > 0) {
+                                    $saleProductIds[] = $saleProduct->id;
+                                    $allocations[$saleProduct->id] = ($allocations[$saleProduct->id] ?? [
+                                        'regular_pieces' => 0,
+                                        'free_pieces' => 0
+                                    ]);
+                                    $allocations[$saleProduct->id]['regular_pieces'] += $allocateRegularPieces;
+                                    $allocations[$saleProduct->id]['free_pieces'] += $allocateFreePieces;
+
+                                    // Update allocated pieces for this sale_product_id
+                                    $allocatedPiecesBySaleProduct[$saleProduct->id] = ($allocatedPiecesBySaleProduct[$saleProduct->id] ?? 0) + $allocateTotalPieces;
+
+                                    $remainingRegularPieces -= $allocateRegularPieces;
+                                    $remainingFreePieces -= $allocateFreePieces;
+                                    $remainingTotalPieces -= $allocateTotalPieces;
+                                    $availablePiecesFifo -= $allocateTotalPieces;
+
+                                    Log::debug('FIFO allocation', [
+                                        'index' => $index,
+                                        'sale_product_id' => $saleProduct->id,
+                                        'sale_id' => $saleProduct->sale_id,
+                                        'regular_pieces' => $allocateRegularPieces,
+                                        'free_pieces' => $allocateFreePieces,
+                                        'total_pieces' => $allocateTotalPieces,
+                                        'available_pieces' => $availablePiecesFifo,
+                                        'previously_allocated' => $previouslyAllocated,
+                                        'remaining_regular_pieces' => $remainingRegularPieces,
+                                        'remaining_free_pieces' => $remainingFreePieces,
+                                        'sale_measure_unit_quantity' => $saleMeasureUnitQuantity,
+                                    ]);
+
+                                    // If this sale_product_id is exhausted, move to the next one
+                                    if ($availablePiecesFifo <= 0) {
+                                        break;
+                                    }
+                                } else {
+                                    break; // No pieces allocated, exit inner loop
+                                }
+                            }
+                        }
+
+                        if ($remainingTotalPieces > 0) {
+                            throw new \Exception("Insufficient stock for product at index {$index}. Requested: {$expectedTotalPieces} pieces (regular: {$expectedRegularPieces}, free: {$expectedFreePieces}), Allocated: " . ($expectedRegularPieces - $remainingRegularPieces) . " regular, " . ($expectedFreePieces - $remainingFreePieces) . " free");
+                        }
+                    }
+
+                    // Group field values by sale_product_id and quantity_index
+                    $groupedFieldValues = collect($fieldValuesFlat)
+                        ->groupBy('sale_product_id')
+                        ->map(function ($group) {
+                            return $group->groupBy('quantity_index')->map(function ($fvGroup) {
+                                return collect($fvGroup)->map(function ($fv) {
+                                    return [
+                                        'sale_product_id' => $fv['sale_product_id'],
+                                        'product_field_id' => $fv['product_field_id'],
+                                        'value' => $fv['value'],
+                                        'quantity_index' => $fv['quantity_index'],
+                                        'quantity_type' => $fv['quantity_type'],
+                                    ];
+                                })->unique(function ($fv) {
+                                    return "{$fv['product_field_id']}:{$fv['value']}:{$fv['quantity_type']}";
+                                })->values()->toArray();
+                            })->toArray();
+                        })->toArray();
+
+                    foreach ($saleProductIds as $saleProductId) {
+                        $saleProduct = $filteredSaleProducts->firstWhere('id', $saleProductId);
+                        if (!$saleProduct) {
+                            throw new \Exception("Invalid sale product ID {$saleProductId} at index {$index}");
+                        }
+
+                        if ($hasFieldValues) {
+                            $MeasureUnitId = $saleProduct->measure_unit_id ?? null;
+                            $measureUnitDataName = MeasureUnit::where('id', $MeasureUnitId)->first();
+                            $MeasureUnitQuantityUsed = $measureUnitDataName->quantity ?? 1;
+
+                            $availablePieces = $this->calculateAvailablePiecesForfifo($saleProduct, $validated['company_id'], $MeasureUnitQuantityUsed);
+                        } else {
+                            $saleMeasureUnit = $saleProduct->measure_unit_id ?? 1;
+                            $measureUnitId = MeasureUnit::where('id', $saleMeasureUnit)->first();
+                            $saleMeasureUnitQuantity = $measureUnitId->quantity ?? 0;
+
+                            $availablePieces = $this->calculateAvailablePiecesForFifo($saleProduct, $validated['company_id'], $saleMeasureUnitQuantity);
+                        }
+
+                        if ($hasFieldValues) {
+                            $fvByIndex = $groupedFieldValues[$saleProductId] ?? [];
+                            $totalFieldValueSetsForProduct = count($fvByIndex);
+
+                            if ($totalFieldValueSetsForProduct == 0) {
+                                throw new \Exception("No valid field value sets for sale product ID {$saleProductId} at index {$index}");
+                            }
+
+                            if ($totalFieldValueSetsForProduct > $availablePieces) {
+                                throw new \Exception("Insufficient stock for sale product ID {$saleProductId} at index {$index}. Requested: {$totalFieldValueSetsForProduct}, Available: {$availablePieces}");
+                            }
+
+                            $regularFieldValueSets = collect($fvByIndex)
+                                ->filter(function ($fvSet) {
+                                    return collect($fvSet)->first()['quantity_type'] === 'regular';
+                                })->count();
+                            $freeFieldValueSets = collect($fvByIndex)
+                                ->filter(function ($fvSet) {
+                                    return collect($fvSet)->first()['quantity_type'] === 'free';
+                                })->count();
+
+                            [$quantity, $freeQuantity] = $this->convertToTargetMeasureUnit(
+                                $regularFieldValueSets,
+                                $freeFieldValueSets,
+                                $returnMeasureUnitQuantity
+                            );
+                            $fieldValues = $fvByIndex;
+
+                            Log::debug('Field values allocation', [
+                                'index' => $index,
+                                'sale_product_id' => $saleProductId,
+                                'sale_id' => $saleProduct->sale_id,
+                                'regular_pieces' => $regularFieldValueSets,
+                                'free_pieces' => $freeFieldValueSets,
+                                'total_pieces' => $totalFieldValueSetsForProduct,
+                                'quantity' => $quantity,
+                                'free_quantity' => $freeQuantity,
+                                'measure_unit_id' => $product['measure_unit_id'],
+                                'measure_unit_quantity' => $returnMeasureUnitQuantity,
+                                'field_values' => $fvByIndex,
+                            ]);
+                        } else {
+                            $allocatedRegularPieces = $allocations[$saleProductId]['regular_pieces'] ?? 0;
+                            $allocatedFreePieces = $allocations[$saleProductId]['free_pieces'] ?? 0;
+                            $allocatedTotalPieces = $allocatedRegularPieces + $allocatedFreePieces;
+
+                            if ($allocatedTotalPieces > $availablePieces) {
+                                throw new \Exception("Insufficient stock for sale product ID {$saleProductId} at index {$index}. Requested: {$allocatedTotalPieces}, Available: {$availablePieces}");
+                            }
+
+                            [$quantity, $freeQuantity] = $this->convertToTargetMeasureUnit(
+                                $allocatedRegularPieces,
+                                $allocatedFreePieces,
+                                $returnMeasureUnitQuantity
+                            );
+                            $fieldValues = [];
+
+                            Log::debug('FIFO quantity allocation', [
+                                'index' => $index,
+                                'sale_product_id' => $saleProductId,
+                                'sale_id' => $saleProduct->sale_id,
+                                'regular_pieces' => $allocatedRegularPieces,
+                                'free_pieces' => $allocatedFreePieces,
+                                'total_pieces' => $allocatedTotalPieces,
+                                'quantity' => $quantity,
+                                'free_quantity' => $freeQuantity,
+                                'measure_unit_id' => $product['measure_unit_id'],
+                                'measure_unit_quantity' => $returnMeasureUnitQuantity,
+                            ]);
+                        }
+
+                        $salesReturnProducts[] = [
+                            'sale_product_id' => $saleProductId,
+                            'purchase_product_id' => $product['purchase_product_id'] ?? $saleProduct->purchase_product_id,
+                            'product_id' => $saleProduct->product_id,
+                            'quantity' => $quantity,
+                            'free_quantity' => $freeQuantity,
+                            'price' => $product['price'] ?? $saleProduct->price,
+                            'amount' => ($product['price'] ?? $saleProduct->price) * $quantity - ($product['discount_amount'] ?? 0),
+                            'discount_percent' => $product['discount_percent'] ?? 0,
+                            'discount_amount' => $product['discount_amount'] ?? 0,
+                            'is_vatable' => $product['is_vatable'] ?? $saleProduct->is_vatable,
+                            'measure_unit_id' => $product['measure_unit_id'],
+                            'batch_no' => $product['batch_no'] ?? $saleProduct->batch_no,
+                            'mfd' => $product['mfd'] ?? $saleProduct->mfd,
+                            'expiry_date' => $product['expiry_date'] ?? $saleProduct->expiry_date,
+                            'product_name' => $product['product_name'] ?? $saleProduct->name,
+                            'field_values' => $fieldValues,
+                        ];
+                    }
+                }
+
+                $validated['sales_return_products'] = $salesReturnProducts;
+                if (empty($salesReturnProducts)) {
+                    throw new \Exception("No valid products available for return");
+                }
+
+                // Set sale-related fields
+                $validated['batch_no'] = $validated['batch_no'] ?? null;
+                $validated['customer_id'] = $validated['customer_id'] ?? null;
+                $validated['salesman_id'] = $validated['salesman_id'] ?? null;
+                $validated['store_id'] = $validated['store_id'] ?? null;
+                $validated['location_id'] = $validated['location_id'] ?? null;
+
+                // Prepare sales return additionals
+                $salesReturnAdditionalsData = $validated['sales_return_additional'] ?? null;
+                if (!$salesReturnAdditionalsData) {
+
+                    $salesReturnAdditionalsData = [
+                        'place' => $saleAdditional->place ?? null,
+                        'transport' => $saleAdditional->transport ?? null,
+                        'vehicle_number' => $saleAdditional->vehicle_number ?? null,
+                        'vehicle_name' => $saleAdditional->vehicle_name ?? null,
+                        'driver_name' => $saleAdditional->driver_name ?? null,
+                        'return_code' => 'RET-' . now()->format('YmdHis'),
+                        'driver_contact_number' => $saleAdditional->driver_contact_number ?? null,
+                        'return_date' => now()->toDateString(),
+                        'return_time' => now()->toTimeString(),
+                    ];
+                } elseif (!$salesReturnAdditionalsData) {
+                    $salesReturnAdditionalsData = [
+                        'return_code' => 'RET-' . now()->format('YmdHis'),
+                        'return_date' => now()->toDateString(),
+                        'return_time' => now()->toTimeString(),
+                    ];
+                }
+
+                // Update sales return
+                $salesReturnData = array_intersect_key($validated, array_flip((new SalesReturn)->getFillable()));
+                $salesReturn->update($salesReturnData);
+
+                // Create new sales return products
+                foreach ($validated['sales_return_products'] as $product) {
+                    $saleProduct = SaleProduct::find($product['sale_product_id']);
+                    if (!$saleProduct) {
+                        throw new \Exception("Sale product ID {$product['sale_product_id']} not found");
+                    }
+
+                    $salesReturnProduct = $salesReturn->salesReturnProducts()->create([
+                        'company_id' => $validated['company_id'],
+                        'sales_return_id' => $salesReturn->id,
+                        'sale_id' => $saleProduct->sale_id,
+                        'sale_product_id' => $product['sale_product_id'],
+                        'purchase_product_id' => $product['purchase_product_id'] ?? $saleProduct->purchase_product_id,
+                        'product_id' => $saleProduct->product_id,
+                        'product_name' => $product['product_name'] ?? $saleProduct->name,
+                        'quantity' => $product['quantity'] ?? 0,
+                        'free_quantity' => $product['free_quantity'] ?? 0,
+                        'price' => $product['price'] ?? $saleProduct->price,
+                        'amount' => $product['amount'] ?? (($product['price'] ?? $saleProduct->price) * $product['quantity']) - ($product['discount_amount'] ?? 0),
+                        'discount_percent' => $product['discount_percent'] ?? 0,
+                        'discount_amount' => $product['discount_amount'] ?? 0,
+                        'is_vatable' => $product['is_vatable'] ?? $saleProduct->is_vatable,
+                        'measure_unit_id' => $product['measure_unit_id'],
+                        'batch_no' => $product['batch_no'] ?? $saleProduct->batch_no,
+                        'mfd' => $product['mfd'] ?? $saleProduct->mfd,
+                        'expiry_date' => $product['expiry_date'] ?? $saleProduct->expiry_date,
+                    ]);
+
+                    if (!empty($product['field_values'])) {
+                        $fieldValues = [];
+                        foreach ($product['field_values'] as $fieldValueSet) {
+                            $quantityIndex = $fieldValueSet[0]['quantity_index'];
+                            foreach ($fieldValueSet as $fieldValue) {
+                                $fieldValues[] = [
+                                    'company_id' => $validated['company_id'],
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'product_id' => $salesReturnProduct->product_id,
+                                    'sale_return_product_id' => $salesReturnProduct->id,
+                                    'sale_product_id' => $fieldValue['sale_product_id'],
+                                    'quantity_index' => $quantityIndex,
+                                    'value' => $fieldValue['value'],
+                                    'created_at' => now(),
+                                    'updated_at' => now(),
+                                ];
+                            }
+                        }
+                        DB::table('sale_return_product_field_values')->insert($fieldValues);
+                        Log::debug('Field values created', ['sale_return_product_id' => $salesReturnProduct->id]);
+                    }
+                }
+
+                // Create sales return additional
+                SaleReturnAdditional::create([
+                    'company_id' => $validated['company_id'],
+                    'sales_return_id' => $salesReturn->id,
+                    'place' => $salesReturnAdditionalsData['place'] ?? null,
+                    'transport' => $salesReturnAdditionalsData['transport'] ?? null,
+                    'vehicle_number' => $salesReturnAdditionalsData['vehicle_number'] ?? null,
+                    'vehicle_name' => $salesReturnAdditionalsData['vehicle_name'] ?? null,
+                    'driver_name' => $salesReturnAdditionalsData['driver_name'] ?? null,
+                    'return_code' => $salesReturnAdditionalsData['return_code'],
+                    'driver_contact_number' => $salesReturnAdditionalsData['driver_contact_number'] ?? null,
+                    'return_date' => $salesReturnAdditionalsData['return_date'] ?? null,
+                    'return_time' => $salesReturnAdditionalsData['return_time'] ?? null,
+                ]);
+
+                return $salesReturn;
+            });
+
+            return response()->json([
+                'message' => 'Sales return updated successfully',
+                'data' => $salesReturn->load([
+                    'salesReturnProducts.fieldValues' => fn($query) => $query->orderBy('quantity_index')->orderBy('product_field_id'),
+                    'salesReturnAdditional',
+                ]),
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            Log::error('Model not found', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Resource not found: ' . $e->getMessage()], 404);
+        } catch (QueryException $e) {
+            Log::error('Database error', ['error' => $e->getMessage(), 'sql' => $e->getSql()]);
+            return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            Log::error('Unexpected error', ['error' => $e->getMessage()]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
 
 
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float
@@ -3267,6 +3848,9 @@ class SalesReturnController extends Controller
 
 
 
+
+
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -3378,7 +3962,6 @@ class SalesReturnController extends Controller
                     'min:0'
                 ],
                 'sales_return_products.*.field_values.*.*.quantity_type' => 'nullable|string|in:regular,free',
-                'sales_return_products.*.field_values.*.*.name' => 'nullable|string|max:255',
                 'sales_return_additional' => 'nullable|array',
                 'sales_return_additional.place' => 'nullable|string|max:255',
                 'sales_return_additional.transport' => 'nullable|string|max:255',
@@ -3464,19 +4047,28 @@ class SalesReturnController extends Controller
                 $validated['sale_id'] = $sale->id;
 
                 /* ----------------------------------------------------------
-                 |  Delete existing sales return products
+                 |  Delete existing sales return products and their field values
                  * --------------------------------------------------------- */
-                SalesReturnProduct::where('sales_return_id', $salesReturn->id)
+                $productsToDelete = SalesReturnProduct::where('sales_return_id', $salesReturn->id)
                     ->where('company_id', $validated['company_id'])
-                    ->delete();
+                    ->get();
 
-                Log::debug('Existing sales return products deleted', [
+                if ($productsToDelete->isNotEmpty()) {
+                    $productsToDelete->each(function ($product) {
+                        SaleReturnProductFieldValue::where('sale_return_product_id', $product->id)
+                            ->where('company_id', $product->company_id)
+                            ->delete();
+                    });
+
+                    SalesReturnProduct::where('sales_return_id', $salesReturn->id)
+                        ->where('company_id', $validated['company_id'])
+                        ->delete();
+                }
+
+                Log::debug('Existing sales return products and their field values deleted', [
                     'sales_return_id' => $salesReturn->id
                 ]);
 
-                /* ----------------------------------------------------------
-                 |  Helpers
-                 * --------------------------------------------------------- */
                 $measureUnits = MeasureUnit::whereIn('id', collect($validated['sales_return_products'])
                     ->pluck('measure_unit_id')
                     ->merge($sale->saleProducts->pluck('measure_unit_id'))
@@ -3516,9 +4108,6 @@ class SalesReturnController extends Controller
                     'sale_product_ids' => $saleProducts->pluck('id')->toArray()
                 ]);
 
-                /* ----------------------------------------------------------
-                 |  Build products to return
-                 * --------------------------------------------------------- */
                 $salesReturnProducts = [];
                 $consumedPieces = [];
 
@@ -3542,165 +4131,369 @@ class SalesReturnController extends Controller
                         'return_unit_quantity' => $returnUnitQty
                     ]);
 
-                    // Filter candidates based on field_values or measure_unit_id
+                    // Filter candidates based on product_id
                     $candidates = $saleProducts->where('product_id', $productId)
                         ->sortBy('created_at'); // FIFO
 
+                    // Handle case with field_values
                     if (!empty($product['field_values'])) {
-                        // With field_values, match specific sale_product_id
-                        $candidates = $candidates->filter(function ($sp) use ($product) {
-                            foreach ($product['field_values'] as $set) {
-                                foreach ($set as $fv) {
-                                    if ($fv['sale_product_id'] == $sp->id) {
-                                        return true;
-                                    }
+                        // Group field_values by sale_product_id, preserving set structure
+                        $fieldValuesBySaleProduct = [];
+                        foreach ($product['field_values'] as $set) {
+                            if (empty($set))
+                                continue;
+                            $saleProductId = $set[0]['sale_product_id'];
+                            $quantityType = $set[0]['quantity_type'] ?? 'regular';
+
+                            // Validate all field values in the set have the same sale_product_id and quantity_type
+                            foreach ($set as $fv) {
+                                if ($fv['sale_product_id'] !== $saleProductId) {
+                                    Log::error('Mixed sale_product_id in field_values set', [
+                                        'sales_return_id' => $id,
+                                        'product_index' => $index,
+                                        'product_id' => $productId
+                                    ]);
+                                    return response()->json([
+                                        'error' => "Mixed sale_product_id in field_values set for product {$productId} at index {$index}"
+                                    ], 422);
+                                }
+                                if (($fv['quantity_type'] ?? 'regular') !== $quantityType) {
+                                    Log::error('Mixed quantity_type in field_values set', [
+                                        'sales_return_id' => $id,
+                                        'product_index' => $index,
+                                        'product_id' => $productId
+                                    ]);
+                                    return response()->json([
+                                        'error' => "Mixed quantity_type in field_values set for product {$productId} at index {$index}"
+                                    ], 422);
                                 }
                             }
-                            return false;
-                        });
-                    } else {
-                        // Without field_values, prioritize matching measure_unit_id
-                        $candidates = $candidates->sortBy(function ($sp) use ($measureUnitId) {
-                            return $sp->measure_unit_id == $measureUnitId ? 0 : 1;
-                        });
-                    }
 
-                    // Calculate total available pieces for all candidates
-                    $totalAvailablePieces = $candidates->reduce(function ($carry, $sp) use ($validated, $measureUnits, $id, &$consumedPieces) {
-                        return $carry + $this->calculateAvailablePiecesforUpdate($sp, $validated['company_id'], $measureUnits, $id, $consumedPieces);
-                    }, 0);
+                            if (!isset($fieldValuesBySaleProduct[$saleProductId])) {
+                                $fieldValuesBySaleProduct[$saleProductId] = [];
+                            }
+                            $fieldValuesBySaleProduct[$saleProductId][] = $set;
+                        }
 
-                    Log::debug('Total available pieces for product', [
-                        'sales_return_id' => $id,
-                        'product_index' => $index,
-                        'product_id' => $productId,
-                        'total_available_pieces' => $totalAvailablePieces,
-                        'candidate_ids' => $candidates->pluck('id')->toArray(),
-                        'has_field_values' => !empty($product['field_values'])
-                    ]);
-
-                    // Check if the total available pieces are sufficient
-                    if ($totalAvailablePieces < $totalRequiredPieces) {
-                        Log::error('Insufficient stock for product', [
+                        Log::debug('Processing product with field_values', [
                             'sales_return_id' => $id,
                             'product_index' => $index,
                             'product_id' => $productId,
-                            'required_pieces' => $totalRequiredPieces,
-                            'available_pieces' => $totalAvailablePieces
+                            'regular_pieces' => $regularPieces,
+                            'free_pieces' => $freePieces,
+                            'total_required_pieces' => $totalRequiredPieces,
+                            'sale_product_ids' => array_keys($fieldValuesBySaleProduct)
                         ]);
-                        return response()->json([
-                            'error' => "No available stock for product {$productId} at index {$index}"
-                        ], 422);
-                    }
 
-                    // Allocate across candidates if needed
-                    $remainingReg = $regularPieces;
-                    $remainingFree = $freePieces;
-                    $allocated = false;
+                        // Filter candidates to only those matching sale_product_id in field_values
+                        $candidates = $saleProducts->filter(function ($sp) use ($fieldValuesBySaleProduct) {
+                            return isset($fieldValuesBySaleProduct[$sp->id]);
+                        });
 
-                    foreach ($candidates as $saleProduct) {
-                        if ($remainingReg <= 0 && $remainingFree <= 0) {
-                            Log::debug('All required pieces allocated', [
-                                'sales_return_id' => $id,
-                                'product_index' => $index,
-                                'product_id' => $productId
-                            ]);
-                            break;
+                        // Validate that all sale_product_id in field_values are valid
+                        foreach ($fieldValuesBySaleProduct as $saleProductId => $sets) {
+                            if (!$candidates->contains('id', $saleProductId)) {
+                                Log::error('Invalid sale_product_id in field_values', [
+                                    'sales_return_id' => $id,
+                                    'product_index' => $index,
+                                    'product_id' => $productId,
+                                    'sale_product_id' => $saleProductId
+                                ]);
+                                return response()->json([
+                                    'error' => "Invalid sale_product_id {$saleProductId} for product {$productId} at index {$index}"
+                                ], 422);
+                            }
                         }
 
-                        $saleUnitQty = $measureUnits[$saleProduct->measure_unit_id]->quantity ?? 1;
-                        $availPieces = $this->calculateAvailablePiecesforUpdate(
-                            $saleProduct,
-                            $validated['company_id'],
-                            $measureUnits,
-                            $id,
-                            $consumedPieces
-                        );
+                        // Calculate total available pieces across candidates
+                        $totalAvailablePieces = $candidates->reduce(function ($carry, $sp) use ($validated, $measureUnits, $id, &$consumedPieces) {
+                            return $carry + $this->calculateAvailablePiecesforUpdate($sp, $validated['company_id'], $measureUnits, $id, $consumedPieces);
+                        }, 0);
 
-                        Log::debug('Checking available pieces', [
+                        Log::debug('Total available pieces for product with field_values', [
                             'sales_return_id' => $id,
                             'product_index' => $index,
-                            'sale_product_id' => $saleProduct->id,
-                            'available_pieces' => $availPieces,
-                            'sale_unit_quantity' => $saleUnitQty,
-                            'remaining_regular' => $remainingReg,
-                            'remaining_free' => $remainingFree
+                            'product_id' => $productId,
+                            'total_available_pieces' => $totalAvailablePieces,
+                            'candidate_ids' => $candidates->pluck('id')->toArray()
                         ]);
 
-                        if ($availPieces <= 0) {
-                            continue;
+                        // Check if sufficient pieces are available
+                        if ($totalAvailablePieces < $totalRequiredPieces) {
+                            Log::error('Insufficient stock for product with field_values', [
+                                'sales_return_id' => $id,
+                                'product_index' => $index,
+                                'product_id' => $productId,
+                                'required_pieces' => $totalRequiredPieces,
+                                'available_pieces' => $totalAvailablePieces
+                            ]);
+                            return response()->json([
+                                'error' => "No available stock for product {$productId} at index {$index}. Required: {$totalRequiredPieces}, Available: {$totalAvailablePieces}"
+                            ], 422);
                         }
 
-                        // Allocate as much as possible from this sale_product
-                        $allocReg = min($remainingReg, $availPieces);
-                        $allocFree = min($remainingFree, $availPieces - $allocReg);
+                        // Count sets per sale_product_id and quantity_type
+                        $setCounts = [];
+                        $totalRegularSets = 0;
+                        $totalFreeSets = 0;
+                        foreach ($fieldValuesBySaleProduct as $saleProductId => $sets) {
+                            $setCounts[$saleProductId] = ['regular' => 0, 'free' => 0];
+                            foreach ($sets as $set) {
+                                $quantityType = $set[0]['quantity_type'] ?? 'regular';
+                                $setCounts[$saleProductId][$quantityType]++;
+                                if ($quantityType === 'regular') {
+                                    $totalRegularSets++;
+                                } else {
+                                    $totalFreeSets++;
+                                }
+                            }
+                        }
 
-                        if ($allocReg > 0 || $allocFree > 0) {
+                        // If no free sets but free_quantity > 0, use regular set proportions
+                        $useRegularProportionsForFree = ($totalFreeSets === 0 && $freePieces > 0);
+
+                        // Allocate quantities proportionally
+                        foreach ($fieldValuesBySaleProduct as $saleProductId => $sets) {
+                            $saleProduct = $candidates->firstWhere('id', $saleProductId);
+                            if (!$saleProduct) {
+                                continue; // Safety check, already validated
+                            }
+
+                            $saleUnitQty = $measureUnits[$saleProduct->measure_unit_id]->quantity ?? 1;
+                            $availPieces = $this->calculateAvailablePiecesforUpdate(
+                                $saleProduct,
+                                $validated['company_id'],
+                                $measureUnits,
+                                $id,
+                                $consumedPieces
+                            );
+
+                            // Calculate proportional allocation
+                            $regularSetCount = $setCounts[$saleProductId]['regular'];
+                            $freeSetCount = $setCounts[$saleProductId]['free'];
+                            $proportionRegular = $totalRegularSets > 0 ? $regularSetCount / $totalRegularSets : 0;
+                            $proportionFree = $totalFreeSets > 0 ? $freeSetCount / $totalFreeSets : ($useRegularProportionsForFree ? $proportionRegular : 0);
+
+                            $allocReg = $proportionRegular * $regularPieces;
+                            $allocFree = $proportionFree * $freePieces;
+
+                            // Ensure allocation does not exceed available pieces
+                            $totalAlloc = $allocReg + $allocFree;
+                            if ($totalAlloc > $availPieces) {
+                                // Scale down proportionally
+                                $scale = $availPieces / $totalAlloc;
+                                $allocReg *= $scale;
+                                $allocFree *= $scale;
+                            }
+
+                            Log::debug('Checking allocation for sale_product_id', [
+                                'sales_return_id' => $id,
+                                'product_index' => $index,
+                                'sale_product_id' => $saleProductId,
+                                'available_pieces' => $availPieces,
+                                'regular_sets' => $regularSetCount,
+                                'free_sets' => $freeSetCount,
+                                'proportion_regular' => $proportionRegular,
+                                'proportion_free' => $proportionFree,
+                                'allocated_regular_pieces' => $allocReg,
+                                'allocated_free_pieces' => $allocFree
+                            ]);
+
                             // Convert to requested measure unit for storage
                             [$qty, $freeQty] = $this->convertToTargetMeasureUnit($allocReg, $allocFree, $returnUnitQty);
 
-                            $salesReturnProducts[] = [
-                                'sale_product_id' => $saleProduct->id,
-                                'purchase_product_id' => $saleProduct->purchase_product_id,
-                                'product_id' => $saleProduct->product_id,
-                                'product_name' => $product['product_name'] ?? $saleProduct->name,
-                                'product_code' => $product['product_code'] ?? $saleProduct->product_code,
-                                'quantity' => $qty,
-                                'free_quantity' => $freeQty,
-                                'price' => $product['price'],
-                                'amount' => ($product['price'] * $qty) - ($product['discount_amount'] ?? 0),
-                                'discount_percent' => $product['discount_percent'] ?? 0,
-                                'discount_amount' => $product['discount_amount'] ?? 0,
-                                'is_vatable' => $product['is_vatable'] ?? $saleProduct->is_vatable,
-                                'measure_unit_id' => $measureUnitId, // Use requested measure_unit_id
-                                'batch_no' => $product['batch_no'] ?? $saleProduct->batch_no,
-                                'mfd' => $product['mfd'] ?? $saleProduct->mfd,
-                                'expiry_date' => $product['expiry_date'] ?? $saleProduct->expiry_date,
-                                'name' => $product['product_name'] ?? $saleProduct->name,
-                                'field_values' => $product['field_values'] ?? [],
-                            ];
+                            // Only create record if quantities are non-zero
+                            if ($qty > 0 || $freeQty > 0) {
+                                $salesReturnProducts[] = [
+                                    'sale_product_id' => $saleProduct->id,
+                                    'purchase_product_id' => $saleProduct->purchase_product_id,
+                                    'product_id' => $saleProduct->product_id,
+                                    'product_name' => $product['product_name'] ?? $saleProduct->name,
+                                    'product_code' => $product['product_code'] ?? $saleProduct->product_code,
+                                    'quantity' => $qty,
+                                    'free_quantity' => $freeQty,
+                                    'price' => $product['price'],
+                                    'amount' => ($product['price'] * $qty) - ($product['discount_amount'] ?? 0),
+                                    'discount_percent' => $product['discount_percent'] ?? 0,
+                                    'discount_amount' => $product['discount_amount'] ?? 0,
+                                    'is_vatable' => $product['is_vatable'] ?? $saleProduct->is_vatable,
+                                    'measure_unit_id' => $measureUnitId,
+                                    'batch_no' => $product['batch_no'] ?? $saleProduct->batch_no,
+                                    'mfd' => $product['mfd'] ?? $saleProduct->mfd,
+                                    'expiry_date' => $product['expiry_date'] ?? $saleProduct->expiry_date,
+                                    'field_values' => $sets, // Store only the sets for this sale_product_id
+                                ];
 
-                            $consumedPieces[$saleProduct->id] =
-                                ($consumedPieces[$saleProduct->id] ?? 0) + $allocReg + $allocFree;
+                                $consumedPieces[$saleProduct->id] =
+                                    ($consumedPieces[$saleProduct->id] ?? 0) + $allocReg + $allocFree;
 
-                            $remainingReg -= $allocReg;
-                            $remainingFree -= $allocFree;
+                                Log::debug('Allocated pieces for sale_product_id', [
+                                    'sales_return_id' => $id,
+                                    'product_index' => $index,
+                                    'sale_product_id' => $saleProduct->id,
+                                    'allocated_regular' => $allocReg,
+                                    'allocated_free' => $allocFree,
+                                    'quantity' => $qty,
+                                    'free_quantity' => $freeQty,
+                                    'consumed_pieces' => $consumedPieces
+                                ]);
+                            }
+                        }
 
-                            $allocated = true;
-
-                            Log::debug('Allocated pieces', [
+                        // Check if all pieces were allocated
+                        $totalAllocatedPieces = array_sum($consumedPieces);
+                        if (abs($totalAllocatedPieces - $totalRequiredPieces) > 0.0001) {
+                            Log::error('Could not allocate all required pieces for field_values', [
                                 'sales_return_id' => $id,
                                 'product_index' => $index,
-                                'sale_product_id' => $saleProduct->id,
-                                'allocated_regular' => $allocReg,
-                                'allocated_free' => $allocFree,
-                                'quantity' => $qty,
-                                'free_quantity' => $freeQty,
-                                'remaining_regular' => $remainingReg,
-                                'remaining_free' => $remainingFree,
-                                'consumed_pieces' => $consumedPieces
+                                'product_id' => $productId,
+                                'total_required_pieces' => $totalRequiredPieces,
+                                'total_allocated_pieces' => $totalAllocatedPieces
                             ]);
+                            return response()->json([
+                                'error' => "Insufficient stock for product {$productId} at index {$index}. Required: {$totalRequiredPieces}, Allocated: {$totalAllocatedPieces}"
+                            ], 422);
                         }
-                    }
+                    } else {
+                        // Logic for non-field_values case (unchanged)
+                        $candidates = $candidates->sortBy(function ($sp) use ($measureUnitId) {
+                            return $sp->measure_unit_id == $measureUnitId ? 0 : 1;
+                        });
 
-                    if ($remainingReg > 0 || $remainingFree > 0) {
-                        Log::error('Could not allocate all required pieces', [
+                        // Calculate total available pieces for all candidates
+                        $totalAvailablePieces = $candidates->reduce(function ($carry, $sp) use ($validated, $measureUnits, $id, &$consumedPieces) {
+                            return $carry + $this->calculateAvailablePiecesforUpdate($sp, $validated['company_id'], $measureUnits, $id, $consumedPieces);
+                        }, 0);
+
+                        Log::debug('Total available pieces for product', [
                             'sales_return_id' => $id,
                             'product_index' => $index,
                             'product_id' => $productId,
-                            'remaining_regular' => $remainingReg,
-                            'remaining_free' => $remainingFree
+                            'total_available_pieces' => $totalAvailablePieces,
+                            'candidate_ids' => $candidates->pluck('id')->toArray(),
+                            'has_field_values' => !empty($product['field_values'])
                         ]);
-                        return response()->json([
-                            'error' => "Insufficient stock for product {$productId} at index {$index}"
-                        ], 422);
+
+                        // Check if the total available pieces are sufficient
+                        if ($totalAvailablePieces < $totalRequiredPieces) {
+                            Log::error('Insufficient stock for product', [
+                                'sales_return_id' => $id,
+                                'product_index' => $index,
+                                'product_id' => $productId,
+                                'required_pieces' => $totalRequiredPieces,
+                                'available_pieces' => $totalAvailablePieces
+                            ]);
+                            return response()->json([
+                                'error' => "No available stock for product {$productId} at index {$index}. Required: {$totalRequiredPieces}, Available: {$totalAvailablePieces}"
+                            ], 422);
+                        }
+
+                        // Allocate across candidates if needed
+                        $remainingReg = $regularPieces;
+                        $remainingFree = $freePieces;
+
+                        foreach ($candidates as $saleProduct) {
+                            if ($remainingReg <= 0 && $remainingFree <= 0) {
+                                Log::debug('All required pieces allocated', [
+                                    'sales_return_id' => $id,
+                                    'product_index' => $index,
+                                    'product_id' => $productId
+                                ]);
+                                break;
+                            }
+
+                            $saleUnitQty = $measureUnits[$saleProduct->measure_unit_id]->quantity ?? 1;
+                            $availPieces = $this->calculateAvailablePiecesforUpdate(
+                                $saleProduct,
+                                $validated['company_id'],
+                                $measureUnits,
+                                $id,
+                                $consumedPieces
+                            );
+
+                            Log::debug('Checking available pieces', [
+                                'sales_return_id' => $id,
+                                'product_index' => $index,
+                                'sale_product_id' => $saleProduct->id,
+                                'available_pieces' => $availPieces,
+                                'sale_unit_quantity' => $saleUnitQty,
+                                'remaining_regular' => $remainingReg,
+                                'remaining_free' => $remainingFree
+                            ]);
+
+                            if ($availPieces <= 0) {
+                                continue;
+                            }
+
+                            // Allocate as much as possible from this sale_product
+                            $allocReg = min($remainingReg, $availPieces);
+                            $allocFree = min($remainingFree, $availPieces - $allocReg);
+
+                            if ($allocReg > 0 || $allocFree > 0) {
+                                // Convert to requested measure unit for storage
+                                [$qty, $freeQty] = $this->convertToTargetMeasureUnit($allocReg, $allocFree, $returnUnitQty);
+
+                                if ($qty > 0 || $freeQty > 0) {
+                                    $salesReturnProducts[] = [
+                                        'sale_product_id' => $saleProduct->id,
+                                        'purchase_product_id' => $saleProduct->purchase_product_id,
+                                        'product_id' => $saleProduct->product_id,
+                                        'product_name' => $product['product_name'] ?? $saleProduct->name,
+                                        'product_code' => $product['product_code'] ?? $saleProduct->product_code,
+                                        'quantity' => $qty,
+                                        'free_quantity' => $freeQty,
+                                        'price' => $product['price'],
+                                        'amount' => ($product['price'] * $qty) - ($product['discount_amount'] ?? 0),
+                                        'discount_percent' => $product['discount_percent'] ?? 0,
+                                        'discount_amount' => $product['discount_amount'] ?? 0,
+                                        'is_vatable' => $product['is_vatable'] ?? $saleProduct->is_vatable,
+                                        'measure_unit_id' => $measureUnitId,
+                                        'batch_no' => $product['batch_no'] ?? $saleProduct->batch_no,
+                                        'mfd' => $product['mfd'] ?? $saleProduct->mfd,
+                                        'expiry_date' => $product['expiry_date'] ?? $saleProduct->expiry_date,
+                                        'field_values' => $product['field_values'] ?? [],
+                                    ];
+
+                                    $consumedPieces[$saleProduct->id] =
+                                        ($consumedPieces[$saleProduct->id] ?? 0) + $allocReg + $allocFree;
+
+                                    $remainingReg -= $allocReg;
+                                    $remainingFree -= $allocFree;
+
+                                    Log::debug('Allocated pieces', [
+                                        'sales_return_id' => $id,
+                                        'product_index' => $index,
+                                        'sale_product_id' => $saleProduct->id,
+                                        'allocated_regular' => $allocReg,
+                                        'allocated_free' => $allocFree,
+                                        'quantity' => $qty,
+                                        'free_quantity' => $freeQty,
+                                        'remaining_regular' => $remainingReg,
+                                        'remaining_free' => $remainingFree,
+                                        'consumed_pieces' => $consumedPieces
+                                    ]);
+                                }
+                            }
+                        }
+
+                        if (abs($remainingReg + $remainingFree) > 0.0001) {
+                            Log::error('Could not allocate all required pieces', [
+                                'sales_return_id' => $id,
+                                'product_index' => $index,
+                                'product_id' => $productId,
+                                'remaining_regular' => $remainingReg,
+                                'remaining_free' => $remainingFree
+                            ]);
+                            return response()->json([
+                                'error' => "Insufficient stock for product {$productId} at index {$index}. Remaining: Regular {$remainingReg}, Free {$remainingFree}"
+                            ], 422);
+                        }
                     }
                 }
 
                 return ['salesReturn' => $salesReturn, 'sale' => $sale];
             });
 
-            // Check if transaction returned a JsonResponse (error case)
             if ($result instanceof JsonResponse) {
                 return $result;
             }
@@ -3708,9 +4501,6 @@ class SalesReturnController extends Controller
             $salesReturn = $result['salesReturn'];
             $sale = $result['sale'];
 
-            /* ----------------------------------------------------------
-             |  Transaction – persist everything
-             * --------------------------------------------------------- */
             Log::info('Starting database transaction for persisting', [
                 'sales_return_id' => $id,
                 'sale_id' => $sale->id,
@@ -3718,7 +4508,6 @@ class SalesReturnController extends Controller
             ]);
 
             $salesReturn = DB::transaction(function () use ($validated, $salesReturn, $salesReturnProducts) {
-                // Update sales return data
                 $salesReturn->update([
                     'company_id' => $validated['company_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
@@ -3762,7 +4551,6 @@ class SalesReturnController extends Controller
                     'updated_fields' => $salesReturn->getChanges()
                 ]);
 
-                /* -------- additional block -------- */
                 $existing = SaleReturnAdditional::where('sales_return_id', $salesReturn->id)
                     ->where('company_id', $validated['company_id'])
                     ->first();
@@ -3792,10 +4580,10 @@ class SalesReturnController extends Controller
                     ]);
                 }
 
-                /* -------- products -------- */
                 foreach ($salesReturnProducts as $row) {
                     $srProduct = $salesReturn->salesReturnProducts()->create(array_merge($row, [
                         'company_id' => $validated['company_id'],
+                        'sale_id' => $validated['sale_id'],
                     ]));
 
                     Log::debug('Sales return product created', [
@@ -3842,7 +4630,9 @@ class SalesReturnController extends Controller
             return response()->json([
                 'message' => 'Sales return updated successfully',
                 'data' => $salesReturn->load([
-                    'salesReturnProducts.fieldValues' => fn($q) => $q->orderBy('quantity_index')->orderBy('product_field_id'),
+                    'salesReturnProducts.fieldValues' => function ($query) {
+                        $query->orderBy('quantity_index', 'asc')->orderBy('product_field_id', 'asc');
+                    },
                     'salesReturnAdditional',
                 ]),
             ], 200);
@@ -3870,6 +4660,7 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
+
 
     private function calculateAvailablePiecesforUpdate(
         $saleProduct,
@@ -3925,7 +4716,7 @@ class SalesReturnController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $salesReturn = SalesReturn::with('salesReturnProducts')->findOrFail($id);
+            $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues')->findOrFail($id);
             return response()->json($salesReturn);
         } catch (ModelNotFoundException $e) {
             \Log::error($e);

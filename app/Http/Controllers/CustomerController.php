@@ -24,7 +24,7 @@ class CustomerController extends Controller
             $query->where('party_name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 
@@ -231,7 +231,7 @@ class CustomerController extends Controller
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
             DB::rollBack();
-  
+
 
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }

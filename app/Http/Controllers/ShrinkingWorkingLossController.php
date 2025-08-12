@@ -19,7 +19,7 @@ class ShrinkingWorkingLossController extends Controller
         $query = ShrinkingWorkingLoss::query();
 
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 

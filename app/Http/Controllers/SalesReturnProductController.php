@@ -12,7 +12,7 @@ class SalesReturnProductController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(SalesReturn::paginate(10));
+        return response()->json(SalesReturn::paginate(50));
     }
 
     public function store(Request $request): JsonResponse

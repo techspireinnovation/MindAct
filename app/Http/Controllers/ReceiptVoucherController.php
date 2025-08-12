@@ -21,7 +21,7 @@ class ReceiptVoucherController extends Controller
         if ($request->has('keywords')) {
             $query->where('receipt_voucher_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('reference_number', 'LIKE', '%' . $request->input('keywords') . '%');
         }
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
     public function update(Request $request, $id): JsonResponse

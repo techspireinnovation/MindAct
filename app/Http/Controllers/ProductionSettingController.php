@@ -23,7 +23,7 @@ class ProductionSettingController extends Controller
         $query = ProductionSetting::query();
 
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 
@@ -95,7 +95,7 @@ class ProductionSettingController extends Controller
 
         } catch (QueryException $e) {
             DB::rollBack();
-           
+
             \Log::error('Database error in Production Setting store', [
                 'error' => $e->getMessage(),
                 'request' => $request->except(['sensitive_field'])
@@ -103,7 +103,7 @@ class ProductionSettingController extends Controller
             return response()->json(['message' => 'Database error occurred.'], 500);
 
         } catch (\Exception $e) {
-           
+
             DB::rollBack();
             \Log::error('Unexpected error in Production Setting store', [
                 'error' => $e->getMessage(),

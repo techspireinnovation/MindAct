@@ -20,7 +20,7 @@ class PaymentVoucherController extends Controller
     {
 
         $query = PaymentVoucher::query();
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
 
     }
     public function update(Request $request, $id): JsonResponse

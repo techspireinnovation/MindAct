@@ -2489,8 +2489,6 @@ class SalesReturnController extends Controller
                 'sales_return_additional.return_time' => 'nullable|date_format:H:i:s',
             ]);
 
-
-
             if ($validator->fails()) {
                 return response()->json([
                     'message' => $validator->errors()->first(),
@@ -2543,6 +2541,14 @@ class SalesReturnController extends Controller
                     'sales_return_id' => $salesReturn->id
                 ]);
 
+                SaleReturnAdditional::where('sales_return_id', $salesReturn->id)
+                    ->where('company_id', $validated['company_id'])
+                    ->delete();
+
+                Log::debug('Existing sales return products and their field values deleted', [
+                    'sales_return_id' => $salesReturn->id
+                ]);
+
                 // Fetch all sale products for the company
                 $allSaleProducts = SaleProduct::where('company_id', $validated['company_id'])
                     ->whereNull('deleted_at')
@@ -2552,6 +2558,43 @@ class SalesReturnController extends Controller
                 if ($allSaleProducts->isEmpty()) {
                     throw new \Exception("No products found for the company");
                 }
+
+                $saleProductIds = $allSaleProducts->pluck('id')->toArray();
+
+                $returnedFieldValues = DB::table('sale_return_product_field_values')
+                    ->whereIn('sale_product_id', $saleProductIds)
+                    ->where('company_id', $validated['company_id'])
+                    ->whereNull('deleted_at')
+                    ->select('sale_product_id', 'quantity_index')
+                    ->get()
+                    ->groupBy('sale_product_id')
+                    ->map(function ($group) {
+                        return $group->pluck('quantity_index')->unique()->toArray();
+                    })->toArray();
+
+                $availableFieldValues = DB::table('sales_product_field_values')
+                    ->whereIn('sale_product_id', $saleProductIds)
+                    ->where('company_id', $validated['company_id'])
+                    ->whereNull('deleted_at')
+                    ->select(['sale_product_id', 'product_field_id', 'quantity_index', 'value'])
+                    ->get()
+                    ->groupBy('sale_product_id')
+                    ->map(function ($group) use ($returnedFieldValues) {
+                        $saleProductId = $group->first()->sale_product_id;
+                        $returnedIndices = $returnedFieldValues[$saleProductId] ?? [];
+                        return $group->groupBy('quantity_index')
+                            ->filter(function ($fvGroup, $quantityIndex) use ($returnedIndices) {
+                                return !in_array((int) $quantityIndex, $returnedIndices);
+                            })
+                            ->map(function ($fvGroup) {
+                                return $fvGroup->map(function ($fv) {
+                                    return [
+                                        'product_field_id' => $fv->product_field_id,
+                                        'value' => $fv->value,
+                                    ];
+                                })->toArray();
+                            })->toArray();
+                    })->toArray();
 
                 $salesReturnProducts = [];
 
@@ -2645,7 +2688,7 @@ class SalesReturnController extends Controller
                         // Apply strict FIFO: Track allocated pieces across all products in this payload
                         static $allocatedPiecesBySaleProduct = [];
 
-                        $fifoSaleProducts = $filteredSaleProducts->filter(function ($saleProduct) use ($validated,$measureUnits, &$allocatedPiecesBySaleProduct) {
+                        $fifoSaleProducts = $filteredSaleProducts->filter(function ($saleProduct) use ($validated, $measureUnits, &$allocatedPiecesBySaleProduct) {
                             $measureUnitID = $saleProduct->measure_unit_id ?? 1;
                             $measureUnit = MeasureUnit::where('id', $measureUnitID)->first();
                             $measureUnitsCalc = $measureUnit->quantity ?? 1;
@@ -2887,24 +2930,17 @@ class SalesReturnController extends Controller
                 // Prepare sales return additionals
                 $salesReturnAdditionalsData = $validated['sales_return_additional'] ?? null;
                 if (!$salesReturnAdditionalsData) {
-
-                    $salesReturnAdditionalsData = [
-                        'place' => $saleAdditional->place ?? null,
-                        'transport' => $saleAdditional->transport ?? null,
-                        'vehicle_number' => $saleAdditional->vehicle_number ?? null,
-                        'vehicle_name' => $saleAdditional->vehicle_name ?? null,
-                        'driver_name' => $saleAdditional->driver_name ?? null,
-                        'return_code' => 'RET-' . now()->format('YmdHis'),
-                        'driver_contact_number' => $saleAdditional->driver_contact_number ?? null,
-                        'return_date' => now()->toDateString(),
-                        'return_time' => now()->toTimeString(),
-                    ];
-                } elseif (!$salesReturnAdditionalsData) {
                     $salesReturnAdditionalsData = [
                         'return_code' => 'RET-' . now()->format('YmdHis'),
                         'return_date' => now()->toDateString(),
                         'return_time' => now()->toTimeString(),
                     ];
+                } else {
+                    $salesReturnAdditionalsData = array_merge([
+                        'return_code' => 'RET-' . now()->format('YmdHis'),
+                        'return_date' => now()->toDateString(),
+                        'return_time' => now()->toTimeString(),
+                    ], array_filter($salesReturnAdditionalsData, fn($value) => !is_null($value)));
                 }
 
                 // Update sales return

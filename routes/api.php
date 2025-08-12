@@ -196,7 +196,11 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         //Journal Voucher List for Needed Components
 
-        Route::get('main-group-lists', [JournalVoucherController::class, 'mainGroupList']);
+      
+        Route::get('main-group/list', [JournalVoucherController::class, 'mainGroupList']);
+        Route::get('sub-group/list', [JournalVoucherController::class, 'subGroupList']);
+        Route::get('account-group/list', [JournalVoucherController::class, 'accountGroupList']);
+        Route::get('account-head/list', [JournalVoucherController::class, 'accountHeadList']);
         Route::get('sub-group-lists', [SubGroupController::class, 'subGroupList']);
         Route::get('account-group-lists', [AccountGroupController::class, 'accountGroupList']);
         Route::get('account-head-lists', [AccountHeadController::class, 'accountHeadList']);

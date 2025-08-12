@@ -50,9 +50,12 @@ class MasterUserController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Master user created.',
-                'data' => $master->load('companies.branches'),
+                'data' => [
+                    'id' => $master->id,
+                    'name' => $master->name,
+                    'email' => $master->email,
+                ],
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -63,129 +66,157 @@ class MasterUserController extends Controller
         }
     }
 
+
+    /* ------------------------------------------------------------
+     *  2. INDEX
+     * ------------------------------------------------------------ */
     public function index(Request $request)
     {
-        $masters = User::role('master_user')
-            ->select('id', 'name', 'email', 'created_at')
-            ->get()
-            ->map(function ($master) {
-                $admins = User::role('company_admin')
-                    ->whereHas('companies', fn($q) => $q->whereIn(
-                        'companies.id',
-                        $master->companies()->pluck('companies.id')
-                    ))
-                   
-                    ->get(['id', 'name', 'email']);
+        try {
+            $masters = User::role('master_user')
+                ->select('id', 'name', 'email', 'created_at')
+                ->get()
+                ->map(function ($master) {
+                    $admins = User::role('company_admin')
+                        ->whereHas('companies', fn($q) => $q->whereIn(
+                            'companies.id',
+                            $master->companies()->pluck('companies.id')
+                        ))
+                        ->get(['id', 'name', 'email']);
 
-                return [
+                    return [
+                        'id' => $master->id,
+                        'name' => $master->name,
+                        'email' => $master->email,
+
+                    ];
+                });
+
+            return response()->json([
+                'success' => true,
+                'data' => $masters
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve master users.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
+        }
+    }
+
+    /* ------------------------------------------------------------
+     *  3. SHOW
+     * ------------------------------------------------------------ */
+    public function show($id)
+    {
+        try {
+            $master = User::role('master_user')->find($id);
+
+            if (!$master || $master->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Master user not found or has been deleted.',
+                ], 404);
+            }
+
+            $admins = User::role('company_admin')
+                ->whereHas('companies', fn($q) => $q->whereIn(
+                    'companies.id',
+                    $master->companies()->pluck('companies.id')
+                ))
+                // ->with([
+                //     'companies:id,name',
+                //     'companies.branches:id,name,company_id'
+                // ])
+                ->get(['id', 'name', 'email']);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
                     'id' => $master->id,
                     'name' => $master->name,
                     'email' => $master->email,
-                    
-                ];
-            });
-
-        return response()->json(['success' => true, 'data' => $masters]);
-    }
-
-    public function show($id)
-    {
-        $master = User::role('master_user')->find($id);
-    
-        if (!$master || $master->trashed()) {
+                    // 'created_at' => $master->created_at,
+                    // 'company_admins' => $admins,
+                ],
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Master user not found or has been deleted.',
-            ], 404);
+                'message' => 'Failed to retrieve master user.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
         }
-    
-        $admins = User::role('company_admin')
-            ->whereHas('companies', fn($q) => $q->whereIn(
-                'companies.id',
-                $master->companies()->pluck('companies.id')
-            ))
-            ->with([
-                'companies:id,name',
-                'companies.branches:id,name,company_id'
-            ])
-            ->get(['id', 'name', 'email']);
-    
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'id' => $master->id,
-                'name' => $master->name,
-                'email' => $master->email,
-                'created_at' => $master->created_at,
-                'company_admins' => $admins,
-            ],
-        ]);
     }
+
     /* ------------------------------------------------------------
      *  4. UPDATE
      * ------------------------------------------------------------ */
     public function update(Request $request, $id)
     {
-        $user = User::role('master_user')->find($id);
-    
-        if (!$user || $user->trashed()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Master user not found or has been deleted.',
-            ], 404);
-        }
-    
-        $validated = $request->validate([
-            'name'                => 'sometimes|string|max:255',
-            'email'               => 'sometimes|email|unique:users,email,' . $user->id,
-            'password'            => 'sometimes|string|min:6',
-            'company_admin_ids'   => 'sometimes|array',
-            'company_admin_ids.*' => 'exists:users,id',
-        ]);
-    
-        DB::beginTransaction();
         try {
+            $user = User::role('master_user')->find($id);
+
+            if (!$user || $user->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Master user not found or has been deleted.',
+                ], 404);
+            }
+
+            $validated = $request->validate([
+                'name' => 'sometimes|string|max:255',
+                'email' => 'sometimes|email|unique:users,email,' . $user->id,
+                'password' => 'sometimes|string|min:6',
+                'company_admin_ids' => 'sometimes|array',
+                'company_admin_ids.*' => 'exists:users,id',
+            ]);
+
+            DB::beginTransaction();
             // basic fields
-            if (isset($validated['name']))  $user->name  = $validated['name'];
-            if (isset($validated['email'])) $user->email = $validated['email'];
+            if (isset($validated['name']))
+                $user->name = $validated['name'];
+            if (isset($validated['email']))
+                $user->email = $validated['email'];
             if (isset($validated['password'])) {
                 $user->password = Hash::make($validated['password']);
             }
             $user->save();
-    
+
             // re-link companies & branches
             if ($request->has('company_admin_ids')) {
                 $companyIds = CompanyUser::whereIn('user_id', $validated['company_admin_ids'])
-                                         ->distinct()
-                                         ->pluck('company_id');
-    
+                    ->distinct()
+                    ->pluck('company_id');
+
                 // detach previous links
                 CompanyUser::where('user_id', $user->id)->delete();
                 $user->branches()->detach();
-    
+
                 foreach ($companyIds as $companyId) {
                     CompanyUser::firstOrCreate([
-                        'user_id'    => $user->id,
+                        'user_id' => $user->id,
                         'company_id' => $companyId,
                     ]);
-    
+
                     $branchIds = Branch::where('company_id', $companyId)->pluck('id');
                     $user->branches()->syncWithoutDetaching($branchIds);
                 }
             }
-    
+
             DB::commit();
             return response()->json([
                 'success' => true,
                 'message' => 'Master user updated.',
-                'data'    => $user->load('companies.branches'),
+                'data' => $user->load('companies.branches'),
             ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Update failed',
-                'error'   => $e->getMessage(),
+                'message' => 'Failed to update master user.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
@@ -195,20 +226,34 @@ class MasterUserController extends Controller
      * ------------------------------------------------------------ */
     public function destroy($id)
     {
-        $user = User::role('master_user')->findOrFail($id);
-
-        DB::beginTransaction();
         try {
+            $user = User::role('master_user')->find($id);
+
+            if (!$user || $user->trashed()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Master user not found or has been deleted.',
+                ], 404);
+            }
+
+            DB::beginTransaction();
             CompanyUser::where('user_id', $user->id)->delete();
             $user->branches()->detach();
 
             $user->delete();
 
             DB::commit();
-            return response()->json(['success' => true, 'message' => 'Master user deleted.'], 200);
+            return response()->json([
+                'success' => true,
+                'message' => 'Master user deleted.'
+            ], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Delete failed', 'error' => $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete master user.',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+            ], 500);
         }
     }
 }

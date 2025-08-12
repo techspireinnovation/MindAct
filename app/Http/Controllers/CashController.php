@@ -46,7 +46,7 @@ class CashController extends Controller
                         }),
                 ],
                 'is_active' => 'boolean|required',
-
+                'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
 
 

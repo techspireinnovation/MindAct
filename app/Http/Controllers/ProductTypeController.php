@@ -24,11 +24,17 @@ class ProductTypeController extends Controller
     }
 
     public function productTypeList(Request $request){
+        \Log::info('Auth User in productTypeList', ['user' => auth()->user()]);
+
         try{
 
             $types = ProductType::where('company_id',$request->company_id)
                                         ->whereNull('deleted_at')
-                                        ->pluck('name');
+                                        ->where('is_active', 1)
+                                        ->get(['id', 'name'])
+                                        ->map(fn($type) => ['id' => $type->id, 'name' => $type->name])
+                                        ->values()
+                                        ->toArray();
             return response()->json(["message"=>"Product Type List Received !!",
                                        "data"=>$types
                                     ]);
@@ -44,8 +50,7 @@ class ProductTypeController extends Controller
             return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
     }
-
-
+    
     public function productTypeDetails(Request $request){
         try{
 

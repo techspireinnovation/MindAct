@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 
 class BranchController extends Controller
 {
+
+
     public function index(Request $request): JsonResponse
     {
         $query = Branch::query();
@@ -23,14 +25,45 @@ class BranchController extends Controller
         return response()->json($query->paginate(50));
     }
 
+ public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required',
+            'string',
+            'max:255',
+            Rule::unique('branches')->where(function ($query) use ($request){
+                return $query->where('company_id',$request->company_id)
+                ->whereNull('deleted_at');
 
+            }),
+        ],
+            'is_primary' => 'boolean',
+           
+            'is_active' => 'boolean|required',
+            'company_id' => 'integer|exists:companies,id'
+        ]);
+        if (!empty($validated['is_primary'])) {
+            Branch::where('company_id', $validated['company_id'])
+            ->where('is_primary', true)
+            ->update(['is_primary' => false]);
+        }
+            
+        $validated['is_primary'] = $validated['is_primary'] ?? false;
+
+        $item = Branch::create($validated);
+        return response()->json($item, 201);
+    }
 
     public function branchList(Request $request){
         try{
 
             $branches = Branch::where('company_id',$request->company_id)
                                         ->whereNull('deleted_at')
-                                        ->pluck('name');
+                                        ->where('is_active', 1)
+                                        ->get(['id', 'name'])
+                                        ->map(fn($branch) => ['id' => $branch->id, 'name' => $branch->name])
+                                        ->values()
+                                        ->toArray();
             return response()->json(["message"=>"Branch List Received !!",
                                        "data"=>$branches
                                     ]);
@@ -113,34 +146,7 @@ class BranchController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'name' => ['required',
-            'string',
-            'max:255',
-            Rule::unique('branches')->where(function ($query) use ($request){
-                return $query->where('company_id',$request->company_id)
-                ->whereNull('deleted_at');
-
-            }),
-        ],
-            'is_primary' => 'boolean',
-           
-            'is_active' => 'boolean|required',
-            'company_id' => 'integer|exists:companies,id'
-        ]);
-        if (!empty($validated['is_primary'])) {
-            Branch::where('company_id', $validated['company_id'])
-            ->where('is_primary', true)
-            ->update(['is_primary' => false]);
-        }
-            
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-
-        $item = Branch::create($validated);
-        return response()->json($item, 201);
-    }
+   
 
     public function show($id): JsonResponse
     {

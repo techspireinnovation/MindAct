@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AccountGroup;
+use App\Models\AccountHead;
 use App\Models\JournalVoucher;
 use App\Models\MainGroup;
 use App\Models\SubGroup;
@@ -50,9 +52,9 @@ class JournalVoucherController extends Controller
     }
 
 
-   
 
-    
+
+
 
 
     public function print(Request $request): JsonResponse
@@ -202,7 +204,118 @@ class JournalVoucherController extends Controller
             'action' => 'created',
         ], 201);
     }
+    public function mainGroupList(): JsonResponse
+    {
+        $companyId = request('company_id');
 
+        $query = MainGroup::query()
+            ->select('id', 'name')
+            ->whereNull('deleted_at');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        $groups = $query->orderBy('name')->get();
+
+        return response()->json($groups);
+    }
+
+    public function subGroupList(): JsonResponse
+    {
+        $companyId = request('company_id');
+        $mainGroupId = request('main_group_id');
+
+        $query = SubGroup::query()
+            ->select('id', 'name', 'main_group_id')
+            ->whereNull('deleted_at');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        if ($mainGroupId) {
+            $query->where('main_group_id', $mainGroupId);
+        }
+
+        $subGroups = $query->orderBy('name')->get();
+
+        return response()->json($subGroups);   // 200 OK
+    }
+
+
+    public function accountGroupList(): JsonResponse
+    {
+        $companyId = request('company_id');
+        $mainGroupId = request('main_group_id');
+        $subGroupId = request('sub_group_id');
+
+        $query = AccountGroup::query()
+            ->select('id', 'name', 'sub_group_id', 'main_group_id')
+            ->whereNull('deleted_at');
+
+        if ($companyId) {
+            $query->where('company_id', $companyId);
+        }
+
+        if ($mainGroupId) {
+            $query->where('main_group_id', $mainGroupId);
+        }
+
+        if ($subGroupId) {
+            $query->where('sub_group_id', $subGroupId);
+        }
+
+        $accountGroups = $query->orderBy('name')->get();
+
+        return response()->json([
+            'message' => 'Account Group List Received !!',
+            'data' => $accountGroups,
+        ]);
+    }
+
+    public function accountHeadList(): JsonResponse
+    {
+        
+            $companyId       = request('company_id');
+            $mainGroupId     = request('main_group_id');
+            $subGroupId      = request('sub_group_id');
+            $accountGroupId  = request('account_group_id');
+        
+            $query = AccountHead::query()
+                ->select(
+                    'account_heads.id',
+                    'account_heads.name',
+                    'account_heads.account_group_id',
+                    'account_groups.sub_group_id',
+                    'account_groups.main_group_id'
+                )
+                ->join('account_groups', 'account_groups.id', '=', 'account_heads.account_group_id')
+                ->whereNull('account_heads.deleted_at');
+        
+            if ($companyId) {
+                $query->where('account_heads.company_id', $companyId);
+            }
+        
+            if ($mainGroupId) {
+                $query->where('account_groups.main_group_id', $mainGroupId);
+            }
+        
+            if ($subGroupId) {
+                $query->where('account_groups.sub_group_id', $subGroupId);
+            }
+        
+            if ($accountGroupId) {
+                $query->where('account_heads.account_group_id', $accountGroupId);
+            }
+        
+            $accountHeads = $query->orderBy('account_heads.name')->get();
+        
+            return response()->json([
+                'message' => 'Account Head List Received !!',
+                'data'    => $accountHeads,
+            ]);
+        }
     public function show(Request $request, $id): JsonResponse
     {
         try {

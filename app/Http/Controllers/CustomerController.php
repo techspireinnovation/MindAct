@@ -24,7 +24,7 @@ class CustomerController extends Controller
             $query->where('party_name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 
@@ -40,6 +40,7 @@ class CustomerController extends Controller
 
                 $customer = Customer::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->whereIn('ledger_type', ['vendor', 'both'])
                     ->get(['id', 'party_name'])
                     ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
@@ -47,6 +48,7 @@ class CustomerController extends Controller
             } elseif ($type == 'sales') {
                 $customer = Customer::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->whereIn('ledger_type', ['customer', 'both'])
                     ->get(['id', 'party_name'])
                     ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
@@ -55,6 +57,7 @@ class CustomerController extends Controller
             } else {
                 $customer = Customer::where('company_id', $request->company_id)
                     ->whereNull('deleted_at')
+                    ->where('is_active', 1)
                     ->get(['id', 'party_name'])
                     ->map(fn($c) => ['id' => $c->id, 'name' => $c->party_name])
                     ->values();
@@ -133,7 +136,7 @@ class CustomerController extends Controller
 
 
 
-        } catch (ModelNotFoundExeption $e) {
+        } catch (\ModelNotFoundExeption $e) {
             return response()->json(["error" => "Not Item Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
@@ -228,7 +231,7 @@ class CustomerController extends Controller
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
             DB::rollBack();
-  
+
 
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }

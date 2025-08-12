@@ -20,7 +20,7 @@ class StockReconciliationController extends Controller
         $query = StockReconciliation::query();
 
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 

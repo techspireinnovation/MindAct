@@ -33,8 +33,21 @@ return [
     |
     */
 
-    'guard' => ['web'],
+    
+// config/auth.php
+'guards' => [
+    'api' => [
+        'driver' => 'sanctum',
+        'provider' => 'users',
+    ],
+],
 
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => App\Models\User::class,
+    ],
+],
     /*
     |--------------------------------------------------------------------------
     | Expiration Minutes

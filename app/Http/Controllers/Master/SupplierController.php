@@ -24,6 +24,59 @@ class SupplierController extends Controller
     
         return response()->json($query->paginate(50));
     }
+    public function supplierList(Request $request){
+        try{
+
+            $suppliers = Supplier::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->get(['id', 'name'])
+            ->map(fn($supplier) => ['id' => $supplier->id, 'name' => $supplier->name])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Supplier List Received !!",
+                                       "data"=>$suppliers
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Supplier not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+
+
+    public function supplierDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $supplier = $request->supplier_name;
+           $supplierDetails = Supplier::where('company_id',$request->company_id)
+                                         ->where('name',$supplier)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Supplier Details Received !!",
+                                    "data"=>$supplierDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Supplier not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
 
     public function update(Request $request, $id): JsonResponse
     {

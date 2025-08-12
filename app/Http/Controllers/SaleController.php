@@ -297,57 +297,61 @@ class SaleController extends Controller
         }
     }
 
+    
+    
     public function listAvailableProducts(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'nullable|integer|exists:companies,id,deleted_at,NULL', 
                 'include_details' => 'nullable|boolean',
-                'purchase_type' => 'nullable|string|'
+                'purchase_type' => 'nullable|string'
             ]);
-
+    
             if ($validator->fails()) {
                 return response()->json([
                     'message' => 'Validation failed',
                     'errors' => $validator->errors()
                 ], 422);
             }
-
-            $companyId = $request->input('company_id');
+    
+            $companyId = $request->input('company_id') ?? $request->company_id;
             $includeDetails = $request->boolean('include_details', false);
             $purchaseType = $request->input('purchase_type', null);
-
-
-
-            if (auth()->check()) {
-                $user = auth()->user();
-                $userCompanyId = optional($user->company)->company_id;
-
-                if (!$userCompanyId || $userCompanyId != $companyId) {
-                    return response()->json([
-                        'message' => 'Unauthorized access to company resources'
-                    ], 403);
-                }
-            } else {
+    
+            \Log::info('listAvailableProducts: Processing', [
+                'user_id' => auth()->id(),
+                'company_id' => $companyId,
+                'include_details' => $includeDetails,
+                'purchase_type' => $purchaseType
+            ]);
+    
+            if (!auth()->check()) {
                 return response()->json([
                     'message' => 'Unauthenticated'
                 ], 401);
             }
-
+    
+            if (!$companyId) {
+                return response()->json([
+                    'message' => 'No company ID provided or available'
+                ], 400);
+            }
+    
             $products = $includeDetails
                 ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'])
                 : $this->getAvailableProductsForSale($purchaseType, $companyId);
-
+    
             return response()->json([
                 'message' => 'Available products retrieved successfully',
                 'count' => $products->count(),
                 'data' => $products
             ], 200);
-
         } catch (\Exception $e) {
-            Log::error('Error listing available products', [
+            \Log::error('Error listing available products', [
                 'request' => $request->all(),
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return response()->json([
                 'message' => 'Failed to retrieve available products',
@@ -355,8 +359,6 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-
 
 
     public function getAvailableProductByIdOrName(Request $request): JsonResponse

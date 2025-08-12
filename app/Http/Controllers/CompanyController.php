@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\PurchaseMasterKey;
@@ -22,22 +23,9 @@ use Spatie\Permission\Models\Role;
 
 class CompanyController extends Controller
 {
-
-    public function index(Request $request): JsonResponse
-    {
-        $query = Company::query();
-
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
-
-        return response()->json($query->paginate(50));
-    }
-
-    // Store a new resource
     public function store(Request $request): JsonResponse
     {
-        // Check if the user is a super_admin
+
         $user = Auth::user();
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
@@ -47,10 +35,12 @@ class CompanyController extends Controller
         }
 
         try {
-            // Define validation rules
+
+
+
             $validated = $request->validate([
-                // Company fields
-                'name' => 'required|string|max:255|unique:companies,name',
+
+                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
                 'is_vatable' => 'nullable|boolean',
@@ -76,15 +66,17 @@ class CompanyController extends Controller
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
                 // Admin fields
-                'admin_email' => 'required|string|email|max:255|unique:users,email',
-                'admin_name' => 'required|string|max:255',
-                'password' => 'required|string|min:6|confirmed',
+                'admin_selection' => 'required|in:existing,new',
+                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
+                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
+                'admin_name' => 'required_if:admin_selection,new|string|max:255',
+                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
             ]);
 
-            // Start a database transaction
+
             DB::beginTransaction();
 
-            // Create the Company
+
             $company = Company::create([
                 'name' => $validated['name'],
                 'licence_issue_date' => $validated['licence_issue_date'] ?? '',
@@ -113,7 +105,15 @@ class CompanyController extends Controller
                 'url_link' => $validated['url_link'] ?? '',
             ]);
 
-            // Create the PurchaseMasterKey with default values
+
+            $branch = Branch::create([
+                'name' => $validated['name'] . ' Main Branch',
+                'company_id' => $company->id,
+                'is_active' => true,
+                'is_primary' => true,
+            ]);
+
+
             $company->purchaseMasterKey()->withoutGlobalScopes()->create([
                 'company_id' => $company->id,
                 'product_code' => false,
@@ -154,6 +154,7 @@ class CompanyController extends Controller
                 'expiry_date' => false,
             ]);
 
+
             $company->productTypes()->createMany([
                 [
                     'name' => 'Inventory',
@@ -177,6 +178,7 @@ class CompanyController extends Controller
                 ]
             ]);
 
+
             $company->measureUnits()->create([
                 'name' => 'Piece',
                 'company_id' => $company->id,
@@ -184,33 +186,42 @@ class CompanyController extends Controller
                 'quantity' => 1
             ]);
 
-            $company->branches()->create([
-                'name' => 'Main',
-                'company_id' => $company->id,
 
-            ]);
+            if ($validated['admin_selection'] === 'existing') {
+                $companyAdmin = User::findOrFail($validated['existing_admin_id']);
+
+                $role = Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api'
+                ]);
+                if (!$companyAdmin->hasRole('company_admin')) {
+                    $companyAdmin->assignRole($role);
+                }
+            } else {
+
+                $companyAdmin = User::create([
+                    'email' => $validated['admin_email'],
+                    'name' => $validated['admin_name'],
+                    'password' => Hash::make($validated['password']),
+                ]);
 
 
-            $companyAdmin = User::create([
-                'email' => $validated['admin_email'],
-                'name' => $validated['admin_name'],
-                'password' => Hash::make($validated['password']),
-            ]);
-
-            MainGroupStub::createMainGroups($company->id);
-
-
-            $role = Role::firstOrCreate([
-                'name' => 'company_admin',
-                'guard_name' => 'api'
-            ]);
-            $companyAdmin->assignRole($role);
-
+                $role = Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api'
+                ]);
+                $companyAdmin->assignRole($role);
+            }
 
             CompanyUser::create([
                 'company_id' => $company->id,
                 'user_id' => $companyAdmin->id
             ]);
+
+
+            $companyAdmin->branches()->attach($branch->id);
+
+            MainGroupStub::createMainGroups($company->id);
 
 
             DB::commit();
@@ -220,20 +231,17 @@ class CompanyController extends Controller
                 'purchaseMasterKey',
                 'salesMasterKey' => function ($query) {
                     $query->withoutGlobalScopes();
-                }
+                },
+                'branches'
             ]);
-
-            MainGroupStub::createMainGroups($company->id);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company, admin, and purchase master key created successfully',
+                'message' => 'Company, branch, and admin association created successfully',
                 'data' => [
                     'company' => $company,
                     'admin' => $companyAdmin,
-                    'product_types' => $company->productTypes,
-                    'measure_units' => $company->measureUnits,
-
+                    'branch' => $branch,
                 ]
             ], 201);
 
@@ -249,12 +257,238 @@ class CompanyController extends Controller
             Log::error('Company creation failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create company, admin, or purchase master key',
+                'message' => 'Failed to create company, branch, or associate admin',
                 'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
+   
+    public function index(Request $request): JsonResponse
+    {
+        $query = Company::query();
 
+        if ($request->has('keywords')) {
+            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        }
+
+        return response()->json($query->paginate(50));
+    }
+    public function companyList(Request $request): JsonResponse
+    {
+        // Check if the user is a super_admin
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
+
+        try {
+            $companies = Company::whereNull('deleted_at')
+                ->get(['id', 'name'])
+                ->map(fn($company) => ['id' => $company->id, 'name' => $company->name])
+                ->values()
+                ->toArray();
+
+            if (empty($companies)) {
+                \Log::info('No companies found in companyList', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No companies found',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company list retrieved successfully',
+                'data' => $companies
+            ], 200);
+        } catch (QueryException $e) {
+            \Log::error('Database error in companyList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in companyList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+    public function companyDetails(Request $request): JsonResponse
+    {
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
+
+        try {
+            $companyName = $request->input('name');
+
+            if (!$companyName) {
+                \Log::info('Company name not provided in companyDetails', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company name is required',
+                ], 400);
+            }
+
+            $query = Company::where('name', $companyName)
+                ->whereNull('deleted_at');
+            \Log::info('companyDetails query', [
+                'name' => $companyName,
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+
+            $company = $query->firstOrFail();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company details retrieved successfully',
+                'data' => $company
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            \Log::info('Company not found in companyDetails', [
+                'name' => $companyName,
+                'user_id' => $user->id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found',
+            ], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in companyDetails: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in companyDetails: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+    public function companyBranchList(Request $request): JsonResponse
+    {
+        // Check if the user is a super_admin
+        $user = Auth::user();
+        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized: Super admin required',
+            ], 403);
+        }
+
+        try {
+            // Validate input parameters
+            $companyId = $request->input('id');
+            $companyName = $request->input('name');
+
+            if (!$companyId && !$companyName) {
+                \Log::info('No parameters provided in companyBranchList', ['user_id' => $user->id]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Either company ID or name is required',
+                ], 400);
+            }
+
+            \Log::info('companyBranchList called', [
+                'user_id' => $user->id,
+                'company_id' => $companyId,
+                'company_name' => $companyName
+            ]);
+
+            // Build query based on provided parameter
+            $query = Company::whereNull('deleted_at')
+                ->with([
+                    'branches' => function ($query) {
+                        $query->whereNull('deleted_at')
+                            ->where('is_active', 1)
+                            ->select('id', 'name', 'company_id');
+                    }
+                ])
+                ->select('id', 'name');
+
+            if ($companyId) {
+                $query->where('id', $companyId);
+            } elseif ($companyName) {
+                $query->where('name', $companyName);
+            }
+
+            \Log::info('companyBranchList query', [
+                'sql' => $query->toSql(),
+                'bindings' => $query->getBindings()
+            ]);
+
+            $company = $query->firstOrFail();
+
+            // Check if company has active branches
+            if ($company->branches->isEmpty()) {
+                \Log::info('No active branches found for company in companyBranchList', [
+                    'company_id' => $company->id,
+                    'company_name' => $company->name,
+                    'user_id' => $user->id
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No active branches found for the specified company',
+                ], 404);
+            }
+
+            // Format response
+            $result = [
+                'id' => $company->id,
+                'name' => $company->name,
+                'branches' => $company->branches->map(function ($branch) {
+                    return [
+                        'id' => $branch->id,
+                        'name' => $branch->name
+                    ];
+                })->values()->toArray()
+            ];
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company and branch details retrieved successfully',
+                'data' => $result
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            \Log::info('Company not found in companyBranchList', [
+                'id' => $companyId,
+                'name' => $companyName,
+                'user_id' => $user->id
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found with provided ID or name',
+            ], 404);
+        } catch (QueryException $e) {
+            \Log::error('Database error in companyBranchList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Database error occurred',
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in companyBranchList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred',
+            ], 500);
+        }
+    }
+
+    // Store a new resource
 
     public function updatePurchaseMasterKey(Request $request): JsonResponse
     {
@@ -358,67 +592,79 @@ class CompanyController extends Controller
     }
 
 
+
+
+
     public function getPurchaseMasterKey(Request $request): JsonResponse
     {
         try {
-            // Get the authenticated user
             $user = $request->user();
+            \Log::info('getPurchaseMasterKey: User', ['user_id' => $user ? $user->id : null]);
             if (!$user || !$user->hasRole('company_admin')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
                 ], 403);
             }
-            $company = $user->company()->first();
+
+            $companyId = $request->company_id;
+            \Log::info('getPurchaseMasterKey: Company ID', ['company_id' => $companyId]);
+            if (!$companyId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No company ID provided',
+                ], 400);
+            }
+
+            $company = \App\Models\Company::where('id', $companyId)
+                ->whereNull('deleted_at')
+                ->first();
             if (!$company) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No company associated with this user',
+                    'message' => 'Company not found or deleted',
                 ], 404);
             }
 
-            // Find the PurchaseMasterKey for the user's company
-            $purchaseMaster = PurchaseMasterKey::where('company_id', $company->company_id)->first();
+            $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
+                ->where('company_id', $companyId)
+                ->first();
+            if (!$companyUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not associated with this company',
+                ], 403);
+            }
 
+            $purchaseMaster = \App\Models\PurchaseMasterKey::where('company_id', $companyId)->first();
+            \Log::info('getPurchaseMasterKey: PurchaseMasterKey', ['found' => $purchaseMaster ? true : false]);
             if (!$purchaseMaster) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Purchase master key not found for this company',
                 ], 404);
             }
+
             return response()->json([
                 'success' => true,
-
                 'data' => $purchaseMaster,
             ], 200);
-
-        } catch (ValidationException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Purchase master key not found',
-            ], 404);
         } catch (QueryException $e) {
-            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            \Log::error('getPurchaseMasterKey QueryException', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
-            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            \Log::error('getPurchaseMasterKey Exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         }
     }
+
+
 
     public function updateSaleMasterKey(Request $request): JsonResponse
     {
@@ -532,79 +778,89 @@ class CompanyController extends Controller
         try {
             // Get the authenticated user
             $user = $request->user();
+            \Log::info('getSalesMasterKey: User', ['user_id' => $user ? $user->id : null]);
             if (!$user || !$user->hasRole('company_admin')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
                 ], 403);
             }
-            $company = $user->company()->first();
-
+    
+            // Get company_id from middleware
+            $companyId = $request->company_id;
+            \Log::info('getSalesMasterKey: Company ID', ['company_id' => $companyId]);
+            if (!$companyId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No company ID provided',
+                ], 400);
+            }
+    
+            // Verify company exists and is not soft-deleted
+            $company = \App\Models\Company::where('id', $companyId)
+                ->whereNull('deleted_at')
+                ->first();
             if (!$company) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'No company associated with this user',
+                    'message' => 'Company not found or deleted',
                 ], 404);
             }
-
-            // Find the PurchaseMasterKey for the user's company
-            $saleMaster = SalesMasterKey::where('company_id', $company->company_id)->first();
-
+    
+            // Verify user is associated with the company
+            $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
+                ->where('company_id', $companyId)
+                ->first();
+            if (!$companyUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not associated with this company',
+                ], 403);
+            }
+    
+            // Find the SalesMasterKey for the company
+            $saleMaster = \App\Models\SalesMasterKey::where('company_id', $companyId)->first();
+            \Log::info('getSalesMasterKey: SalesMasterKey', ['found' => $saleMaster ? true : false]);
             if (!$saleMaster) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Sale master key not found for this company',
+                    'message' => 'Sales master key not found for this company',
                 ], 404);
             }
+    
             return response()->json([
                 'success' => true,
-
                 'data' => $saleMaster,
             ], 200);
-
-        } catch (ValidationException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Purchase master key not found',
-            ], 404);
         } catch (QueryException $e) {
-            Log::error('Purchase master key update failed: ' . $e->getMessage());
+            \Log::error('getSalesMasterKey QueryException', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
-            Log::error('Purchase master key update failed: ' . $e->getMessage());
-
+            \Log::error('getSalesMasterKey Exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         }
     }
-    /**
-     * Update the specified company and its admin user in storage.
-     */
+  
+  
     public function update(Request $request): JsonResponse
     {
         try {
             $user = Auth::user();
-            if (!$user->hasRole('company_admin') || !$user->tokenCan('company_admin')) {
+            if (!$user || (!$user->hasRole('super_admin') && !$user->hasRole('company_admin')) || 
+                !($user->tokenCan('super_admin') || $user->tokenCan('company_admin'))) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized: Not a company admin',
+                    'message' => 'Unauthorized: Super admin or company admin required',
                 ], 403);
             }
-            $companyUser = CompanyUser::where('user_id', $user->id)->first();
 
+            $companyUser = CompanyUser::where('user_id', $user->id)->first();
             if (!$companyUser || !$companyUser->company) {
                 return response()->json([
                     'success' => false,
@@ -613,12 +869,14 @@ class CompanyController extends Controller
             }
 
             $company = $companyUser->company;
+
+        
             $validated = $request->validate([
-                'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id,
+                'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id . ',id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
-                'reg_number' => 'nullable|string|max:255',
                 'is_vatable' => 'nullable|boolean',
+                'reg_number' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
                 'vat_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
@@ -639,50 +897,151 @@ class CompanyController extends Controller
                 'license_number' => 'nullable|string|max:255',
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
-                'admin_name' => 'sometimes|required|string|max:255',
-                'admin_email' => 'sometimes|required|string|max:255|unique:users,email,' . $user->id,
+                // Admin fields
+                'admin_selection' => 'sometimes|required|in:existing,new',
+                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
+                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
+                'admin_name' => 'required_if:admin_selection,new|string|max:255',
+                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
             ]);
 
+            DB::beginTransaction();
 
-            $company->update($validated);
+            // Update company details
+            $company->update([
+                'name' => $validated['name'] ?? $company->name,
+                'licence_issue_date' => $validated['licence_issue_date'] ?? $company->licence_issue_date,
+                'working_date' => $validated['working_date'] ?? $company->working_date,
+                'reg_number' => $validated['reg_number'] ?? $company->reg_number,
+                'pan_number' => $validated['pan_number'] ?? $company->pan_number,
+                'is_vatable' => $validated['is_vatable'] ?? $company->is_vatable,
+                'vat_number' => $validated['vat_number'] ?? $company->vat_number,
+                'full_address' => $validated['full_address'] ?? $company->full_address,
+                'email_address' => $validated['email_address'] ?? $company->email_address,
+                'website' => $validated['website'] ?? $company->website,
+                'fax' => $validated['fax'] ?? $company->fax,
+                'logo' => $validated['logo'] ?? $company->logo,
+                'province' => $validated['province'] ?? $company->province,
+                'district' => $validated['district'] ?? $company->district,
+                'palika_name' => $validated['palika_name'] ?? $company->palika_name,
+                'ward_number' => $validated['ward_number'] ?? $company->ward_number,
+                'contact_number' => $validated['contact_number'] ?? $company->contact_number,
+                'contact_person' => $validated['contact_person'] ?? $company->contact_person,
+                'contact_person_position' => $validated['contact_person_position'] ?? $company->contact_person_position,
+                'agreement_holder_name' => $validated['agreement_holder_name'] ?? $company->agreement_holder_name,
+                'phone' => $validated['phone'] ?? $company->phone,
+                'position' => $validated['position'] ?? $company->position,
+                'license_number' => $validated['license_number'] ?? $company->license_number,
+                'activation_key' => $validated['activation_key'] ?? $company->activation_key,
+                'url_link' => $validated['url_link'] ?? $company->url_link,
+            ]);
 
-            $userUpdates = [];
-            if ($request->has('admin_name')) {
-                $userUpdates['name'] = $validated['admin_name'];
+            // Handle admin updates
+            if (isset($validated['admin_selection'])) {
+                $branch = $company->branches()->where('is_primary', true)->first();
+                if (!$branch) {
+                    DB::rollBack();
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'No primary branch found for the company',
+                    ], 404);
+                }
+
+                if ($validated['admin_selection'] === 'existing') {
+                    $companyAdmin = User::find($validated['existing_admin_id']);
+                    if (!$companyAdmin) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Existing admin not found',
+                        ], 404);
+                    }
+
+                    $role = Role::firstOrCreate([
+                        'name' => 'company_admin',
+                        'guard_name' => 'api'
+                    ]);
+                    if (!$companyAdmin->hasRole('company_admin')) {
+                        $companyAdmin->assignRole($role);
+                    }
+
+                    // Remove existing CompanyUser associations for this company
+                    CompanyUser::where('company_id', $company->id)->delete();
+
+                    // Create new CompanyUser association
+                    CompanyUser::create([
+                        'company_id' => $company->id,
+                        'user_id' => $companyAdmin->id
+                    ]);
+
+                    // Sync branch for the existing admin
+                    $companyAdmin->branches()->sync([$branch->id]);
+                } else {
+                    $companyAdmin = User::create([
+                        'email' => $validated['admin_email'],
+                        'name' => $validated['admin_name'],
+                        'password' => Hash::make($validated['password']),
+                    ]);
+
+                    $role = Role::firstOrCreate([
+                        'name' => 'company_admin',
+                        'guard_name' => 'api'
+                    ]);
+                    $companyAdmin->assignRole($role);
+
+                    // Remove existing CompanyUser associations for this company
+                    CompanyUser::where('company_id', $company->id)->delete();
+
+                    // Create new CompanyUser association
+                    CompanyUser::create([
+                        'company_id' => $company->id,
+                        'user_id' => $companyAdmin->id
+                    ]);
+
+                    // Sync branch for the new admin
+                    $companyAdmin->branches()->sync([$branch->id]);
+                }
+            } else {
+                $companyAdmin = $user; // Default to current user if no admin selection
             }
-            if ($request->has('admin_email')) {
-                $userUpdates['email'] = $validated['admin_email'];
-            }
-            if (!empty($userUpdates)) {
-                $user->update($userUpdates);
-            }
+
+            DB::commit();
+
+            $company->load([
+                'purchaseMasterKey',
+                'salesMasterKey' => function ($query) {
+                    $query->withoutGlobalScopes();
+                },
+                'branches'
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company details updated successfully',
+                'message' => 'Company and admin details updated successfully',
                 'data' => [
-                    'company' => $company->fresh(),
-                    'user' => $user->fresh(),
-                ],
+                    'company' => $company,
+                    'admin' => $companyAdmin,
+                    'branch' => $company->branches()->where('is_primary', true)->first(),
+                ]
             ], 200);
 
         } catch (ValidationException $e) {
-            \Log::error($e);
+            Log::error('Validation error during company update: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $e->errors(),
+                'errors' => $e->errors()
             ], 422);
         } catch (\Exception $e) {
-            \Log::error($e);
+            DB::rollBack();
+            Log::error('Company update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred',
-                'error' => $e->getMessage(),
+                'message' => 'Failed to update company or admin details',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
-
     public function show($id)
     {
         try {

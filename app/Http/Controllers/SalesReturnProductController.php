@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -10,7 +12,7 @@ class SalesReturnProductController extends Controller
 {
     public function index(): JsonResponse
     {
-        return response()->json(SalesReturn::paginate(10));
+        return response()->json(SalesReturn::paginate(50));
     }
 
     public function store(Request $request): JsonResponse

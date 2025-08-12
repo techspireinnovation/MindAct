@@ -205,6 +205,58 @@ class ProductController extends Controller
         }
     }
 
+
+    public function productList(Request $request){
+        try{
+
+            $products = Product::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->get(['id', 'name'])
+            ->map(fn($product) => ['id' => $product->id, 'name' => $product->name])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Product List Received !!",
+                                       "data"=>$products
+                                    ]);
+
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Product Name not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
+    public function productDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $product = $request->product_name;
+           $products = Product::where('company_id',$request->company_id)
+                                         ->where('name',$product)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Product Details Received !!",
+                                    "data"=>$products
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Product Field not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
     public function getProductsByName(Request $request): JsonResponse
     {
         try {

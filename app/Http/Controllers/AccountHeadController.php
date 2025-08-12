@@ -25,32 +25,59 @@ class AccountHeadController extends Controller
         return response()->json($query->paginate(50));
     }
 
-    public function accountHeadList(Request $request): JsonResponse
-    {
-        try {
+    public function accountHeadList(Request $request){
+        try{
 
-            $accountHead = AccountHead::where('company_id', $request->company_id)
-                ->where('is_active', 1)->get();
+            $accountHeads = AccountHead::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->get(['id', 'name'])
+            ->map(fn($accountHead) => ['id' => $accountHead->id, 'name' => $accountHead->name])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Account Head List Received !!",
+                                       "data"=>$accountHeads
+                                    ]);
 
-
-            return response()->json([
-                'message' => 'List Received Sucessfully !!',
-                'data' => $accountHead
-            ], 200);
-
-
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Item not Found !!'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Account Head not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
+    }
+    public function accountHeadDetails(Request $request){
+        try{
 
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $accountHead = $request->account_head_name;
+           $accountHeadDetails = AccountHead::where('company_id',$request->company_id)
+                                         ->where('name',$accountHead)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Account Head Details Received !!",
+                                    "data"=>$accountHeadDetails
+                                ],200);
+
+
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Account Head not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
     }
 
-
+    
     public function update(Request $request, $id): JsonResponse
     {
         try {

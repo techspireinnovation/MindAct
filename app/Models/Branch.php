@@ -30,4 +30,14 @@ class Branch extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    public function users()
+    {
+        return $this->belongsToMany(User::class, 'branch_user', 'branch_id', 'user_id');
+    }
 }

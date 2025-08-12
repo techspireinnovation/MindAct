@@ -26,15 +26,14 @@ return new class extends Migration
      * Reverse the migrations.
      */
     public function down(): void
-    {
-        // Check if the salesmen table exists
-        if (Schema::hasTable('salesmen')) {
-            // Check if the vdc_municipality column exists and vdc/municipality does not
-            if (Schema::hasColumn('salesmen', 'vdc_municipality') && !Schema::hasColumn('salesmen', 'vdc/municipality')) {
-                Schema::table(' table', function (Blueprint $table) {
-                    $table->renameColumn('vdc_municipality', 'vdc/municipality');
-                });
-            }
+{
+    if (Schema::hasTable('salesmen')) {
+        if (Schema::hasColumn('salesmen', 'vdc_municipality')) {
+            Schema::table('salesmen', function (Blueprint $table) {
+                $table->renameColumn('vdc_municipality', 'vdc/municipality');
+            });
         }
     }
+}
+
 };

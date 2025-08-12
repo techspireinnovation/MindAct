@@ -23,7 +23,61 @@ class ProjectController extends Controller
 
         return response()->json($query->paginate(50));
     }
+    public function projectList(Request $request): JsonResponse
+    {
+        try {
+            $projects = Project::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($project) => ['id' => $project->id, 'name' => $project->name])
+                ->values()
+                ->toArray();
 
+            return response()->json([
+                "message" => "Project List Received !!",
+                "data" => $projects
+            ]);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Project not Found !!"], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+
+    public function projectDetails(Request $request): JsonResponse
+    {
+        try {
+            $companyId = $request->company_id;
+            if (!$companyId) {
+                return response()->json(["error" => "No Company Logged In !!"], 404);
+            }
+
+            $projectName = $request->project_name;
+            $projectDetails = Project::where('company_id', $request->company_id)
+                ->where('name', $projectName)
+                ->whereNull('deleted_at')
+                ->firstOrFail();
+
+            return response()->json([
+                "message" => "Project Details Received !!",
+                "data" => $projectDetails
+            ], 200);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Project not Found !!"], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
     public function update(Request $request, $id): JsonResponse
     {
         try {

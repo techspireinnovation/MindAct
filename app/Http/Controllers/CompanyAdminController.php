@@ -18,9 +18,10 @@ class CompanyAdminController extends Controller
 
 
     public function login(Request $request)
-    {
+{
+    try {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
+            'email'    => 'required|email',
             'password' => 'required|string',
         ]);
 
@@ -28,7 +29,7 @@ class CompanyAdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $validator->errors(),
+                'errors'  => $validator->errors(),
             ], 422);
         }
 
@@ -38,69 +39,64 @@ class CompanyAdminController extends Controller
 
         $user = Auth::user();
 
-        if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+        $allowedRoles = ['company_admin', 'company_user', 'master_user'];
+        if (!$user->hasAnyRole($allowedRoles)) {
             Auth::logout();
             return response()->json(['success' => false, 'message' => 'Not authorised for company access'], 403);
         }
 
-        $tempToken = $user->createToken('TempToken', ['company_access'], now()->addMinutes(30))->plainTextToken;
+        $role = $user->getRoleNames()
+                     ->intersect($allowedRoles)
+                     ->first();
+
+        $tempToken = $user->createToken(
+            'TempToken',
+            ['company_access'],
+            now()->addMinutes(30)
+        )->plainTextToken;
+
         if ($user->hasRole('master_user')) {
             $admins = User::whereHas('roles', fn($q) => $q->where('name', 'company_admin'))
-                ->whereHas('companies', fn($q) => $q->whereIn('companies.id', $user->companies()->pluck('companies.id')))
-                ->select('id', 'name', 'email')
+                ->whereHas('companies', fn($q) => $q->whereIn(
+                    'companies.id',
+                    $user->companies()->pluck('companies.id')
+                ))
+                ->select('id', 'name')
                 ->get();
 
             return response()->json([
                 'success' => true,
-                'step' => 'choose_admin',
+                'step'    => 'choose_admin',
                 'message' => 'Please choose a company-admin to impersonate.',
-                'data' => [
-                    'user' => $user->only('id', 'name', 'email'),
+                'data'    => [
+                    'user'  => [
+                        'id'    => $user->id,
+                        'name'  => $user->name,
+                        'email' => $user->email,
+                        'role'  => $role, // Use the $role variable here
+                    ],
                     'admins' => $admins,
-                    'token' => $tempToken,
+                    'token'  => $tempToken,
                 ],
             ]);
         }
 
-        $companies = CompanyUser::where('user_id', $user->id)
-            ->with('company:id,name,is_vatable')
-            ->get()
-            ->pluck('company')
-            ->filter()
-            ->values();
+        Auth::logout();
+        return response()->json(['success' => false, 'message' => 'Only master users can choose admins'], 403);
 
-        if ($companies->isEmpty()) {
-            Auth::logout();
-            return response()->json(['success' => false, 'message' => 'No companies linked'], 403);
-        }
-
-        $branches = $user->hasAnyRole(['company_admin', 'master_user'])
-            ? Branch::whereIn('company_id', $companies->pluck('id'))
-                ->where('is_active', true)
-                ->select('id', 'name', 'company_id')
-                ->get()
-            : $user->branches()
-                ->where('is_active', true)
-                ->select('branches.id', 'branches.name', 'branches.company_id')
-                ->get();
-
+    } catch (\Throwable $e) {
+        \Log::error('Login error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
         return response()->json([
-            'success' => true,
-            'step' => 'choose_company_branch',
-            'message' => 'Pick a company and branch.',
-            'data' => [
-                'user' => $user->only('id', 'name', 'email'),
-                'role' => $user->getRoleNames()->first(),
-                'companies' => $companies,
-                'branches' => $branches,
-                'token' => $tempToken,
-            ],
-        ]);
+            'success' => false,
+            'message' => 'An error occurred while logging in',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
+}
 
-
-    public function selectAdmin(Request $request)
-    {
+public function selectAdmin(Request $request)
+{
+    try {
         $user = $request->user();
         if (!$user || !$user->hasRole('master_user')) {
             return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
@@ -130,21 +126,24 @@ class CompanyAdminController extends Controller
 
         return response()->json([
             'success' => true,
-            'step' => 'choose_company_branch',
+            'step'    => 'choose_company_branch',
             'message' => 'Now choose a company and branch.',
-            'data' => [
-                'admin_id' => $request->admin_id,
-                'companies' => $companies,
-                'branches' => $branches,
+            'data'    => [
+                'admin_id'  => $request->admin_id,
+                // 'companies' => $companies,
+                // 'branches'  => $branches,
             ],
         ]);
+    } catch (\Throwable $e) {
+        \Log::error('selectAdmin error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while selecting admin',
+            'error'   => $e->getMessage(),
+        ], 500);
     }
-    /**
-     * Select a company and branch for the authenticated user.
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+}
+   
     public function selectCompany(Request $request)
     {
         \Log::info('selectCompany Request', [

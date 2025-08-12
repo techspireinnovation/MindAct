@@ -15,6 +15,7 @@ class Nozzle extends Model
         'nozzle_number',
         'company_id',
         'fuel_type',
+        'is_primary',
         'is_active',
     ];
 

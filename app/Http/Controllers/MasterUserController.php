@@ -74,18 +74,14 @@ class MasterUserController extends Controller
                         'companies.id',
                         $master->companies()->pluck('companies.id')
                     ))
-                    ->with([
-                        'companies:id,name',
-                        'companies.branches:id,name,company_id'
-                    ])
+                   
                     ->get(['id', 'name', 'email']);
 
                 return [
                     'id' => $master->id,
                     'name' => $master->name,
                     'email' => $master->email,
-                    'created_at' => $master->created_at,
-                    'company_admins' => $admins,
+                    
                 ];
             });
 

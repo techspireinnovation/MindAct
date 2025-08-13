@@ -467,56 +467,7 @@ class CompanyAdminController extends Controller
         }
     }
 
-    // public function getMasterUserCompanies(Request $request, $masterUserId)
-    // {
-    //     try {
-    //         $masterUser = User::where('id', $masterUserId)
-    //             ->whereHas('roles', fn($query) => $query->where('name', 'master_user'))
-    //             ->first();
-    
-    //         if (!$masterUser) {
-    //             \Log::error('getMasterUserCompanies: Master user not found', [
-    //                 'master_user_id' => $masterUserId,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Master user not found',
-    //             ], 404);
-    //         }
-    
-    //         $companyIds = $masterUser->companies()->pluck('companies.id');
-    
-    //         $admins = User::query()
-    //             ->role('company_admin')
-    //             ->whereHas('companies', fn($q) => $q->whereIn('companies.id', $companyIds))
-    //             ->select('id', 'name', 'email')
-    //             ->get()
-    //             ->map(function ($admin) {
-    //                 return [
-    //                     'admin_id' => $admin->id,
-    //                     'admin_name' => $admin->name,
-    //                     'admin_email' => $admin->email,
-    //                 ];
-    //             });
-    
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Company admins for master user retrieved successfully',
-    //             'data' => $admins,
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         \Log::error('getMasterUserCompanies Error', [
-    //             'master_user_id' => $masterUserId,
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve company admins.',
-    //             'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-    //         ], 500);
-    //     }
-    // }
+   
     
 
     public function getMasterUserCompanies(Request $request, $masterUserId)

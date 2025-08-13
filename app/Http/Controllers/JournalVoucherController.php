@@ -268,10 +268,8 @@ class JournalVoucherController extends Controller
 
         $accountGroups = $query->orderBy('name')->get();
 
-        return response()->json([
-            'message' => 'Account Group List Received !!',
-            'data' => $accountGroups,
-        ]);
+       
+        return response()->json($accountGroups);   
     }
 
     public function accountHeadList(): JsonResponse
@@ -311,10 +309,7 @@ class JournalVoucherController extends Controller
         
             $accountHeads = $query->orderBy('account_heads.name')->get();
         
-            return response()->json([
-                'message' => 'Account Head List Received !!',
-                'data'    => $accountHeads,
-            ]);
+            return response()->json($accountHeads);   
         }
     public function show(Request $request, $id): JsonResponse
     {

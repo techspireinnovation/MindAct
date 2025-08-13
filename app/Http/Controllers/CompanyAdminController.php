@@ -42,7 +42,7 @@ class CompanyAdminController extends Controller
             $allowedRoles = ['company_admin', 'company_user', 'master_user'];
             if (!$user->hasAnyRole($allowedRoles)) {
                 Auth::logout();
-                return response()->json(['success' => false, 'message' => 'Not authorised for company access'], 403);
+                return response()->json(['success' => false, 'message' => 'Not authorised for company access'], 200);
             }
 
             $role = $user->getRoleNames()
@@ -87,7 +87,7 @@ class CompanyAdminController extends Controller
             $user = Auth::guard('api')->user();
 
             if (!$user || !$user->hasRole('master_user')) {
-                return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorised'], 200);
             }
 
             $request->validate([
@@ -168,7 +168,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Company access required',
-                ], 403);
+                ], 200);
             }
     
             $companyUser = CompanyUser::where('user_id', $user->id)
@@ -183,7 +183,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with the selected company',
-                ], 403);
+                ], 200);
             }
     
             $branch = Branch::where('id', $request->branch_id)
@@ -201,7 +201,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Selected branch is invalid or not associated with the company',
-                ], 403);
+                ], 200);
             }
     
             if ($user->hasRole('company_user')) {
@@ -221,7 +221,7 @@ class CompanyAdminController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'User is not associated with the selected branch',
-                    ], 403);
+                    ], 200);
                 }
             }
     
@@ -303,7 +303,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not authorized for company access',
-                ], 403);
+                ], 200);
             }
     
             $currentToken = $user->currentAccessToken();
@@ -329,7 +329,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Token does not contain company information',
-                ], 403);
+                ], 200);
             }
     
             $companyUser = CompanyUser::where('user_id', $user->id)
@@ -344,7 +344,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with the selected company',
-                ], 403);
+                ], 200);
             }
     
             $company = Company::where('id', $companyId)
@@ -365,7 +365,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Forbidden: Company not found or deleted',
-                ], 403);
+                ], 200);
             }
     
             $branch = null;
@@ -387,7 +387,7 @@ class CompanyAdminController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'Selected branch is invalid or not associated with the company',
-                    ], 403);
+                    ], 200);
                 }
             } elseif (!$user->hasRole('master_user')) {
                 \Log::error('Profile: Branch ID missing for non-master user', [
@@ -397,7 +397,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Branch not selected',
-                ], 403);
+                ], 200);
             }
     
             if ($user->hasRole('company_user') && $branch) {
@@ -418,7 +418,7 @@ class CompanyAdminController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'User is not associated with the selected branch',
-                    ], 403);
+                    ], 200);
                 }
             }
     
@@ -566,7 +566,7 @@ class CompanyAdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'No companies associated with this user',
-            ], 403);
+            ], 200);
         }
 
         $branches = $user->hasRole('company_admin')
@@ -616,7 +616,7 @@ class CompanyAdminController extends Controller
             $master = Auth::guard('api')->user();
 
             if (!$master || !$master->hasRole('master_user')) {
-                return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorised'], 200);
             }
 
             $companyIds = $master->companies()->pluck('companies.id');
@@ -732,7 +732,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not authorized for company access',
-                ], 403);
+                ], 200);
             }
 
             $currentToken = $user->currentAccessToken();
@@ -756,7 +756,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with the selected company',
-                ], 403);
+                ], 200);
             }
 
             if (!$branchId) {
@@ -767,7 +767,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Branch not selected',
-                ], 403);
+                ], 200);
             }
 
             $branch = Branch::where('id', $branchId)
@@ -785,7 +785,7 @@ class CompanyAdminController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Selected branch is invalid or not associated with the company',
-                ], 403);
+                ], 200);
             }
 
             if ($user->hasRole('company_user')) {
@@ -805,7 +805,7 @@ class CompanyAdminController extends Controller
                     return response()->json([
                         'success' => false,
                         'message' => 'User is not associated with the selected branch',
-                    ], 403);
+                    ], 200);
                 }
             }
 
@@ -853,253 +853,41 @@ class CompanyAdminController extends Controller
         }
     }
 
-    // public function profile(Request $request)
-    // {
-    //     try {
-          
-    //         $user = Auth::guard('api')->user();
-
-    //         \Log::info('Profile Request', [
-    //             'user_id' => $user ? $user->id : null,
-    //             'user_email' => $user ? $user->email : null,
-    //             'roles' => $user ? $user->roles->pluck('name')->toArray() : [],
-    //             'request_company_id' => $request->company_id,
-    //         ]);
-
-    //         if (!$user) {
-    //             \Log::error('Profile: User not authenticated');
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Unauthenticated.',
-    //             ], 401);
-    //         }
-
-    //         if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
-    //             \Log::error('Profile: User lacks required role', [
-    //                 'user_id' => $user->id,
-    //                 'roles' => $user->roles->pluck('name')->toArray(),
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Unauthorized: Not authorized for company access',
-    //             ], 403);
-    //         }
-
-            
-    //         $currentToken = $user->currentAccessToken();
-    //         $abilities = $currentToken ? $currentToken->abilities : [];
-
-    //         $companyId = null;
-    //         $branchId = null;
-
-    //         foreach ($abilities as $ability) {
-    //             if (strpos($ability, 'company:') === 0) {
-    //                 $companyId = str_replace('company:', '', $ability);
-    //             }
-    //             if (strpos($ability, 'branch:') === 0) {
-    //                 $branchId = str_replace('branch:', '', $ability);
-    //             }
-    //         }
-
-    //         if (!$companyId) {
-    //             \Log::error('Profile: Token missing company ability', [
-    //                 'user_id' => $user->id,
-    //                 'abilities' => $abilities,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Token does not contain company information',
-    //             ], 403);
-    //         }
-
-          
-    //         $companyUser = CompanyUser::where('user_id', $user->id)
-    //             ->where('company_id', $companyId)
-    //             ->first();
-
-    //         if (!$companyUser) {
-    //             \Log::error('Profile: User not associated with company', [
-    //                 'user_id' => $user->id,
-    //                 'company_id' => $companyId,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'User is not associated with the selected company',
-    //             ], 403);
-    //         }
-
-    //         $company = Company::where('id', $companyId)
-    //             ->whereNull('deleted_at')
-    //             ->select('id', 'name', 'is_vatable')
-    //             ->first();
-
-    //         if (!$company) {
-    //             \Log::error('Profile: Company not found or soft-deleted', [
-    //                 'user_id' => $user->id,
-    //                 'company_id' => $companyId,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Forbidden: Company not found or deleted',
-    //             ], 403);
-    //         }
-
-    //         /* ----------------------------------------------------------
-    //          * 4. Branch validation (required for company_user only)
-    //          * ---------------------------------------------------------- */
-    //         $branch = null;
-    //         if ($branchId) {
-    //             $branch = Branch::withoutGlobalScope(CompanyIdScope::class)
-    //                 ->where('id', $branchId)
-    //                 ->where('company_id', $companyId)
-    //                 ->whereNull('deleted_at')
-    //                 ->where('is_active', true)
-    //                 ->select('id', 'name', 'company_id')
-    //                 ->first();
-
-    //             if (!$branch && !$user->hasRole('master_user')) {
-    //                 \Log::error('Profile: Branch not found or invalid', [
-    //                     'user_id' => $user->id,
-    //                     'branch_id' => $branchId,
-    //                     'company_id' => $companyId,
-    //                 ]);
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => 'Selected branch is invalid or not associated with the company',
-    //                 ], 403);
-    //             }
-    //         } elseif (!$user->hasRole('master_user')) {
-    //             \Log::error('Profile: Branch ID missing for non-master user', [
-    //                 'user_id' => $user->id,
-    //                 'company_id' => $companyId,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Branch not selected',
-    //             ], 403);
-    //         }
-
-    //         /* ----------------------------------------------------------
-    //          * 5. Branch-level checks for company_user
-    //          * ---------------------------------------------------------- */
-    //         if ($user->hasRole('company_user') && $branch) {
-    //             $userBranch = $user->branches()
-    //                 ->where('branches.id', $branchId)
-    //                 ->where('branches.company_id', $companyId)
-    //                 ->whereNull('branches.deleted_at')
-    //                 ->where('branches.is_active', true)
-    //                 ->select('branches.id', 'branches.name', 'branches.company_id')
-    //                 ->first();
-
-    //             if (!$userBranch) {
-    //                 \Log::error('Profile: Branch association failed for company_user', [
-    //                     'user_id' => $user->id,
-    //                     'branch_id' => $branchId,
-    //                     'company_id' => $companyId,
-    //                 ]);
-    //                 return response()->json([
-    //                     'success' => false,
-    //                     'message' => 'User is not associated with the selected branch',
-    //                 ], 403);
-    //             }
-    //         }
-
-    //         /* ----------------------------------------------------------
-    //          * 6. Build allowed branch list
-    //          * ---------------------------------------------------------- */
-    //         $branches = $user->hasAnyRole(['company_admin', 'master_user'])
-    //             ? Branch::withoutGlobalScope(CompanyIdScope::class)
-    //                 ->where('company_id', $companyId)
-    //                 ->whereNull('deleted_at')
-    //                 ->where('is_active', true)
-    //                 ->select('id', 'name', 'company_id')
-    //                 ->get()
-    //             : $user->branches()
-    //                 ->where('branches.company_id', $companyId)
-    //                 ->whereNull('branches.deleted_at')
-    //                 ->where('branches.is_active', true)
-    //                 ->select('branches.id', 'branches.name', 'branches.company_id')
-    //                 ->get();
-
-    //         /* ----------------------------------------------------------
-    //          * 7. Success response
-    //          * ---------------------------------------------------------- */
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Profile retrieved successfully',
-    //             'data' => [
-    //                 'user' => [
-    //                     'id' => $user->id,
-    //                     'name' => $user->name,
-    //                     'email' => $user->email,
-    //                     'role' => $user->hasRole('company_admin')
-    //                         ? 'company_admin'
-    //                         : ($user->hasRole('master_user')
-    //                             ? 'master_user'
-    //                             : 'company_user'),
-    //                 ],
-    //                 'company' => [
-    //                     'id' => $company->id,
-    //                     'name' => $company->name,
-    //                     'is_vatable' => $company->is_vatable,
-    //                 ],
-    //                 'branch' => $branch ? [
-    //                     'id' => $branch->id,
-    //                     'name' => $branch->name,
-    //                     'company_id' => $branch->company_id,
-    //                 ] : null,
-    //                 'branches' => $branches->map(fn($b) => [
-    //                     'id' => $b->id,
-    //                     'name' => $b->name,
-    //                     'company_id' => $b->company_id,
-    //                 ]),
-    //             ],
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         \Log::error('profile Error', [
-    //             'user_id' => $user ? $user->id : null,
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve profile.',
-    //             'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-    //         ], 500);
-    //     }
-    // }
-  
+    
 
     public function logout(Request $request)
     {
         try {
             $user = Auth::guard('api')->user();
-
+    
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
-                return response()->json(['success' => false, 'message' => 'Unauthorised'], 403);
+                return response()->json(['success' => false, 'message' => 'Unauthorised'], 200);
             }
-
+    
             $token = $user->currentAccessToken();
             $companyId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'company:'));
             $branchId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'branch:'));
-
+    
             \Log::info('Logout', [
                 'user_id' => $user->id,
                 'role' => $user->getRoleNames()->first(),
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
+                'token_name' => $token->name,
             ]);
-
+    
+            $isTempToken = $token->name === 'TempToken';
+    
             $user->tokens()->delete();
-
-            if ($user->hasRole('master_user')) {
+    
+            if ($user->hasRole('master_user') && !$isTempToken) {
                 $tempToken = $user->createToken('TempToken', ['company_access'], now()->addMinutes(30))->plainTextToken;
-
+    
                 $admins = User::role('company_admin')
                     ->whereHas('companies', fn($q) => $q->whereIn('companies.id', $user->companies()->pluck('companies.id')))
                     ->select('id', 'name', 'email')
                     ->get();
-
+    
                 return response()->json([
                     'success' => true,
                     'step' => 'choose_admin',
@@ -1108,7 +896,7 @@ class CompanyAdminController extends Controller
                     'admins' => $admins,
                 ], 200);
             }
-
+    
             return response()->json([
                 'success' => true,
                 'message' => 'Logout successful',

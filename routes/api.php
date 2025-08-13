@@ -80,7 +80,7 @@ Route::middleware(['auth:sanctum'])
      ->get('/master/company-admin-tree', [CompanyAdminController::class, 'tree']);
 Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
 Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
-
+Route::get('/master-users/{masterUserId}/companies', [CompanyAdminController::class, 'getMasterUserCompanies'])->middleware('auth:api');
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);

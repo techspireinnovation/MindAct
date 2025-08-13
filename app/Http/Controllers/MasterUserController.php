@@ -63,7 +63,7 @@ class MasterUserController extends Controller
             ], 500);
         }
     }
-    protected function buildCompaniesWithBranches(int $masterUserId)
+    protected function companiesWithBranches(int $masterUserId)
     {
        
         $companies = \App\Models\Company::query()

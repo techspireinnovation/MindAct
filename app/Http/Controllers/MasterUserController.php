@@ -175,64 +175,71 @@ class MasterUserController extends Controller
 
    
     public function update(Request $request, $id)
-    {
-        try {
-            $user = User::role('master_user')->find($id);
-    
-            if (!$user || $user->trashed()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Master user not found or has been deleted.',
-                ], 404);
-            }
-    
-            $validated = $request->validate([
-                'name' => 'sometimes|string|max:255',
-                'email' => 'sometimes|email|unique:users,email,' . $user->id,
-                'companyid' => 'sometimes|array',
-                'companyid.*' => 'exists:companies,id',
-            ]);
-    
-            DB::beginTransaction();
-    
-            if (isset($validated['name'])) {
-                $user->name = $validated['name'];
-            }
-            if (isset($validated['email'])) {
-                $user->email = $validated['email'];
-            }
-            $user->save();
-    
-            if ($request->has('companyid')) {
-                CompanyUser::where('user_id', $user->id)->delete();
-                $user->branches()->detach();
-    
-                foreach ($validated['companyid'] as $companyId) {
-                    CompanyUser::firstOrCreate([
-                        'user_id' => $user->id,
-                        'company_id' => $companyId,
-                    ]);
-    
-                    $branchIds = Branch::where('company_id', $companyId)->pluck('id');
-                    $user->branches()->syncWithoutDetaching($branchIds);
-                }
-            }
-    
-            DB::commit();
-            return response()->json([
-                'success' => true,
-                'message' => 'Master user updated.',
-                'data' => $user->load('companies.branches'),
-            ], 200);
-        } catch (\Exception $e) {
-            DB::rollBack();
+{
+    try {
+        $user = User::role('master_user')->find($id);
+
+        if (!$user || $user->trashed()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update master user.',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-            ], 500);
+                'message' => 'Master user not found or has been deleted.',
+            ], 404);
         }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'email' => 'sometimes|email|unique:users,email,' . $user->id,
+            'company_admin_ids' => 'sometimes|array',
+            'company_admin_ids.*' => 'exists:users,id',
+        ]);
+
+        DB::beginTransaction();
+
+        if (isset($validated['name'])) {
+            $user->name = $validated['name'];
+        }
+        if (isset($validated['email'])) {
+            $user->email = $validated['email'];
+        }
+        $user->save();
+
+        if (isset($validated['company_admin_ids'])) {
+            // Clear existing company and branch associations
+            CompanyUser::where('user_id', $user->id)->delete();
+            $user->branches()->detach();
+
+            // Get company IDs from company_admin_ids
+            $companyIds = CompanyUser::whereIn('user_id', $validated['company_admin_ids'])
+                ->distinct()
+                ->pluck('company_id');
+
+            // Assign companies and branches to the master user
+            foreach ($companyIds as $companyId) {
+                CompanyUser::firstOrCreate([
+                    'user_id' => $user->id,
+                    'company_id' => $companyId,
+                ]);
+
+                $branchIds = Branch::where('company_id', $companyId)->pluck('id');
+                $user->branches()->syncWithoutDetaching($branchIds);
+            }
+        }
+
+        DB::commit();
+        return response()->json([
+            'success' => true,
+            'message' => 'Master user updated.',
+            'data' => $user->load('companies.branches'),
+        ], 200);
+    } catch (\Exception $e) {
+        DB::rollBack();
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to update master user.',
+            'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+        ], 500);
     }
+}
 
     
     public function destroy($id)

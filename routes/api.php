@@ -103,7 +103,10 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
      ->apiResource('master-users', MasterUserController::class)
      ->only(['index', 'store', 'show', 'update', 'destroy']);
-
+     Route::get(
+        'master-users/{masterUser}/companies-with-branches',
+        [MasterUserController::class, 'companiesWithBranches']
+    );
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     // User management routes (company_admin only, assuming company.admin middleware enforces this)
     Route::middleware(['company.admin'])->group(function () {

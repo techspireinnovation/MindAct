@@ -13,9 +13,7 @@ use Spatie\Permission\Models\Role;
 
 class MasterUserController extends Controller
 {
-    /* ------------------------------------------------------------
-     *  1. CREATE
-     * ------------------------------------------------------------ */
+   
     public function store(StoreMasterUserRequest $request)
     {
         $data = $request->validated();
@@ -65,11 +63,38 @@ class MasterUserController extends Controller
             ], 500);
         }
     }
+    protected function buildCompaniesWithBranches(int $masterUserId)
+    {
+       
+        $companies = \App\Models\Company::query()
+            ->select('companies.*')
+            ->join('company_users as ca', 'ca.company_id', '=', 'companies.id')
+            ->join('company_users as mu', 'mu.company_id', '=', 'companies.id')
+            ->whereIn('ca.user_id', function ($q) use ($masterUserId) {
+               
+                $q->select('company_admin_ids')
+                  ->from('master_user_company_admin_map')
+                  ->where('master_user_id', $masterUserId);
+            })
+            ->where('mu.user_id', $masterUserId)
+            ->distinct()
+            ->get();
+
+        $companies->load('branches:id,company_id,name');
+
+        return $companies->map(function ($company) {
+            return [
+                'id'         => $company->id,
+                'name'       => $company->name,
+                'branches'   => $company->branches->map(fn ($b) => [
+                    'id'   => $b->id,
+                    'name' => $b->name,
+                ]),
+            ];
+        });
+    }
 
 
-    /* ------------------------------------------------------------
-     *  2. INDEX
-     * ------------------------------------------------------------ */
     public function index(Request $request)
     {
         try {
@@ -105,9 +130,7 @@ class MasterUserController extends Controller
         }
     }
 
-    /* ------------------------------------------------------------
-     *  3. SHOW
-     * ------------------------------------------------------------ */
+    
     public function show($id)
     {
         try {
@@ -150,61 +173,51 @@ class MasterUserController extends Controller
         }
     }
 
-    /* ------------------------------------------------------------
-     *  4. UPDATE
-     * ------------------------------------------------------------ */
+   
     public function update(Request $request, $id)
     {
         try {
             $user = User::role('master_user')->find($id);
-
+    
             if (!$user || $user->trashed()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Master user not found or has been deleted.',
                 ], 404);
             }
-
+    
             $validated = $request->validate([
                 'name' => 'sometimes|string|max:255',
                 'email' => 'sometimes|email|unique:users,email,' . $user->id,
-                'password' => 'sometimes|string|min:6',
-                'company_admin_ids' => 'sometimes|array',
-                'company_admin_ids.*' => 'exists:users,id',
+                'companyid' => 'sometimes|array',
+                'companyid.*' => 'exists:companies,id',
             ]);
-
+    
             DB::beginTransaction();
-            // basic fields
-            if (isset($validated['name']))
+    
+            if (isset($validated['name'])) {
                 $user->name = $validated['name'];
-            if (isset($validated['email']))
+            }
+            if (isset($validated['email'])) {
                 $user->email = $validated['email'];
-            if (isset($validated['password'])) {
-                $user->password = Hash::make($validated['password']);
             }
             $user->save();
-
-            // re-link companies & branches
-            if ($request->has('company_admin_ids')) {
-                $companyIds = CompanyUser::whereIn('user_id', $validated['company_admin_ids'])
-                    ->distinct()
-                    ->pluck('company_id');
-
-                // detach previous links
+    
+            if ($request->has('companyid')) {
                 CompanyUser::where('user_id', $user->id)->delete();
                 $user->branches()->detach();
-
-                foreach ($companyIds as $companyId) {
+    
+                foreach ($validated['companyid'] as $companyId) {
                     CompanyUser::firstOrCreate([
                         'user_id' => $user->id,
                         'company_id' => $companyId,
                     ]);
-
+    
                     $branchIds = Branch::where('company_id', $companyId)->pluck('id');
                     $user->branches()->syncWithoutDetaching($branchIds);
                 }
             }
-
+    
             DB::commit();
             return response()->json([
                 'success' => true,
@@ -221,9 +234,7 @@ class MasterUserController extends Controller
         }
     }
 
-    /* ------------------------------------------------------------
-     *  5. DELETE (soft)
-     * ------------------------------------------------------------ */
+    
     public function destroy($id)
     {
         try {

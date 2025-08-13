@@ -136,8 +136,9 @@ class CustomerController extends Controller
 
 
 
-        } catch (\ModelNotFoundExeption $e) {
-            return response()->json(["error" => "Not Item Found !!"], 404);
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {

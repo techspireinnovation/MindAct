@@ -158,12 +158,12 @@ class CustomerController extends Controller
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('customers')
+                    // Rule::unique('customers')
 
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
+                    //     ->where(function ($query) use ($request) {
+                    //         return $query->where('company_id', $request->input('company_id', $request->company_id))
+                    //             ->whereNull('deleted_at');
+                    //     }),
                 ],
                 'pan_number' => [
                     'nullable',

@@ -240,7 +240,10 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
     
-            $user->tokens()->delete();
+            // $user->tokens()->delete();
+            if ($request->user()->currentAccessToken()) {
+                $request->user()->currentAccessToken()->delete();
+            }
     
             $abilities = [
                 $user->hasRole('company_admin') ? 'company_admin' : ($user->hasRole('master_user') ? 'master_user' : 'company_user'),
@@ -275,6 +278,42 @@ class CompanyAdminController extends Controller
             ], 500);
         }
     }
+
+
+//     public function selectCompany(Request $request)
+// {
+//     $user = $request->user();
+
+//     $validated = $request->validate([
+//         'company_id' => 'required|exists:companies,id',
+//     ]);
+
+//     $companyId = $validated['company_id'];
+
+//     if (!$user->companies()->where('companies.id', $companyId)->exists()) {
+//         return response()->json([
+//             'success' => false,
+//             'message' => 'Unauthorized to access this company',
+//         ], 403);
+//     }
+
+//     if ($request->user()->currentAccessToken()) {
+//         $request->user()->currentAccessToken()->delete();
+//     }
+
+//     $abilities = ['company_access:' . $companyId];
+//     $token = $user->createToken('MatraErpToken', $abilities)->plainTextToken;
+
+//     return response()->json([
+//         'success' => true,
+//         'message' => 'Company selected successfully',
+//         'token'   => $token,
+//         'company_id' => $companyId,
+//     ], 200);
+// }
+
+
+
     public function profile(Request $request)
     {
         try {
@@ -819,7 +858,8 @@ class CompanyAdminController extends Controller
             $user->password = Hash::make($request->new_password);
             $user->save();
 
-            $user->tokens()->delete();
+            $user->currentAccessToken()->delete();
+
 
             $newAbilities = [$user->hasRole('company_admin') ? 'company_admin' : 'company_user', "company:{$companyId}", "branch:{$branchId}"];
             $newToken = $user->createToken('MatraErpToken', $newAbilities)->plainTextToken;
@@ -878,7 +918,10 @@ class CompanyAdminController extends Controller
     
             $isTempToken = $token->name === 'TempToken';
     
-            $user->tokens()->delete();
+            // $user->tokens()->delete();
+            if ($token) {
+                $token->delete();
+            }
     
             if ($user->hasRole('master_user') && !$isTempToken) {
                 $tempToken = $user->createToken('TempToken', ['company_access'], now()->addMinutes(30))->plainTextToken;

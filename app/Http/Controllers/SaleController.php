@@ -597,7 +597,7 @@ class SaleController extends Controller
             }
 
             if ($productName) {
-                $productsQuery->where('products.name', 'like', "%{$productName}%");
+                $productsQuery->where('products.name', $productName);
             }
 
             $products = $productsQuery->get();

@@ -331,6 +331,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
         Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
         Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
+    Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
 
         //List and Details
         Route::get('change-test', [SaleController::class, 'changeDate']);

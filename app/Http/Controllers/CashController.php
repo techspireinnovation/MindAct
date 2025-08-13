@@ -109,11 +109,11 @@ class CashController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'Cash not found!!'], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+          
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-             dd($e->getMessage());
+          
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }

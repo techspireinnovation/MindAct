@@ -264,6 +264,7 @@ class CompanyAdminController extends Controller
                 'message' => 'Company and branch selected successfully.',
                 'token' => $token,
                 'company_id' => $company->id,
+                'branch_id' => $branch->id,
                 'is_vatable' => $company->is_vatable,
             ], 200);
         } catch (\Exception $e) {

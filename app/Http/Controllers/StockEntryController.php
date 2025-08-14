@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use Auth;
+use App\Models\PurchaseStockProduct;
 use App\Models\StockEntry;
+use App\Models\StockProductFieldValue;
+use App\Models\PurchaseStockProductFieldValue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -54,6 +58,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
+                'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
@@ -61,6 +66,11 @@ class StockEntryController extends Controller
                 'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
                 'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.field_values' => 'nullable|array',
+
+                'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
+                'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
+                'stock_entries.*.field_values.*.*.quantity_index' => 'required|numeric|min:1',
             ]);
 
             if ($validator->fails()) {
@@ -70,13 +80,52 @@ class StockEntryController extends Controller
                 ], 422);
             }
 
+            $user = auth::user();
+            $userId = $user->id;
+            $user-
+
+
+          
+
             $createdEntries = [];
-
-
 
             foreach ($request->stock_entries as $entry) {
                 $entry['company_id'] = $request->company_id;
-                $createdEntries[] = StockEntry::create($entry);
+
+                // Create stock entry
+                $stockEntry = StockEntry::create($entry);
+
+                $entry['stock_product_id'] = $stockEntry->id;
+
+                $purchaseStock = PurchaseStockProduct::create($entry);
+
+                // If there are field values, save them
+                if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
+                    foreach ($entry['field_values'] as $fieldGroup) {
+                        foreach ($fieldGroup as $fieldValue) {
+                            StockProductFieldValue::create([
+                                'stock_product_id' => $stockEntry->id,
+                                'company_id' => $entry['company_id'],
+                                'product_id' => $stockEntry->product_id,
+                                'product_field_id' => $fieldValue['product_field_id'],
+                                'value' => $fieldValue['value'],
+                                'quantity_index' => $fieldValue['quantity_index'],
+                            ]);
+
+                            PurchaseStockProductFieldValue::create([
+                                'stock_product_id' => $stockEntry->id,
+                                // 'purchase_product_id' => $purchaseStock->id,
+                                'company_id' => $entry['company_id'],
+                                'product_id' => $stockEntry->product_id,
+                                'product_field_id' => $fieldValue['product_field_id'],
+                                'value' => $fieldValue['value'],
+                                'quantity_index' => $fieldValue['quantity_index'],
+                            ]);
+                        }
+                    }
+                }
+
+                $createdEntries[] = $stockEntry->load('fieldValues'); // Optional: load relationship
             }
 
             return response()->json([
@@ -89,33 +138,23 @@ class StockEntryController extends Controller
             \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
+            // dd($e->getMessage());
             \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
 
-    public function show($id): JsonResponse
-    {
-        try {
-            $item = StockEntry::findOrFail($id);
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
-    }
-
-    public function update(Request $request): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
                 'stock_entries' => 'required|array',
                 'stock_entries.*.id' => 'required|exists:stock_entries,id',
-
+                'stock_entries.*.company_id' => 'nullable|exists:companies,id',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|exists:products,id',
+                'stock_entries.*.branch_id' => 'nullable|exists:branches,id',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
@@ -123,6 +162,11 @@ class StockEntryController extends Controller
                 'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
                 'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.field_values' => 'nullable|array',
+                'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
+                'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
+                'stock_entries.*.field_values.*.*.quantity_index' => 'required|numeric|min:1',
+
             ]);
 
             if ($validator->fails()) {
@@ -131,6 +175,14 @@ class StockEntryController extends Controller
                     'errors' => $validator->errors(),
                 ], 422);
             }
+
+            $user = auth::user();
+
+
+
+            $userBranch = $user->branches->id;
+            dd($userBranch);
+
 
             $updatedEntries = [];
 
@@ -165,6 +217,21 @@ class StockEntryController extends Controller
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
+
+
+    public function show($id): JsonResponse
+    {
+        try {
+            $item = StockEntry::findOrFail($id);
+            return response()->json($item);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        }
+    }
+
+
 
     public function destroy($id): JsonResponse
     {

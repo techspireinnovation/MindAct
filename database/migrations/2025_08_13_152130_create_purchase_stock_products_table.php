@@ -12,13 +12,13 @@ return new class extends Migration {
     {
         Schema::create('purchase_stock_products', function (Blueprint $table) {
             $table->id();
-            $table->foreignID('purchase_product_id')->constrained('purchase_products')->nullable();
-            $table->foreignID('stock_product_id')->constrained('stock_products')->nullable();
+            $table->unsignedBigInteger('purchase_product_id')->nullable();
+            $table->unsignedBigInteger('stock_product_id')->nullable();
             $table->foreignID('customer_id')->constrained('customers');
 
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('branch_id')->constrained('branches')->nullable();
-            $table->foreignID(column: 'purchase_id')->constrained('purchases')->nullable();
+            $table->unsignedBigInteger(column: 'purchase_id')->nullable();
             $table->foreignID(column: 'product_id')->constrained('products');
             $table->text('product_code')->constrained('products');
             $table->text(column: 'product_name')->constrained('products');

@@ -77,7 +77,7 @@ Route::post('/company/login', [CompanyAdminController::class, 'login'])->name('c
 Route::middleware(['auth:sanctum'])->post('/select-admin', [CompanyAdminController::class, 'selectAdmin']);
 Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdminController::class, 'selectCompany']);
 Route::middleware(['auth:sanctum'])
-     ->get('/master/company-admin-tree', [CompanyAdminController::class, 'tree']);
+    ->get('/master/company-admin-tree', [CompanyAdminController::class, 'tree']);
 Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
 Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
 Route::get('/master-users/{masterUserId}/companies', [CompanyAdminController::class, 'getMasterUserCompanies'])->middleware('auth:api');
@@ -95,18 +95,18 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
-    
+
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-    
+
 });
 
 Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
-     ->apiResource('master-users', MasterUserController::class)
-     ->only(['index', 'store', 'show', 'update', 'destroy']);
-     Route::get(
-        'master-users/{masterUser}/companies-with-branches',
-        [MasterUserController::class, 'companiesWithBranches']
-    );
+    ->apiResource('master-users', MasterUserController::class)
+    ->only(['index', 'store', 'show', 'update', 'destroy']);
+Route::get(
+    'master-users/{masterUser}/companies-with-branches',
+    [MasterUserController::class, 'companiesWithBranches']
+);
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     // User management routes (company_admin only, assuming company.admin middleware enforces this)
     Route::middleware(['company.admin'])->group(function () {
@@ -199,7 +199,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         //Journal Voucher List for Needed Components
 
-      
+
         Route::get('main-group/list', [JournalVoucherController::class, 'mainGroupList']);
         Route::get('sub-group/list', [JournalVoucherController::class, 'subGroupList']);
         Route::get('account-group/list', [JournalVoucherController::class, 'accountGroupList']);
@@ -300,7 +300,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-sales-invoice-numbers', [SalesReturnController::class, 'listAvailableInvoiceNumbers']);
         Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
         Route::resource('salesman', SalesmanController::class);
-        Route::resource('stock-entries', StockEntryController::class);
+        Route::apiResource('stock-entries', StockEntryController::class);
         Route::resource('stock-adjustments', StockAdjustmentController::class);
         Route::resource('stock-transfers', StockTransferController::class);
         Route::resource('stock-receives', StockReceiveController::class);
@@ -331,7 +331,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
         Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
         Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
-    Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
+        Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
 
         //List and Details
         Route::get('change-test', [SaleController::class, 'changeDate']);

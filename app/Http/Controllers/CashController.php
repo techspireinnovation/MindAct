@@ -94,7 +94,9 @@ class CashController extends Controller
 
                 'company_id' => 'integer|exists:companies,id',
 
+
             ]);
+         
 
             if ($validator->fails()) {
                 return response()->json([

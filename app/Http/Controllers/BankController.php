@@ -103,10 +103,6 @@ class BankController extends Controller
                 'class' => 'nullable|string|max:255',
                 'number' => 'nullable|string|max:255',
                 'swift' => 'nullable|string|max:255',
-                'address' => 'nullable|string|max:255',
-                'class' => 'nullable|string|max:255',
-                'number' => 'nullable|string|max:255',
-                'swift' => 'nullable|string|max:255',
                 'company_id' => 'required|integer|exists:companies,id'
             ]);
 
@@ -187,10 +183,7 @@ class BankController extends Controller
             'class' => 'nullable|string|max:255',
             'number' => 'nullable|string|max:255',
             'swift' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:255',
-            'class' => 'nullable|string|max:255',
-            'number' => 'nullable|string|max:255',
-            'swift' => 'nullable|string|max:255',
+           
             'company_id' => 'required|integer|exists:companies,id'
         ]);
 

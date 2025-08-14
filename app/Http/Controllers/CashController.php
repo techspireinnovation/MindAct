@@ -32,6 +32,7 @@ class CashController extends Controller
     {
         try {
             $cash = Cash::findOrFail($id);
+
             $validator = Validator::make($request->all(), [
                 'name' => [
                     'required',
@@ -42,42 +43,49 @@ class CashController extends Controller
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
-
                         }),
                 ],
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
-
-
             ]);
+
             if ($validator->fails()) {
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
                 ], 422);
             }
+
             $validated = $validator->validated();
 
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                Cash::where('company_id', $validated['company_id'])
+                    ->where('id', '!=', $id)
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+
+            $validated['is_primary'] = $validated['is_primary'] ?? false;
 
             $cash->update($validated);
-            return response()->json($cash);
+
+            return response()->json($cash, 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Cash not found!!'], 404);
+            \Log::error('ModelNotFoundException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Cash not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error('QueryException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error('Exception in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
 
     public function store(Request $request): JsonResponse
     {
         try {
-
             $validator = Validator::make($request->all(), [
                 'name' => [
                     'required',
@@ -86,17 +94,12 @@ class CashController extends Controller
                     Rule::unique('cashes')->where(function ($query) use ($request) {
                         return $query->where('company_id', $request->company_id)
                             ->whereNull('deleted_at');
-
                     }),
-
                 ],
                 'is_active' => 'boolean|required',
-
+                'is_primary' => 'boolean',
                 'company_id' => 'integer|exists:companies,id',
-
-
             ]);
-         
 
             if ($validator->fails()) {
                 return response()->json([
@@ -104,20 +107,29 @@ class CashController extends Controller
                     'errors' => $validator->errors()
                 ], 422);
             }
+
             $validated = $validator->validated();
-            $group = Cash::create($validated);
-            return response()->json($group, 201);
+
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                Cash::where('company_id', $validated['company_id'])
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+
+            $validated['is_primary'] = $validated['is_primary'] ?? false;
+
+            $cash = Cash::create($validated);
+
+            return response()->json($cash, 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Cash not found!!'], 404);
+            \Log::error('ModelNotFoundException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Cash not found!'], 404);
         } catch (QueryException $e) {
-          
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error('QueryException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         } catch (\Exception $e) {
-          
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error('Exception in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
 

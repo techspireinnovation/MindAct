@@ -23,6 +23,6 @@ class SuperAdminMiddleware
             return $next($request);
         }
 
-        return response()->json(['message' => 'Forbidden: Super Admins only'], 403);
+        return response()->json(['message' => 'Forbidden: Super Admins only'], 200);
     }
 }

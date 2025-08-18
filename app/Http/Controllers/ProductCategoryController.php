@@ -42,11 +42,11 @@ class ProductCategoryController extends Controller
     {
         try {
             $companyId = $request->company_id;
-    
+
             if (!$companyId) {
                 return response()->json(["error" => "No Associated company Found !!"], 404);
             }
-    
+
             $categories = ProductCategory::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->where('is_active', 1)
@@ -54,12 +54,12 @@ class ProductCategoryController extends Controller
                 ->map(fn($category) => ['id' => $category->id, 'name' => $category->name])
                 ->values()
                 ->toArray();
-    
+
             return response()->json([
                 "message" => "Category List Received",
                 "data" => $categories
             ], 200);
-    
+
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Category Not Found !!"], 404);
         } catch (QueryException $e) {
@@ -245,13 +245,13 @@ class ProductCategoryController extends Controller
             if ($products->isNotEmpty()) {
                 return response()->json([
                     'error' => 'Item Cannot be deleted !!',
-                    
-                ], 403);
+
+                ], 200);
             } else {
 
-            $product_category->delete();
+                $product_category->delete();
 
-            return response()->json(['message' => 'Product Category deleted!!']);
+                return response()->json(['message' => 'Product Category deleted!!']);
             }
 
         } catch (ModelNotFoundException) {

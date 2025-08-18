@@ -25,33 +25,57 @@ class AccountGroupController extends Controller
 
         return response()->json($query->paginate(50));
     }
+    public function accountGroupList(Request $request){
+        try{
 
-    public function accountGroupList(Request $request): JsonResponse
-    {
-        try {
+            $accountGroups = AccountGroup::where('company_id',$request->company_id)
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->get(['id', 'name'])
+            ->map(fn($accountGroup) => ['id' => $accountGroup->id, 'name' => $accountGroup->name])
+            ->values()
+            ->toArray();
+            return response()->json(["message"=>"Account Group List Received !!",
+                                       "data"=>$accountGroups
+                                    ]);
 
-            $accountGroup = AccountGroup::where('company_id', $request->company_id)
-                ->where('is_active', 1)->get();
-
-
-            return response()->json([
-                'message' => 'List Received Sucessfully !!',
-                'data' => $accountGroup
-            ], 200);
-
-
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Item not Found !!'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
-        } catch (\Exception $e) {
-            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
+        }catch(ModelNotFoundException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Account Group not Found !!"],404);
+        }catch(QueryException $e){
+            \Log::error($e);
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            \Log::error($e);
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
-
     }
+    public function accountGroupDetails(Request $request){
+        try{
+
+           $companyId  = $request->company_id;
+           if(!$companyId){
+            return response()->json(["error"=>"No Company Logged In !!"],404);
+           }
+
+           $accountGroup = $request->account_group_name;
+           $accountGroupDetails = AccountGroup::where('company_id',$request->company_id)
+                                         ->where('name',$accountGroup)
+                                       ->whereNull('deleted_at')
+                                       ->firstorFail();   
+           return response()->json(["message"=>"Account Group Details Received !!",
+                                    "data"=>$accountGroupDetails
+                                ],200);
 
 
+        }catch(ModelNotFoundException $e){
+            return response()->json(["error"=>"Account Group not Found !!"],404);
+        }catch(QueryException $e){
+            return response()->json(["error"=>"Database error occurred !!"],500);
+        }catch(\Exception $e){
+            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        }
+    }
 
     public function update(Request $request, $id): JsonResponse
     {

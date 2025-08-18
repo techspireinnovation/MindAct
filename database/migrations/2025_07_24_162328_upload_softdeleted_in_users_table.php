@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('stock_transfers', function (Blueprint $table) {
-            $table->foreignID('company_id')->constrained('companies')->after('id');
+        Schema::table('users', function (Blueprint $table) {
+            $table->softDeletes();
+       
         });
     }
 
@@ -21,9 +22,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('stock_transfers', function (Blueprint $table) {
-            $table->dropForeign(['company_id']);
-            $table->dropColumn('company_id'); // ✅ fixed typo here
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropSoftDeletes();
         });
     }
 };

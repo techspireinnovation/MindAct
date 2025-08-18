@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Exception;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
@@ -70,12 +73,17 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        \Log::info('AuthController::login Request', [
+            'payload' => $request->all(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
         if ($validator->fails()) {
+            \Log::error('AuthController::login Validation Failed', $validator->errors()->toArray());
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
@@ -84,31 +92,44 @@ class AuthController extends Controller
         }
 
         if (!Auth::attempt($request->only('email', 'password'))) {
+            \Log::error('AuthController::login Invalid Credentials', [
+                'email' => $request->email,
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
-            ], 200);
+            ], 401); // Changed to 401 for unauthorized
         }
 
         $user = Auth::user();
 
-        if (!$user->hasRole('super_admin')) {
+        if (!$user->hasRole('super_admin', 'api')) {
+            \Log::error('AuthController::login User Not Super Admin', [
+                'user_id' => $user->id,
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
-
 
         $token = $user->createToken('SuperAdminToken', ['super_admin'])->plainTextToken;
 
+        \Log::info('AuthController::login Success', [
+            'user_id' => $user->id,
+            'token' => $token,
+        ]);
+
         return response()->json([
             'success' => true,
-            'message' => 'Super admin login successfull',
+            'message' => 'Super admin login successful',
             'token' => $token,
             'data' => [
-
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ],
             ],
         ], 200);
     }
@@ -124,7 +145,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
         return response()->json([
@@ -166,7 +187,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
         if (!Hash::check($request->current_password, $user->password)) {
@@ -206,7 +227,7 @@ class AuthController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a super admin',
-                ], 403);
+                ], 200);
             }
 
             $validator = Validator::make($request->all(), [
@@ -257,7 +278,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
 

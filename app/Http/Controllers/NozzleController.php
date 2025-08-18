@@ -37,18 +37,18 @@ class NozzleController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('nozzles')
-
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
-
                         }),
                 ],
                 'nozzle_number' => 'nullable|string|max:255',
                 'fuel_type' => 'nullable|string|max:255',
-                'is_active' => 'boolean|nullable'
-
+                'is_active' => 'boolean|nullable',
+                'is_primary' => 'boolean|nullable',
+                'company_id' => 'integer|exists:companies,id',
             ]);
+
             if ($validator->fails()) {
                 return response()->json([
                     'message' => $validator->errors()->first(),
@@ -58,39 +58,39 @@ class NozzleController extends Controller
 
             $validated = $validator->validated();
 
-            $validated['company_id'] = $request->company_id;
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                Nozzle::where('company_id', $validated['company_id'])
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
 
+            $validated['is_primary'] = $validated['is_primary'] ?? false;
+            $validated['is_active'] = $validated['is_active'] ?? false;
+            $validated['company_id'] = $request->input('company_id', $request->company_id);
 
             $nozzle = Nozzle::create($validated);
+
             return response()->json([
-                'message' => 'Data created Successfully!!',
+                'message' => 'Data created Successfully!',
                 'data' => $nozzle
-            ]);
-
-
+            ], 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error('Item Not Found', ['Item not Found' => $e]);
-            return response()->json(['error' => 'Item Not Found'], 404);
+            \Log::error('ModelNotFoundException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Nozzle not found!'], 404);
         } catch (QueryException $e) {
-
-            \Log::error('Database error occured', ['Query Exception' => $e]);
-            return response()->json(['error' => 'Database error occured'], 500);
-        } catch (\Exception $e) {
-
-            \Log::error('Unexpected error', ['exception' => $e]);
-            return response()->json(['error' => 'An unexpected error occured'], 500);
-
-
+            \Log::error('QueryException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Database error occurred!'], 500);
+        } catch (Exception $e) {
+            \Log::error('Exception in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
-
     }
-
-
 
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            $nozzle = Nozzle::find($id);
+            $nozzle = Nozzle::findOrFail($id);
+
             $validator = Validator::make($request->all(), [
                 'title' => [
                     'required',
@@ -101,48 +101,51 @@ class NozzleController extends Controller
                         ->where(function ($query) use ($request) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
                                 ->whereNull('deleted_at');
-
                         }),
                 ],
-                'nozzle_number' => 'nullable|string',
-                'fuel_type' => 'nullable|string',
-                'is_active' => 'boolean|nullable'
-
+                'nozzle_number' => 'nullable|string|max:255',
+                'fuel_type' => 'nullable|string|max:255',
+                'is_active' => 'boolean|nullable',
+                'is_primary' => 'boolean|nullable',
+                'company_id' => 'integer|exists:companies,id',
             ]);
+
             if ($validator->fails()) {
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors(),
-
-                ],422);
-
+                ], 422);
             }
+
             $validated = $validator->validated();
 
-            $validated['company_id'] = $request->company_id;
+            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+                Nozzle::where('company_id', $validated['company_id'])
+                    ->where('id', '!=', $id)
+                    ->where('is_primary', true)
+                    ->update(['is_primary' => false]);
+            }
+
+            $validated['is_primary'] = $validated['is_primary'] ?? false;
+            $validated['is_active'] = $validated['is_active'] ?? false;
+            $validated['company_id'] = $request->input('company_id', $request->company_id);
 
             $nozzle->update($validated);
 
             return response()->json([
-                'message' => 'Data updated Successfully!!',
+                'message' => 'Data updated Successfully!',
                 'data' => $nozzle
-            ]);
-
-
+            ], 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error('Item Not Found', ['Item not Found' => $e]);
-            return response()->json(['error' => 'Item Not Found'], 404);
+            \Log::error('ModelNotFoundException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Nozzle not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error('Database error occured', ['Query Exception' => $e]);
-            return response()->json(['error' => 'Database error occured'], 500);
-        } catch (\Exception $e) {
-
-            \Log::error('Unexpected error', ['exception' => $e]);
-            return response()->json(['error' => 'An unexpected error occured'], 500);
-
-
+            \Log::error('QueryException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Database error occurred!'], 500);
+        } catch (Exception $e) {
+            \Log::error('Exception in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
-
     }
 
 

@@ -21,7 +21,7 @@ class ProductionAssembleController extends Controller
         $query = ProductionAssemble::query();
 
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 
@@ -333,7 +333,7 @@ class ProductionAssembleController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-             dd($e->getMessage());
+            dd($e->getMessage());
             \Log::error('Database error in Production Assemble update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {

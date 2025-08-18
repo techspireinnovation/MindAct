@@ -23,7 +23,7 @@ class StaffController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not linked to any company.',
-                ], 403);
+                ], 200);
             }
             $companyId = $companyLink->company_id;
 
@@ -91,7 +91,7 @@ class StaffController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user or company ID not found',
-                ], 403);
+                ], 200);
             }
             $userID = $request->user()->company;
             $userId = $userID->company_id;
@@ -100,7 +100,7 @@ class StaffController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Company ID not found for the authenticated user.',
-                ], 403);
+                ], 200);
             }
 
             $companyUser = new CompanyUser();
@@ -188,7 +188,7 @@ class StaffController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user or company context not found',
-                ], 403);
+                ], 200);
             }
             $companyId = $request->user()->company->company_id;
 

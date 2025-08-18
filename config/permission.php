@@ -1,6 +1,10 @@
 <?php
 
 return [
+// config/permission.php
+'defaults' => [
+    'guard' => 'api',  // make sure this matches
+],
 
     'models' => [
 

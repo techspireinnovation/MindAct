@@ -15,6 +15,7 @@ class WorkShift extends Model
         'company_id',
         'time_from',
         'time_to',
+        'is_primary',
         'is_active'
 
 

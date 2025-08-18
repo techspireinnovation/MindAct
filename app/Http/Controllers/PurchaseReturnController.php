@@ -133,7 +133,6 @@ class PurchaseReturnController extends Controller
     public function getPurchaseBillNumber(Request $request): JsonResponse
     {
         try {
-            // Validate inputs
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer|exists:companies,id',
             ]);
@@ -146,20 +145,13 @@ class PurchaseReturnController extends Controller
 
             Log::debug('Input parameters for purchase bill numbers', [
                 'company_id' => $companyId,
+                'user_id' => auth()->id(),
             ]);
 
-            // Authentication and authorization
             if (!auth()->check()) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
 
-            $user = auth()->user();
-            $userCompanyId = optional($user->company)->company_id;
-            if ($userCompanyId != $companyId) {
-                return response()->json(['error' => 'Unauthorized access to company resources'], 403);
-            }
-
-            // Fetch measure units
             $measureUnits = MeasureUnit::where('company_id', $companyId)
                 ->where('is_active', 1)
                 ->whereNull('deleted_at')
@@ -169,10 +161,9 @@ class PurchaseReturnController extends Controller
 
             Log::info('Measure units fetched', [
                 'company_id' => $companyId,
-                'measure_units' => $measureUnits->toArray(),
+                'measure_units_count' => $measureUnits->count(),
             ]);
 
-            // Fetch purchases with products
             $purchases = Purchase::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->with([
@@ -213,7 +204,6 @@ class PurchaseReturnController extends Controller
                 return response()->json([], 200);
             }
 
-            // Fetch purchase return products
             $purchaseProductIds = $purchases->pluck('purchaseProducts.*.id')->flatten()->unique()->toArray();
             $purchaseReturnProducts = PurchaseProductReturn::whereIn('purchase_product_id', $purchaseProductIds)
                 ->where('company_id', $companyId)
@@ -227,7 +217,6 @@ class PurchaseReturnController extends Controller
                 ])
                 ->get();
 
-            // Fetch sale products
             $saleProducts = SaleProduct::whereIn('purchase_product_id', $purchaseProductIds)
                 ->where('company_id', $companyId)
                 ->whereNull('deleted_at')
@@ -240,7 +229,6 @@ class PurchaseReturnController extends Controller
                 ])
                 ->get();
 
-            // Fetch sales return products linked to sale products
             $saleProductIds = $saleProducts->pluck('id')->unique()->toArray();
             $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
                 ->where('company_id', $companyId)
@@ -254,7 +242,6 @@ class PurchaseReturnController extends Controller
                 ])
                 ->get();
 
-            // Fetch field values for returns and sales
             $purchaseReturnFieldValues = DB::table('purchase_return_product_field_values')
                 ->join('purchase_product_returns', 'purchase_return_product_field_values.purchase_return_product_id', '=', 'purchase_product_returns.id')
                 ->where('purchase_return_product_field_values.company_id', $companyId)
@@ -296,7 +283,6 @@ class PurchaseReturnController extends Controller
                 ->get()
                 ->groupBy('sale_product_id');
 
-            // Aggregate bill numbers
             $billNumbers = [];
             foreach ($purchases as $purchase) {
                 if ($purchase->purchaseProducts->isEmpty()) {
@@ -311,7 +297,6 @@ class PurchaseReturnController extends Controller
                 $hasAvailableProducts = false;
                 foreach ($purchase->purchaseProducts as $purchaseProduct) {
                     $productId = $purchaseProduct->product_id;
-                    // Use purchase product's measure unit or default if missing
                     $measureUnitId = $purchaseProduct->measure_unit_id ?? null;
                     $measureUnit = isset($measureUnits[$measureUnitId]) ? [
                         'id' => $measureUnits[$measureUnitId]->id,
@@ -331,10 +316,8 @@ class PurchaseReturnController extends Controller
                         ]);
                     }
 
-                    // Calculate purchase quantity
                     $purchaseTotal = ($purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0)) * $measureUnitQuantity;
 
-                    // Calculate purchase return quantity
                     $returnProducts = $purchaseReturnProducts->where('purchase_product_id', $purchaseProduct->id);
                     $purchaseReturned = 0;
                     $lastReturnMeasureUnitId = null;
@@ -356,7 +339,6 @@ class PurchaseReturnController extends Controller
                         ]);
                     }
 
-                    // Calculate net sales quantity
                     $saleProductsForPurchase = $saleProducts->where('purchase_product_id', $purchaseProduct->id);
                     $netSales = 0;
                     foreach ($saleProductsForPurchase as $saleProduct) {
@@ -364,7 +346,6 @@ class PurchaseReturnController extends Controller
                         $saleMeasureUnitQuantity = isset($measureUnits[$saleMeasureUnitId]) ? $measureUnits[$saleMeasureUnitId]->quantity : 1;
                         $saleQuantity = ($saleProduct->quantity + ($saleProduct->free_quantity ?? 0)) * $saleMeasureUnitQuantity;
 
-                        // Subtract sales returns for this sale product
                         $salesReturns = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
                         $salesReturned = 0;
                         foreach ($salesReturns as $salesReturn) {
@@ -377,7 +358,6 @@ class PurchaseReturnController extends Controller
                         $netSales += ($saleQuantity - $salesReturned);
                     }
 
-                    // Handle field values
                     $availableQuantity = $purchaseTotal - $purchaseReturned - $netSales;
                     if ($purchaseProduct->fieldValues->isNotEmpty()) {
                         $purchaseFieldValues = $purchaseProduct->fieldValues;
@@ -399,7 +379,6 @@ class PurchaseReturnController extends Controller
 
                             $isReturnedOrSold = false;
 
-                            // Check purchase returns
                             $isReturned = true;
                             foreach ($fieldValuesForIndex as $fieldId => $value) {
                                 $returnMatch = $purchaseReturnFieldValuesForProduct->firstWhere(function ($rfv) use ($fieldId, $value, $quantityIndex) {

@@ -41,7 +41,6 @@ class ProductCategoryController extends Controller
     public function categoryList(Request $request): JsonResponse
     {
         try {
-
             $companyId = $request->company_id;
 
             if (!$companyId) {
@@ -50,7 +49,11 @@ class ProductCategoryController extends Controller
 
             $categories = ProductCategory::where('company_id', $companyId)
                 ->whereNull('deleted_at')
-                ->pluck('name');
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($category) => ['id' => $category->id, 'name' => $category->name])
+                ->values()
+                ->toArray();
 
             return response()->json([
                 "message" => "Category List Received",
@@ -60,11 +63,10 @@ class ProductCategoryController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Category Not Found !!"], 404);
         } catch (QueryException $e) {
-            return response()->json(["error" => "Database error ocurred !!"], 500);
+            return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
-
     }
 
     public function categoryDetails(Request $request): JsonResponse
@@ -230,7 +232,7 @@ class ProductCategoryController extends Controller
         }
     }
 
-
+    // Delete a resource
     public function destroy($id): JsonResponse
     {
         try {
@@ -241,7 +243,10 @@ class ProductCategoryController extends Controller
 
 
             if ($products->isNotEmpty()) {
-                return response()->json(['message' => 'Item Cannot be deleted !!'], 403);
+                return response()->json([
+                    'error' => 'Item Cannot be deleted !!',
+
+                ], 200);
             } else {
 
                 $product_category->delete();
@@ -249,12 +254,9 @@ class ProductCategoryController extends Controller
                 return response()->json(['message' => 'Product Category deleted!!']);
             }
 
-        } catch (ModelNotFoundException $e) {
+        } catch (ModelNotFoundException) {
             return response()->json(['error' => 'Product Category not found'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-
-        } catch (\Exception $e) {
+        } catch (QueryException) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
 
         }

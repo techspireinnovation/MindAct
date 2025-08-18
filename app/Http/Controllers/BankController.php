@@ -22,35 +22,68 @@ class BankController extends Controller
 
         return response()->json($query->paginate(50));
     }
-
-    public function bankList(Request $request): JsonResponse
-    {
-        try {
-
-            $query = Bank::where('company_id', request()->company_id)
-                ->where('is_active', true)
-                ->orderBy('name', 'asc')
-                ->get(['id', 'name']);
-
-            return response()->json([
-                'message' => 'Data Retrieved Successfully!!',
-                'data' => $query
-            ]);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Bank not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+    
+        public function bankList(Request $request): JsonResponse
+        {
+            try {
+                $banks = Bank::where('company_id', $request->company_id)
+                    ->whereNull('deleted_at')
+                    ->where('is_active', 1)
+                    ->get(['id', 'name'])
+                    ->map(fn($bank) => ['id' => $bank->id, 'name' => $bank->name])
+                    ->values()
+                    ->toArray();
+    
+                return response()->json([
+                    "message" => "Bank List Received !!",
+                    "data" => $banks
+                ]);
+            } catch (ModelNotFoundException $e) {
+                \Log::error($e);
+                return response()->json(["error" => "Bank not Found !!"], 404);
+            } catch (QueryException $e) {
+                \Log::error($e);
+                return response()->json(["error" => "Database error occurred !!"], 500);
+            } catch (\Exception $e) {
+                \Log::error($e);
+                return response()->json(["error" => "An unexpected error occurred !!"], 500);
+            }
         }
-    }
+    
+        public function bankDetails(Request $request): JsonResponse
+        {
+            try {
+                $companyId = $request->company_id;
+                if (!$companyId) {
+                    return response()->json(["error" => "No Company Logged In !!"], 404);
+                }
+    
+                $bankName = $request->bank_name;
+                $bankDetails = Bank::where('company_id', $request->company_id)
+                    ->where('name', $bankName)
+                    ->whereNull('deleted_at')
+                    ->firstOrFail();
+    
+                return response()->json([
+                    "message" => "Bank Details Received !!",
+                    "data" => $bankDetails
+                ], 200);
+            } catch (ModelNotFoundException $e) {
+                return response()->json(["error" => "Bank not Found !!"], 404);
+            } catch (QueryException $e) {
+                \Log::error($e);
+                return response()->json(["error" => "Database error occurred !!"], 500);
+            } catch (\Exception $e) {
+                \Log::error($e);
+                return response()->json(["error" => "An unexpected error occurred !!"], 500);
+            }
+        }
 
     public function update(Request $request, $id): JsonResponse
     {
         try {
             $item = Bank::findOrFail($id);
+
 
             $validator = Validator::make($request->all(), [
                 'name' => [
@@ -73,12 +106,15 @@ class BankController extends Controller
                 'company_id' => 'required|integer|exists:companies,id'
             ]);
 
+
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
             }
 
+
             $validated = $validator->validated();
 
+            // Handle is_primary logic: Set other banks' is_primary to false if this one is true
             // Handle is_primary logic: Set other banks' is_primary to false if this one is true
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 Bank::where('company_id', $item->company_id)
@@ -87,6 +123,19 @@ class BankController extends Controller
                     ->update(['is_primary' => false]);
             }
 
+            // Explicitly set nullable fields to null if not provided in the request
+            $updateData = [
+                'name' => $validated['name'],
+                'is_active' => (bool) $validated['is_active'],
+                'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
+                'company_id' => $validated['company_id'],
+                'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
+                'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
+                'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
+                'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
+            ];
+
+            $item->update($updateData);
             // Explicitly set nullable fields to null if not provided in the request
             $updateData = [
                 'name' => $validated['name'],
@@ -134,6 +183,7 @@ class BankController extends Controller
             'class' => 'nullable|string|max:255',
             'number' => 'nullable|string|max:255',
             'swift' => 'nullable|string|max:255',
+           
             'company_id' => 'required|integer|exists:companies,id'
         ]);
 

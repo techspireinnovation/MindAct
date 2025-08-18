@@ -21,7 +21,7 @@ class SalesmanController extends Controller
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
-        return response()->json($query->paginate(10));
+        return response()->json($query->paginate(50));
     }
 
 
@@ -32,7 +32,11 @@ class SalesmanController extends Controller
 
             $salesmen = Salesman::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')
-                ->pluck('name');
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($salesman) => ['id' => $salesman->id, 'name' => $salesman->name])
+                ->values()
+                ->toArray();
             return response()->json([
                 "message" => "Sales men List Received !!",
                 "data" => $salesmen

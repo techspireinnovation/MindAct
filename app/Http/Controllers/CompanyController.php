@@ -31,7 +31,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -281,7 +281,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -326,7 +326,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -387,7 +387,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -499,7 +499,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                ], 200);
             }
 
             // Validate request data
@@ -604,7 +604,7 @@ class CompanyController extends Controller
     //             return response()->json([
     //                 'success' => false,
     //                 'message' => 'Unauthorized: Not a company admin',
-    //             ], 403);
+    //             ], 200);
     //         }
 
     //         $companyId = $request->company_id;
@@ -633,7 +633,7 @@ class CompanyController extends Controller
     //             return response()->json([
     //                 'success' => false,
     //                 'message' => 'User is not associated with this company',
-    //             ], 403);
+    //             ], 200);
     //         }
 
     //         $purchaseMaster = \App\Models\PurchaseMasterKey::where('company_id', $companyId)->first();
@@ -675,7 +675,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: User lacks required role',
-                ], 403);
+                ], 200);
             }
 
             $companyId = $request->company_id;
@@ -704,7 +704,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with this company',
-                ], 403);
+                ], 200);
             }
 
             $purchaseMaster = \App\Models\PurchaseMasterKey::where('company_id', $companyId)->first();
@@ -744,7 +744,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                ], 200);
             }
 
             // Validate request data
@@ -852,7 +852,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                ], 200);
             }
 
             // Get company_id from middleware
@@ -884,7 +884,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with this company',
-                ], 403);
+                ], 200);
             }
 
             // Find the SalesMasterKey for the company
@@ -928,7 +928,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Super admin or company admin required',
-                ], 403);
+                ], 200);
             }
 
             $companyUser = CompanyUser::where('user_id', $user->id)->first();
@@ -1171,7 +1171,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a super admin',
-                ], 403);
+                ], 200);
             }
             $company = Company::findOrFail($id);
 

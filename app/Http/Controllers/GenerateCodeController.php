@@ -28,12 +28,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -54,7 +54,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -70,7 +70,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
             // Get last purchase record for the current fiscal year and branch
@@ -79,7 +79,7 @@ class GenerateCodeController extends Controller
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastPurchase ? (int)substr($lastPurchase->purchase_bill_number, -6) : 0;
+            $lastNumber = $lastPurchase ? (int) substr($lastPurchase->purchase_bill_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -107,12 +107,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -133,7 +133,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -149,7 +149,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
             // Get last purchase record for the current fiscal year and branch
@@ -158,7 +158,7 @@ class GenerateCodeController extends Controller
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastPurchasereturn ? (int)substr($lastPurchasereturn->purchase_bill_number, -6) : 0;
+            $lastNumber = $lastPurchasereturn ? (int) substr($lastPurchasereturn->purchase_bill_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -185,12 +185,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -211,7 +211,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -227,16 +227,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastSale = Sale::where('invoice_number', 'like', "S{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastSale ? (int)substr($lastSale->invoice_number, -6) : 0;
+            $lastNumber = $lastSale ? (int) substr($lastSale->invoice_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -263,12 +263,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -289,7 +289,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -305,16 +305,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastSalesreturn = SalesReturn::where('invoice_number', 'like', "SR{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastSalesreturn ? (int)substr($lastSalesreturn->invoice_number, -6) : 0;
+            $lastNumber = $lastSalesreturn ? (int) substr($lastSalesreturn->invoice_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -341,12 +341,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -367,7 +367,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -383,16 +383,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastVoucherNumber = JournalVoucher::where('voucher_number', 'like', "JV{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastVoucherNumber ? (int)substr($lastVoucherNumber->voucher_number, -6) : 0;
+            $lastNumber = $lastVoucherNumber ? (int) substr($lastVoucherNumber->voucher_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -420,12 +420,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -446,7 +446,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -462,16 +462,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastPaymentVoucherNumber = PaymentVoucher::where('payment_voucher_number', 'like', "PV{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastPaymentVoucherNumber ? (int)substr($lastPaymentVoucherNumber->payment_voucher_number, -6) : 0;
+            $lastNumber = $lastPaymentVoucherNumber ? (int) substr($lastPaymentVoucherNumber->payment_voucher_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -497,12 +497,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -523,7 +523,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -539,16 +539,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastReceiptVoucherNumber = ReceiptVoucher::where('receipt_voucher_number', 'like', "RV{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastReceiptVoucherNumber ? (int)substr($lastReceiptVoucherNumber->receipt_voucher_number, -6) : 0;
+            $lastNumber = $lastReceiptVoucherNumber ? (int) substr($lastReceiptVoucherNumber->receipt_voucher_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -575,12 +575,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -601,7 +601,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -617,16 +617,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastBankVoucherNumber = BankVoucher::where('voucher_number', 'like', "BV{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastBankVoucherNumber ? (int)substr($lastBankVoucherNumber->voucher_number, -6) : 0;
+            $lastNumber = $lastBankVoucherNumber ? (int) substr($lastBankVoucherNumber->voucher_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -653,12 +653,12 @@ class GenerateCodeController extends Controller
     {
         try {
             // Get current BS date
-          
-            
+
+
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
             $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int)$bsDateParts[0];
-            $currentBsMonth = (int)$bsDateParts[1];
+            $currentBsYear = (int) $bsDateParts[0];
+            $currentBsMonth = (int) $bsDateParts[1];
 
             // Determine fiscal year
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
@@ -679,7 +679,7 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No valid token found'
-                ], 403);
+                ], 200);
             }
 
             // Extract branch ID from token abilities
@@ -695,16 +695,16 @@ class GenerateCodeController extends Controller
                 return response()->json([
                     'status' => 'error',
                     'message' => 'No branch associated with the user'
-                ], 403);
+                ], 200);
             }
 
-        
+
             $lastAdjustmentVoucherNumber = StockAdjustment::where('reference_no', 'like', "Adj{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
             // Generate sequential number
-            $lastNumber = $lastAdjustmentVoucherNumber ? (int)substr($lastAdjustmentVoucherNumber->reference_no, -6) : 0;
+            $lastNumber = $lastAdjustmentVoucherNumber ? (int) substr($lastAdjustmentVoucherNumber->reference_no, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
             // Generate purchase bill number
@@ -761,7 +761,7 @@ class GenerateCodeController extends Controller
     //             return response()->json([
     //                 'status' => 'error',
     //                 'message' => 'No valid token found'
-    //             ], 403);
+    //             ], 200);
     //         }
 
     //         // Extract branch ID from token abilities
@@ -777,7 +777,7 @@ class GenerateCodeController extends Controller
     //             return response()->json([
     //                 'status' => 'error',
     //                 'message' => 'No branch associated with the user'
-    //             ], 403);
+    //             ], 200);
     //         }
 
     //         // Get last purchase record for the current fiscal year and branch

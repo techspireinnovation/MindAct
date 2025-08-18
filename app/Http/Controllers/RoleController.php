@@ -15,7 +15,7 @@ class RoleController extends Controller
 
     public function getById(Request $request, $id)
     {
-       
+
 
 
         try {
@@ -37,7 +37,7 @@ class RoleController extends Controller
     }
 
 
-   
+
 
 
     public function toggleActiveStatus(Request $request, $id)
@@ -72,7 +72,7 @@ class RoleController extends Controller
 
 
 
- 
+
 
     public function store(Request $request)
     {
@@ -125,10 +125,10 @@ class RoleController extends Controller
             $role = Role::findOrFail($id);
             if ($role->name === 'admin' || $role->name === 'user') {
                 if ($request->has('is_active') && !$request->is_active) {
-                    return response()->json(['message' => 'Cannot deactivate default roles'], 403);
+                    return response()->json(['message' => 'Cannot deactivate default roles'], 200);
                 }
                 if ($request->name !== $role->name) {
-                    return response()->json(['message' => 'Cannot rename default roles'], 403);
+                    return response()->json(['message' => 'Cannot rename default roles'], 200);
                 }
             }
 
@@ -160,7 +160,7 @@ class RoleController extends Controller
         try {
             $role = Role::findOrFail($id);
             if ($role->name === 'admin' || $role->name === 'user') {
-                return response()->json(['message' => 'Cannot delete default roles'], 403);
+                return response()->json(['message' => 'Cannot delete default roles'], 200);
             }
 
             $role->delete();

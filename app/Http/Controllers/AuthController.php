@@ -110,7 +110,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
         $token = $user->createToken('SuperAdminToken', ['super_admin'])->plainTextToken;
@@ -145,7 +145,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
         return response()->json([
@@ -187,7 +187,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
         if (!Hash::check($request->current_password, $user->password)) {
@@ -227,7 +227,7 @@ class AuthController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a super admin',
-                ], 403);
+                ], 200);
             }
 
             $validator = Validator::make($request->all(), [
@@ -278,7 +278,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403);
+            ], 200);
         }
 
 

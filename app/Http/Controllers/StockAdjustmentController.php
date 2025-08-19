@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\StockAdjustmentProduct;
 use App\Models\StockAdjustmentProductFieldValue;
 use App\Models\PurchaseStockProduct;
+use App\Models\StockAdjustedFieldValue;
 use App\Models\StockAdjusted;
 use App\Models\PurchaseStockProductFieldValue;
 use App\Models\ProductField;
@@ -121,6 +122,8 @@ class StockAdjustmentController extends Controller
 
 
 
+
+
     public function store(Request $request): JsonResponse
     {
         try {
@@ -161,6 +164,11 @@ class StockAdjustmentController extends Controller
                 'product_details.*.discount_amount' => 'nullable|numeric',
                 'product_details.*.amount' => 'nullable|numeric',
                 'product_details.*.is_vatable' => 'nullable|boolean',
+                'product_details.*.field_values' => 'nullable|array',
+                'product_details.*.field_values.*.product_field_id' => 'required_with:product_details.*.field_values|integer|exists:product_fields,id',
+                'product_details.*.field_values.*.value' => 'required_with:product_details.*.field_values|string|max:255',
+                'product_details.*.field_values.*.quantity_type' => 'required_with:product_details.*.field_values|string|max:255',
+                'product_details.*.field_values.*.quantity_index' => 'required_with:product_details.*.field_values|numeric|min:0',
                 'company_id' => 'required|integer|exists:companies,id',
             ]);
 
@@ -193,9 +201,9 @@ class StockAdjustmentController extends Controller
                     $stockAdjustmentProduct = StockAdjustmentProduct::create([
                         'stock_adjustment_id' => $stockAdjustment->id,
                         'purchase_stock_product_id' => null, // Will update if PurchaseStockProduct is created
-                     
+                        'customer_id' => null, // Adjust if needed
                         'company_id' => $validated['company_id'],
-                        'branch_id' => $request->branch_id ?? null,
+                        'branch_id' => $detail['branch_id'] ?? $request->branch_id ?? null,
                         'purchase_product_id' => null, // Adjust if linked
                         'stock_product_id' => null, // Adjust if linked
                         'purchase_id' => null, // Adjust if linked
@@ -208,13 +216,13 @@ class StockAdjustmentController extends Controller
                         'current_stock' => $detail['current_stock'],
                         'actual_stock' => $detail['actual_stock'],
                         'diff_stock' => $detail['diff_stock'],
-                        'quantity' => $detail['quantity'] ?? 0,
+                        'quantity' => $detail['diff_stock'], // Use diff_stock as quantity
                         'free_quantity' => $detail['free_quantity'] ?? 0,
                         'price' => $detail['price'] ?? 0,
                         'discount_percent' => $detail['discount_percent'] ?? 0,
                         'discount_amount' => $detail['discount_amount'] ?? 0,
                         'amount' => $detail['amount'] ?? 0,
-                        'is_vatable' => $detail['is_vatable'],
+                        'is_vatable' => $detail['is_vatable'] ?? null,
                         'measure_unit_id' => $detail['measure_unit_id'],
                     ]);
 
@@ -222,7 +230,7 @@ class StockAdjustmentController extends Controller
                     $stockAdjusted = StockAdjusted::create([
                         'purchase_stock_product_id' => null, // Will update if PurchaseStockProduct is created
                         'company_id' => $validated['company_id'],
-                        'branch_id' => $request->branch_id ?? null,
+                        'branch_id' => $detail['branch_id'] ?? $request->branch_id ?? null,
                         'product_id' => $detail['product_id'],
                         'adjusted_type' => $detail['adjusted_type'],
                         'product_name' => $detail['product_name'],
@@ -237,16 +245,17 @@ class StockAdjustmentController extends Controller
                         'discount_percent' => $detail['discount_percent'] ?? 0,
                         'discount_amount' => $detail['discount_amount'] ?? 0,
                         'amount' => $detail['amount'] ?? 0,
-                        'is_vatable' => $detail['is_vatable'],
+                        'is_vatable' => $detail['is_vatable'] ?? null,
                         'measure_unit_id' => $detail['measure_unit_id'],
                     ]);
 
                     // Create PurchaseStockProduct for 'add' adjustments
+                    $purchaseStockProduct = null;
                     if ($detail['adjusted_type'] === 'add') {
                         $purchaseStockProduct = PurchaseStockProduct::create([
-                            'customer_id' => null,
+                            'customer_id' => null, // Adjust if needed
                             'company_id' => $validated['company_id'],
-                            'branch_id' => $request->branch_id ?? null,
+                            'branch_id' => $detail['branch_id'] ?? $request->branch_id ?? null,
                             'purchase_type' => $detail['purchase_type'] ?? null,
                             'purchase_product_id' => null, // Adjust if linked
                             'stock_product_id' => null, // Adjust if linked
@@ -263,24 +272,73 @@ class StockAdjustmentController extends Controller
                             'discount_percent' => $detail['discount_percent'] ?? 0,
                             'discount_amount' => $detail['discount_amount'] ?? 0,
                             'amount' => $detail['amount'] ?? 0,
-                            'is_vatable' => $detail['is_vatable'],
+                            'is_vatable' => $detail['is_vatable'] ?? null,
                             'measure_unit_id' => $detail['measure_unit_id'],
                         ]);
-
                     }
 
-                    
+                    // Process field values
+                    if (!empty($detail['field_values'])) {
+                        foreach ($detail['field_values'] as $fieldValue) {
+                            // Create StockAdjustmentProductFieldValue record (except for unselected)
+                            if ($fieldValue['value_type'] == 'selected') {
+                                StockAdjustmentProductFieldValue::create([
+                                    'stock_adjustment_product_id' => $stockAdjustmentProduct->id,
+                                    'stock_product_id' => $fieldValue['stock_product_id'] ?? null,
+                                    'purchase_product_id' => $fieldValue['purchase_product_id'] ?? null,
+                                    'purchase_stock_product_id' => $fieldValue['purchase_stock_product_id'] ?? null,
+                                    'company_id' => $validated['company_id'],
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'product_id' => $detail['product_id'],
+                                    'quantity_index' => $fieldValue['quantity_index'],
+                                    'quantity_type' => $fieldValue['quantity_type'],
+                                    'value' => $fieldValue['value'],
+                                ]);
+                            }
+
+                            // Create StockAdjustedFieldValue record
+                            if ($fieldValue['value_type'] == 'unselected') {
+                                StockAdjustedFieldValue::create([
+                                    'stock_adjusted_id' => $stockAdjusted->id,
+                                    'purchase_stock_product_id' => $purchaseStockProduct->id ?? null,
+                                    'stock_product_id' => $fieldValue['stock_product_id'] ?? null,
+                                    'purchase_product_id' => $fieldValue['purchase_product_id'] ?? null,
+                                    'company_id' => $validated['company_id'],
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'product_id' => $detail['product_id'],
+                                    'quantity_index' => $detail['diff_stock'], // Match diff_stock
+                                    'quantity_type' => $fieldValue['quantity_type'],
+                                    'value' => $fieldValue['value'],
+                                ]);
+                            }
+
+                            // Update or create PurchaseStockProductFieldValue for 'add' adjustments
+                            if ($detail['adjusted_type'] === 'add' && $fieldValue['value_type'] !== 'unselected') {
+                                PurchaseStockProductFieldValue::create([
+                                    'company_id' => $request->company_id ?? null,
+                                    'branch_id' => $request->branch_id ?? null,
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'product_id' => $detail['product_id'],
+                                    'purchase_stock_product_id' => $purchaseStockProduct->id ?? null,
+                                    'purchase_product_id' => null, // Adjust if linked
+                                    'stock_product_id' => null, // Adjust if linked
+                                    'quantity_index' => $fieldValue['quantity_index'],
+                                    'quantity_type' => $fieldValue['quantity_type'],
+                                    'value' => $fieldValue['value'],
+                                ]);
+                            }
+                        }
+                    }
                 }
 
                 return $stockAdjustment;
             });
 
-            return response()->json($item->load('StockAdjustmentProduct'), 201);
+            return response()->json($item->load('StockAdjustmentProduct.fieldValues'), 201);
         } catch (ModelNotFoundException $e) {
             \Log::error('ModelNotFoundException in StockAdjustmentController::store: ' . $e->getMessage());
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
             \Log::error('QueryException in StockAdjustmentController::store: ' . $e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {

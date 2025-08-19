@@ -117,7 +117,7 @@ class SaleController extends Controller
 
 
 
-    public function getAvailableProductsForSale($purchaseType, $companyId)
+    private function getAvailableProductsForSale($purchaseType, $companyId)
     {
 
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
@@ -196,6 +196,7 @@ class SaleController extends Controller
                         ->where('purchase_product_field_values.company_id', $companyId)
                 ])
                 ->get();
+          
             
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
@@ -290,6 +291,7 @@ class SaleController extends Controller
             ]);
 
             return $results;
+            // dd($results);
 
         } catch (\Exception $e) {
             Log::error('Error fetching available products for sale', [
@@ -346,6 +348,7 @@ class SaleController extends Controller
             $products = $includeDetails
                 ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'])
                 : $this->getAvailableProductsForSale($purchaseType, $companyId);
+            
 
             return response()->json([
                 'message' => 'Available products retrieved successfully',
@@ -723,6 +726,7 @@ class SaleController extends Controller
                 // ->whereHas('purchase', fn($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
                 ->orderBy('created_at', 'asc')
                 ->get();
+           
 
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', [

@@ -14,10 +14,10 @@ return new class extends Migration {
             $table->id();
             $table->unsignedBigInteger('purchase_product_id')->nullable();
             $table->unsignedBigInteger('stock_product_id')->nullable();
-            $table->foreignID('customer_id')->constrained('customers');
+            $table->foreignID('customer_id')->nullable();
 
             $table->foreignID('company_id')->constrained('companies');
-            $table->foreignID('branch_id')->constrained('branches')->nullable();
+            $table->foreignID('branch_id')->nullable();
             $table->unsignedBigInteger(column: 'purchase_id')->nullable();
             $table->foreignID(column: 'product_id')->constrained('products');
             $table->text('product_code')->constrained('products');

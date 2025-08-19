@@ -16,7 +16,7 @@ class StockAdjustmentProduct extends Model
      protected $fillable = [
         'stock_adjustment_id',
         'purchase_stock_product_id',
-        'customer_id',
+        
         'company_id',
         'branch_id',
         'mfd',
@@ -27,6 +27,9 @@ class StockAdjustmentProduct extends Model
         'product_name',
         'product_code',
         'expiry_date',
+        'current_stock',
+        'actual_stock',
+        'diff_stock',
         'quantity',
         'deleted_at',
         'free_quantity',

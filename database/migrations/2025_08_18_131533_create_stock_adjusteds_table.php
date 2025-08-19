@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
             $table->unsignedBigInteger('purchase_product_id')->nullable();
             $table->unsignedBigInteger('stock_product_id')->nullable();
-            $table->foreignID('customer_id')->constrained('customers');
+           
             $table->string('adjusted_type');
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('branch_id')->constrained('branches')->nullable();
@@ -26,8 +26,9 @@ return new class extends Migration {
             $table->text(column: 'product_name')->constrained('products');
             $table->date('expiry_date')->nullable();
             $table->string('mfd')->nullable();
-            $table->double('quantity')->nullable();
-            $table->double('free_quantity')->nullable();
+            $table->string('quantity')->nullable();
+            $table->string('diff_stock')->nullable();
+            $table->string('free_quantity')->nullable();
             $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();

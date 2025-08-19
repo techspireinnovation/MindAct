@@ -801,7 +801,7 @@ class SalesReturnController extends Controller
 
 
 
-      public function getSaleProductNames(Request $request): JsonResponse
+    public function getSaleProductNames(Request $request): JsonResponse
     {
         try {
             // Validate inputs
@@ -1045,6 +1045,570 @@ class SalesReturnController extends Controller
         }
     }
 
+    // public function getAvailableProductsForSalesReturn(Request $request): JsonResponse
+    // {
+    //     try {
+    //         // Validate inputs
+    //         $validator = Validator::make($request->all(), [
+    //             'product_id' => 'nullable|integer|exists:products,id',
+    //             'product_name' => 'nullable|string|max:255',
+    //             'company_id' => 'required|integer|exists:companies,id',
+    //             'sale_id' => 'nullable|integer|exists:sales,id',
+    //         ]);
+
+    //         if ($validator->fails()) {
+    //             return response()->json(['errors' => $validator->errors()], 422);
+    //         }
+
+    //         $productId = $request->input('product_id');
+    //         $productCode = $request->input('product_code');
+    //         $productName = trim(strtolower($request->input('product_name')));
+    //         $companyId = $request->input('company_id');
+    //         $saleId = $request->input('sale_id');
+
+    //         Log::debug('Input parameters for sales return', [
+    //             'product_id' => $productId,
+    //             'product_name' => $productName,
+    //             'product_code' => $productCode,
+    //             'company_id' => $companyId,
+    //             'sale_id' => $saleId,
+    //         ]);
+
+    //         if (!$productId && !$productCode && !$productName && !$saleId) {
+    //             return response()->json(['error' => 'At least one of product_id, product_name, or sale_id is required'], 422);
+    //         }
+
+    //         // Authentication and authorization
+    //         if (!auth()->check()) {
+    //             return response()->json(['message' => 'Unauthenticated'], 401);
+    //         }
+
+    //         $user = auth()->user();
+    //         $userCompanyId = optional($user->company)->company_id;
+    //         if ($userCompanyId != $companyId) {
+    //             return response()->json(['error' => 'Unauthorized access to company resources'], 200);
+    //         }
+
+    //         // Fetch measure units
+    //         $measureUnits = MeasureUnit::where('company_id', $companyId)
+    //             ->where('is_active', 1)
+    //             ->whereNull('deleted_at')
+    //             ->select(['id', 'name', 'quantity'])
+    //             ->get()
+    //             ->keyBy('id');
+
+    //         Log::info('Measure units fetched', [
+    //             'company_id' => $companyId,
+    //             'measure_units' => $measureUnits->toArray(),
+    //         ]);
+
+    //         // Fetch sales with products and field values
+    //         $salesQuery = Sale::where('company_id', $companyId)
+    //             ->whereNull('deleted_at');
+
+    //         if ($saleId) {
+    //             $salesQuery->where('id', $saleId);
+    //         }
+
+    //         $sales = $salesQuery->with([
+    //             'saleProducts' => function ($query) use ($companyId, $productId, $productName, $productCode) {
+    //                 $query->select([
+    //                     'sale_products.id',
+    //                     'sale_products.sale_id',
+    //                     'sale_products.product_id',
+    //                     'sale_products.measure_unit_id',
+    //                     'sale_products.quantity',
+    //                     'sale_products.amount',
+    //                     'sale_products.free_quantity',
+    //                     'sale_products.purchase_product_id',
+    //                     'sale_products.price',
+    //                     'sale_products.is_vatable',
+    //                     'sale_products.expiry_date',
+    //                     'products.name as product_name',
+    //                     'products.product_unique_id as product_code',
+    //                 ])
+    //                     ->join('products', 'sale_products.product_id', '=', 'products.id')
+    //                     ->where('sale_products.company_id', $companyId)
+    //                     ->whereNull('sale_products.deleted_at')
+    //                     ->whereNull('products.deleted_at');
+
+    //                 if ($productId) {
+    //                     $query->where('sale_products.product_id', $productId);
+    //                 }
+
+    //                 if ($productName) {
+    //                     $query->whereRaw('LOWER(products.name) LIKE ?', ["%{$productName}%"]);
+    //                 }
+
+    //                 if ($productCode) {
+    //                     $query->where('products.product_unique_id', $productCode);
+    //                 }
+    //             },
+    //             'saleProducts.fieldValues' => function ($query) use ($companyId) {
+    //                 $query->select([
+    //                     'sales_product_field_values.sale_product_id',
+    //                     'sales_product_field_values.product_field_id',
+    //                     'sales_product_field_values.quantity_index',
+    //                     'sales_product_field_values.value',
+    //                     'product_fields.name',
+    //                 ])
+    //                     ->join('product_fields', 'sales_product_field_values.product_field_id', '=', 'product_fields.id')
+    //                     ->where('sales_product_field_values.company_id', $companyId)
+    //                     ->whereNull('sales_product_field_values.deleted_at')
+    //                     ->whereNull('product_fields.deleted_at');
+    //             },
+    //         ])
+    //             ->select([
+    //                 'id',
+    //                 'company_id',
+    //                 'customer_id',
+    //                 'customer_name',
+    //                 'invoice_number',
+    //                 'invoice_date',
+    //                 'total_amount',
+    //                 'is_vatable',
+    //             ])
+    //             ->get();
+
+    //         if ($sales->isEmpty()) {
+    //             Log::warning('No sales found', [
+    //                 'product_id' => $productId,
+    //                 'product_name' => $productName,
+    //                 'company_id' => $companyId,
+    //                 'sale_id' => $saleId,
+    //             ]);
+    //             return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
+    //         }
+
+    //         // Fetch sales return products
+    //         $saleProductIds = $sales->pluck('saleProducts.*.id')->flatten()->unique()->toArray();
+    //         $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
+    //             ->where('company_id', $companyId)
+    //             ->whereNull('deleted_at')
+    //             ->select([
+    //                 'id',
+    //                 'sale_product_id',
+    //                 'quantity',
+    //                 'free_quantity',
+    //                 'measure_unit_id',
+    //                 'company_id',
+    //             ])
+    //             ->get();
+
+    //         Log::info('Sales return products fetched', [
+    //             'sale_product_ids' => $saleProductIds,
+    //             'sales_return_products' => $salesReturnProducts->toArray(),
+    //         ]);
+
+    //         // Fetch return field values for comparison
+    //         $returnFieldValues = DB::table('sale_return_product_field_values')
+    //             ->where('company_id', $companyId)
+    //             ->whereNull('deleted_at')
+    //             ->whereIn('sale_product_id', $saleProductIds)
+    //             ->select([
+    //                 'sale_product_id',
+    //                 'product_field_id',
+    //                 'quantity_index',
+    //                 'value',
+    //             ])
+    //             ->get()
+    //             ->groupBy('sale_product_id');
+
+    //         Log::info('Return field values fetched', [
+    //             'sale_product_ids' => $saleProductIds,
+    //             'return_field_values' => $returnFieldValues->toArray(),
+    //         ]);
+
+    //         // Aggregate products across all sales
+    //         $products = [];
+
+    //         foreach ($sales as $sale) {
+    //             if ($sale->saleProducts->isEmpty()) {
+    //                 Log::warning('No available products for sale', [
+    //                     'sale_id' => $sale->id,
+    //                     'invoice_number' => $sale->invoice_number,
+    //                     'company_id' => $companyId,
+    //                 ]);
+    //                 continue;
+    //             }
+
+    //             foreach ($sale->saleProducts as $saleProduct) {
+    //                 $productId = $saleProduct->product_id;
+    //                 // Use sale product's measure unit or default if missing
+
+    //                 $primaryMeasureUnit = ProductList::where('product_id', $productId)
+    //                     ->where('is_primary', 1)
+    //                     ->where('company_id', $companyId)
+    //                     ->whereNull('deleted_at')
+    //                     ->pluck('measure_unit_id')->first();
+    //                 if (!$primaryMeasureUnit) {
+    //                     $primaryMeasureUnit = ProductList::where('id', $productId)
+    //                         ->where('company_id', $companyId)
+    //                         ->whereNull('deleted_at')
+    //                         ->orderBy('created_at', 'asc')
+    //                         ->pluck('measure_unit_id')
+    //                         ->first();
+    //                 }
+    //                 $primaryMeasureUnitQuantity = MeasureUnit::where('id', $primaryMeasureUnit)
+    //                     ->where('company_id', $companyId)
+    //                     ->whereNull('deleted_at')
+    //                     ->pluck('quantity')
+    //                     ->first();
+    //                 $productMeasureUniId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
+    //                 $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
+
+    //                 $allMeasureUnitsId = collect(array_merge($productMeasureUniId, $productListMeasureUnitId))
+    //                     ->unique()
+    //                     ->values()
+    //                     ->toArray();
+
+
+    //                 $usedMeasureUnits = MeasureUnit::whereIn('id', $allMeasureUnitsId)
+    //                     ->where('company_id', $companyId)
+    //                     ->whereNull('deleted_at')
+    //                     ->get(['id', 'name', 'quantity']);
+    //                 $measureUnitId = $saleProduct->measure_unit_id ?? null;
+    //                 $measureUnit = isset($measureUnits[$measureUnitId]) ? [
+    //                     'id' => $measureUnits[$measureUnitId]->id,
+    //                     'name' => $measureUnits[$measureUnitId]->name,
+    //                     'quantity' => $measureUnits[$measureUnitId]->quantity ?? 1,
+    //                 ] : [
+    //                     'id' => null,
+    //                     'name' => 'null',
+    //                     'quantity' => 1,
+    //                 ];
+    //                 $measureUnitQuantity = $measureUnit['quantity'];
+
+    //                 if (!isset($measureUnits[$measureUnitId])) {
+    //                     Log::warning('Measure unit not found for sale product, using default', [
+    //                         'sale_product_id' => $saleProduct->id,
+    //                         'measure_unit_id' => $saleProduct->measure_unit_id,
+    //                     ]);
+    //                 }
+
+    //                 // Fetch product metadata
+    //                 $product = Product::where('id', $productId)
+    //                     ->where('company_id', $companyId)
+    //                     ->whereNull('deleted_at')
+    //                     ->first();
+
+
+
+    //                 $originalProductPrice = Product::where('id', $productId)->value('purchase_rate');
+
+    //                 $saleProductsPrice = SaleProduct::where('product_id', $productId)->orderBy('created_at', 'desc')->pluck('price');
+    //                 $latestPrice = $saleProductsPrice->first();
+
+    //                 // Get the minimum price
+    //                 $minProductPrice = $saleProductsPrice->min();
+
+    //                 // Get the average price
+    //                 $avgProductPrice = $saleProductsPrice->avg();
+
+    //                 // Initialize product entry
+    //                 if (!isset($products[$productId])) {
+    //                     $products[$productId] = [
+    //                         'product_id' => $productId,
+    //                         'product_name' => $saleProduct->product_name,
+    //                         'product_code' => $saleProduct->product_code,
+
+    //                         'original_price' => $originalProductPrice ?? null,
+    //                         'latest_price' => $latestPrice ?? null,
+    //                         'min_price' => $minProductPrice ?? null,
+    //                         'avg_price' => $avgProductPrice ?? null,
+    //                         'amount' => $saleProduct->amount ?? null,
+    //                         'is_vatable' => (bool) $saleProduct->is_vatable,
+    //                         'used_measure_units' => $usedMeasureUnits,
+    //                         'measure_unit_id' => $primaryMeasureUnit,
+
+    //                         'measure_unit_quantity' => $primaryMeasureUnitQuantity,
+    //                         'purchased_quantity' => 0,
+    //                         'return_quantity' => 0,
+    //                         'sale_quantity' => 0,
+    //                         'sales_return_quantity' => 0,
+    //                         'available_quantity' => 0,
+    //                         'expiry_dates' => [],
+    //                         'field_values' => [],
+    //                         'sale_products' => [],
+    //                     ];
+    //                 }
+
+    //                 // Update min_price if lower
+
+    //                 if ($saleProduct->price < $products[$productId]['min_price']) {
+    //                     $products[$productId]['min_price'] = $saleProduct->price;
+    //                 }
+
+    //                 // Calculate sale quantity
+    //                 $regularQuantity = $saleProduct->quantity ?? 0;
+    //                 $freeQuantity = $saleProduct->free_quantity ?? 0;
+    //                 $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
+    //                 $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
+    //                 $saleTotal = $saleRegular + $saleFree;
+
+    //                 // Calculate returned quantity
+    //                 $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
+    //                 $returned = 0;
+    //                 $lastReturnMeasureUnitId = null;
+    //                 $lastReturnMeasureUnitQuantity = 1;
+
+    //                 foreach ($returnProducts as $returnProduct) {
+    //                     $returnMeasureUnitId = $returnProduct->measure_unit_id ?? null;
+    //                     $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
+    //                     $regularQuantity = $returnProduct->quantity ?? 0;
+    //                     $freeQuantity = $returnProduct->free_quantity ?? 0;
+
+    //                     $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
+    //                     $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
+    //                     $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
+    //                     $returned += $returnQuantity; // Accumulate returned quantity
+    //                     $lastReturnMeasureUnitId = $returnMeasureUnitId;
+    //                     $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
+
+    //                     // Check for measure unit mismatch
+    //                     if ($returnMeasureUnitId !== $saleProduct->measure_unit_id) {
+    //                         Log::warning('Measure unit mismatch for return product', [
+    //                             'sale_product_id' => $saleProduct->id,
+    //                             'return_product_id' => $returnProduct->id,
+    //                             'sale_measure_unit_id' => $saleProduct->measure_unit_id,
+    //                             'return_measure_unit_id' => $returnMeasureUnitId,
+    //                         ]);
+    //                     }
+
+    //                     Log::info('Processing return product', [
+    //                         'sale_product_id' => $saleProduct->id,
+    //                         'return_product_id' => $returnProduct->id,
+    //                         'return_quantity' => $returnQuantity,
+    //                         'measure_unit_id' => $returnMeasureUnitId,
+    //                         'measure_unit_quantity' => $returnMeasureUnitQuantity,
+    //                     ]);
+    //                 }
+
+    //                 // Warn if returns exceed sales
+    //                 if ($returned >= $saleTotal) {
+    //                     Log::warning('Return quantity equals or exceeds sale quantity for sale product', [
+    //                         'sale_product_id' => $saleProduct->id,
+    //                         'sale_total' => $saleTotal,
+    //                         'return_total' => $returned,
+    //                     ]);
+    //                 }
+
+    //                 Log::info('Returned quantity for sale product', [
+    //                     'sale_product_id' => $saleProduct->id,
+    //                     'returned' => $returned,
+    //                     'measure_unit_id' => $lastReturnMeasureUnitId,
+    //                     'measure_unit_quantity' => $lastReturnMeasureUnitQuantity,
+    //                     'return_products' => $returnProducts->toArray(),
+    //                 ]);
+
+    //                 // Determine returned quantity indices for field values
+    //                 $returnedIndices = [];
+    //                 $saleProductReturnFieldValues = $returnFieldValues[$saleProduct->id] ?? collect([]);
+    //                 Log::info('Return field values for sale product', [
+    //                     'sale_product_id' => $saleProduct->id,
+    //                     'return_field_values' => $saleProductReturnFieldValues->toArray(),
+    //                 ]);
+
+    //                 if ($saleProduct->fieldValues->isNotEmpty()) {
+    //                     $quantityIndices = $saleProduct->fieldValues->pluck('quantity_index')->unique();
+    //                     foreach ($quantityIndices as $quantityIndex) {
+    //                         $saleFieldValues = $saleProduct->fieldValues->where('quantity_index', $quantityIndex)
+    //                             ->pluck('value', 'product_field_id')
+    //                             ->toArray();
+
+    //                         $isReturned = false; // Default to not returned
+    //                         if ($saleProductReturnFieldValues->isNotEmpty()) {
+    //                             $isReturned = true;
+    //                             foreach ($saleFieldValues as $fieldId => $value) {
+    //                                 $returnMatch = $saleProductReturnFieldValues->firstWhere(function ($rfv) use ($fieldId, $value, $quantityIndex) {
+    //                                     return $rfv->product_field_id == $fieldId &&
+    //                                         $rfv->value == $value &&
+    //                                         $rfv->quantity_index == $quantityIndex;
+    //                                 });
+
+    //                                 if (!$returnMatch) {
+    //                                     $isReturned = false;
+    //                                     break;
+    //                                 }
+    //                             }
+    //                         }
+
+    //                         if ($isReturned) {
+    //                             $returnedIndices[] = $quantityIndex;
+    //                         }
+    //                     }
+    //                 } else {
+    //                     if ($returned > 0) {
+    //                         $returnedIndices[] = 0;
+    //                     }
+    //                 }
+
+    //                 // Calculate available quantity
+    //                 $returnTotal = $returned;
+    //                 $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
+
+    //                 Log::info('Quantity calculation for sale product', [
+    //                     'sale_product_id' => $saleProduct->id,
+    //                     'sale_total' => $saleTotal,
+    //                     'return_total' => $returnTotal,
+    //                     'available_quantity' => $availableQuantity,
+    //                     'measure_unit_quantity' => $measureUnitQuantity,
+    //                     'sale_product' => $saleProduct->toArray(),
+    //                 ]);
+
+    //                 $products[$productId]['sale_quantity'] += $saleTotal;
+    //                 $products[$productId]['sales_return_quantity'] += $returnTotal;
+    //                 $products[$productId]['return_quantity'] += $returnTotal;
+    //                 $products[$productId]['available_quantity'] += $availableQuantity;
+
+    //                 if ($saleProduct->expiry_date && !in_array($saleProduct->expiry_date, $products[$productId]['expiry_dates'])) {
+    //                     $products[$productId]['expiry_dates'][] = $saleProduct->expiry_date;
+    //                 }
+
+    //                 // Add field values for unreturned quantities
+    //                 if ($saleProduct->fieldValues->isNotEmpty()) {
+    //                     foreach ($saleProduct->fieldValues as $fv) {
+    //                         if (!in_array($fv->quantity_index, $returnedIndices)) {
+    //                             $products[$productId]['field_values'][] = [
+    //                                 'sale_product_id' => $saleProduct->id,
+    //                                 'purchase_product_id' => $saleProduct->purchase_product_id,
+    //                                 'product_field_id' => $fv->product_field_id,
+    //                                 'name' => $fv->name,
+    //                                 'value' => $fv->value,
+    //                                 'quantity_index' => $fv->quantity_index,
+    //                             ];
+    //                             Log::info('Added eligible field value', [
+    //                                 'sale_product_id' => $saleProduct->id,
+    //                                 'quantity_index' => $fv->quantity_index,
+    //                                 'product_field_id' => $fv->product_field_id,
+    //                                 'value' => $fv->value,
+    //                             ]);
+    //                         }
+    //                     }
+    //                 }
+
+    //                 // Add sale product details
+    //                 $products[$productId]['sale_products'][] = [
+    //                     'sale_product_id' => $saleProduct->id,
+    //                     'sale_id' => $saleProduct->sale_id,
+    //                     'invoice_number' => $sale->invoice_number,
+    //                     'invoice_date' => $sale->invoice_date,
+    //                     'product_id' => $saleProduct->product_id,
+    //                     'product_name' => $saleProduct->product_name,
+    //                     'product_code' => $saleProduct->product_code,
+    //                     'quantity' => $saleProduct->quantity,
+    //                     'free_quantity' => $saleProduct->free_quantity ?? 0,
+    //                     'price' => $saleProduct->price,
+    //                     'is_vatable' => (bool) $saleProduct->is_vatable,
+    //                     'measure_unit_id' => $saleProduct->measure_unit_id,
+    //                     'measure_unit_name' => $measureUnit['name'],
+    //                     'measure_unit_quantity' => $measureUnitQuantity,
+    //                     'available_quantity' => $availableQuantity,
+    //                     'return_quantity' => $returnTotal,
+    //                     'sale_quantity' => $saleTotal,
+    //                     'sales_return_quantity' => $returnTotal,
+    //                     'expiry_date' => $saleProduct->expiry_date,
+    //                     'purchase_product_id' => $saleProduct->purchase_product_id,
+    //                 ];
+    //             }
+    //         }
+
+    //         // Calculate purchased quantity
+    //         foreach ($products as $productId => &$product) {
+    //             $purchasedTotal = PurchaseProduct::where('product_id', $productId)
+    //                 ->where('purchase_products.company_id', $companyId)
+    //                 ->whereNull('purchase_products.deleted_at')
+    //                 ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
+    //                 ->where('measure_units.company_id', $companyId)
+    //                 ->whereNull('measure_units.deleted_at')
+    //                 ->sum(DB::raw('(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) * measure_units.quantity'));
+
+    //             $product['purchased_quantity'] = (int) ($purchasedTotal ?? 0);
+    //             Log::info('Purchased quantity calculated', [
+    //                 'product_id' => $productId,
+    //                 'purchased_quantity' => $purchasedTotal,
+    //             ]);
+
+    //             Log::info('Total quantities for product', [
+    //                 'product_id' => $productId,
+    //                 'sale_quantity' => $product['sale_quantity'],
+    //                 'sales_return_quantity' => $product['sales_return_quantity'],
+    //                 'return_quantity' => $product['return_quantity'],
+    //                 'available_quantity' => $product['available_quantity'],
+    //                 'sale_products' => array_column($product['sale_products'], 'sale_product_id'),
+    //             ]);
+    //         }
+
+    //         // Filter products with available quantity
+    //         $products = array_filter($products, function ($product) {
+    //             Log::info('Filtering product', [
+    //                 'product_id' => $product['product_id'],
+    //                 'available_quantity' => $product['available_quantity'],
+    //             ]);
+    //             return $product['available_quantity'] > 0;
+    //         });
+
+    //         if (empty($products)) {
+    //             Log::warning('No available products after processing', [
+    //                 'product_id' => $productId,
+    //                 'product_name' => $productName,
+    //                 'company_id' => $companyId,
+    //                 'sale_id' => $saleId,
+    //             ]);
+    //             return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
+    //         }
+
+
+    //         Log::info('Final products array', ['products' => $products]);
+
+
+    //         $response = [
+    //             'message' => 'Product details retrieved successfully',
+    //             'data' => [
+    //                 [
+    //                     'products' => array_values($products),
+    //                 ],
+    //             ],
+    //         ];
+
+    //         Log::info('Final response prepared', [
+    //             'product_count' => count($products),
+    //             'product_ids' => array_keys($products),
+    //             'sale_product_ids' => array_merge(...array_map(function ($product) {
+    //                 return array_column($product['sale_products'], 'sale_product_id');
+    //             }, $products)),
+    //         ]);
+
+    //         return response()->json($response);
+
+    //     } catch (QueryException $e) {
+
+    //         Log::error('Database query error in getAvailableProductsForSalesReturn', [
+    //             'product_id' => $productId,
+    //             'product_name' => $productName,
+    //             'company_id' => $companyId,
+    //             'sale_id' => $saleId,
+    //             'error' => $e->getMessage(),
+    //             'sql' => $e->getSql(),
+    //             'bindings' => $e->getBindings(),
+    //         ]);
+    //         return response()->json(['error' => 'Database query error'], 500);
+    //     } catch (\Exception $e) {
+
+    //         Log::error('Unexpected error in getAvailableProductsForSalesReturn', [
+    //             'product_id' => $productId,
+    //             'product_name' => $productName,
+    //             'company_id' => $companyId,
+    //             'sale_id' => $saleId,
+    //             'error' => $e->getMessage(),
+    //             'trace' => $e->getTraceAsString(),
+    //         ]);
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     }
+    // }
+
+
+
     public function getAvailableProductsForSalesReturn(Request $request): JsonResponse
     {
         try {
@@ -1078,15 +1642,9 @@ class SalesReturnController extends Controller
                 return response()->json(['error' => 'At least one of product_id, product_name, or sale_id is required'], 422);
             }
 
-            // Authentication and authorization
+            // Authentication check
             if (!auth()->check()) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
-            }
-
-            $user = auth()->user();
-            $userCompanyId = optional($user->company)->company_id;
-            if ($userCompanyId != $companyId) {
-                return response()->json(['error' => 'Unauthorized access to company resources'], 200);
             }
 
             // Fetch measure units
@@ -1235,7 +1793,6 @@ class SalesReturnController extends Controller
                 foreach ($sale->saleProducts as $saleProduct) {
                     $productId = $saleProduct->product_id;
                     // Use sale product's measure unit or default if missing
-
                     $primaryMeasureUnit = ProductList::where('product_id', $productId)
                         ->where('is_primary', 1)
                         ->where('company_id', $companyId)
@@ -1261,7 +1818,6 @@ class SalesReturnController extends Controller
                         ->unique()
                         ->values()
                         ->toArray();
-
 
                     $usedMeasureUnits = MeasureUnit::whereIn('id', $allMeasureUnitsId)
                         ->where('company_id', $companyId)
@@ -1292,17 +1848,10 @@ class SalesReturnController extends Controller
                         ->whereNull('deleted_at')
                         ->first();
 
-
-
                     $originalProductPrice = Product::where('id', $productId)->value('purchase_rate');
-
                     $saleProductsPrice = SaleProduct::where('product_id', $productId)->orderBy('created_at', 'desc')->pluck('price');
                     $latestPrice = $saleProductsPrice->first();
-
-                    // Get the minimum price
                     $minProductPrice = $saleProductsPrice->min();
-
-                    // Get the average price
                     $avgProductPrice = $saleProductsPrice->avg();
 
                     // Initialize product entry
@@ -1311,7 +1860,6 @@ class SalesReturnController extends Controller
                             'product_id' => $productId,
                             'product_name' => $saleProduct->product_name,
                             'product_code' => $saleProduct->product_code,
-
                             'original_price' => $originalProductPrice ?? null,
                             'latest_price' => $latestPrice ?? null,
                             'min_price' => $minProductPrice ?? null,
@@ -1320,7 +1868,6 @@ class SalesReturnController extends Controller
                             'is_vatable' => (bool) $saleProduct->is_vatable,
                             'used_measure_units' => $usedMeasureUnits,
                             'measure_unit_id' => $primaryMeasureUnit,
-
                             'measure_unit_quantity' => $primaryMeasureUnitQuantity,
                             'purchased_quantity' => 0,
                             'return_quantity' => 0,
@@ -1334,7 +1881,6 @@ class SalesReturnController extends Controller
                     }
 
                     // Update min_price if lower
-
                     if ($saleProduct->price < $products[$productId]['min_price']) {
                         $products[$productId]['min_price'] = $saleProduct->price;
                     }
@@ -1361,11 +1907,10 @@ class SalesReturnController extends Controller
                         $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
                         $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
                         $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
-                        $returned += $returnQuantity; // Accumulate returned quantity
+                        $returned += $returnQuantity;
                         $lastReturnMeasureUnitId = $returnMeasureUnitId;
                         $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
 
-                        // Check for measure unit mismatch
                         if ($returnMeasureUnitId !== $saleProduct->measure_unit_id) {
                             Log::warning('Measure unit mismatch for return product', [
                                 'sale_product_id' => $saleProduct->id,
@@ -1384,7 +1929,6 @@ class SalesReturnController extends Controller
                         ]);
                     }
 
-                    // Warn if returns exceed sales
                     if ($returned >= $saleTotal) {
                         Log::warning('Return quantity equals or exceeds sale quantity for sale product', [
                             'sale_product_id' => $saleProduct->id,
@@ -1416,7 +1960,7 @@ class SalesReturnController extends Controller
                                 ->pluck('value', 'product_field_id')
                                 ->toArray();
 
-                            $isReturned = false; // Default to not returned
+                            $isReturned = false;
                             if ($saleProductReturnFieldValues->isNotEmpty()) {
                                 $isReturned = true;
                                 foreach ($saleFieldValues as $fieldId => $value) {
@@ -1558,9 +2102,7 @@ class SalesReturnController extends Controller
                 return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
             }
 
-
             Log::info('Final products array', ['products' => $products]);
-
 
             $response = [
                 'message' => 'Product details retrieved successfully',
@@ -1582,7 +2124,6 @@ class SalesReturnController extends Controller
             return response()->json($response);
 
         } catch (QueryException $e) {
-
             Log::error('Database query error in getAvailableProductsForSalesReturn', [
                 'product_id' => $productId,
                 'product_name' => $productName,
@@ -1594,7 +2135,6 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'Database query error'], 500);
         } catch (\Exception $e) {
-
             Log::error('Unexpected error in getAvailableProductsForSalesReturn', [
                 'product_id' => $productId,
                 'product_name' => $productName,
@@ -1606,7 +2146,6 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
-
 
     public function storeItemWise(Request $request): JsonResponse
     {

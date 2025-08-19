@@ -12,10 +12,12 @@ use Request;
 
 class PurchaseStockProduct extends Model
 {
-     protected $fillable = [
+    protected $fillable = [
         'customer_id',
         'company_id',
         'branch_id',
+        'mfd',
+        'purchase_type',
         'purchase_product_id',
         'stock_product_id',
         'purchase_id',

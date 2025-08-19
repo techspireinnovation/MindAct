@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Product;
 use Auth;
 use DB;
+use Illuminate\Support\Facades\Log;
 use App\Models\PurchaseStockProduct;
 use App\Models\StockEntry;
+use App\Models\Branch;
 use App\Models\StockProductFieldValue;
 use App\Models\PurchaseStockProductFieldValue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -29,6 +31,7 @@ class StockEntryController extends Controller
                 'id' => $stockEntry->id,
                 'name' => $stockEntry->name,
                 'product_id' => $stockEntry->product_id,
+                'branch_id' => $stockEntry->branch_id,
                 'product_code' => $stockEntry->product_code,
                 'product_name' => $stockEntry->product_name,
                 'uom' => $stockEntry->uom,
@@ -52,7 +55,7 @@ class StockEntryController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-   
+
 
         try {
             $validator = Validator::make($request->all(), [
@@ -62,6 +65,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
                 'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
+                'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
@@ -87,6 +91,7 @@ class StockEntryController extends Controller
 
             foreach ($request->stock_entries as $entry) {
                 $entry['company_id'] = $request->company_id;
+                // $entry['branch_id'] = $request->branch_id;
 
                 // Create stock entry
                 $stockEntry = StockEntry::create($entry);
@@ -110,7 +115,7 @@ class StockEntryController extends Controller
 
                             PurchaseStockProductFieldValue::create([
                                 'stock_product_id' => $stockEntry->id,
-                                // 'purchase_product_id' => $purchaseStock->id,
+                                'purchase_stock_product_id' => $purchaseStock->id,
                                 'company_id' => $entry['company_id'],
                                 'product_id' => $stockEntry->product_id,
                                 'product_field_id' => $fieldValue['product_field_id'],
@@ -130,7 +135,7 @@ class StockEntryController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
-          
+
 
             \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
@@ -142,18 +147,19 @@ class StockEntryController extends Controller
     }
 
 
-
     public function update(Request $request): JsonResponse
     {
         try {
-            // Validation rules (same as store)
+            // Validation rules
             $validator = Validator::make($request->all(), [
+                'branch_id' => 'nullable|integer|exists:branches,id',
                 'stock_entries' => 'required|array',
                 'stock_entries.*.id' => 'nullable|exists:stock_entries,id',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
-                'stock_entries.*.product_id' => 'nullable|exists:products,id',
-                'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
+                'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
+                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
+                'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
@@ -161,6 +167,8 @@ class StockEntryController extends Controller
                 'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
                 'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.customer_id' => 'nullable|numeric|exists:customers,id',
+                'stock_entries.*.measure_unit_id' => 'nullable|numeric|exists:measure_units,id',
                 'stock_entries.*.field_values' => 'nullable|array',
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
@@ -169,42 +177,84 @@ class StockEntryController extends Controller
 
             if ($validator->fails()) {
                 return response()->json([
-                    'message' => 'Validation failed',
+                    'message' => 'Validation failed. Please check the provided data.',
                     'errors' => $validator->errors(),
                 ], 422);
             }
 
-            // Get authenticated user and their branch
             $user = Auth::user();
             if (!$user) {
                 return response()->json(['message' => 'Unauthorized'], 401);
             }
 
-            // Assume user has a branch_id column or BelongsTo relationship
-            $userBranchId = $user->branch_id; // Adjust based on your User model
-            $companyId = $request->company_id ?? $user->company_id; // Fallback to user's company_id
+            // Use the authenticated user's branch_id
+            $userBranchId = $request->branch_id;
+            $companyId = $request->company_id; // Set by middleware
+            $targetBranchId = $request->branch_id; // Set by middleware or request
 
-            // Check if user belongs to the main branch (branch_id = 1)
-            $isMainBranch = $userBranchId == 1;
+            // Check if the user's branch is main (branch_type = 'Main', 'main', or 'MAIN')
+            $userBranchTypeData = Branch::where('id', $userBranchId)->firstOrFail();
+
+            $userBranchType = strtolower($userBranchTypeData->branch_type ?? '');
+            $isMainBranch = in_array($userBranchType, ['main']);
+
+            Log::info('StockEntry update: Starting process', [
+                'user_id' => $user->id,
+                'user_branch_id' => $userBranchId,
+                'user_branch_type' => $userBranchType,
+                'company_id' => $companyId,
+                'is_main_branch' => $isMainBranch,
+                'target_branch_id' => $targetBranchId,
+                'request_data' => $request->all(),
+            ]);
+
+            // Check if target branch is main (for deletion scoping)
+            $isTargetMainBranch = false;
+            if ($targetBranchId !== null) {
+                $targetBranchTypeData = Branch::where('id', $targetBranchId)->firstOrFail();
+                $targetBranchType = strtolower($targetBranchTypeData->branch_type ?? '');
+                $isTargetMainBranch = in_array($targetBranchType, ['main']);
+            }
+
+            // Authorization: Non-main branch users can only update their own branch unless target is main branch
+            if ($targetBranchId !== null && !$isTargetMainBranch && !$isMainBranch && $targetBranchId != $userBranchId) {
+                throw new \Exception("You are not authorized to update for branch ID {$targetBranchId}.");
+            }
 
             $updatedEntries = [];
 
-            DB::transaction(function () use ($request, $companyId, $userBranchId, $isMainBranch, &$updatedEntries) {
+            DB::transaction(function () use ($request, $companyId, $userBranchId, $isMainBranch, $targetBranchId, $isTargetMainBranch, &$updatedEntries) {
+                $providedIds = [];
+                $newEntryIds = []; // Track IDs of newly created entries
+
                 foreach ($request->stock_entries as $entry) {
+                    // Restrict non-main branch users to their own branch unless target is main branch
+                    if ($targetBranchId !== null && !$isTargetMainBranch && !$isMainBranch && $entry['branch_id'] != $targetBranchId) {
+                        throw new \Exception("Provided stock entry branch_id {$entry['branch_id']} does not match the target branch_id {$targetBranchId}.");
+                    }
+
+                    // If no targetBranchId and not main branch, restrict to user's branch
+                    if ($targetBranchId === null && !$isMainBranch && $entry['branch_id'] != $userBranchId) {
+                        throw new \Exception("You are not authorized to update stock entries for branch ID {$entry['branch_id']}.");
+                    }
+
+                    Log::info('StockEntry update: Processing entry', [
+                        'entry_id' => $entry['id'] ?? 'new',
+                        'request_branch_id' => $entry['branch_id'],
+                        'user_branch_id' => $userBranchId,
+                    ]);
+
                     // Resolve product_id from product_code if not provided
                     if (empty($entry['product_id']) && !empty($entry['product_code'])) {
-                        $product = Product::where('product_code', $entry['product_code'])->first();
+                        $product = Product::where('product_code', $entry['product_code'])
+                            ->where('company_id', $companyId)
+                            ->first();
                         if (!$product) {
-                            throw new \Exception("Invalid product code `{$entry['product_code']}`. Product not found.");
+                            throw new \Exception("Invalid product code `{$entry['product_code']}` or product does not belong to company ID {$companyId}.");
                         }
                         $entry['product_id'] = $product->id;
                     }
                     $entry['company_id'] = $companyId;
-
-                    // Restrict updates/creations to user's branch unless main branch
-                    if (!$isMainBranch && isset($entry['branch_id']) && $entry['branch_id'] != $userBranchId) {
-                        throw new \Exception("You are not authorized to process stock entries for branch ID {$entry['branch_id']}.");
-                    }
 
                     // Update or create stock entry
                     if (!empty($entry['id'])) {
@@ -213,7 +263,14 @@ class StockEntryController extends Controller
                             ->where('company_id', $companyId)
                             ->firstOrFail();
 
-                        // Restrict updates to user's branch unless main branch
+                        Log::info('StockEntry update: Authorization check', [
+                            'stock_entry_id' => $stockEntry->id,
+                            'stock_entry_branch_id' => $stockEntry->branch_id,
+                            'user_branch_id' => $userBranchId,
+                            'is_main_branch' => $isMainBranch,
+                        ]);
+
+                        // Allow main branch to update any branch, otherwise restrict to user's branch
                         if (!$isMainBranch && $stockEntry->branch_id != $userBranchId) {
                             throw new \Exception("You are not authorized to update stock entry ID {$entry['id']} for branch ID {$stockEntry->branch_id}.");
                         }
@@ -232,9 +289,17 @@ class StockEntryController extends Controller
                             $entry['stock_product_id'] = $stockEntry->id;
                             $purchaseStock = PurchaseStockProduct::create($entry);
                         }
+
+                        $providedIds[] = $entry['id'];
                     } else {
+                        // Allow main branch to create for any branch, otherwise restrict to user's branch
+                        if (!$isMainBranch && $entry['branch_id'] != $userBranchId) {
+                            throw new \Exception("You are not authorized to create stock entries for branch ID {$entry['branch_id']}.");
+                        }
+
                         // Create new stock entry
                         $stockEntry = StockEntry::create($entry);
+                        $newEntryIds[] = $stockEntry->id; // Track new entry ID
                         $entry['stock_product_id'] = $stockEntry->id;
                         $purchaseStock = PurchaseStockProduct::create($entry);
                     }
@@ -254,7 +319,8 @@ class StockEntryController extends Controller
 
                                 PurchaseStockProductFieldValue::create([
                                     'stock_product_id' => $stockEntry->id,
-                                    'purchase_product_id' => $purchaseStock->id,
+                                    
+                                    'purchase_stock_product_id' => $purchaseStock->id,
                                     'company_id' => $entry['company_id'],
                                     'product_id' => $stockEntry->product_id,
                                     'product_field_id' => $fieldValue['product_field_id'],
@@ -267,6 +333,27 @@ class StockEntryController extends Controller
 
                     $updatedEntries[] = $stockEntry->load('fieldValues');
                 }
+
+                // Delete stock entries not in the payload, scoped by permission
+                $scopeQuery = StockEntry::where('company_id', $companyId);
+                if ($targetBranchId !== null && !($isTargetMainBranch && $isMainBranch)) {
+                    // Scope deletion to the target branch, unless both target and user are main branch
+                    $scopeQuery->where('branch_id', $targetBranchId);
+                } elseif (!$isMainBranch) {
+                    // Non-main branch users can only delete from their own branch
+                    $scopeQuery->where('branch_id', $userBranchId);
+                }
+                // If both targetBranchId and user are main branch, delete across all branches for the company
+                $existingIds = $scopeQuery->pluck('id')->toArray();
+                $idsToDelete = array_diff($existingIds, array_merge($providedIds, $newEntryIds));
+
+                if (!empty($idsToDelete)) {
+                    Log::info('StockEntry update: Deleting entries', ['ids_to_delete' => $idsToDelete]);
+                    StockProductFieldValue::whereIn('stock_product_id', $idsToDelete)->delete();
+                    PurchaseStockProductFieldValue::whereIn('stock_product_id', $idsToDelete)->delete();
+                    PurchaseStockProduct::whereIn('stock_product_id', $idsToDelete)->delete();
+                    StockEntry::whereIn('id', $idsToDelete)->delete();
+                }
             });
 
             return response()->json([
@@ -275,19 +362,42 @@ class StockEntryController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error('Database error in StockEntry update', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Database error occurred.'], 500);
+            dd($e->getMessage());
+            Log::error('Database error in StockEntry update', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all(),
+            ]);
+            return response()->json(['message' => 'Database error occurred. Please try again.'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in StockEntry update', ['error' => $e->getMessage()]);
+            Log::error('Unexpected error in StockEntry update', [
+                'error' => $e->getMessage(),
+                'request_data' => $request->all(),
+            ]);
             return response()->json(['message' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
-
-
-    public function show($id): JsonResponse
+    public function show(Request $request): JsonResponse
     {
         try {
-            $item = StockEntry::findOrFail($id);
+            $companyId = $request->company_id;
+            $branchId = $request->branch_id;
+
+            $branchData = Branch::where('id', $branchId)->firstOrFail();
+
+            // Check if the branch is main
+            $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
+
+            if ($isMainBranch) {
+                $item = StockEntry::where('company_id', $companyId)->with('fieldValues')->get();
+            } else {
+                $item = StockEntry::where('company_id', $companyId)
+                    ->where('branch_id', $branchId)
+                    ->with('fieldValues')
+                    ->get();
+            }
+
+
+
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

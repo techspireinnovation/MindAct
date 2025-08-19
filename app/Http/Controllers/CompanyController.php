@@ -109,6 +109,7 @@ class CompanyController extends Controller
             $branch = Branch::create([
                 'name' => $validated['name'] . ' Main Branch',
                 'company_id' => $company->id,
+                'branch_type' => 'Main',
                 'is_active' => true,
                 'is_primary' => true,
             ]);
@@ -262,7 +263,7 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-   
+
     public function index(Request $request): JsonResponse
     {
         $query = Company::query();
@@ -785,7 +786,7 @@ class CompanyController extends Controller
                     'message' => 'Unauthorized: Not a company admin',
                 ], 403);
             }
-    
+
             // Get company_id from middleware
             $companyId = $request->company_id;
             \Log::info('getSalesMasterKey: Company ID', ['company_id' => $companyId]);
@@ -795,7 +796,7 @@ class CompanyController extends Controller
                     'message' => 'No company ID provided',
                 ], 400);
             }
-    
+
             // Verify company exists and is not soft-deleted
             $company = \App\Models\Company::where('id', $companyId)
                 ->whereNull('deleted_at')
@@ -806,7 +807,7 @@ class CompanyController extends Controller
                     'message' => 'Company not found or deleted',
                 ], 404);
             }
-    
+
             // Verify user is associated with the company
             $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
                 ->where('company_id', $companyId)
@@ -817,7 +818,7 @@ class CompanyController extends Controller
                     'message' => 'User is not associated with this company',
                 ], 403);
             }
-    
+
             // Find the SalesMasterKey for the company
             $saleMaster = \App\Models\SalesMasterKey::where('company_id', $companyId)->first();
             \Log::info('getSalesMasterKey: SalesMasterKey', ['found' => $saleMaster ? true : false]);
@@ -827,7 +828,7 @@ class CompanyController extends Controller
                     'message' => 'Sales master key not found for this company',
                 ], 404);
             }
-    
+
             return response()->json([
                 'success' => true,
                 'data' => $saleMaster,
@@ -846,14 +847,16 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-  
-  
+
+
     public function update(Request $request): JsonResponse
     {
         try {
             $user = Auth::user();
-            if (!$user || (!$user->hasRole('super_admin') && !$user->hasRole('company_admin')) || 
-                !($user->tokenCan('super_admin') || $user->tokenCan('company_admin'))) {
+            if (
+                !$user || (!$user->hasRole('super_admin') && !$user->hasRole('company_admin')) ||
+                !($user->tokenCan('super_admin') || $user->tokenCan('company_admin'))
+            ) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Super admin or company admin required',
@@ -870,7 +873,7 @@ class CompanyController extends Controller
 
             $company = $companyUser->company;
 
-        
+
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id . ',id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',

@@ -301,6 +301,8 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
         Route::resource('salesman', SalesmanController::class);
         Route::apiResource('stock-entries', StockEntryController::class);
+        Route::post('stock-entries-update', [StockEntryController::class, 'update']);
+         Route::get('stock-entries-details', [StockEntryController::class, 'show']);
         Route::resource('stock-adjustments', StockAdjustmentController::class);
         Route::resource('stock-transfers', StockTransferController::class);
         Route::resource('stock-receives', StockReceiveController::class);

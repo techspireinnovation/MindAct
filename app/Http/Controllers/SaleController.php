@@ -16,6 +16,7 @@ use App\Models\Product;
 use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
+use App\Models\PurchaseStockProduct;
 use App\Models\PurchaseProductFieldValue;
 use App\Models\PurchaseProductReturn;
 use App\Models\PurchaseReturnProductFieldValue;
@@ -116,7 +117,7 @@ class SaleController extends Controller
 
 
 
-    private function getAvailableProductsForSale($purchaseType, $companyId)
+    public function getAvailableProductsForSale($purchaseType, $companyId)
     {
 
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
@@ -141,6 +142,7 @@ class SaleController extends Controller
                 ->whereNull('deleted_at')
                 ->get();
 
+
             Log::info('Fetched products', ['products' => $products->pluck('name', 'id')]);
 
             if ($products->isEmpty()) {
@@ -149,6 +151,7 @@ class SaleController extends Controller
             }
 
             $productIds = $products->pluck('id')->toArray();
+
 
 
 
@@ -163,13 +166,12 @@ class SaleController extends Controller
 
 
             // Fetch purchase products
-            $purchaseProducts = PurchaseProduct::select('purchase_products.*')   // <── essential
-                ->whereIn('purchase_products.product_id', $productIds)
-                ->where('purchase_products.company_id', $companyId)
-                ->whereNull('purchase_products.deleted_at')
-                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                ->whereNull('purchases.deleted_at')
-                ->where('purchases.purchase_type', $purchaseType)
+            $purchaseProducts = PurchaseStockProduct::select('purchase_stock_products.*')   // <── essential
+                ->whereIn('purchase_stock_products.product_id', $productIds)
+                ->where('purchase_stock_products.company_id', $companyId)
+                ->whereNull('purchase_stock_products.deleted_at')
+
+                ->where('purchase_stock_products.purchase_type', $purchaseType)
 
                 // eager-load relations exactly as before
                 ->with([
@@ -194,7 +196,7 @@ class SaleController extends Controller
                         ->where('purchase_product_field_values.company_id', $companyId)
                 ])
                 ->get();
-
+            
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
                 return collect([]);
@@ -227,11 +229,14 @@ class SaleController extends Controller
             $results = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $measureUnitsCalc) {
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->id);
 
+
                 $purchasedPieces = $productPurchaseProducts->sum(function ($pp) use ($measureUnitsCalc) {
+
                     return $this->calculatePieces(
                         ($pp->quantity ?? 0) + ($pp->free_quantity ?? 0),
-                        $measureUnitsCalc[$pp->measure_unit_id]->quantity ?? 1
+                        $measureUnitsCalc[$pp->measure_unit_id]?->quantity ?? 1
                     );
+
                 });
 
                 $returnPieces = $productPurchaseProducts->sum(function ($pp) use ($measureUnitsCalc) {
@@ -297,51 +302,51 @@ class SaleController extends Controller
         }
     }
 
-    
-    
+
+
     public function listAvailableProducts(Request $request): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'nullable|integer|exists:companies,id,deleted_at,NULL', 
+                'company_id' => 'nullable|integer|exists:companies,id,deleted_at,NULL',
                 'include_details' => 'nullable|boolean',
                 'purchase_type' => 'nullable|string'
             ]);
-    
+
             if ($validator->fails()) {
                 return response()->json([
                     'message' => 'Validation failed',
                     'errors' => $validator->errors()
                 ], 422);
             }
-    
+
             $companyId = $request->input('company_id') ?? $request->company_id;
             $includeDetails = $request->boolean('include_details', false);
             $purchaseType = $request->input('purchase_type', null);
-    
+
             \Log::info('listAvailableProducts: Processing', [
                 'user_id' => auth()->id(),
                 'company_id' => $companyId,
                 'include_details' => $includeDetails,
                 'purchase_type' => $purchaseType
             ]);
-    
+
             if (!auth()->check()) {
                 return response()->json([
                     'message' => 'Unauthenticated'
                 ], 401);
             }
-    
+
             if (!$companyId) {
                 return response()->json([
                     'message' => 'No company ID provided or available'
                 ], 400);
             }
-    
+
             $products = $includeDetails
                 ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'])
                 : $this->getAvailableProductsForSale($purchaseType, $companyId);
-    
+
             return response()->json([
                 'message' => 'Available products retrieved successfully',
                 'count' => $products->count(),
@@ -405,8 +410,8 @@ class SaleController extends Controller
 
             return response()->json([
                 'message' => !empty($products['data']) ? 'Product details retrieved' : 'No matching product found',
-                'data' => $products['data'] ?: null
-            ], !empty($products['data']) ? 200 : 404);
+                'data' => $products['data'] ?: []
+            ], !empty($products['data']) ? 200 : 200);
 
         } catch (ModelNotFoundException $e) {
             Log::error('Model not found in getAvailableProductByIdOrName', [
@@ -689,7 +694,7 @@ class SaleController extends Controller
 
 
 
-            $purchaseProducts = PurchaseProduct::whereIn('product_id', $productIds)
+            $purchaseProducts = PurchaseStockProduct::whereIn('product_id', $productIds)
                 ->where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->with([
@@ -945,6 +950,7 @@ class SaleController extends Controller
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
+
 
         $integerPart = floor($quantity);
 
@@ -1442,7 +1448,7 @@ class SaleController extends Controller
                     'total_amount' => $validated['total_amount'] ?? 0,
                     'purchase_id' => $validated['purchase_id'] ?? null,
                     'vat_amount' => $validated['vat_amount'] ?? null,
-                    'payment' => $validated['payment'] ?? null,
+                    // 'payment' => $validated['payment'] ?? null,
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 

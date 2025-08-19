@@ -2,24 +2,29 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
+
 use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Model;
+
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
-class PurchaseProduct extends Model
+class StockAdjustmentProduct extends Model
 {
-
-    protected $fillable = [
+     protected $fillable = [
+        'stock_adjustment_id',
+        'purchase_stock_product_id',
         'customer_id',
         'company_id',
-        'purchase_id',
         'branch_id',
+        'mfd',
+        'purchase_product_id',
+        'stock_product_id',
+        'purchase_id',
         'product_id',
         'product_name',
-        'purchase_type',
         'product_code',
         'expiry_date',
         'quantity',
@@ -61,9 +66,9 @@ class PurchaseProduct extends Model
         return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
     }
 
-    public function purchase()
+    public function stockAdjustment()
     {
-        return $this->belongsTo(Purchase::class, 'purchase_id', 'id');
+        return $this->belongsTo(StockAdjustment::class, 'stock_adjustment_id', 'id');
     }
 
     public function purchaseProductReturns()

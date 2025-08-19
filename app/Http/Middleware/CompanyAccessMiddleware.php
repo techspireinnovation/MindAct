@@ -60,7 +60,7 @@ class CompanyAccessMiddleware
 
         $companyId = $request->input('company_id');
         $branchId = $request->input('branch_id');
-
+       
         if (!$companyId && $user->hasRole('master_user')) {
             $companyIds = $user->companies()->pluck('companies.id')->toArray();
             if (empty($companyIds)) {

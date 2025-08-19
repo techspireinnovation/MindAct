@@ -2,22 +2,24 @@
 
 namespace App\Models;
 
-use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Scopes\CompanyIdScope;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-
-class PurchaseStockProductFieldValue extends Model
+class StockAdjustedFieldValue extends Model
 {
-    use SoftDeletes, HasFactory;
+     use SoftDeletes, HasFactory;
 
     protected $casts = [
         'is_active' => 'boolean',
     ];
 
     protected $fillable = [
+        'stock_adjusted_id',
+     
         'company_id',
         'branch_id',
         'product_field_id',
@@ -60,9 +62,15 @@ class PurchaseStockProductFieldValue extends Model
         return $this->belongsTo(PurchaseProduct::class, 'purchase_product_id');
     }
 
+    public function stockAdjustedProduct()
+    {
+        return $this->belongsTo(StockAdjusted::class, 'purchase_stock_product_id');
+    }
+
 
     public function stockProduct()
     {
         return $this->belongsTo(StockEntry::class, 'stock_product_id');
     }
+
 }

@@ -7,7 +7,9 @@ use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
 use App\Models\Purchase;
+use App\Models\PurchaseStockProduct;
 use App\Models\PurchaseProduct;
+use App\Models\PurchaseStockProductFieldValue;
 use App\Models\PurchaseProductFieldValue;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -165,9 +167,6 @@ class PurchaseController extends Controller
 
 
 
-
-
-
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -252,6 +251,7 @@ class PurchaseController extends Controller
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',
                 'purchase_products.*.product_code' => 'nullable|string|max:255',
+               
                 'purchase_products.*.mfd' => 'nullable|string|max:255',
                 'purchase_products.*.expiry_date' => 'nullable|date',
                 'purchase_products.*.quantity' => 'required|string',
@@ -342,6 +342,7 @@ class PurchaseController extends Controller
                                     'purchase_id' => $item->id,
                                     'company_id' => $validated['company_id'],
                                     'customer_id' => $validated['customer_id'],
+                                    'purchase_type' => $validated['purchase_type'] ?? null,
                                 ])
                             );
                             Log::debug('Created new purchase product', [
@@ -359,6 +360,7 @@ class PurchaseController extends Controller
                                     'purchase_id' => $item->id,
                                     'company_id' => $validated['company_id'],
                                     'customer_id' => $validated['customer_id'],
+                                    'purchase_type' => $validated['purchase_type'] ?? null,
                                 ])
                             );
                             Log::debug('Updated existing purchase product', [
@@ -543,7 +545,7 @@ class PurchaseController extends Controller
     public function store(Request $request): JsonResponse
     {
 
-        $validator = Validator::make($request->all(),([
+        $validator = Validator::make($request->all(), ([
             'ref_bill_number' => [
                 'required',
                 'string',
@@ -610,6 +612,8 @@ class PurchaseController extends Controller
             'purchase_products' => 'required|array',
             'purchase_products.*.product_id' => 'required|integer|exists:products,id',
             'purchase_products.*.product_name' => 'nullable|string|max:255',
+            'purchase_products.*.branch_id' => 'nullable|numeric|exists:branches,id',
+            'purchase_products.*.purchase_type' => 'nullable|string',
             'purchase_products.*.product_code' => 'nullable|string|max:255',
             'purchase_products.*.hs_code' => 'nullable|string|max:255',
             'purchase_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
@@ -628,8 +632,8 @@ class PurchaseController extends Controller
             'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
             'purchase_products.*.field_values.*.*.quantity_type' => 'required|string|max:255',
         ]));
-        if($validator->fails()){
-            return response()->json(["error"=>$validator->errors()],422);
+        if ($validator->fails()) {
+            return response()->json(["error" => $validator->errors()], 422);
         }
 
         $validated = $validator->validated();
@@ -639,8 +643,8 @@ class PurchaseController extends Controller
 
 
                 // Create Purchase
-              
-                $item = Purchase::create([                    
+
+                $item = Purchase::create([
                     'customer_id' => $validated['customer_id'] ?? null,
                     'customer_name' => $validated['customer_name'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
@@ -675,8 +679,8 @@ class PurchaseController extends Controller
                     'freight_amount' => $validated['freight_amount'] ?? null,
                     'discount_after_vat' => $validated['discount_after_vat'] ?? null,
                 ]);
-               
-               
+
+
 
 
                 if (isset($validated['purchase_products'])) {
@@ -695,7 +699,7 @@ class PurchaseController extends Controller
                                 $product->save();
                             }
                         }
-                       
+
 
                         $productId = $purchaseProductData['product_id'] ?? null;
                         $hsCode = $purchaseProductData['hs_code'] ?? null;
@@ -709,14 +713,12 @@ class PurchaseController extends Controller
                                 ->update(['hs_code' => $hsCode]);
                         }
 
-
-                        // Create PurchaseProduct using static create method
-                     
-
                         $purchaseProduct = PurchaseProduct::create([
-                            'purchase_id' => $item->id, 
+                            'purchase_id' => $item->id,
                             'customer_id' => $validated['customer_id'],
                             'company_id' => $validated['company_id'],
+                            'branch_id' => $purchaseProductData['branch_id'],
+                            'purchase_type' => $validated['purchase_type'] ?? null,
                             'product_id' => $purchaseProductData['product_id'],
                             'product_name' => $purchaseProductData['product_name'] ?? null,
                             'product_code' => $purchaseProductData['product_code'] ?? null,
@@ -731,7 +733,29 @@ class PurchaseController extends Controller
                             'is_vatable' => $purchaseProductData['is_vatable'],
                             'measure_unit_id' => $purchaseProductData['measure_unit_id'],
                         ]);
-                  
+
+                        $purchaseStockProduct = PurchaseStockProduct::create([
+                            'purchase_id' => $item->id,
+                            'purchase_product_id' => $purchaseProduct->id,
+                            'customer_id' => $validated['customer_id'],
+                            'company_id' => $validated['company_id'],
+                            'branch_id' => $purchaseProductData['branch_id'],
+                            'purchase_type' => $validated['purchase_type'] ?? null,
+                            'product_id' => $purchaseProductData['product_id'],
+                            'product_name' => $purchaseProductData['product_name'] ?? null,
+                            'product_code' => $purchaseProductData['product_code'] ?? null,
+                            'expiry_date' => $purchaseProductData['expiry_date'] ?? null,
+                            'mfd' => $purchaseProductData['mfd'] ?? null,
+                            'quantity' => $purchaseProductData['quantity'],
+                            'free_quantity' => $purchaseProductData['free_quantity'] ?? null,
+                            'price' => $purchaseProductData['price'] ?? null,
+                            'discount_percent' => $purchaseProductData['discount_percent'] ?? null,
+                            'discount_amount' => $purchaseProductData['discount_amount'] ?? null,
+                            'amount' => $purchaseProductData['amount'] ?? null,
+                            'is_vatable' => $purchaseProductData['is_vatable'],
+                            'measure_unit_id' => $purchaseProductData['measure_unit_id'],
+                        ]);
+
 
                         // Create Field Values
                         if (!empty($purchaseProductData['field_values'])) {
@@ -743,7 +767,9 @@ class PurchaseController extends Controller
                                         'value' => $fieldValue['value'],
                                         'product_id' => $purchaseProduct->product_id,
                                         'company_id' => $purchaseProduct->company_id,
+                                        'branch_id' => $purchaseProduct->branch_id,
                                         'purchase_product_id' => $purchaseProduct->id,
+
                                         'quantity_index' => $quantityIndex,
                                         'quantity_type' => $fieldValue['quantity_type'],
                                     ];
@@ -752,10 +778,29 @@ class PurchaseController extends Controller
                             PurchaseProductFieldValue::insert($fieldValues);
                         }
 
+
+                        if (!empty($purchaseProductData['field_values'])) {
+                            $fieldValues = [];
+                            foreach ($purchaseProductData['field_values'] as $quantityIndex => $fieldValueSet) {
+                                foreach ($fieldValueSet as $fieldValue) {
+                                    $fieldValues[] = [
+                                        'product_field_id' => $fieldValue['product_field_id'],
+                                        'value' => $fieldValue['value'],
+                                        'product_id' => $purchaseStockProduct->product_id,
+                                        'company_id' => $purchaseStockProduct->company_id,
+                                        'branch_id' => $purchaseStockProduct->branch_id,
+                                        'purchase_product_id' => $purchaseProduct->id,
+                                        'purchase_stock_product_id' => $purchaseStockProduct->id,
+                                        'quantity_index' => $quantityIndex,
+                                        'quantity_type' => $fieldValue['quantity_type'],
+                                    ];
+                                }
+                            }
+                            PurchaseStockProductFieldValue::insert($fieldValues);
+                        }
+
                     }
                 }
-
-
 
                 return $item;
             });

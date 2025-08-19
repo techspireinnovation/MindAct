@@ -20,6 +20,7 @@ class Branch extends Model
         'name',
         'is_active',
         'is_primary',
+        'branch_type',
         'deleted_at',
         'company_id',
     ];

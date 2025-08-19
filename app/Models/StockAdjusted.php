@@ -2,24 +2,28 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
+
 use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
-use Illuminate\Database\Eloquent\Model;
+
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
-class PurchaseProduct extends Model
+class StockAdjusted extends Model
 {
-
-    protected $fillable = [
+     protected $fillable = [
+        'purchase_stock_product_id',
         'customer_id',
         'company_id',
-        'purchase_id',
         'branch_id',
+        'mfd',
+        'purchase_product_id',
+        'stock_product_id',
+        'purchase_id',
         'product_id',
         'product_name',
-        'purchase_type',
         'product_code',
         'expiry_date',
         'quantity',
@@ -158,4 +162,5 @@ class PurchaseProduct extends Model
         return $averagePrice['primary_units'];
 
     }
+
 }

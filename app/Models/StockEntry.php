@@ -17,6 +17,7 @@ class StockEntry extends Model
         'company_id',
         'branch_id',
         'product_id',
+        'purchase_type',
         'uom',
         'batch_no',
         'expiry_date',

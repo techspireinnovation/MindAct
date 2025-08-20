@@ -218,7 +218,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('measure-units', MeasureUnitController::class);
         Route::apiResource('products', ProductController::class);
         Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
-
+        Route::get('/{company}/product-types/{productType}', [ProductController::class, 'getByProductTypeName']);
 
         Route::prefix('reports')->group(function () {
             //Route::middleware(['can:print'])->group(function () {

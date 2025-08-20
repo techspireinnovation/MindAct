@@ -25,7 +25,6 @@ class CompanyController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
-
         $user = Auth::user();
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
@@ -35,11 +34,7 @@ class CompanyController extends Controller
         }
 
         try {
-
-
-
             $validated = $request->validate([
-
                 'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',
                 'working_date' => 'nullable|string|max:255',
@@ -68,14 +63,12 @@ class CompanyController extends Controller
                 // Admin fields
                 'admin_selection' => 'required|in:existing,new',
                 'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
-                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
-                'admin_name' => 'required_if:admin_selection,new|string|max:255',
-                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
+                'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email|required_if:admin_selection,new',
+                'admin_name' => 'sometimes|nullable|string|max:255|required_if:admin_selection,new',
+                'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
 
-
             DB::beginTransaction();
-
 
             $company = Company::create([
                 'name' => $validated['name'],
@@ -105,14 +98,12 @@ class CompanyController extends Controller
                 'url_link' => $validated['url_link'] ?? '',
             ]);
 
-
             $branch = Branch::create([
                 'name' => $validated['name'] . ' Main Branch',
                 'company_id' => $company->id,
                 'is_active' => true,
                 'is_primary' => true,
             ]);
-
 
             $company->purchaseMasterKey()->withoutGlobalScopes()->create([
                 'company_id' => $company->id,
@@ -154,7 +145,6 @@ class CompanyController extends Controller
                 'expiry_date' => false,
             ]);
 
-
             $company->productTypes()->createMany([
                 [
                     'name' => 'Inventory',
@@ -178,14 +168,12 @@ class CompanyController extends Controller
                 ]
             ]);
 
-
             $company->measureUnits()->create([
                 'name' => 'Piece',
                 'company_id' => $company->id,
                 'symbol' => 'Pcs',
                 'quantity' => 1
             ]);
-
 
             if ($validated['admin_selection'] === 'existing') {
                 $companyAdmin = User::findOrFail($validated['existing_admin_id']);
@@ -198,13 +186,11 @@ class CompanyController extends Controller
                     $companyAdmin->assignRole($role);
                 }
             } else {
-
                 $companyAdmin = User::create([
                     'email' => $validated['admin_email'],
                     'name' => $validated['admin_name'],
                     'password' => Hash::make($validated['password']),
                 ]);
-
 
                 $role = Role::firstOrCreate([
                     'name' => 'company_admin',
@@ -218,14 +204,11 @@ class CompanyController extends Controller
                 'user_id' => $companyAdmin->id
             ]);
 
-
             $companyAdmin->branches()->attach($branch->id);
 
             MainGroupStub::createMainGroups($company->id);
 
-
             DB::commit();
-
 
             $company->load([
                 'purchaseMasterKey',
@@ -941,7 +924,6 @@ class CompanyController extends Controller
 
             $company = $companyUser->company;
 
-
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id . ',id,deleted_at,NULL',
                 'licence_issue_date' => 'nullable|string|max:255',
@@ -971,9 +953,9 @@ class CompanyController extends Controller
                 // Admin fields
                 'admin_selection' => 'sometimes|required|in:existing,new',
                 'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
-                'admin_email' => 'required_if:admin_selection,new|string|email|max:255|unique:users,email',
-                'admin_name' => 'required_if:admin_selection,new|string|max:255',
-                'password' => 'required_if:admin_selection,new|string|min:6|confirmed',
+                'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email|required_if:admin_selection,new',
+                'admin_name' => 'sometimes|nullable|string|max:255|required_if:admin_selection,new',
+                'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
 
             DB::beginTransaction();

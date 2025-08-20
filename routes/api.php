@@ -18,6 +18,7 @@ use App\Http\Controllers\GenerateCodeController;
 use App\Http\Controllers\Master\SupplierController;
 use App\Http\Controllers\MasterUserController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ShrinkWorkLossController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
 use App\Http\Controllers\NozzleController;
@@ -133,6 +134,12 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
     Route::middleware(['company.access'])->group(function () {
+
+
+        Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
+        Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);
+
+
         Route::get('/userList', [UserController::class, 'userList']);
         Route::get('/userDetail/{identifier}', [UserController::class, 'userDetail']);
 

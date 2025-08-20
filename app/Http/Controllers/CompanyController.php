@@ -1259,44 +1259,53 @@ class CompanyController extends Controller
      * Update the specified company in storage.
      */
     public function destroy($id): JsonResponse
-    {
-        try {
-            $company = Company::find($id);
-            
-            if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
-            }
-    
-            DB::beginTransaction();
-    
-            CompanyUser::where('company_id', $company->id)->delete();
-    
-            $branchIds = Branch::where('company_id', $company->id)->pluck('id');
-    
-            DB::table('branch_user')->whereIn('branch_id', $branchIds)->delete();
-    
-            Branch::where('company_id', $company->id)->delete();
-    
-            $company->delete();
-    
-            DB::commit();
-    
-            return response()->json([
-                'success' => true,
-                'message' => 'Company and associated records deleted successfully'
-            ], 200);
-    
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Company deletion failed: ' . $e->getMessage());
+{
+    try {
+        $company = Company::find($id);
+        
+        if (!$company) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete company',
-                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
-            ], 500);
+                'message' => 'Company not found'
+            ], 404);
         }
+
+        DB::beginTransaction();
+
+        $companyUserIds = CompanyUser::where('company_id', $company->id)->pluck('user_id');
+
+        CompanyUser::where('company_id', $company->id)->delete();
+
+        foreach ($companyUserIds as $userId) {
+            $remainingCompanies = CompanyUser::where('user_id', $userId)->count();
+            if ($remainingCompanies === 0) {
+                User::where('id', $userId)->delete();
+            }
+        }
+
+        $branchIds = Branch::where('company_id', $company->id)->pluck('id');
+
+        DB::table('branch_user')->whereIn('branch_id', $branchIds)->delete();
+
+        Branch::where('company_id', $company->id)->delete();
+
+        $company->delete();
+
+        DB::commit();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Company, associated records, and exclusive users deleted successfully'
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Company deletion failed: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to delete company',
+            'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
+        ], 500);
     }
+}
 }

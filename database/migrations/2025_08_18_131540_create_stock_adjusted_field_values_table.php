@@ -12,6 +12,7 @@ return new class extends Migration {
     {
         Schema::create('stock_adjusted_field_values', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('stock_adjustment_id')->nullable();
             $table->unsignedBigInteger('stock_adjusted_id')->nullable();
             $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
             $table->unsignedBigInteger('stock_product_id')->nullable();

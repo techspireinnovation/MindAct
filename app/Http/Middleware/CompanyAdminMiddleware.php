@@ -39,7 +39,7 @@ class CompanyAdminMiddleware
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: Company Admins only',
-            ], 403);
+            ], 200);
         }
 
         $token = $user->currentAccessToken();
@@ -65,7 +65,7 @@ class CompanyAdminMiddleware
             return response()->json([
                 'success' => false,
                 'message' => 'Forbidden: No company selected',
-            ], 403);
+            ], 200);
         }
 
         if ($companyScope) {
@@ -83,7 +83,7 @@ class CompanyAdminMiddleware
                 return response()->json([
                     'success' => false,
                     'message' => 'Forbidden: User not associated with the selected company',
-                ], 403);
+                ], 200);
             }
 
             $request->merge(['company_id' => $companyId]);

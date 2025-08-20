@@ -11,7 +11,7 @@ use Request;
 
 class StockAdjustedFieldValue extends Model
 {
-     use SoftDeletes, HasFactory;
+    use SoftDeletes, HasFactory;
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -19,7 +19,7 @@ class StockAdjustedFieldValue extends Model
 
     protected $fillable = [
         'stock_adjusted_id',
-     
+        'stock_adjustment_id',
         'company_id',
         'branch_id',
         'product_field_id',

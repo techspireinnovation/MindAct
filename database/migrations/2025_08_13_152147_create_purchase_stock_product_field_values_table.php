@@ -14,12 +14,16 @@ return new class extends Migration
         Schema::create('purchase_stock_product_field_values', function (Blueprint $table) {
             $table->id();
             $table->foreignId('company_id')->constrained('companies');
+            
+            $table->unsignedBigInteger('stock_product_id')->nullable();
+            $table->unsignedBigInteger('purchase_product_id')->nullable();
+            $table->unsignedBigInteger('stock_adjustment_id')->nullable();
+            $table->unsignedBigInteger('stock_reconciliation_id')->nullable();
             $table->foreignId('product_field_id')->constrained('product_fields');
             $table->unsignedInteger('quantity_index')->nullable();
             $table->string('quantity_type')->nullable();
             $table->foreignId('product_id')->constrained('products');
-            $table->unsignedBigInteger('stock_product_id')->nullable();
-            $table->unsignedBigInteger('purchase_product_id')->nullable();
+           
             $table->string('value');
 
             $table->softDeletes();

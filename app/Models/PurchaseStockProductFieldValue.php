@@ -13,6 +13,8 @@ class PurchaseStockProductFieldValue extends Model
 {
     use SoftDeletes, HasFactory;
 
+    protected $table = 'purchase_stock_product_field_values';
+
     protected $casts = [
         'is_active' => 'boolean',
     ];
@@ -23,6 +25,8 @@ class PurchaseStockProductFieldValue extends Model
         'product_field_id',
         'product_id',
         'purchase_stock_product_id',
+        'stock_adjustment_id',
+        'stock_reconciliation_id',
         'purchase_product_id',
         'stock_product_id',
         'quantity_index',
@@ -55,9 +59,9 @@ class PurchaseStockProductFieldValue extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function purchaseProduct()
+    public function purchaseStockProduct()
     {
-        return $this->belongsTo(PurchaseProduct::class, 'purchase_product_id');
+        return $this->belongsTo(PurchaseStockProduct::class, 'purchase_stock_product_id');
     }
 
 

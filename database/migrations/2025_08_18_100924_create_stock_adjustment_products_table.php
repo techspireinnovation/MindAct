@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
             $table->unsignedBigInteger('purchase_product_id')->nullable();
             $table->unsignedBigInteger('stock_product_id')->nullable();
-            // $table->foreignID('customer_id')->constrained('customers');
+            $table->string('purchase_type')->nullable();
 
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('branch_id')->nullable();

@@ -13,9 +13,10 @@ use Request;
 
 class StockAdjusted extends Model
 {
-     protected $fillable = [
+    protected $fillable = [
         'purchase_stock_product_id',
-        
+        'stock_adjustment_id',
+        'purchase_type',
         'company_id',
         'branch_id',
         'mfd',

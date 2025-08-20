@@ -341,7 +341,9 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
         Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
 
-
+        Route::get('get-area-list', [AreaController::class, 'categoryList']);
+        Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
+        
         Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
         Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
 

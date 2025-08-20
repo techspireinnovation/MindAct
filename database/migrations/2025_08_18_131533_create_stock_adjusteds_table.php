@@ -12,11 +12,12 @@ return new class extends Migration {
     {
         Schema::create('stock_adjusteds', function (Blueprint $table) {
             $table->id();
-          
+            $table->unsignedBigInteger('stock_adjustment_id')->nullable();
             $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
             $table->unsignedBigInteger('purchase_product_id')->nullable();
             $table->unsignedBigInteger('stock_product_id')->nullable();
-           
+            $table->string('purchase_type')->nullable();
+
             $table->string('adjusted_type');
             $table->foreignID('company_id')->constrained('companies');
             $table->foreignID('branch_id')->constrained('branches')->nullable();

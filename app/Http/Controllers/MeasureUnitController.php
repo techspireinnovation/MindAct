@@ -30,16 +30,17 @@ class MeasureUnitController extends Controller
     {
         try {
 
-            $units = MeasureUnit::where('company_id',$request->company_id)
-            ->whereNull('deleted_at')
-            ->where('is_active', 1)
-            ->get(['id', 'name'])
-            ->map(fn($unit) => ['id' => $unit->id, 'name' => $unit->name])
-            ->values()
-            ->toArray();
-            return response()->json(["message"=>"Measure Unit List Received !!",
-                                       "data"=>$units
-                                    ]);
+            $units = MeasureUnit::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($unit) => ['id' => $unit->id, 'name' => $unit->name])
+                ->values()
+                ->toArray();
+            return response()->json([
+                "message" => "Measure Unit List Received !!",
+                "data" => $units
+            ]);
 
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
@@ -188,7 +189,7 @@ class MeasureUnitController extends Controller
             $productLists = ProductList::where('measure_unit_id', $item->id)->get();
 
             if ($products->isNotEmpty() || $productLists->isNotEmpty()) {
-                return response()->json(['error' => 'Measure Unit cannot be deleted !!'], 403);
+                return response()->json(['error' => 'Measure Unit cannot be deleted !!'], 200);
             } else {
                 $item->delete();
             }

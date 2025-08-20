@@ -801,12 +801,13 @@ class SalesReturnController extends Controller
 
 
 
-    public function getSaleProductNames(Request $request): JsonResponse
+      public function getSaleProductNames(Request $request): JsonResponse
     {
         try {
             // Validate inputs
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer|exists:companies,id',
+                'purchase_type' => 'required|string', // Adjust 'in' values based on your valid purchase types
             ]);
 
             if ($validator->fails()) {
@@ -814,22 +815,16 @@ class SalesReturnController extends Controller
             }
 
             $companyId = $request->input('company_id');
-
             $purchaseType = $request->input('purchase_type');
 
             Log::debug('Input parameters for sale product names', [
                 'company_id' => $companyId,
+                'purchase_type' => $purchaseType,
             ]);
 
-            // Authentication and authorization
+            // Authentication check (middleware should handle authorization)
             if (!auth()->check()) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
-            }
-
-            $user = auth()->user();
-            $userCompanyId = optional($user->company)->company_id;
-            if ($userCompanyId != $companyId) {
-                return response()->json(['error' => 'Unauthorized access to company resources'], 403);
             }
 
             // Fetch measure units
@@ -874,7 +869,7 @@ class SalesReturnController extends Controller
                 ->get();
 
             if ($sales->isEmpty()) {
-                Log::warning('No sales found', ['company_id' => $companyId]);
+                Log::warning('No sales found', ['company_id' => $companyId, 'purchase_type' => $purchaseType]);
                 return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
             }
 
@@ -953,7 +948,7 @@ class SalesReturnController extends Controller
                     $returned = 0;
                     foreach ($returnProducts as $returnProduct) {
                         $returnMeasureUnitId = $returnProduct->measure_unit_id ?? null;
-                        $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$measureUnitId]->quantity : 1;
+                        $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
                         $regularQuantity = $returnProduct->quantity ?? 0;
                         $freeQuantity = $returnProduct->free_quantity ?? 0;
 
@@ -961,7 +956,7 @@ class SalesReturnController extends Controller
                         $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
                         $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
 
-                        $returned += $returnQuantity; // Accumulate the returned quantity
+                        $returned += $returnQuantity;
 
                         Log::info('Processing return product', [
                             'sale_product_id' => $saleProduct->id,
@@ -978,24 +973,13 @@ class SalesReturnController extends Controller
                             'sale_total' => $saleTotal,
                             'return_total' => $returned,
                         ]);
-                        continue; // Skip this sale product
+                        continue;
                     }
 
                     // Calculate available quantity
                     $returnTotal = round($returned, 2);
                     $saleTotal = round($saleTotal, 2);
                     $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
-
-                    // Log for product "Dhojj" with ID 13539
-
-                    Log::info('Available quantity for Dhojj', [
-                        'product_id' => $saleProduct->product_id,
-                        'product_name' => $saleProduct->product_name,
-                        'sale_total' => $saleTotal,
-                        'return_total' => $returnTotal,
-                        'available_quantity' => $availableQuantity,
-                    ]);
-
 
                     Log::info('Quantity calculation for sale product', [
                         'sale_product_id' => $saleProduct->id,
@@ -1022,7 +1006,7 @@ class SalesReturnController extends Controller
 
             if (empty($products)) {
                 Log::warning('No available products after processing', ['company_id' => $companyId]);
-                return response()->json([]);
+                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
             }
 
             // Prepare response
@@ -1044,7 +1028,6 @@ class SalesReturnController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-
             Log::error('Database query error in getSaleProductNames', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -1053,7 +1036,6 @@ class SalesReturnController extends Controller
             ]);
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-
             Log::error('Unexpected error in getSaleProductNames', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -1062,7 +1044,6 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
-
 
     public function getAvailableProductsForSalesReturn(Request $request): JsonResponse
     {
@@ -1105,7 +1086,7 @@ class SalesReturnController extends Controller
             $user = auth()->user();
             $userCompanyId = optional($user->company)->company_id;
             if ($userCompanyId != $companyId) {
-                return response()->json(['error' => 'Unauthorized access to company resources'], 403);
+                return response()->json(['error' => 'Unauthorized access to company resources'], 200);
             }
 
             // Fetch measure units

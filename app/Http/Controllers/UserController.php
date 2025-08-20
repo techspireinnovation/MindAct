@@ -35,7 +35,7 @@ class UserController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
-                ], 403);
+                ], 200);
             }
 
             // Validate request
@@ -123,181 +123,185 @@ class UserController extends Controller
         }
     }
     public function userList(Request $request)
-{
-    try {
-        Log::info('UserController::userList Request', [
-            'company_id' => $request->company_id,
-            'user' => $request->user() ? $request->user()->toArray() : null,
-        ]);
+    {
+        try {
+            Log::info('UserController::userList Request', [
+                'company_id' => $request->company_id,
+                'user' => $request->user() ? $request->user()->toArray() : null,
+            ]);
 
-        if (!$request->company_id) {
-            Log::error('UserController::userList - No company_id provided');
-            return response()->json([
-                'success' => false,
-                'message' => 'Company ID is required',
-            ], 400);
-        }
+            if (!$request->company_id) {
+                Log::error('UserController::userList - No company_id provided');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company ID is required',
+                ], 400);
+            }
 
-        $users = User::whereHas('companies', function ($query) use ($request) {
+            $users = User::whereHas('companies', function ($query) use ($request) {
                 $query->where('company_id', $request->company_id);
             })
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($user) => ['id' => $user->id, 'name' => $user->name])
-            ->values();
+                ->whereNull('deleted_at')
+                ->get(['id', 'name'])
+                ->map(fn($user) => ['id' => $user->id, 'name' => $user->name])
+                ->values();
 
-        return response()->json([
-            'message' => 'User List Received !!',
-            'data' => $users
-        ]);
-    } catch (\Exception $e) {
-        Log::error('UserController::userList Error', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        return response()->json([
-            'error' => 'An unexpected error occurred: ' . $e->getMessage()
-        ], 500);
-    }
-}
-
-public function userDetail(Request $request, $identifier): JsonResponse
-{
-    try {
-        Log::info('UserController::userDetail Request', [
-            'identifier' => $identifier,
-            'user' => $request->user() ? $request->user()->toArray() : null,
-        ]);
-
-        // Get company_id from authenticated user
-        $company_id = auth()->user()->company_id ?? null;
-        if (!$company_id) {
-            Log::error('UserController::userDetail - No company_id found for authenticated user');
             return response()->json([
-                'success' => false,
-                'message' => 'Authenticated user must have a company_id',
-            ], 403);
+                'message' => 'User List Received !!',
+                'data' => $users
+            ]);
+        } catch (\Exception $e) {
+            Log::error('UserController::userList Error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'error' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
         }
+    }
 
-        // Query user by ID or name
-        $user = User::whereHas('companies', function ($query) use ($company_id) {
+    public function userDetail(Request $request, $identifier): JsonResponse
+    {
+        try {
+            Log::info('UserController::userDetail Request', [
+                'identifier' => $identifier,
+                'user' => $request->user() ? $request->user()->toArray() : null,
+            ]);
+
+            // Get company_id from authenticated user
+            $company_id = auth()->user()->company_id ?? null;
+            if (!$company_id) {
+                Log::error('UserController::userDetail - No company_id found for authenticated user');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authenticated user must have a company_id',
+                ], 200);
+            }
+
+            // Query user by ID or name
+            $user = User::whereHas('companies', function ($query) use ($company_id) {
                 $query->where('company_id', $company_id);
             })
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($identifier) {
-                $query->where('id', $identifier)
-                      ->orWhere('name', $identifier);
-            })
-            ->with(['branches' => function ($query) use ($company_id) {
-                $query->where('company_id', $company_id)->whereNull('deleted_at');
-            }, 'roles'])
-            ->first();
+                ->whereNull('deleted_at')
+                ->where(function ($query) use ($identifier) {
+                    $query->where('id', $identifier)
+                        ->orWhere('name', $identifier);
+                })
+                ->with([
+                    'branches' => function ($query) use ($company_id) {
+                        $query->where('company_id', $company_id)->whereNull('deleted_at');
+                    },
+                    'roles'
+                ])
+                ->first();
 
-        if (!$user) {
-            Log::error('UserController::userDetail - User not found', [
+            if (!$user) {
+                Log::error('UserController::userDetail - User not found', [
+                    'identifier' => $identifier,
+                    'company_id' => $company_id,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found or does not belong to your company',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User details retrieved successfully',
+                'data' => [
+                    'user' => [
+                        'id' => $user->id,
+                        'name' => $user->name,
+                        'email' => $user->email,
+                        'company_id' => $company_id,
+                        'branches' => $user->branches->map(fn($branch) => [
+                            'id' => $branch->id,
+                            'name' => $branch->name,
+                            'is_primary' => $branch->is_primary,
+                            'is_active' => $branch->is_active,
+                        ]),
+                        'roles' => $user->roles->pluck('name'),
+                    ],
+                ],
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('UserController::userDetail Error', [
                 'identifier' => $identifier,
-                'company_id' => $company_id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
             return response()->json([
                 'success' => false,
-                'message' => 'User not found or does not belong to your company',
-            ], 404);
+                'message' => 'An error occurred while retrieving user details: ' . $e->getMessage(),
+            ], 500);
         }
+    }
+    public function index(Request $request): JsonResponse
+    {
+        try {
+            // Get company_id from authenticated user
+            $company_id = auth()->user()->company_id ?? null;
+            if (!$company_id) {
+                Log::error('UserController::index - No company_id found for authenticated user');
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Authenticated user must have a company_id',
+                ], 200);
+            }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'User details retrieved successfully',
-            'data' => [
-                'user' => [
+            // Log request
+            Log::info('UserController::index Request', [
+                'headers' => $request->headers->all(),
+                'user' => $request->user() ? $request->user()->toArray() : null,
+            ]);
+
+            // Query users for the company with role_id = 3
+            $users = User::whereHas('companies', function ($query) use ($company_id) {
+                $query->where('company_id', $company_id);
+            })
+                ->whereHas('roles', function ($query) {
+                    $query->where('id', 3); // Filter by role ID 3
+                })
+                ->with(['branches:name,id', 'roles:name,id'])
+                ->whereNull('deleted_at')
+                ->get();
+
+            // Format response data
+            $formattedUsers = $users->map(function ($user) {
+                return [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'company_id' => $company_id,
-                    'branches' => $user->branches->map(fn($branch) => [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                        'is_primary' => $branch->is_primary,
-                        'is_active' => $branch->is_active,
-                    ]),
+                    'company_id' => $user->companies->first()->id ?? null,
+                    'branches' => $user->branches->pluck('name'),
                     'roles' => $user->roles->pluck('name'),
-                ],
-            ],
-        ], 200);
-    } catch (\Exception $e) {
-        Log::error('UserController::userDetail Error', [
-            'identifier' => $identifier,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'An error occurred while retrieving user details: ' . $e->getMessage(),
-        ], 500);
-    }
-}
-    public function index(Request $request): JsonResponse
-{
-    try {
-        // Get company_id from authenticated user
-        $company_id = auth()->user()->company_id ?? null;
-        if (!$company_id) {
-            Log::error('UserController::index - No company_id found for authenticated user');
+                ];
+            });
+
+            // Log success
+            Log::info('UserController::index Users Retrieved', [
+                'company_id' => $company_id,
+                'user_count' => $users->count(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Users with role ID 3 retrieved successfully.',
+                'data' => $formattedUsers,
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('UserController::index Error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Authenticated user must have a company_id',
-            ], 403);
+                'message' => 'An error occurred while retrieving users: ' . $e->getMessage(),
+            ], 500);
         }
-
-        // Log request
-        Log::info('UserController::index Request', [
-            'headers' => $request->headers->all(),
-            'user' => $request->user() ? $request->user()->toArray() : null,
-        ]);
-
-        // Query users for the company with role_id = 3
-        $users = User::whereHas('companies', function ($query) use ($company_id) {
-                $query->where('company_id', $company_id);
-            })
-            ->whereHas('roles', function ($query) {
-                $query->where('id', 3); // Filter by role ID 3
-            })
-            ->with(['branches:name,id', 'roles:name,id'])
-            ->whereNull('deleted_at')
-            ->get();
-
-        // Format response data
-        $formattedUsers = $users->map(function ($user) {
-            return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'company_id' => $user->companies->first()->id ?? null,
-                'branches' => $user->branches->pluck('name'),
-                'roles' => $user->roles->pluck('name'),            ];
-        });
-
-        // Log success
-        Log::info('UserController::index Users Retrieved', [
-            'company_id' => $company_id,
-            'user_count' => $users->count(),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Users with role ID 3 retrieved successfully.',
-            'data' => $formattedUsers,
-        ], 200);
-    } catch (\Exception $e) {
-        Log::error('UserController::index Error', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        return response()->json([
-            'success' => false,
-            'message' => 'An error occurred while retrieving users: ' . $e->getMessage(),
-        ], 500);
     }
-}
 
     public function update(Request $request, $id): JsonResponse
     {
@@ -317,7 +321,7 @@ public function userDetail(Request $request, $identifier): JsonResponse
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
-                ], 403);
+                ], 200);
             }
 
             // Find user
@@ -332,7 +336,7 @@ public function userDetail(Request $request, $identifier): JsonResponse
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to update this user',
-                ], 403);
+                ], 200);
             }
 
             // Validate request
@@ -441,7 +445,7 @@ public function userDetail(Request $request, $identifier): JsonResponse
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
-                ], 403);
+                ], 200);
             }
 
             // Find user
@@ -456,7 +460,7 @@ public function userDetail(Request $request, $identifier): JsonResponse
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to delete this user',
-                ], 403);
+                ], 200);
             }
 
             // Soft delete user
@@ -492,6 +496,6 @@ public function userDetail(Request $request, $identifier): JsonResponse
 
 
 
-   
+
 
 }

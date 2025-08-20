@@ -31,7 +31,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -282,7 +282,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -327,7 +327,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -388,7 +388,7 @@ class CompanyController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 403);
+            ], 200);
         }
 
         try {
@@ -500,7 +500,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                ], 200);
             }
 
             // Validate request data
@@ -596,16 +596,87 @@ class CompanyController extends Controller
 
 
 
+    // public function getPurchaseMasterKey(Request $request): JsonResponse
+    // {
+    //     try {
+    //         $user = $request->user();
+    //         \Log::info('getPurchaseMasterKey: User', ['user_id' => $user ? $user->id : null]);
+    //         if (!$user || !$user->hasRole('company_admin')) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Unauthorized: Not a company admin',
+    //             ], 200);
+    //         }
+
+    //         $companyId = $request->company_id;
+    //         \Log::info('getPurchaseMasterKey: Company ID', ['company_id' => $companyId]);
+    //         if (!$companyId) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'No company ID provided',
+    //             ], 400);
+    //         }
+
+    //         $company = \App\Models\Company::where('id', $companyId)
+    //             ->whereNull('deleted_at')
+    //             ->first();
+    //         if (!$company) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Company not found or deleted',
+    //             ], 404);
+    //         }
+
+    //         $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
+    //             ->where('company_id', $companyId)
+    //             ->first();
+    //         if (!$companyUser) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'User is not associated with this company',
+    //             ], 200);
+    //         }
+
+    //         $purchaseMaster = \App\Models\PurchaseMasterKey::where('company_id', $companyId)->first();
+    //         \Log::info('getPurchaseMasterKey: PurchaseMasterKey', ['found' => $purchaseMaster ? true : false]);
+    //         if (!$purchaseMaster) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Purchase master key not found for this company',
+    //             ], 404);
+    //         }
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => $purchaseMaster,
+    //         ], 200);
+    //     } catch (QueryException $e) {
+    //         \Log::error('getPurchaseMasterKey QueryException', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'An unexpected error occurred',
+    //         ], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error('getPurchaseMasterKey Exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'An unexpected error occurred',
+    //         ], 500);
+    //     }
+    // }
+
+
+
     public function getPurchaseMasterKey(Request $request): JsonResponse
     {
         try {
             $user = $request->user();
             \Log::info('getPurchaseMasterKey: User', ['user_id' => $user ? $user->id : null]);
-            if (!$user || !$user->hasRole('company_admin')) {
+            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                    'message' => 'Unauthorized: User lacks required role',
+                ], 200);
             }
 
             $companyId = $request->company_id;
@@ -634,7 +705,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with this company',
-                ], 403);
+                ], 200);
             }
 
             $purchaseMaster = \App\Models\PurchaseMasterKey::where('company_id', $companyId)->first();
@@ -665,8 +736,6 @@ class CompanyController extends Controller
         }
     }
 
-
-
     public function updateSaleMasterKey(Request $request): JsonResponse
     {
         try {
@@ -676,7 +745,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                ], 200);
             }
 
             // Validate request data
@@ -784,7 +853,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a company admin',
-                ], 403);
+                ], 200);
             }
 
             // Get company_id from middleware
@@ -816,7 +885,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with this company',
-                ], 403);
+                ], 200);
             }
 
             // Find the SalesMasterKey for the company
@@ -860,7 +929,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Super admin or company admin required',
-                ], 403);
+                ], 200);
             }
 
             $companyUser = CompanyUser::where('user_id', $user->id)->first();
@@ -1103,7 +1172,7 @@ class CompanyController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not a super admin',
-                ], 403);
+                ], 200);
             }
             $company = Company::findOrFail($id);
 

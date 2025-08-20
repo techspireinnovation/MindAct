@@ -240,10 +240,8 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
     
-            // $user->tokens()->delete();
-            if ($request->user()->currentAccessToken()) {
-                $request->user()->currentAccessToken()->delete();
-            }
+            $user->tokens()->delete();
+           
     
             $abilities = [
                 $user->hasRole('company_admin') ? 'company_admin' : ($user->hasRole('master_user') ? 'master_user' : 'company_user'),
@@ -279,40 +277,6 @@ class CompanyAdminController extends Controller
             ], 500);
         }
     }
-
-
-//     public function selectCompany(Request $request)
-// {
-//     $user = $request->user();
-
-//     $validated = $request->validate([
-//         'company_id' => 'required|exists:companies,id',
-//     ]);
-
-//     $companyId = $validated['company_id'];
-
-//     if (!$user->companies()->where('companies.id', $companyId)->exists()) {
-//         return response()->json([
-//             'success' => false,
-//             'message' => 'Unauthorized to access this company',
-//         ], 403);
-//     }
-
-//     if ($request->user()->currentAccessToken()) {
-//         $request->user()->currentAccessToken()->delete();
-//     }
-
-//     $abilities = ['company_access:' . $companyId];
-//     $token = $user->createToken('MatraErpToken', $abilities)->plainTextToken;
-
-//     return response()->json([
-//         'success' => true,
-//         'message' => 'Company selected successfully',
-//         'token'   => $token,
-//         'company_id' => $companyId,
-//     ], 200);
-// }
-
 
 
     public function profile(Request $request)
@@ -410,8 +374,7 @@ class CompanyAdminController extends Controller
     
             $branch = null;
             if ($branchId) {
-                $branch = Branch::withoutGlobalScope(CompanyIdScope::class)
-                    ->where('id', $branchId)
+                $branch = Branch::where('id', $branchId)
                     ->where('company_id', $companyId)
                     ->whereNull('deleted_at')
                     ->where('is_active', true)
@@ -506,7 +469,6 @@ class CompanyAdminController extends Controller
             ], 500);
         }
     }
-
    
     
 
@@ -906,6 +868,7 @@ class CompanyAdminController extends Controller
             }
     
             $token = $user->currentAccessToken();
+           
             $companyId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'company:'));
             $branchId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'branch:'));
     
@@ -919,10 +882,8 @@ class CompanyAdminController extends Controller
     
             $isTempToken = $token->name === 'TempToken';
     
-            // $user->tokens()->delete();
-            if ($token) {
-                $token->delete();
-            }
+            $user->tokens()->delete();
+           
     
             if ($user->hasRole('master_user') && !$isTempToken) {
                 $tempToken = $user->createToken('TempToken', ['company_access'], now()->addMinutes(30))->plainTextToken;

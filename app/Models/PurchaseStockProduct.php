@@ -14,6 +14,8 @@ class PurchaseStockProduct extends Model
 {
     protected $fillable = [
         'customer_id',
+        'stock_adjustment_id',
+        'stock_reconciliation_id',
         'company_id',
         'branch_id',
         'mfd',
@@ -61,7 +63,7 @@ class PurchaseStockProduct extends Model
 
     public function fieldValues()
     {
-        return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
+        return $this->hasMany(PurchaseStockProductFieldValue::class, 'purchase_stock_product_id');
     }
 
     public function purchase()

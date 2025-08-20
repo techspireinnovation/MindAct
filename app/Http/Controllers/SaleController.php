@@ -192,12 +192,12 @@ class SaleController extends Controller
                         ]),
 
                     'fieldValues' => fn($q) => $q
-                        ->whereNull('purchase_product_field_values.deleted_at')
-                        ->where('purchase_product_field_values.company_id', $companyId)
+                        ->whereNull('purchase_stock_product_field_values.deleted_at')
+                        ->where('purchase_stock_product_field_values.company_id', $companyId)
                 ])
                 ->get();
-          
-            
+
+
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
                 return collect([]);
@@ -345,10 +345,11 @@ class SaleController extends Controller
                 ], 400);
             }
 
+
             $products = $includeDetails
                 ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'])
                 : $this->getAvailableProductsForSale($purchaseType, $companyId);
-            
+
 
             return response()->json([
                 'message' => 'Available products retrieved successfully',
@@ -399,16 +400,7 @@ class SaleController extends Controller
                 return response()->json(['error' => 'Either product_id or product_name is required'], 422);
             }
 
-            if (auth()->check()) {
-                $user = auth()->user();
-                $userCompanyId = optional($user->company)->company_id;
-                if ($userCompanyId != $companyId) {
-                    return response()->json(['error' => 'Unauthorized access to company resources'], 403);
-                }
-            } else {
-                return response()->json(['message' => 'Unauthenticated'], 401);
-            }
-
+            // Fetch product details
             $products = $this->getAvailableProductsDetails($productId, $productName, $companyId, $responseUnitId);
 
             return response()->json([
@@ -422,20 +414,21 @@ class SaleController extends Controller
                 'product_name' => $productName,
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['message' => 'No matching product found', 'data' => []], 404);
+            return response()->json(['message' => 'No matching product found', 'data' => []], 200);
         } catch (QueryException $e) {
             Log::error('Database query error in getAvailableProductByIdOrName', [
                 'product_id' => $productId,
                 'product_name' => $productName,
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
             ]);
-            return response()->json(['error' => 'Database query error', 'message' => config('app.debug') ? $e->getMessage() : null], 500);
+            return response()->json([
+                'error' => 'Database query error',
+                'message' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         } catch (\Exception $e) {
-            Log::error('Error in getAvailableProductByIdOrName', [
+            Log::error('Unexpected error in getAvailableProductByIdOrName', [
                 'error' => $e->getMessage(),
                 'request' => $request->all()
             ]);
@@ -445,117 +438,6 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-    public function changeDate(Request $request)
-    {
-        $dateString = $request->input('date');
-
-        $carbonDate = Carbon::parse($dateString);
-        $currentDateBs = NepaliDate::create($carbonDate)->toBS();
-        return $currentDateBs;
-
-    }
-
-
-
-
-    private function safeBsDate(int $year, int $month, int $day): string
-    {
-        // never start higher than 32
-        $day = min($day, 33);
-
-        while ($day > 0) {
-            $candidate = sprintf('%04d-%02d-%02d', $year, $month, $day);
-
-            try {
-                // BS → AD will throw if the date is invalid
-                EnglishDate::create($candidate)->toAD();
-                return $candidate;               // valid → done
-            } catch (\Throwable $e) {
-                $day--;                          // invalid → reduce and retry
-            }
-        }
-
-        throw new \RuntimeException("No valid day found for {$year}-{$month}");
-    }
-
-
-    public function customerTotalSalePriceAmount(Request $request)
-    {
-        try {
-
-            $customer_id = $request->input('customer_id');
-            $currentDate = Carbon::now(); // July 24, 2025
-            $currentDateBs = NepaliDate::create($currentDate)->toBS();
-
-
-
-            [$bsYear, $bsMonth, $bsDay] = array_map('intval', explode('-', $currentDateBs));
-
-
-            if ($bsMonth >= 4 || ($bsMonth === 4 && $bsDay >= 1)) { // On or after Shrawan 1
-                $fiscalBsYearStart = $bsYear;
-                $fiscalBsYearEnd = $bsYear + 1;
-            } else {
-                $fiscalBsYearStart = $bsYear - 1;
-                $fiscalBsYearEnd = $bsYear;
-            }
-
-            // Define full fiscal year dates
-            $fiscalYearStartBs = $fiscalBsYearStart . '-04-01'; // Shrawan 1
-            $asarLastDay = $fiscalBsYearEnd;
-            $lastFiscalDate = $this->safeBsDate($asarLastDay, 3, 32); // Asar 32 of the fiscal year end
-
-            $saleIds = Sale::where('company_id', $request->company_id)
-                ->where('customer_id', $customer_id)
-                ->whereNull('deleted_at')
-                ->whereBetween('invoice_date_bs', [$fiscalYearStartBs, $lastFiscalDate])
-                ->pluck('id');
-
-            $totalSoldPrice = SaleProduct::whereIn('sale_id', $saleIds)
-                ->whereNull('deleted_at')
-                ->sum('price');
-
-            $totalSoldAmount = SaleProduct::whereIn('sale_id', $saleIds)
-                ->whereNull('deleted_at')
-                ->sum('amount');
-            return response()->json([
-                'message' => 'Total sale price and amount retrieved successfully',
-                'data' => [
-                    'price' => $totalSoldPrice,
-                    'amount' => $totalSoldAmount
-                ]
-            ], 200);
-
-
-        } catch (ModelNotFoundException $e) {
-            Log::error('Data not Found', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['error' => 'Data nor Found !!', 'message' => config('app.debug') ? $e->getMessage() : null], 404);
-
-
-        } catch (QueryException $e) {
-            Log::error('Database query error in customerTotalSalePriceAmount', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['error' => 'Database query error', 'message' => config('app.debug') ? $e->getMessage() : null], 500);
-
-        } catch (\Exception $e) {
-            Log::error('Error in customerTotalSalePriceAmount', [
-                'error' => $e->getMessage(),
-                'request' => $request->all()
-            ]);
-            return response()->json([
-                'error' => 'An unexpected error occurred',
-                'message' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
-        }
-    }
-
-
 
 
     private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $responseUnitId = null): array
@@ -714,19 +596,17 @@ class SaleController extends Controller
                                 ->where('company_id', $companyId)
                                 ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
                         ]),
-                    'fieldValues' => fn($q) => $q->whereNull('deleted_at')
-                        ->where('company_id', $companyId)
+                    'fieldValues' => fn($q) => $q->whereNull('purchase_stock_product_field_values.deleted_at')
+                        ->where('purchase_stock_product_field_values.company_id', $companyId)
                         ->with([
                             'productField' => fn($q) => $q->select(['id', 'name', 'company_id'])
                                 ->where('company_id', $companyId)
                                 ->whereNull('deleted_at')
                         ])
                 ])
-                // Optional: Add period filtering if needed
-                // ->whereHas('purchase', fn($q) => $q->whereBetween('invoice_date', [$startDate, $endDate]))
                 ->orderBy('created_at', 'asc')
                 ->get();
-           
+
 
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', [
@@ -946,6 +826,121 @@ class SaleController extends Controller
             DB::disableQueryLog();
         }
     }
+
+
+
+
+    public function changeDate(Request $request)
+    {
+        $dateString = $request->input('date');
+
+        $carbonDate = Carbon::parse($dateString);
+        $currentDateBs = NepaliDate::create($carbonDate)->toBS();
+        return $currentDateBs;
+
+    }
+
+
+
+
+    private function safeBsDate(int $year, int $month, int $day): string
+    {
+        // never start higher than 32
+        $day = min($day, 33);
+
+        while ($day > 0) {
+            $candidate = sprintf('%04d-%02d-%02d', $year, $month, $day);
+
+            try {
+
+                EnglishDate::create($candidate)->toAD();
+                return $candidate;
+            } catch (\Throwable $e) {
+                $day--;
+            }
+        }
+
+        throw new \RuntimeException("No valid day found for {$year}-{$month}");
+    }
+
+
+    public function customerTotalSalePriceAmount(Request $request)
+    {
+        try {
+
+            $customer_id = $request->input('customer_id');
+            $currentDate = Carbon::now(); // July 24, 2025
+            $currentDateBs = NepaliDate::create($currentDate)->toBS();
+
+
+
+            [$bsYear, $bsMonth, $bsDay] = array_map('intval', explode('-', $currentDateBs));
+
+
+            if ($bsMonth >= 4 || ($bsMonth === 4 && $bsDay >= 1)) { // On or after Shrawan 1
+                $fiscalBsYearStart = $bsYear;
+                $fiscalBsYearEnd = $bsYear + 1;
+            } else {
+                $fiscalBsYearStart = $bsYear - 1;
+                $fiscalBsYearEnd = $bsYear;
+            }
+
+            // Define full fiscal year dates
+            $fiscalYearStartBs = $fiscalBsYearStart . '-04-01'; // Shrawan 1
+            $asarLastDay = $fiscalBsYearEnd;
+            $lastFiscalDate = $this->safeBsDate($asarLastDay, 3, 32); // Asar 32 of the fiscal year end
+
+            $saleIds = Sale::where('company_id', $request->company_id)
+                ->where('customer_id', $customer_id)
+                ->whereNull('deleted_at')
+                ->whereBetween('invoice_date_bs', [$fiscalYearStartBs, $lastFiscalDate])
+                ->pluck('id');
+
+            $totalSoldPrice = SaleProduct::whereIn('sale_id', $saleIds)
+                ->whereNull('deleted_at')
+                ->sum('price');
+
+            $totalSoldAmount = SaleProduct::whereIn('sale_id', $saleIds)
+                ->whereNull('deleted_at')
+                ->sum('amount');
+            return response()->json([
+                'message' => 'Total sale price and amount retrieved successfully',
+                'data' => [
+                    'price' => $totalSoldPrice,
+                    'amount' => $totalSoldAmount
+                ]
+            ], 200);
+
+
+        } catch (ModelNotFoundException $e) {
+            Log::error('Data not Found', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Data nor Found !!', 'message' => config('app.debug') ? $e->getMessage() : null], 404);
+
+
+        } catch (QueryException $e) {
+            Log::error('Database query error in customerTotalSalePriceAmount', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Database query error', 'message' => config('app.debug') ? $e->getMessage() : null], 500);
+
+        } catch (\Exception $e) {
+            Log::error('Error in customerTotalSalePriceAmount', [
+                'error' => $e->getMessage(),
+                'request' => $request->all()
+            ]);
+            return response()->json([
+                'error' => 'An unexpected error occurred',
+                'message' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        }
+    }
+
+
+
 
 
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float

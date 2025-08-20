@@ -62,7 +62,7 @@ class CompanyController extends Controller
                 'url_link' => 'nullable|string|max:255',
                 // Admin fields
                 'admin_selection' => 'required|in:existing,new',
-                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
+                'existing_admin_id' => 'nullable|exists:users,id', 
                 'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email|required_if:admin_selection,new',
                 'admin_name' => 'sometimes|nullable|string|max:255|required_if:admin_selection,new',
                 'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',

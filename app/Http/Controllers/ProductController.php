@@ -58,142 +58,29 @@ class ProductController extends Controller
         return response()->json(['product_id' => $productID]);
     }
 
-    // public function getByProductTypeName(Request $request): JsonResponse
-    // {
-    //     try {
-    //         $user = Auth::guard('api')->user();
-
-    //         if (!$user) {
-    //             Log::error('ProductController: User not authenticated', [
-    //                 'request' => $request->all(),
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Unauthenticated: Please log in.',
-    //             ], 401);
-    //         }
-
-    //         $companyId = $request->query('company_id');
-    //         $productTypeName = $request->query('product_type');
-
-    //         if (!$companyId) {
-    //             Log::error('ProductController: Company ID parameter is required', [
-    //                 'user_id' => $user->id,
-    //                 'request' => $request->all(),
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Company ID parameter is required',
-    //             ], 400);
-    //         }
-
-    //         if (!$productTypeName) {
-    //             Log::error('ProductController: Product type parameter is required', [
-    //                 'user_id' => $user->id,
-    //                 'request' => $request->all(),
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Product type parameter is required',
-    //             ], 400);
-    //         }
-
-    //         // Verify user is associated with the company
-    //         $companyUser = CompanyUser::where('user_id', $user->id)
-    //             ->where('company_id', $companyId)
-    //             ->whereNull('deleted_at')
-    //             ->first();
-
-    //         if (!$companyUser) {
-    //             Log::error('ProductController: User not associated with company', [
-    //                 'user_id' => $user->id,
-    //                 'company_id' => $companyId,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Forbidden: User not associated with the specified company.',
-    //             ], 403);
-    //         }
-
-    //         $productType = ProductType::where('name', $productTypeName)
-    //             ->where('company_id', $companyId)
-    //             ->whereNull('deleted_at')
-    //             ->first();
-
-    //         if (!$productType) {
-    //             Log::info('ProductController: Product type not found', [
-    //                 'user_id' => $user->id,
-    //                 'company_id' => $companyId,
-    //                 'product_type' => $productTypeName,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Product type not found',
-    //             ], 404);
-    //         }
-
-    //         $products = Product::where('product_type_id', $productType->id)
-    //             ->where('company_id', $companyId)
-    //             ->whereNull('deleted_at')
-    //             ->select('id', 'name')
-    //             ->get();
-
-    //         if ($products->isEmpty()) {
-    //             Log::info('ProductController: No products found for product type', [
-    //                 'user_id' => $user->id,
-    //                 'company_id' => $companyId,
-    //                 'product_type_id' => $productType->id,
-    //             ]);
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'No products found for this product type',
-    //             ], 404);
-    //         }
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'products' => $products
-    //         ], 200);
-    //     } catch (\Exception $e) {
-    //         Log::error('ProductController getByProductTypeName Error', [
-    //             'user_id' => $user->id ?? 'N/A',
-    //             'company_id' => $companyId ?? 'N/A',
-    //             'product_type' => $productTypeName ?? 'N/A',
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Failed to retrieve products by product type.',
-    //             'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-    //         ], 500);
-    //     }
-    // }
-
-
     public function getByProductTypeName(int $company, string $productType): JsonResponse
     {
         try {
             $type = ProductType::where('company_id', $company)
                 ->where('name', $productType)
                 ->firstOrFail();
-    
+
             $products = Product::query()
                 ->where('company_id', $company)
                 ->where('product_type_id', $type->id)
                 ->select(['id', 'name'])
                 ->get()
                 ->makeHidden('primary_measure_unit'); // hide it
-    
+
             return response()->json([
                 'data' => $products,
             ], 200);
-    
+
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Product type not found.',
             ], 404);
-    
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'An unexpected error occurred.',
@@ -202,7 +89,7 @@ class ProductController extends Controller
         }
     }
 
-  
+
     public function getProductNames()
     {
 
@@ -354,55 +241,59 @@ class ProductController extends Controller
     }
 
 
-    public function productList(Request $request){
-        try{
+    public function productList(Request $request)
+    {
+        try {
 
-            $products = Product::where('company_id',$request->company_id)
-            ->whereNull('deleted_at')
-            ->where('is_active', 1)
-            ->get(['id', 'name'])
-            ->map(fn($product) => ['id' => $product->id, 'name' => $product->name])
-            ->values()
-            ->toArray();
-            return response()->json(["message"=>"Product List Received !!",
-                                       "data"=>$products
-                                    ]);
+            $products = Product::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($product) => ['id' => $product->id, 'name' => $product->name])
+                ->values()
+                ->toArray();
+            return response()->json([
+                "message" => "Product List Received !!",
+                "data" => $products
+            ]);
 
-        }catch(ModelNotFoundException $e){
+        } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(["error"=>"Product Name not Found !!"],404);
-        }catch(QueryException $e){
+            return response()->json(["error" => "Product Name not Found !!"], 404);
+        } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(["error"=>"Database error occurred !!"],500);
-        }catch(\Exception $e){
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
-    public function productDetails(Request $request){
-        try{
+    public function productDetails(Request $request)
+    {
+        try {
 
-           $companyId  = $request->company_id;
-           if(!$companyId){
-            return response()->json(["error"=>"No Company Logged In !!"],404);
-           }
+            $companyId = $request->company_id;
+            if (!$companyId) {
+                return response()->json(["error" => "No Company Logged In !!"], 404);
+            }
 
-           $product = $request->product_name;
-           $products = Product::where('company_id',$request->company_id)
-                                         ->where('name',$product)
-                                       ->whereNull('deleted_at')
-                                       ->firstorFail();   
-           return response()->json(["message"=>"Product Details Received !!",
-                                    "data"=>$products
-                                ],200);
+            $product = $request->product_name;
+            $products = Product::where('company_id', $request->company_id)
+                ->where('name', $product)
+                ->whereNull('deleted_at')
+                ->firstorFail();
+            return response()->json([
+                "message" => "Product Details Received !!",
+                "data" => $products
+            ], 200);
 
 
-        }catch(ModelNotFoundException $e){
-            return response()->json(["error"=>"Product Field not Found !!"],404);
-        }catch(QueryException $e){
-            return response()->json(["error"=>"Database error occurred !!"],500);
-        }catch(\Exception $e){
-            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Product Field not Found !!"], 404);
+        } catch (QueryException $e) {
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
     public function getProductsByName(Request $request): JsonResponse

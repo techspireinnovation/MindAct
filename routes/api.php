@@ -82,6 +82,11 @@ Route::middleware(['auth:sanctum'])
 Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
 Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
 Route::get('/master-users/{masterUserId}/companies', [CompanyAdminController::class, 'getMasterUserCompanies'])->middleware('auth:api');
+
+
+Route::get('/company/product-types/{productType}', [ProductController::class, 'getByProductTypeName'])
+    ->middleware('company.access');
+
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
@@ -225,7 +230,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('measure-units', MeasureUnitController::class);
         Route::apiResource('products', ProductController::class);
         Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
-        Route::get('/{company}/product-types/{productType}', [ProductController::class, 'getByProductTypeName']);
+        // Route::get('/product-types/{productType}', [ProductController::class, 'getByProductTypeName']);
 
         Route::prefix('reports')->group(function () {
             //Route::middleware(['can:print'])->group(function () {

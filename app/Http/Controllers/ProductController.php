@@ -58,37 +58,38 @@ class ProductController extends Controller
         return response()->json(['product_id' => $productID]);
     }
 
-    public function getByProductTypeName(int $company, string $productType): JsonResponse
-    {
-        try {
-            $type = ProductType::where('company_id', $company)
-                ->where('name', $productType)
-                ->firstOrFail();
+    public function getByProductTypeName(Request $request, string $productType): JsonResponse
+{
+    try {
+        $companyId = $request->company_id; // comes from CompanyAccessMiddleware
 
-            $products = Product::query()
-                ->where('company_id', $company)
-                ->where('product_type_id', $type->id)
-                ->select(['id', 'name'])
-                ->get()
-                ->makeHidden('primary_measure_unit'); // hide it
+        $type = ProductType::where('company_id', $companyId)
+            ->where('name', $productType)
+            ->firstOrFail();
 
-            return response()->json([
-                'data' => $products,
-            ], 200);
+        $products = Product::query()
+            ->where('company_id', $companyId)
+            ->where('product_type_id', $type->id)
+            ->select(['id', 'name'])
+            ->get()
+            ->makeHidden('primary_measure_unit');
 
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                'message' => 'Product type not found.',
-            ], 404);
+        return response()->json([
+            'data' => $products,
+        ], 200);
 
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'An unexpected error occurred.',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            'message' => 'Product type not found.',
+        ], 404);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'An unexpected error occurred.',
+            'error' => $e->getMessage(),
+        ], 500);
     }
-
+}
 
     public function getProductNames()
     {

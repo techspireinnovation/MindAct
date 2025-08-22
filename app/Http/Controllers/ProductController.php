@@ -9,6 +9,7 @@ use App\Models\CompanyUser;
 use App\Models\Product;
 use App\Models\ProductField;
 use App\Models\ProductFieldValue;
+use App\Models\ProductionSetting;
 use App\Models\ProductList;
 use App\Models\ProductType;
 use DB;
@@ -59,38 +60,43 @@ class ProductController extends Controller
     }
 
     public function getByProductTypeName(Request $request, string $productType): JsonResponse
-{
-    try {
-        $companyId = $request->company_id; // comes from CompanyAccessMiddleware
+    {
+        try {
+            $companyId = $request->company_id;
 
-        $type = ProductType::where('company_id', $companyId)
-            ->where('name', $productType)
-            ->firstOrFail();
+            $type = ProductType::where('company_id', $companyId)
+                ->where('name', $productType)
+                ->firstOrFail();
 
-        $products = Product::query()
-            ->where('company_id', $companyId)
-            ->where('product_type_id', $type->id)
-            ->select(['id', 'name'])
-            ->get()
-            ->makeHidden('primary_measure_unit');
+            $existingProductIds = ProductionSetting::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->pluck('product_id')
+                ->toArray();
 
-        return response()->json([
-            'data' => $products,
-        ], 200);
+            $products = Product::query()
+                ->where('company_id', $companyId)
+                ->where('product_type_id', $type->id)
+                ->whereNotIn('id', $existingProductIds) 
+                ->select(['id', 'name'])
+                ->get()
+                ->makeHidden('primary_measure_unit');
 
-    } catch (ModelNotFoundException $e) {
-        return response()->json([
-            'message' => 'Product type not found.',
-        ], 404);
+            return response()->json([
+                'data' => $products,
+            ], 200);
 
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'An unexpected error occurred.',
-            'error' => $e->getMessage(),
-        ], 500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'message' => 'Product type not found.',
+            ], 404);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An unexpected error occurred.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
-}
-
     public function getProductNames()
     {
 

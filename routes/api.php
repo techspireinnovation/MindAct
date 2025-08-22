@@ -101,9 +101,9 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
-    
+
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-    
+
 });
 
 Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
@@ -204,6 +204,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
         Route::apiResource('journal-vouchers', JournalVoucherController::class);
         Route::resource('customers', CustomerController::class);
+        Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
         Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
         Route::resource('sales', SaleController::class);
         Route::resource('fixed-asset-group', FixedAssetGroupController::class);
@@ -211,7 +212,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         //Journal Voucher List for Needed Components
 
-      
+
         Route::get('main-group/list', [JournalVoucherController::class, 'mainGroupList']);
         Route::get('sub-group/list', [JournalVoucherController::class, 'subGroupList']);
         Route::get('account-group/list', [JournalVoucherController::class, 'accountGroupList']);
@@ -353,7 +354,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         Route::get('get-area-list', [AreaController::class, 'categoryList']);
         Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
-        
+
         Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
         Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
 

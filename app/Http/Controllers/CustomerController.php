@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Purchase;
+use App\Models\PurchaseReturn;
+use App\Models\Sale;
+use App\Models\SalesReturn;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +20,57 @@ use Illuminate\Support\Facades\Validator;
 
 class CustomerController extends Controller
 {
+
+
+
+    public function getCustomerBalance($customer_id)
+    {
+        $customer = Customer::where('id', $customer_id)->first();
+
+        if (!$customer) {
+            return response()->json(['error' => 'Customer not found'], 404);
+        }
+
+        $balance = (float) $customer->opening_balance;
+
+        $purchaseCredits = Purchase::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($purchase) {
+                return (float) ($purchase->payment['credit'] ?? 0);
+            });
+        $balance -= $purchaseCredits;
+
+        $purchaseReturnCredits = PurchaseReturn::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($purchaseReturn) {
+                return (float) ($purchaseReturn->payment['credit'] ?? 0);
+            });
+        $balance += $purchaseReturnCredits;
+
+        $saleCredits = Sale::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($sale) {
+                return (float) ($sale->payment['credit'] ?? 0);
+            });
+        $balance += $saleCredits;
+
+        $saleReturnCredits = SalesReturn::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($saleReturn) {
+                return (float) ($saleReturn->payment['credit'] ?? 0);
+            });
+        $balance -= $saleReturnCredits;
+
+        return response()->json([
+
+            'actual_balance' => round($balance, 5)
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Customer::query();

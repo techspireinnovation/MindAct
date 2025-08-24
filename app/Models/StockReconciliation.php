@@ -18,14 +18,15 @@ class StockReconciliation extends Model
     ];
 
     protected $fillable = [
+
         'company_id',
+        'branch_id',
         'date_ad',
         'date_bs',
         'reconciliation_no',
         'document_no',
         'branch_id',
-        'branch_id',
-       
+
         'remarks',
   
         

@@ -301,8 +301,10 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
         Route::resource('salesman', SalesmanController::class);
         Route::apiResource('stock-entries', StockEntryController::class);
+        Route::get('get-available-stock', ([StockTransferController::class, 'getProductListforStockTransfer']));
+        Route::get('get-available-stock-details', ([StockTransferController::class, 'getProductDetails']));
         Route::post('stock-entries-update', [StockEntryController::class, 'update']);
-         Route::get('stock-entries-details', [StockEntryController::class, 'show']);
+        Route::get('stock-entries-details', [StockEntryController::class, 'show']);
         Route::resource('stock-adjustments', StockAdjustmentController::class);
         Route::resource('stock-transfers', StockTransferController::class);
         Route::resource('stock-receives', StockReceiveController::class);
@@ -343,7 +345,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         Route::get('get-area-list', [AreaController::class, 'categoryList']);
         Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
-        
+
         Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
         Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
 

@@ -107,7 +107,7 @@ class CompanyController extends Controller
 
 
             $branch = Branch::create([
-                'name' => $validated['name'] . ' Main Branch',
+                'name' => $validated['name'],
                 'company_id' => $company->id,
                 'branch_type' => 'Main',
                 'is_active' => true,
@@ -539,6 +539,7 @@ class CompanyController extends Controller
                         'message' => 'No company associated with this user',
                     ], 404);
                 }
+                dd($company);
 
                 // Find the PurchaseMasterKey for the user's company
                 $purchaseMaster = PurchaseMasterKey::where('company_id', $company->id)->first();
@@ -578,12 +579,14 @@ class CompanyController extends Controller
                 'message' => 'Purchase master key not found',
             ], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
+             dd($e->getMessage());
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -830,12 +833,14 @@ class CompanyController extends Controller
                 'message' => 'Sale master key not found',
             ], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             Log::error('Sale master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
+                    dd($e->getMessage());
             Log::error('sale master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,

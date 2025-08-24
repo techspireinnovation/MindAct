@@ -17,6 +17,7 @@ class StockReceive extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'stock_receive_id',
         'transfer_ref_no',
         'reference_no',

@@ -18,6 +18,7 @@ class SalesMasterKey extends Model
 
             'company_id',
             'salesman_id',
+            'salesman',
             'credit_days',
             'balance',
             'store',

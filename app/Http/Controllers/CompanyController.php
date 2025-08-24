@@ -684,7 +684,6 @@ class CompanyController extends Controller
     public function updateSaleMasterKey(Request $request): JsonResponse
     {
         try {
-            // Get the authenticated user
             $user = $request->user();
                 if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
@@ -694,7 +693,6 @@ class CompanyController extends Controller
                 ], 403);
             }
 
-            // Validate request data
             $validator = Validator::make($request->all(), [
                 'product_code' => 'nullable|boolean',
                 'salesman' => 'nullable|boolean',
@@ -730,7 +728,6 @@ class CompanyController extends Controller
             $validated = $validator->validated();
 
             return DB::transaction(function () use ($user, $validated, $request) {
-                // Use company_id from middleware
                 $companyId = $request->company_id;
                 if (!$companyId) {
                     return response()->json([
@@ -751,7 +748,6 @@ class CompanyController extends Controller
                     ], 404);
                 }
 
-                // Verify user is associated with the company
                 $companyUser = CompanyUser::where('user_id', $user->id)
                     ->where('company_id', $companyId)
                     ->first();

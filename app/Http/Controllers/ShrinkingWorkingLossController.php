@@ -43,14 +43,12 @@ class ShrinkingWorkingLossController extends Controller
             $dateFrom = $request->filled('date_from') ? $request->input('date_from') : null;
             $dateTo = $request->filled('date_to') ? $request->input('date_to') : null;
 
-            // Check for previously processed date_to in ShrinkingWorkingLoss
             $latestProcessed = ShrinkingWorkingLoss::where('product_id', $productId)
                 ->whereNotNull('date_from')
                 ->whereNotNull('date_to')
                 ->orderBy('date_to', 'desc')
                 ->first();
 
-            // Adjust date_from to avoid overlap with previously processed ranges
             if ($latestProcessed && $dateFrom) {
                 $latestDateTo = \Carbon\Carbon::parse($latestProcessed->date_to);
                 $requestedDateFrom = \Carbon\Carbon::parse($dateFrom);
@@ -59,28 +57,43 @@ class ShrinkingWorkingLossController extends Controller
                 }
             }
 
-            // Fetch PurchaseProduct records
+            $existingProductDetails = ShrinkingWorkingLoss::where('product_id', $productId)
+                ->where(function ($query) use ($dateFrom, $dateTo) {
+                    if ($dateFrom) {
+                        $query->whereDate('date_from', '>=', $dateFrom);
+                    }
+                    if ($dateTo) {
+                        $query->whereDate('date_to', '<=', $dateTo);
+                    }
+                })
+                ->get()
+                ->pluck('product_details')
+                ->flatten(1)
+                ->pluck('purchase_bill_number')
+                ->unique()
+                ->toArray();
+
             $purchasedProducts = PurchaseProduct::where('product_id', $productId)
-                ->whereHas('purchase', function ($query) use ($dateFrom, $dateTo) {
+                ->whereHas('purchase', function ($query) use ($dateFrom, $dateTo, $existingProductDetails) {
                     if ($dateFrom) {
                         $query->whereDate('invoice_date_bs', '>=', $dateFrom);
                     }
                     if ($dateTo) {
                         $query->whereDate('invoice_date_bs', '<=', $dateTo);
                     }
+                    if (!empty($existingProductDetails)) {
+                        $query->whereNotIn('purchase_bill_number', $existingProductDetails);
+                    }
                 })
                 ->with('purchase')
                 ->get();
 
-            // Get all measure_unit_ids used in PurchaseProduct
             $measureUnitIds = $purchasedProducts->pluck('measure_unit_id')->filter()->unique()->toArray();
 
-            // Fetch MeasureUnit details
             $measureUnits = MeasureUnit::whereIn('id', $measureUnitIds)
                 ->get(['id', 'quantity'])
                 ->keyBy('id');
 
-            // Enrich PurchaseProduct records with quantity_in_pieces
             $enrichedProducts = $purchasedProducts->map(function ($product) use ($measureUnits) {
                 $data = $product->toArray();
                 $measureUnitId = $product->measure_unit_id;
@@ -90,7 +103,6 @@ class ShrinkingWorkingLossController extends Controller
                 $data['purchase_bill_number'] = $product->purchase->purchase_bill_number ?? null;
                 $data['ref_bill_number'] = $product->purchase->ref_bill_number ?? null;
 
-                // Calculate quantity_in_pieces
                 if (isset($measureUnits[$measureUnitId]) && !is_null($measureUnits[$measureUnitId]->quantity)) {
                     $measureUnitQuantity = $measureUnits[$measureUnitId]->quantity;
 
@@ -108,7 +120,6 @@ class ShrinkingWorkingLossController extends Controller
 
                     $data['quantity_in_pieces'] = $quantityRegularInt + $quantityFreeInt;
                 } else {
-                    // Fallback to quantity + free_quantity
                     $data['quantity_in_pieces'] = $quantity + $freeQuantity;
                 }
 

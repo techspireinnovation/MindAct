@@ -18,6 +18,7 @@ use App\Http\Controllers\GenerateCodeController;
 use App\Http\Controllers\Master\SupplierController;
 use App\Http\Controllers\MasterUserController;
 use App\Http\Controllers\RoleController;
+use App\Http\Controllers\ShrinkWorkLossController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\WorkShiftController;
 use App\Http\Controllers\NozzleController;
@@ -81,6 +82,11 @@ Route::middleware(['auth:sanctum'])
 Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
 Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
 Route::get('/master-users/{masterUserId}/companies', [CompanyAdminController::class, 'getMasterUserCompanies'])->middleware('auth:api');
+
+
+Route::get('/company/product-types/{productType}', [ProductController::class, 'getByProductTypeName'])
+    ->middleware('company.access');
+
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
@@ -95,9 +101,9 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
-    
+
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-    
+
 });
 
 Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
@@ -133,6 +139,12 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
     Route::middleware(['company.access'])->group(function () {
+
+
+        Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
+        Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);
+
+
         Route::get('/userList', [UserController::class, 'userList']);
         Route::get('/userDetail/{identifier}', [UserController::class, 'userDetail']);
 
@@ -192,6 +204,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
         Route::apiResource('journal-vouchers', JournalVoucherController::class);
         Route::resource('customers', CustomerController::class);
+        Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
         Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
         Route::resource('sales', SaleController::class);
         Route::resource('fixed-asset-group', FixedAssetGroupController::class);
@@ -199,7 +212,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         //Journal Voucher List for Needed Components
 
-      
+
         Route::get('main-group/list', [JournalVoucherController::class, 'mainGroupList']);
         Route::get('sub-group/list', [JournalVoucherController::class, 'subGroupList']);
         Route::get('account-group/list', [JournalVoucherController::class, 'accountGroupList']);
@@ -218,7 +231,6 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('measure-units', MeasureUnitController::class);
         Route::apiResource('products', ProductController::class);
         Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
-        Route::get('/{company}/product-types/{productType}', [ProductController::class, 'getByProductTypeName']);
 
         Route::prefix('reports')->group(function () {
             //Route::middleware(['can:print'])->group(function () {
@@ -341,7 +353,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         Route::get('get-area-list', [AreaController::class, 'categoryList']);
         Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
-        
+
         Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
         Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
 

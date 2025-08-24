@@ -36,8 +36,8 @@ class CompanyController extends Controller
         try {
             $validated = $request->validate([
                 'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
-                'licence_issue_date' => 'nullable|string|max:255',
-                'working_date' => 'nullable|string|max:255',
+                'licence_issue_date' => 'nullable|date_format:Y-m-d', // Enforce Y-m-d or null
+                'working_date' => 'nullable|date_format:Y-m-d', // Enforce Y-m-d or null
                 'is_vatable' => 'nullable|boolean',
                 'reg_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
@@ -62,8 +62,8 @@ class CompanyController extends Controller
                 'url_link' => 'nullable|string|max:255',
                 // Admin fields
                 'admin_selection' => 'required|in:existing,new',
-                'existing_admin_id' => 'nullable|exists:users,id', 
-                'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email|required_if:admin_selection,new',
+                'existing_admin_id' => 'nullable|exists:users,id,deleted_at,NULL',
+                'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL|required_if:admin_selection,new',
                 'admin_name' => 'sometimes|nullable|string|max:255|required_if:admin_selection,new',
                 'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
@@ -72,11 +72,11 @@ class CompanyController extends Controller
 
             $company = Company::create([
                 'name' => $validated['name'],
-                'licence_issue_date' => $validated['licence_issue_date'] ?? '',
-                'working_date' => $validated['working_date'] ?? '',
+                'licence_issue_date' => $validated['licence_issue_date'] ?? null, 
+                'working_date' => $validated['working_date'] ?? null, 
                 'reg_number' => $validated['reg_number'] ?? '',
                 'pan_number' => $validated['pan_number'] ?? '',
-                'is_vatable' => $validated['is_vatable'] ?? '',
+                'is_vatable' => $validated['is_vatable'] ?? false,
                 'vat_number' => $validated['vat_number'] ?? '',
                 'full_address' => $validated['full_address'] ?? '',
                 'email_address' => $validated['email_address'] ?? '',
@@ -186,17 +186,33 @@ class CompanyController extends Controller
                     $companyAdmin->assignRole($role);
                 }
             } else {
-                $companyAdmin = User::create([
-                    'email' => $validated['admin_email'],
-                    'name' => $validated['admin_name'],
-                    'password' => Hash::make($validated['password']),
-                ]);
+                // Check for a soft-deleted user with the provided email
+                $companyAdmin = User::withTrashed()->where('email', $validated['admin_email'])->first();
+
+                if ($companyAdmin && $companyAdmin->trashed()) {
+                    // Restore the soft-deleted user
+                    $companyAdmin->restore();
+                    // Update name and password if provided
+                    $companyAdmin->update([
+                        'name' => $validated['admin_name'] ?? $companyAdmin->name,
+                        'password' => isset($validated['password']) ? Hash::make($validated['password']) : $companyAdmin->password,
+                    ]);
+                } else {
+                    // Create a new user if no soft-deleted user exists
+                    $companyAdmin = User::create([
+                        'email' => $validated['admin_email'],
+                        'name' => $validated['admin_name'],
+                        'password' => Hash::make($validated['password']),
+                    ]);
+                }
 
                 $role = Role::firstOrCreate([
                     'name' => 'company_admin',
                     'guard_name' => 'api'
                 ]);
-                $companyAdmin->assignRole($role);
+                if (!$companyAdmin->hasRole('company_admin')) {
+                    $companyAdmin->assignRole($role);
+                }
             }
 
             CompanyUser::create([
@@ -245,7 +261,6 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-
     public function index(Request $request): JsonResponse
     {
         $query = Company::query();
@@ -926,8 +941,8 @@ class CompanyController extends Controller
 
             $validated = $request->validate([
                 'name' => 'sometimes|required|string|max:255|unique:companies,name,' . $company->id . ',id,deleted_at,NULL',
-                'licence_issue_date' => 'nullable|string|max:255',
-                'working_date' => 'nullable|string|max:255',
+                'licence_issue_date' => 'nullable|date_format:Y-m-d', // Enforce Y-m-d or null
+                'working_date' => 'nullable|date_format:Y-m-d', // Enforce Y-m-d or null
                 'is_vatable' => 'nullable|boolean',
                 'reg_number' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
@@ -952,8 +967,8 @@ class CompanyController extends Controller
                 'url_link' => 'nullable|string|max:255',
                 // Admin fields
                 'admin_selection' => 'sometimes|required|in:existing,new',
-                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id',
-                'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email|required_if:admin_selection,new',
+                'existing_admin_id' => 'required_if:admin_selection,existing|exists:users,id,deleted_at,NULL',
+                'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email,' . ($company->users->first()->id ?? 'NULL') . ',id,deleted_at,NULL|required_if:admin_selection,new',
                 'admin_name' => 'sometimes|nullable|string|max:255|required_if:admin_selection,new',
                 'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
@@ -1018,40 +1033,46 @@ class CompanyController extends Controller
                         $companyAdmin->assignRole($role);
                     }
 
-                    // Remove existing CompanyUser associations for this company
                     CompanyUser::where('company_id', $company->id)->delete();
 
-                    // Create new CompanyUser association
                     CompanyUser::create([
                         'company_id' => $company->id,
                         'user_id' => $companyAdmin->id
                     ]);
 
-                    // Sync branch for the existing admin
                     $companyAdmin->branches()->sync([$branch->id]);
                 } else {
-                    $companyAdmin = User::create([
-                        'email' => $validated['admin_email'],
-                        'name' => $validated['admin_name'],
-                        'password' => Hash::make($validated['password']),
-                    ]);
+                    $companyAdmin = User::withTrashed()->where('email', $validated['admin_email'])->first();
+
+                    if ($companyAdmin && $companyAdmin->trashed()) {
+                        $companyAdmin->restore();
+                        $companyAdmin->update([
+                            'name' => $validated['admin_name'] ?? $companyAdmin->name,
+                            'password' => isset($validated['password']) ? Hash::make($validated['password']) : $companyAdmin->password,
+                        ]);
+                    } else {
+                        $companyAdmin = User::create([
+                            'email' => $validated['admin_email'],
+                            'name' => $validated['admin_name'],
+                            'password' => Hash::make($validated['password']),
+                        ]);
+                    }
 
                     $role = Role::firstOrCreate([
                         'name' => 'company_admin',
                         'guard_name' => 'api'
                     ]);
-                    $companyAdmin->assignRole($role);
+                    if (!$companyAdmin->hasRole('company_admin')) {
+                        $companyAdmin->assignRole($role);
+                    }
 
-                    // Remove existing CompanyUser associations for this company
                     CompanyUser::where('company_id', $company->id)->delete();
 
-                    // Create new CompanyUser association
                     CompanyUser::create([
                         'company_id' => $company->id,
                         'user_id' => $companyAdmin->id
                     ]);
 
-                    // Sync branch for the new admin
                     $companyAdmin->branches()->sync([$branch->id]);
                 }
             } else {
@@ -1095,6 +1116,9 @@ class CompanyController extends Controller
             ], 500);
         }
     }
+
+
+
     public function show($id)
     {
         try {
@@ -1259,53 +1283,53 @@ class CompanyController extends Controller
      * Update the specified company in storage.
      */
     public function destroy($id): JsonResponse
-{
-    try {
-        $company = Company::find($id);
-        
-        if (!$company) {
+    {
+        try {
+            $company = Company::find($id);
+
+            if (!$company) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company not found'
+                ], 404);
+            }
+
+            DB::beginTransaction();
+
+            $companyUserIds = CompanyUser::where('company_id', $company->id)->pluck('user_id');
+
+            CompanyUser::where('company_id', $company->id)->delete();
+
+            foreach ($companyUserIds as $userId) {
+                $remainingCompanies = CompanyUser::where('user_id', $userId)->count();
+                if ($remainingCompanies === 0) {
+                    User::where('id', $userId)->delete();
+                }
+            }
+
+            $branchIds = Branch::where('company_id', $company->id)->pluck('id');
+
+            DB::table('branch_user')->whereIn('branch_id', $branchIds)->delete();
+
+            Branch::where('company_id', $company->id)->delete();
+
+            $company->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company, associated records, and exclusive users deleted successfully'
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Company deletion failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Company not found'
-            ], 404);
+                'message' => 'Failed to delete company',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
+            ], 500);
         }
-
-        DB::beginTransaction();
-
-        $companyUserIds = CompanyUser::where('company_id', $company->id)->pluck('user_id');
-
-        CompanyUser::where('company_id', $company->id)->delete();
-
-        foreach ($companyUserIds as $userId) {
-            $remainingCompanies = CompanyUser::where('user_id', $userId)->count();
-            if ($remainingCompanies === 0) {
-                User::where('id', $userId)->delete();
-            }
-        }
-
-        $branchIds = Branch::where('company_id', $company->id)->pluck('id');
-
-        DB::table('branch_user')->whereIn('branch_id', $branchIds)->delete();
-
-        Branch::where('company_id', $company->id)->delete();
-
-        $company->delete();
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Company, associated records, and exclusive users deleted successfully'
-        ], 200);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        Log::error('Company deletion failed: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to delete company',
-            'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
-        ], 500);
     }
-}
 }

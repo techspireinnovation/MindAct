@@ -9,6 +9,7 @@ use App\Models\CompanyUser;
 use App\Models\Product;
 use App\Models\ProductField;
 use App\Models\ProductFieldValue;
+use App\Models\ProductionSetting;
 use App\Models\ProductList;
 use App\Models\ProductType;
 use DB;
@@ -58,19 +59,27 @@ class ProductController extends Controller
         return response()->json(['product_id' => $productID]);
     }
 
-    public function getByProductTypeName(int $company, string $productType): JsonResponse
+    public function getByProductTypeName(Request $request, string $productType): JsonResponse
     {
         try {
-            $type = ProductType::where('company_id', $company)
+            $companyId = $request->company_id;
+
+            $type = ProductType::where('company_id', $companyId)
                 ->where('name', $productType)
                 ->firstOrFail();
 
+            $existingProductIds = ProductionSetting::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->pluck('product_id')
+                ->toArray();
+
             $products = Product::query()
-                ->where('company_id', $company)
+                ->where('company_id', $companyId)
                 ->where('product_type_id', $type->id)
+                ->whereNotIn('id', $existingProductIds) 
                 ->select(['id', 'name'])
                 ->get()
-                ->makeHidden('primary_measure_unit'); // hide it
+                ->makeHidden('primary_measure_unit');
 
             return response()->json([
                 'data' => $products,
@@ -88,8 +97,6 @@ class ProductController extends Controller
             ], 500);
         }
     }
-
-
     public function getProductNames()
     {
 

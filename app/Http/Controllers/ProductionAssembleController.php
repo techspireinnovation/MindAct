@@ -60,7 +60,6 @@ class ProductionAssembleController extends Controller
             $mainProductId = $item->product_id;
             $settingDetails = $item->settingDetail ?? [];
 
-            // Collect product IDs
             $detailProductIds = collect($settingDetails)->pluck('product_id')->filter()->unique()->toArray();
             $allProductIds = $detailProductIds;
 
@@ -70,7 +69,6 @@ class ProductionAssembleController extends Controller
 
             $allProductIds = array_unique($allProductIds);
 
-            // Get measure_unit_ids from Product table
             $productUnits = Product::whereIn('id', $allProductIds)->get(['id', 'measure_unit_id']);
             $productUnitsMap = [];
             foreach ($productUnits as $p) {
@@ -79,7 +77,6 @@ class ProductionAssembleController extends Controller
                 }
             }
 
-            // Get measure_unit_ids from ProductList table
             $productListUnits = ProductList::whereIn('product_id', $allProductIds)->get(['product_id', 'measure_unit_id']);
             $productListUnitsMap = [];
             foreach ($productListUnits as $pl) {
@@ -88,7 +85,6 @@ class ProductionAssembleController extends Controller
                 }
             }
 
-            // Include explicit unit from settingDetail
             $detailUnitsMap = [];
             foreach ($settingDetails as $detail) {
                 $productId = $detail->product_id;
@@ -100,11 +96,10 @@ class ProductionAssembleController extends Controller
                 $detailUnitsMap[$productId] = array_unique($units);
             }
 
-            // Main product units
             $mainUnits = array_unique(array_merge(
                 $productUnitsMap[$mainProductId] ?? [],
                 $productListUnitsMap[$mainProductId] ?? [],
-                $item->measure_unit_id ? [$item->measure_unit_id] : [] // Include root measure_unit_id
+                $item->measure_unit_id ? [$item->measure_unit_id] : []
             ));
 
             $allMeasureUnitIds = array_unique(array_merge(
@@ -116,7 +111,6 @@ class ProductionAssembleController extends Controller
                 ->get(['id', 'name', 'quantity'])
                 ->keyBy('id');
 
-            // Map main used measure units
             $mainUsedMeasureUnits = collect($mainUnits)
                 ->filter(fn($id) => isset($measureUnits[$id]))
                 ->map(fn($id) => [
@@ -127,7 +121,6 @@ class ProductionAssembleController extends Controller
                 ->values()
                 ->toArray();
 
-            // Map detail used measure units
             $detailUsedMeasureUnits = [];
             foreach ($detailUnitsMap as $productId => $unitIds) {
                 $detailUsedMeasureUnits[$productId] = collect($unitIds)
@@ -141,16 +134,25 @@ class ProductionAssembleController extends Controller
                     ->toArray();
             }
 
-            // Enrich settingDetail
             $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($detailUsedMeasureUnits) {
                 return array_merge($detail->toArray(), [
                     'used_measure_units' => $detailUsedMeasureUnits[$detail->product_id] ?? [],
                 ]);
             });
 
-            // Final response
+            $measureUnitDetails = null;
+            if ($item->measure_unit_id && isset($measureUnits[$item->measure_unit_id])) {
+                $measureUnit = $measureUnits[$item->measure_unit_id];
+                $measureUnitDetails = [
+                    'id' => $measureUnit->id,
+                    'name' => $measureUnit->name,
+                    'quantity' => $measureUnit->quantity,
+                ];
+            }
+
             $mainData = $item->toArray();
-            $mainData['measure_unit_id'] = $item->measure_unit_id; // Add root measure_unit_id
+            unset($mainData['measure_unit_id']); // Remove measure_unit_id
+            $mainData['measure_unit'] = $measureUnitDetails; // Add measure_unit with full details
             $mainData['used_measure_units'] = $mainUsedMeasureUnits;
             $mainData['setting_detail'] = $enrichedDetails;
 

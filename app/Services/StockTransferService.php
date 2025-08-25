@@ -71,6 +71,37 @@ class StockTransferService
         return ($integerPart * $measureUnitQuantity) + $decimalPieces;
     }
 
+
+
+    public function calculatePiecestoReduce(float $quantity, float $toReduce, float $pspMuQty): float
+    {
+        if ($pspMuQty <= 0) {
+            Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $pspMuQty]);
+            return 0;
+        }
+
+
+        $oldQuantity = floor($quantity);
+
+        $decimalPart = $quantity - $oldQuantity;
+
+        $decimalStr = (string) $decimalPart;
+        $decimalPieces = $decimalStr > 0 ? (int) str_replace('.', '', (string) $decimalStr) : 0;
+
+        $oldQuantityInPieces = ($oldQuantity * $pspMuQty) + $decimalPieces;
+
+        $newQuantityInPieces = max(0, $oldQuantityInPieces - $toReduce);
+
+        $regularPiecesInt = floor($newQuantityInPieces / $pspMuQty);
+        $regularRemainingPieces = $newQuantityInPieces - ($regularPiecesInt * $pspMuQty);
+        $regularDecimal = $regularRemainingPieces > 0 ? (float) ('0.' . (int) $regularRemainingPieces) : 0;
+        $regularQuantity = $regularPiecesInt + $regularDecimal;
+
+        return $regularQuantity;
+
+
+    }
+
     public function calculateAvailablePieces($purchaseProduct, int $companyId, $measureUnitsCalc): int
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
@@ -547,7 +578,7 @@ class StockTransferService
     {
         try {
 
-            if (!$productId ) {
+            if (!$productId) {
                 return response()->json(['error' => 'Either Product Id ,Product Name or Product Barcode is required'], 422);
             }
 
@@ -562,7 +593,7 @@ class StockTransferService
         } catch (ModelNotFoundException $e) {
             Log::error('Model not found in getAvailableProductByIdOrName', [
                 'product_id' => $productId,
-                
+
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'error' => $e->getMessage(),
@@ -571,7 +602,7 @@ class StockTransferService
         } catch (QueryException $e) {
             Log::error('Database query error in getAvailableProductByIdOrName', [
                 'product_id' => $productId,
-              
+
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'error' => $e->getMessage(),
@@ -583,7 +614,7 @@ class StockTransferService
         } catch (\Exception $e) {
             Log::error('Unexpected error in getAvailableProductByIdOrName', [
                 'error' => $e->getMessage(),
-                
+
             ]);
             return response()->json([
                 'error' => 'An unexpected error occurred',
@@ -733,7 +764,7 @@ class StockTransferService
                     'purchase' => fn($q) => $q->select(['id', 'company_id', 'purchase_bill_number', 'invoice_date'])
                         ->whereNull('deleted_at')
                         ->where('company_id', $companyId),
-                        // ->where('branch_id', $branchId),
+                    // ->where('branch_id', $branchId),
                     'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')
                         ->where('company_id', $companyId)
                         // ->where('branch_id', $branchId)

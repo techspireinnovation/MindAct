@@ -255,6 +255,10 @@ class StockTransferController extends Controller
                 'product_details.*.product_id' => 'required|integer|exists:products,id',
                 'product_details.*.product_name' => 'required|string|max:255',
                 'product_details.*.product_code' => 'required|string|max:255',
+                'product_details.*.expiry_date' => 'nullable|string|max:255',
+                'product_details.*.mfd' => 'nullable|string|max:255',
+                'product_details.*.discount_amount' => 'nullable|numeric',
+                'product_details.*.discount_percent' => 'nullable|numeric',
                 'product_details.*.quantity' => 'required|numeric|min:0.01',
                 'product_details.*.purchase_type' => 'required|string',
                 'product_details.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
@@ -294,7 +298,7 @@ class StockTransferController extends Controller
                     'transfer_to' => $validated['transfer_to'],
                 ]);
 
-                // Set branch_id to current_location (source branch)
+               
                 $validated['branch_id'] = $validated['current_location'];
 
                 $productDetails = $validated['product_details'];
@@ -598,7 +602,10 @@ class StockTransferController extends Controller
                     'branch_id' => $targetBranchId,
                     'quantity' => $targetRegularQuantity,
                     'free_quantity' => $targetFreeQuantity,
-                    'purchase_id' => $psp->purchase_id ?? null, // Allow null purchase_id
+                    'purchase_id' => $psp->purchase_id ?? null, 
+                    'purchase__product_id' => $psp->purchase_product_id ?? null, 
+                    'stock_product_id' => $psp->stock_product_id ?? null, 
+                    'stock_reconciliation_id' => $psp->stock_reconciliation_id ?? null,
                     'purchase_type' => 'transfer',
                     'product_id' => $productId,
                     'product_code' => $psp->product_code,

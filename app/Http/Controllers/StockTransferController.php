@@ -298,7 +298,7 @@ class StockTransferController extends Controller
                     'transfer_to' => $validated['transfer_to'],
                 ]);
 
-               
+
                 $validated['branch_id'] = $validated['current_location'];
 
                 $productDetails = $validated['product_details'];
@@ -602,14 +602,21 @@ class StockTransferController extends Controller
                     'branch_id' => $targetBranchId,
                     'quantity' => $targetRegularQuantity,
                     'free_quantity' => $targetFreeQuantity,
-                    'purchase_id' => $psp->purchase_id ?? null, 
-                    'purchase__product_id' => $psp->purchase_product_id ?? null, 
-                    'stock_product_id' => $psp->stock_product_id ?? null, 
+                    'purchase_id' => $psp->purchase_id ?? null,
+                    'purchase_product_id' => $psp->purchase_product_id ?? null,
+                    'stock_product_id' => $psp->stock_product_id ?? null,
                     'stock_reconciliation_id' => $psp->stock_reconciliation_id ?? null,
-                    'purchase_type' => 'transfer',
+
                     'product_id' => $productId,
                     'product_code' => $psp->product_code,
+                    'purchase_type' => $psp->purchase_type,
                     'product_name' => $detail['product_name'],
+                    'discount_amount' => $detail['discount_amount'],
+                    'amount' => $detail['amount'],
+                    'mfd' => $psp->mfd ?? null,
+                    'expiry_date' => $psp->expiry_date ?? null,
+                    'discount_percent' => $detail['discount_percent'],
+
                     'company_id' => $companyId,
                     'batch_no' => $psp->batch_no,
                     'measure_unit_id' => $measureUnitId,

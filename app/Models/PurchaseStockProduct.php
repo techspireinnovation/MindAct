@@ -15,6 +15,8 @@ class PurchaseStockProduct extends Model
     protected $fillable = [
         'customer_id',
         'stock_adjustment_id',
+        'stock_transfer_id',
+        'transfer_status',
         'stock_reconciliation_id',
         'company_id',
         'branch_id',

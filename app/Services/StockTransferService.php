@@ -827,8 +827,11 @@ class StockTransferService
                 })
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
-            // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            // Process 
+
+      
+
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId,) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes) {
                         return $pp->fieldValues->filter(function ($fv) use ($soldQuantityIndexes, $returnedQuantityIndexes, $pp) {
@@ -836,9 +839,12 @@ class StockTransferService
                                 $soldQuantityIndexes[$pp->id] ?? [],
                                 $returnedQuantityIndexes[$pp->id] ?? []
                             ));
+                               
                             return !in_array($fv->quantity_index, $excludedIndexes);
                         })->map(function ($fv) {
                             return [
+                                'purchase_stock_product_field_value_id' => $fv->id,
+                                'purchase_stock_product_id' => $fv->purchase_stock_product_id,
                                 'purchase_product_id' => $fv->purchase_product_id,
                                 'product_field_id' => $fv->product_field_id,
                                 'name' => $fv->productField->name ?? null,

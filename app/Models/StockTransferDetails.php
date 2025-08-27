@@ -31,7 +31,7 @@ class StockTransferDetails extends Model
         'purchase_stock_product_id',
         'stock_adjustment_id',
         'stock_reconciliation_id',
-
+        'transfer_status',
         'branch_id',
         'mfd',
         'purchase_type',

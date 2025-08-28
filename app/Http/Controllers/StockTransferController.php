@@ -1199,10 +1199,10 @@ class StockTransferController extends Controller
             $companyId = $stockTransfer->company_id;
             $sourceBranchId = $stockTransfer->branch_id;
 
-            // Check existing PurchaseStockProduct records for the stock transfer
+
             $psps = PurchaseStockProduct::where('stock_transfer_id', $stockTransfer->id)
                 ->where('company_id', $companyId)
-                ->withTrashed() // Include soft-deleted records
+                ->withTrashed()
                 ->get();
 
             Log::debug('PurchaseStockProduct records found for stock transfer', [
@@ -1360,6 +1360,215 @@ class StockTransferController extends Controller
         }
     }
 
+    //     private function reverseStockTransfer(StockTransfer $stockTransfer)
+// {
+//     try {
+//         Log::info('Reversing stock transfer for field values and purchase stock products', [
+//             'stock_transfer_id' => $stockTransfer->id,
+//             'source_branch_id' => $stockTransfer->branch_id,
+//             'target_branch_id' => $stockTransfer->transfer_to,
+//         ]);
+
+    //         $companyId = $stockTransfer->company_id;
+//         $sourceBranchId = $stockTransfer->branch_id;
+
+    //         // Check existing PurchaseStockProduct records for the stock transfer
+//         $psps = PurchaseStockProduct::where('stock_transfer_id', $stockTransfer->id)
+//             ->where('company_id', $companyId)
+//             ->withTrashed()
+//             ->get();
+
+    //         Log::debug('PurchaseStockProduct records found for stock transfer', [
+//             'stock_transfer_id' => $stockTransfer->id,
+//             'psp_count' => $psps->count(),
+//             'psp_details' => $psps->map(function ($psp) {
+//                 return [
+//                     'id' => $psp->id,
+//                     'product_id' => $psp->product_id,
+//                     'branch_id' => $psp->branch_id,
+//                     'deleted_at' => $psp->deleted_at ? $psp->deleted_at->toDateTimeString() : null,
+//                     'quantity' => $psp->quantity,
+//                     'free_quantity' => $psp->free_quantity,
+//                     'has_field_values' => PurchaseStockProductFieldValue::where('purchase_stock_product_id', $psp->id)->exists(),
+//                 ];
+//             })->toArray(),
+//         ]);
+
+    //         // Update PurchaseStockProductFieldValue records to reset to source branch
+//         $fieldValueUpdatedCount = PurchaseStockProductFieldValue::where('stock_transfer_id', $stockTransfer->id)
+//             ->where('company_id', $companyId)
+//             ->update([
+//                 'branch_id' => $sourceBranchId,
+//                 'stock_transfer_id' => null,
+//             ]);
+
+    //         Log::info('Stock transfer field values reset successfully', [
+//             'stock_transfer_id' => $stockTransfer->id,
+//             'field_value_updated_count' => $fieldValueUpdatedCount,
+//         ]);
+
+    //         if ($fieldValueUpdatedCount === 0) {
+//             Log::warning('No field values found to reset for stock transfer', [
+//                 'stock_transfer_id' => $stockTransfer->id,
+//             ]);
+//         } else {
+//             $fieldValues = PurchaseStockProductFieldValue::where('stock_transfer_id', null)
+//                 ->where('company_id', $companyId)
+//                 ->where('branch_id', $sourceBranchId)
+//                 ->get();
+
+    //             Log::debug('Field values after reset', [
+//                 'stock_transfer_id' => $stockTransfer->id,
+//                 'field_value_count' => $fieldValues->count(),
+//                 'field_value_details' => $fieldValues->map(function ($fv) {
+//                     return [
+//                         'id' => $fv->id,
+//                         'purchase_stock_product_id' => $fv->purchase_stock_product_id,
+//                         'product_field_id' => $fv->product_field_id,
+//                         'value' => $fv->value,
+//                         'quantity_index' => $fv->quantity_index,
+//                     ];
+//                 })->toArray(),
+//             ]);
+//         }
+
+    //         // Update PurchaseStockProduct records to reset branch_id and stock_transfer_id
+//         $pspUpdatedCount = PurchaseStockProduct::where('stock_transfer_id', $stockTransfer->id)
+//             ->where('company_id', $companyId)
+//             ->whereNull('deleted_at')
+//             ->update([
+//                 'branch_id' => $sourceBranchId,
+//                 'stock_transfer_id' => null,
+//             ]);
+
+    //         Log::info('Purchase stock products reset to source branch successfully', [
+//             'stock_transfer_id' => $stockTransfer->id,
+//             'psp_updated_count' => $pspUpdatedCount,
+//             'non_field_valued_psps' => $psps->filter(function ($psp) {
+//                 return !PurchaseStockProductFieldValue::where('purchase_stock_product_id', $psp->id)->exists();
+//             })->count(),
+//         ]);
+
+    //         if ($pspUpdatedCount === 0) {
+//             Log::warning('No purchase stock products found to reset for stock transfer', [
+//                 'stock_transfer_id' => $stockTransfer->id,
+//             ]);
+
+    //             // Check PSPs linked to field values
+//             $fieldValues = PurchaseStockProductFieldValue::where('stock_transfer_id', null)
+//                 ->where('company_id', $companyId)
+//                 ->where('branch_id', $sourceBranchId)
+//                 ->pluck('purchase_stock_product_id')
+//                 ->unique()
+//                 ->toArray();
+
+    //             if (!empty($fieldValues)) {
+//                 $pspsLinkedToFieldValues = PurchaseStockProduct::whereIn('id', $fieldValues)
+//                     ->where('company_id', $companyId)
+//                     ->withTrashed()
+//                     ->get();
+
+    //                 Log::debug('PurchaseStockProduct records linked to field values', [
+//                     'stock_transfer_id' => $stockTransfer->id,
+//                     'psp_ids' => $fieldValues,
+//                     'count' => $pspsLinkedToFieldValues->count(),
+//                     'details' => $pspsLinkedToFieldValues->map(function ($psp) {
+//                         return [
+//                             'id' => $psp->id,
+//                             'product_id' => $psp->product_id,
+//                             'branch_id' => $psp->branch_id,
+//                             'stock_transfer_id' => $psp->stock_transfer_id,
+//                             'deleted_at' => $psp->deleted_at ? $psp->deleted_at->toDateTimeString() : null,
+//                         ];
+//                     })->toArray(),
+//                 ]);
+
+    //                 // Restore soft-deleted PSPs linked to field values
+//                 $restoredCount = PurchaseStockProduct::whereIn('id', $fieldValues)
+//                     ->where('company_id', $companyId)
+//                     ->onlyTrashed()
+//                     ->update([
+//                         'deleted_at' => null,
+//                         'branch_id' => $sourceBranchId,
+//                         'stock_transfer_id' => null,
+//                     ]);
+
+    //                 Log::info('Restored soft-deleted PurchaseStockProduct records linked to field values', [
+//                     'stock_transfer_id' => $stockTransfer->id,
+//                     'restored_count' => $restoredCount,
+//                     'psp_ids' => $fieldValues,
+//                 ]);
+//             }
+
+    //             // Check PSPs linked to stock transfer details (for non-field-valued products)
+//             $stockTransferDetails = $stockTransfer->stockTransferDetails()->pluck('product_id')->toArray();
+//             if (!empty($stockTransferDetails)) {
+//                 $pspsFromDetails = PurchaseStockProduct::whereIn('product_id', $stockTransferDetails)
+//                     ->where('company_id', $companyId)
+//                     ->where('stock_transfer_id', $stockTransfer->id)
+//                     ->withTrashed()
+//                     ->get();
+
+    //                 Log::debug('PurchaseStockProduct records linked to stock transfer details', [
+//                     'stock_transfer_id' => $stockTransfer->id,
+//                     'product_ids' => $stockTransferDetails,
+//                     'count' => $pspsFromDetails->count(),
+//                     'details' => $pspsFromDetails->map(function ($psp) {
+//                         return [
+//                             'id' => $psp->id,
+//                             'product_id' => $psp->product_id,
+//                             'branch_id' => $psp->branch_id,
+//                             'stock_transfer_id' => $psp->stock_transfer_id,
+//                             'deleted_at' => $psp->deleted_at ? $psp->deleted_at->toDateTimeString() : null,
+//                             'has_field_values' => PurchaseStockProductFieldValue::where('purchase_stock_product_id', $psp->id)->exists(),
+//                         ];
+//                     })->toArray(),
+//                 ]);
+//             }
+//         }
+
+    //         // Check for orphaned field values
+//         $orphanedFieldValues = PurchaseStockProductFieldValue::where('stock_transfer_id', null)
+//             ->where('company_id', $companyId)
+//             ->where('branch_id', $sourceBranchId)
+//             ->whereNotExists(function ($query) use ($companyId) {
+//                 $query->select(DB::raw(1))
+//                     ->from('purchase_stock_products')
+//                     ->whereColumn('purchase_stock_products.id', 'purchase_stock_product_field_values.purchase_stock_product_id')
+//                     ->where('purchase_stock_products.company_id', $companyId)
+//                     ->whereNull('purchase_stock_products.deleted_at');
+//             })
+//             ->get();
+
+    //         if ($orphanedFieldValues->isNotEmpty()) {
+//             Log::warning('Found orphaned field values with no matching purchase stock products', [
+//                 'stock_transfer_id' => $stockTransfer->id,
+//                 'orphaned_field_value_ids' => $orphanedFieldValues->pluck('id')->toArray(),
+//                 'count' => $orphanedFieldValues->count(),
+//                 'details' => $orphanedFieldValues->map(function ($fv) {
+//                     return [
+//                         'id' => $fv->id,
+//                         'purchase_stock_product_id' => $fv->purchase_stock_product_id,
+//                         'product_field_id' => $fv->product_field_id,
+//                         'value' => $fv->value,
+//                     ];
+//                 })->toArray(),
+//             ]);
+//         }
+
+    //         Log::info('Stock transfer reversal completed successfully', [
+//             'stock_transfer_id' => $stockTransfer->id,
+//         ]);
+//     } catch (\Exception $e) {
+//         Log::error('Exception in reverseStockTransfer', [
+//             'stock_transfer_id' => $stockTransfer->id,
+//             'message' => $e->getMessage(),
+//             'trace' => $e->getTraceAsString(),
+//         ]);
+//         throw new \Exception("Failed to reverse stock transfer ID {$stockTransfer->id}: {$e->getMessage()}");
+//     }
+// }
+
     private function getUnavailableQuantityIndices($purchaseStockProduct, $companyId)
     {
         $soldIndices = SalesProductFieldValue::whereIn('sale_product_id', $purchaseStockProduct->saleProducts->pluck('id'))
@@ -1419,7 +1628,7 @@ class StockTransferController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = StockTransfer::findOrFail($id);
+            $item = StockTransfer::with('stockTransferDetails')->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Stock Transfer not found!!'], 404);

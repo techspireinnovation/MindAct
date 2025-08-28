@@ -67,5 +67,10 @@ class StockTransferDetails extends Model
         return $this->belongsTo(MeasureUnit::class, 'unit_id');
     }
 
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(StockTransferFieldValue::class, 'stock_transfer_details_id');
+    }
+
 
 }

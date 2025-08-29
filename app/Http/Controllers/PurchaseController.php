@@ -816,7 +816,7 @@ class PurchaseController extends Controller
             Log::error('Database error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+           
             Log::error('Unexpected error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }

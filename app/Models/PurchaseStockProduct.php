@@ -89,6 +89,10 @@ class PurchaseStockProduct extends Model
         return $this->belongsTo(Product::class, 'product_id');
     }
 
+    public function stockTransferFieldValue(){
+        return $this->hasMany(StockTransferFieldValue::class, 'purchase_stock_product_id');
+    }
+
     public function getPurchaseQuantityAttribute()
     {
         return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id ?? 0, $this->quantity));

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 use App\Models\StockTransfer;
+use App\Models\StockTransferDetails;
 use Illuminate\Support\Facades\DB;
 use App\Models\ProductList;
 use Illuminate\Http\Request;
@@ -14,6 +15,8 @@ use App\Models\Product;
 use App\Models\MeasureUnit;
 use App\Models\PurchaseStockProduct;
 use App\Models\PurchaseProductReturn;
+use App\Models\StockTransferFieldValue;
+
 use App\Models\SaleProduct;
 use App\Models\SalesProductFieldValue;
 use App\Models\PurchaseReturnProductFieldValue;
@@ -59,6 +62,8 @@ class StockTransferService
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
+
+       
 
 
         $integerPart = floor($quantity);
@@ -211,29 +216,59 @@ class StockTransferService
     }
 
 
-    public function flattenFieldValues(array $fieldValues, int $index): array
+    // public function flattenFieldValues(array $fieldValues, int $index): array
+    // {
+    //     $flat = [];
+    //     foreach ($fieldValues as $set) {
+    //         if (!is_array($set)) {
+    //             throw new \Exception("Invalid field_values format at index {$index}.");
+    //         }
+    //         foreach ($set as $fv) {
+    //             if (!isset($fv['product_field_id'], $fv['value'], $fv['quantity_index'], $fv['purchase_stock_product_id'])) {
+    //                 throw new \Exception("Missing required field value attributes at index {$index}.");
+    //             }
+    //             $flat[] = [
+    //                 'product_field_id' => $fv['product_field_id'],
+    //                 'value' => $fv['value'],
+    //                 'quantity_index' => $fv['quantity_index'],
+    //                 'quantity_type' => $fv['quantity_type'] ?? 'regular',
+    //                 'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
+    //             ];
+    //         }
+    //     }
+    //     return $flat;
+    // }
+
+
+
+    public function flattenFieldValues($fieldValues, $index)
     {
         $flat = [];
-        foreach ($fieldValues as $set) {
-            if (!is_array($set)) {
-                throw new \Exception("Invalid field_values format at index {$index}.");
-            }
-            foreach ($set as $fv) {
-                if (!isset($fv['product_field_id'], $fv['value'], $fv['quantity_index'], $fv['purchase_stock_product_id'])) {
-                    throw new \Exception("Missing required field value attributes at index {$index}.");
+        if (!empty($fieldValues)) {
+            foreach ($fieldValues as $fieldValueSet) {
+                $fieldValueSet = is_array($fieldValueSet) && !isset($fieldValueSet['product_field_id']) ? $fieldValueSet : [$fieldValueSet];
+                foreach ($fieldValueSet as $fieldValue) {
+                    $flat[] = [
+                        'product_field_id' => $fieldValue['product_field_id'] ?? null,
+                        'purchase_product_id' => $fieldValue['purchase_product_id'] ?? null,
+                        'purchase_stock_product_id' => $fieldValue['purchase_stock_product_id'] ?? null,
+                        'purchase_stock_product_field_value_id' => $fieldValue['purchase_stock_product_field_value_id'] ?? null,
+                        'stock_product_id' => $fieldValue['stock_product_id'] ?? null,
+                        'stock_adjustment_id' => $fieldValue['stock_adjustment_id'] ?? null,
+                        'stock_reconciliation_id' => $fieldValue['stock_reconciliation_id'] ?? null,
+                        'value' => $fieldValue['value'] ?? null,
+                        'quantity_index' => $fieldValue['quantity_index'] ?? 0,
+                        'quantity_type' => $fieldValue['quantity_type'] ?? 'regular',
+                    ];
                 }
-                $flat[] = [
-                    'product_field_id' => $fv['product_field_id'],
-                    'value' => $fv['value'],
-                    'quantity_index' => $fv['quantity_index'],
-                    'quantity_type' => $fv['quantity_type'] ?? 'regular',
-                    'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
-                ];
             }
         }
+        \Log::debug('Flattened field values', [
+            'index' => $index,
+            'flat_field_values' => $flat,
+        ]);
         return $flat;
     }
-
 
 
     public function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
@@ -827,19 +862,30 @@ class StockTransferService
                 })
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
+
+
+            $returnedstockIndexes = StockTransferFieldValue::whereIn('purchase_stock_product_id', $purchaseProducts->pluck('id'))
+                ->where('company_id', $companyId)
+                ->where('branch_id', $branchId)
+                ->whereNull('deleted_at')
+
+                ->select(['purchase_stock_product_id', 'quantity_index'])
+                ->get()
+                ->groupBy('purchase_stock_product_id')
+                ->map(fn($group) => $group->pluck('quantity_index')->toArray());
+
             // Process 
 
-      
-
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId,) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $returnedstockIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId, ) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes) {
-                        return $pp->fieldValues->filter(function ($fv) use ($soldQuantityIndexes, $returnedQuantityIndexes, $pp) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $returnedstockIndexes) {
+                        return $pp->fieldValues->filter(function ($fv) use ($soldQuantityIndexes, $returnedQuantityIndexes, $returnedstockIndexes, $pp) {
                             $excludedIndexes = array_unique(array_merge(
                                 $soldQuantityIndexes[$pp->id] ?? [],
-                                $returnedQuantityIndexes[$pp->id] ?? []
+                                $returnedQuantityIndexes[$pp->id] ?? [],
+                                $returnedstockIndexes[$pp->id] ?? []
                             ));
-                               
+
                             return !in_array($fv->quantity_index, $excludedIndexes);
                         })->map(function ($fv) {
                             return [
@@ -855,7 +901,7 @@ class StockTransferService
                     })->toArray();
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
+                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $returnedstockIndexes, $companyId, $branchId, $measureUnitsCalc) {
                         // Calculate purchased pieces
                         $purchasedPieces = $this->calculatePieces(
                             ($pp->quantity ?? 0) + ($pp->free_quantity ?? 0),
@@ -892,10 +938,11 @@ class StockTransferService
                         $availablePieces = $this->calculateAvailablePieces($pp, $companyId, $measureUnitsCalc);
 
                         // Collect field values for this purchase product
-                        $fieldValues = $pp->fieldValues->filter(function ($fv) use ($soldQuantityIndexes, $returnedQuantityIndexes, $pp) {
+                        $fieldValues = $pp->fieldValues->filter(function ($fv) use ($soldQuantityIndexes, $returnedQuantityIndexes, $returnedstockIndexes, $pp) {
                             $excludedIndexes = array_unique(array_merge(
                                 $soldQuantityIndexes[$pp->id] ?? [],
-                                $returnedQuantityIndexes[$pp->id] ?? []
+                                $returnedQuantityIndexes[$pp->id] ?? [],
+                                $returnedstockIndexes[$pp->id] ?? []
                             ));
                             return !in_array($fv->quantity_index, $excludedIndexes);
                         })->map(function ($fv) {
@@ -1014,13 +1061,6 @@ class StockTransferService
             DB::disableQueryLog();
         }
     }
-
-
-
-
-
-
-
 
 
 }

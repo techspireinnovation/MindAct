@@ -2,17 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Model;
 
 use App\Models\Location;
 use App\Models\Scopes\CompanyIdScope;
 use App\Observers\PurchaseReturnObserver;
 use App\Traits\ConvertsAdToBsDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
+
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class PurchaseReturn extends Model
+class PurchaseStockReturn extends Model
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -29,6 +30,7 @@ class PurchaseReturn extends Model
         'pan_number',
         'address',
         'company_id',
+        'branch_id',
         'return_bill_no',
         'ref_bill_no',
         'discount_after_vat',
@@ -74,14 +76,14 @@ class PurchaseReturn extends Model
         return $this->belongsTo(Location::class, 'location_id');
     }
 
-    public function purchaseReturnProducts(): HasMany
+    public function purchaseStockProductReturns(): HasMany
     {
-        return $this->hasMany(PurchaseProductReturn::class);
+        return $this->hasMany(PurchaseStockProductReturn::class);
     }
-    public function purchaseReturn()
-    {
-        return $this->belongsTo(PurchaseReturn::class);
-    }
+    // public function purchaseStockReturn()
+    // {
+    //     return $this->belongsTo(PurchaseStockReturn::class);
+    // }
 
     public function purchaseProduct()
     {
@@ -105,7 +107,7 @@ class PurchaseReturn extends Model
 
     public function fieldValues()
     {
-        return $this->hasMany(PurchaseReturnProductFieldValue::class, 'purchase_return_product_id');
+        return $this->hasMany(PurchaseStockProductReturnFieldValue::class, 'purchase_stock_product_return_id');
     }
     public function purchase()
     {
@@ -121,6 +123,5 @@ class PurchaseReturn extends Model
     {
         return $this->belongsTo(Company::class);
     }
-
 
 }

@@ -558,6 +558,7 @@ class PurchaseController extends Controller
                     }),
             ],
             'customer_id' => 'required|exists:customers,id',
+           
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
@@ -638,8 +639,11 @@ class PurchaseController extends Controller
 
         $validated = $validator->validated();
 
+        $companyId = $request->company_id;
+        $branchId = $request->branch_id;
+
         try {
-            $item = DB::transaction(function () use ($validated) {
+            $item = DB::transaction(function () use ($validated,$companyId,$branchId) {
 
 
                 // Create Purchase
@@ -649,6 +653,8 @@ class PurchaseController extends Controller
                     'customer_name' => $validated['customer_name'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'company_id' => $validated['company_id'],
+                  
+                    'branch_id' => $branchId ?? null,
                     'address' => $validated['address'] ?? null,
                     'customer_contact' => $validated['customer_contact'] ?? null,
                     'ref_bill_number' => $validated['ref_bill_number'],
@@ -690,7 +696,8 @@ class PurchaseController extends Controller
 
 
                         $purchasedProduct = PurchaseProduct::where('product_id', $purchaseProductData['product_id'])
-                            ->where('company_id', $validated['company_id'])
+                            ->where('company_id', $companyId)
+                            ->where('branch_id', $branchId)
                             ->first();
                         if (!$purchasedProduct) {
                             $product = Product::find($purchaseProductData['product_id']);
@@ -717,7 +724,7 @@ class PurchaseController extends Controller
                             'purchase_id' => $item->id,
                             'customer_id' => $validated['customer_id'],
                             'company_id' => $validated['company_id'],
-                            'branch_id' => $purchaseProductData['branch_id'],
+                            'branch_id' => $branchId,
                             'purchase_type' => $validated['purchase_type'] ?? null,
                             'product_id' => $purchaseProductData['product_id'],
                             'product_name' => $purchaseProductData['product_name'] ?? null,
@@ -739,7 +746,7 @@ class PurchaseController extends Controller
                             'purchase_product_id' => $purchaseProduct->id,
                             'customer_id' => $validated['customer_id'],
                             'company_id' => $validated['company_id'],
-                            'branch_id' => $purchaseProductData['branch_id'],
+                            'branch_id' => $branchId,
                             'purchase_type' => $validated['purchase_type'] ?? null,
                             'product_id' => $purchaseProductData['product_id'],
                             'product_name' => $purchaseProductData['product_name'] ?? null,

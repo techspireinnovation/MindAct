@@ -78,6 +78,11 @@ class PurchaseStockProduct extends Model
         return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
     }
 
+    public function purchaseStockProductReturns()
+    {
+        return $this->hasMany(PurchaseStockProductReturn::class, 'purchase_stock_product_id');
+    }
+
     public function saleProducts()
     {
         return $this->hasMany(SaleProduct::class, 'purchase_product_id');
@@ -89,7 +94,7 @@ class PurchaseStockProduct extends Model
         return $this->belongsTo(Product::class, 'product_id');
     }
 
-    public function stockTransferFieldValue(){
+    public function stockTransferFieldValues(){
         return $this->hasMany(StockTransferFieldValue::class, 'purchase_stock_product_id');
     }
 

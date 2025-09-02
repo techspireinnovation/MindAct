@@ -768,10 +768,6 @@ class StockTransferController extends Controller
 
 
 
-
-
-
-
     public function update(Request $request, $id): JsonResponse
     {
         try {

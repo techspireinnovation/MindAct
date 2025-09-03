@@ -479,10 +479,10 @@ class StockTransferService
                 ->whereNull('purchase_stock_products.deleted_at')
                 ->where('purchase_stock_products.purchase_type', $purchaseType)
                 ->with([
-                    'purchaseProductReturns' => fn($q) => $q
-                        ->whereNull('purchase_product_returns.deleted_at')
-                        ->where('purchase_product_returns.company_id', $companyId)
-                        // ->where('purchase_product_returns.branch_id', $branchId)
+                    'purchaseStockProductReturns' => fn($q) => $q
+                        ->whereNull('purchase_stock_product_returns.deleted_at')
+                        ->where('purchase_stock_product_returns.company_id', $companyId)
+                        ->where('purchase_stock_product_returns.branch_id', $branchId)
                         ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
                     'saleProducts' => fn($q) => $q
                         ->whereNull('sale_products.deleted_at')

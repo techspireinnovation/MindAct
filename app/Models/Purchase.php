@@ -62,7 +62,7 @@ class Purchase extends Model
 
     protected static function booted()
     {
-        // self::observe(PurchaseObserver::class);
+         self::observe(PurchaseObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

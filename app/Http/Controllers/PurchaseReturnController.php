@@ -6,6 +6,7 @@ use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
+use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseStockProduct;
@@ -1802,12 +1803,12 @@ class PurchaseReturnController extends Controller
 
             $purchaseProductReturns = DB::table('purchase_stock_product_returns')
                 ->select([
-                    'purchase_stock_product_returns.purchase_product_id',
+                    'purchase_stock_product_returns.purchase_stock_product_id',
                     'purchase_stock_product_returns.quantity',
                     'purchase_stock_product_returns.free_quantity',
                     'purchase_stock_product_returns.measure_unit_id',
                 ])
-                ->whereIn('purchase_stock_product_returns.purchase_product_id', $purchaseProductIds)
+                ->whereIn('purchase_stock_product_returns.purchase_stock_product_id', $purchaseProductIds)
                 ->where('purchase_stock_product_returns.company_id', $companyId)
                 ->whereNull('purchase_stock_product_returns.deleted_at')
                 ->get()
@@ -1857,12 +1858,13 @@ class PurchaseReturnController extends Controller
 
             $returnedQuantityIndexes = DB::table('purchase_stock_product_return_field_values')
                 ->select([
-                    'purchase_stock_product_returns.purchase_product_id',
+                    'purchase_stock_product_returns.purchase_stock_product_id',
                     'purchase_stock_product_return_field_values.quantity_index'
                 ])
                 ->join('purchase_stock_product_returns', 'purchase_stock_product_return_field_values.purchase_stock_product_return_id', '=', 'purchase_stock_product_returns.id')
-                ->whereIn('purchase_stock_product_returns.purchase_product_id', $purchaseProductIds)
+                ->whereIn('purchase_stock_product_returns.purchase_stock_product_id', $purchaseProductIds)
                 ->where('purchase_stock_product_returns.company_id', $companyId)
+                ->where('purchase_stock_product_returns.branch_id', $branchId)
                 ->whereNull('purchase_stock_product_returns.deleted_at')
                 ->distinct()
                 ->get()
@@ -1890,7 +1892,7 @@ class PurchaseReturnController extends Controller
                         ->whereRaw('product_field_values.product_id = purchase_stock_products.product_id')
                         ->whereNull('product_field_values.deleted_at');
                 })
-               
+
                 ->whereIn('purchase_stock_product_field_values.purchase_stock_product_id', $purchaseProductIds)
                 ->where('purchase_stock_product_field_values.company_id', $companyId)
                 ->where('purchase_stock_product_field_values.branch_id', $branchId)
@@ -2084,7 +2086,13 @@ class PurchaseReturnController extends Controller
                             ->map(fn($fv) => [
                                 // 'purchase_id' => $fv->purchase_id,
                                 // 'purchase_bill_number' => $fv->purchase_bill_number ?? '',
-                                'purchase_stock_product_id' => $fv->purchase_stock_product_id ?? '',
+                                'purchase_stock_product_id' => $fv->purchase_stock_product_id,
+                                'purchase_product_id' => $fv->purchase_product_id ?? null,
+
+                                'stock_product_id' => $fv->stock_product_id ?? null,
+                                'stock_adjustment_id' => $fv->stock_adjustment_id ?? null,
+                                'stock_transfer_id' => $fv->stock_transfer_id ?? null,
+                                'stock_reconciliation_id' => $fv->stock_reconciliation_id ?? null,
                                 'product_field_id' => $fv->product_field_id,
                                 'name' => $fv->product_field_name ?? 'N/A',
                                 'value' => $fv->value,
@@ -2095,7 +2103,7 @@ class PurchaseReturnController extends Controller
 
                     if ($availableUnits > 0 && isset($saleReturnFieldValues[$pp->purchase_stock_product_id])) {
                         $ppSaleReturnFieldValues = $saleReturnFieldValues[$pp->purchase_stock_product_id]
-                            ->groupBy('quantity_index')
+                            ->groupBy('purchase_stock_product_id')
                             ->take($availableUnits)
                             ->flatten(1)
                             ->map(fn($fv) => [
@@ -2229,8 +2237,9 @@ class PurchaseReturnController extends Controller
                     'nullable',
                     'string',
                     'max:255',
-                    Rule::unique('purchase_returns')->where(function ($query) use ($request) {
+                    Rule::unique('purchase_stock_returns')->where(function ($query) use ($request) {
                         return $query->where('company_id', $request->company_id)
+                            ->where('branch_id', $request->branch_id)
                             ->whereNull('deleted_at');
                     }),
                 ],
@@ -2275,13 +2284,18 @@ class PurchaseReturnController extends Controller
                 ],
                 'purchase_return_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_return_products.*.purchase_product_code' => 'nullable|string|max:255',
-                'purchase_return_products.*.purchase_product_id' => 'nullable|integer|exists:purchase_products,id',
+                'purchase_return_products.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
+                'purchase_return_products.*.purchase_product_id' => 'nullable',
+                'purchase_return_products.*.stock_product_id' => 'nullable',
+                'purchase_return_products.*.stock_adjustment_id' => 'nullable',
+                'purchase_return_products.*.stock_reconciliation_id' => 'nullable',
+                'purchase_return_products.*.stock_transfer_id' => 'nullable',
                 'purchase_return_products.*.product_name' => 'nullable|string|max:255',
                 'purchase_return_products.*.mfd' => 'nullable|string|max:255',
                 'purchase_return_products.*.customer_id' => 'nullable|integer|exists:customers,id',
                 'purchase_return_products.*.quantity' => 'required|numeric|min:0',
                 'purchase_return_products.*.free_quantity' => 'nullable|numeric|min:0',
-                'purchase_return_products.*.price' => 'required|numeric|min:0', // Fixed missing validation
+                'purchase_return_products.*.price' => 'required|numeric|min:0',
                 'purchase_return_products.*.discount_percent' => 'nullable|numeric|min:0|max:100',
                 'purchase_return_products.*.discount_amount' => 'nullable|numeric|min:0',
                 'purchase_return_products.*.amount' => 'nullable|numeric|min:0',
@@ -2290,8 +2304,13 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.expiry_date' => 'nullable|string|max:255',
                 'purchase_return_products.*.field_values' => 'present|array',
                 'purchase_return_products.*.field_values.*' => 'array|min:1',
-                'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'required_if:field_values,array|integer|exists:purchase_products,id',
-                'purchase_return_products.*.field_values.*.*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
+                'purchase_return_products.*.field_values.*.*.purchase_stock_product_id' => 'required_if:field_values,array|integer|exists:purchase_stock_products,id',
+                'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_product_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_adjustment_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_reconciliation_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_transfer_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.product_field_id' => 'nullable',
                 'purchase_return_products.*.field_values.*.*.value' => 'required_if:field_values,array|string|max:255',
                 'purchase_return_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
                 'purchase_return_products.*.field_values.*.*.quantity_type' => 'nullable|string|in:regular,free',
@@ -2302,6 +2321,9 @@ class PurchaseReturnController extends Controller
             }
 
             $validated = $validator->validated();
+            // $validated['company_id'] = $request->company_id;
+            $validated['branch_id'] = $request->branch_id;
+            // dd($validated['branch_id']);
             Log::debug('Validated request data', ['data' => $validated]);
 
             // Process in transaction
@@ -2344,8 +2366,8 @@ class PurchaseReturnController extends Controller
 
                     // Validate field values
                     collect($fieldValuesFlat)->each(function ($fv) use ($index) {
-                        if (empty($fv['purchase_product_id']) || !is_numeric($fv['purchase_product_id'])) {
-                            throw new \Exception("Invalid purchase_product_id in field_values at index {$index}");
+                        if (empty($fv['purchase_stock_product_id']) || !is_numeric($fv['purchase_stock_product_id'])) {
+                            throw new \Exception("Invalid purchase_stock_product_id in field_values at index {$index}");
                         }
                         if (!isset($fv['quantity_index']) || !is_numeric($fv['quantity_index']) || $fv['quantity_index'] < 0) {
                             throw new \Exception("Invalid quantity_index in field_values at index {$index}");
@@ -2354,12 +2376,18 @@ class PurchaseReturnController extends Controller
 
                     // Group field values
                     $groupedFieldValues = collect($fieldValuesFlat)
-                        ->groupBy('purchase_product_id')
-                        ->map(function ($group) {
+                        ->groupBy('purchase_stock_product_id')
+                        ->map(function ($group): array {
                             return $group->groupBy('quantity_index')->map(function ($fvGroup) {
                                 return collect($fvGroup)->map(function ($fv) {
                                     return [
                                         'product_field_id' => $fv['product_field_id'],
+                                        'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
+                                        'stock_product_id' => $fv['stock_product_id'],
+                                        'stock_transfer_id' => $fv['stock_transfer_id'],
+                                        'stock_adjustment_id' => $fv['stock_adjustment_id'],
+                                        'stock_reconciliation_id' => $fv['stock_reconciliation_id'],
+                                        'purchase_product_id' => $fv['purchase_product_id'],
                                         'value' => $fv['value'],
                                         'quantity_index' => $fv['quantity_index'],
                                         'quantity_type' => $fv['quantity_type'] ?? 'regular'
@@ -2381,24 +2409,24 @@ class PurchaseReturnController extends Controller
                     // Count field value sets by unique quantity_index and quantity_type
                     $regularFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
-                        ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                        ->map(fn($fv) => "{$fv['purchase_stock_product_id']}:{$fv['quantity_index']}")
                         ->unique()
                         ->count();
                     $freeFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'free')
-                        ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                        ->map(fn($fv) => "{$fv['purchase_stock_product_id']}:{$fv['quantity_index']}")
                         ->unique()
                         ->count();
 
                     $hasFieldValues = !empty($fieldValuesFlat);
-                    $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) && PurchaseProductFieldValue::whereIn('purchase_product_id', $purchaseProductIds)->whereNull('deleted_at')->exists();
+                    $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) && PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $purchaseProductIds)->whereNull('deleted_at')->exists();
 
                     Log::debug('Field value requirements', [
                         'product_id' => $productData['product_id'],
                         'index' => $index,
                         'has_field_values' => $hasFieldValues,
                         'requires_field_values' => $requiresFieldValues,
-                        'purchase_product_ids' => $purchaseProductIds,
+                        'purchase_stock_product_ids' => $purchaseProductIds,
                         'regular_field_value_sets' => $regularFieldValueSets,
                         'free_field_value_sets' => $freeFieldValueSets,
                         'regular_pieces' => $regularPieces,
@@ -2420,34 +2448,40 @@ class PurchaseReturnController extends Controller
                     $allocations = [];
                     $usedQuantityIndexes = [];
 
+
+
                     // Fetch PurchaseProducts
-                    $query = PurchaseProduct::where('product_id', $productData['product_id'])
+                    $query = PurchaseStockProduct::where('product_id', $productData['product_id'])
                         ->where('company_id', $validated['company_id'])
+                        ->where('branch_id', $validated['branch_id'])
                         ->whereNull('deleted_at')
                         ->with([
-                            'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
-                            'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with('measureUnit'),
-                            'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
+                            // 'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id',$validated['branch_id']),
+                            'purchaseStockProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id'])->with('measureUnit'),
+                            'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id']),
                             'saleProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with(['saleProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']), 'measureUnit'])
                         ]);
 
                     if ($hasFieldValues) {
                         $query->whereIn('id', $purchaseProductIds);
-                    } elseif (isset($productData['purchase_product_id'])) {
-                        $query->where('id', $productData['purchase_product_id']);
+                    } elseif (isset($productData['purchase_stock_product_id'])) {
+                        $query->where('id', $productData['purchase_stock_product_id']);
                     } else {
-                        $query->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))->from('purchase_product_field_values')->whereColumn('purchase_product_id', 'purchase_products.id')->where('company_id', $validated['company_id'])->whereNull('deleted_at'));
+                        $query->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))->from('purchase_stock_product_field_values')->whereColumn('purchase_stock_product_id', 'purchase_stock_products.id')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id'])->whereNull('deleted_at'));
                     }
 
                     $purchaseProducts = $query->orderBy('created_at')->distinct()->get();
+
+
                     Log::debug('Fetched PurchaseProducts', [
                         'product_id' => $productData['product_id'],
                         'index' => $index,
-                        'purchase_product_ids' => $purchaseProducts->pluck('id')->toArray(),
+                        'purchase_stock_product_ids' => $purchaseProducts->pluck('id')->toArray(),
                         'count' => $purchaseProducts->count()
                     ]);
 
                     if ($purchaseProducts->isEmpty()) {
+
                         throw new \Exception("No valid purchase products found for product ID {$productData['product_id']} at index {$index}.");
                     }
 
@@ -2466,7 +2500,7 @@ class PurchaseReturnController extends Controller
                             Log::debug('Stock calculation for PurchaseProduct', [
                                 'product_id' => $productData['product_id'],
                                 'index' => $index,
-                                'purchase_product_id' => $purchaseProductId,
+                                'purchase_stock_product_id' => $purchaseProductId,
                                 'quantity' => $purchaseProduct->quantity,
                                 'free_quantity' => $purchaseProduct->free_quantity,
                                 'measure_unit_id' => $purchaseProduct->measure_unit_id,
@@ -2483,7 +2517,7 @@ class PurchaseReturnController extends Controller
                             Log::debug('Field value validation', [
                                 'product_id' => $productData['product_id'],
                                 'index' => $index,
-                                'purchase_product_id' => $purchaseProductId,
+                                'purchase_stock_product_id' => $purchaseProductId,
                                 'existing_field_values' => $existingFieldValues,
                                 'unavailable_quantity_indices' => $unavailableQuantityIndices,
                                 'sales_returned_indices' => $salesReturnedIndices
@@ -2522,7 +2556,7 @@ class PurchaseReturnController extends Controller
                                 [$allocateRegularQuantity, $allocateFreeQuantity] = $this->convertToTargetMeasureUnit($allocateRegularPieces, $allocateFreePieces, $targetMeasureUnitQuantity);
 
                                 $allocations[] = [
-                                    'purchase_product_id' => $purchaseProductId,
+                                    'purchase_stock_product_id' => $purchaseProductId,
                                     'quantity' => $allocateRegularQuantity,
                                     'free_quantity' => $allocateFreeQuantity,
                                     'field_values' => array_merge(
@@ -2541,7 +2575,7 @@ class PurchaseReturnController extends Controller
                                 Log::debug('Allocation with field values', [
                                     'product_id' => $productData['product_id'],
                                     'index' => $index,
-                                    'purchase_product_id' => $purchaseProductId,
+                                    'purchase_stock_product_id' => $purchaseProductId,
                                     'allocated_regular_pieces' => $allocateRegularPieces,
                                     'allocated_free_pieces' => $allocateFreePieces,
                                     'total_allocated_pieces' => $allocatePieces,
@@ -2555,7 +2589,7 @@ class PurchaseReturnController extends Controller
 
                     // Allocate remaining pieces (FIFO or single purchase_product_id)
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                        $purchaseProduct = isset($productData['purchase_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
+                        $purchaseProduct = isset($productData['purchase_stock_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_stock_product_id']) : null;
 
                         if ($purchaseProduct) {
                             if ($purchaseProduct->fieldValues->isNotEmpty()) {
@@ -2577,7 +2611,7 @@ class PurchaseReturnController extends Controller
                             Log::debug('Stock calculation for FIFO PurchaseProduct', [
                                 'product_id' => $productData['product_id'],
                                 'index' => $index,
-                                'purchase_product_id' => $purchaseProduct->id,
+                                'purchase_stock_product_id' => $purchaseProduct->id,
                                 'quantity' => $purchaseProduct->quantity,
                                 'free_quantity' => $purchaseProduct->free_quantity,
                                 'measure_unit_id' => $purchaseProduct->measure_unit_id,
@@ -2598,7 +2632,7 @@ class PurchaseReturnController extends Controller
                                 [$allocateRegularQuantity, $allocateFreeQuantity] = $this->convertToTargetMeasureUnit($allocateRegularPieces, $allocateFreePieces, $targetMeasureUnitQuantity);
 
                                 $allocations[] = [
-                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'purchase_stock_product_id' => $purchaseProduct->id,
                                     'quantity' => $allocateRegularQuantity,
                                     'free_quantity' => $allocateFreeQuantity,
                                     'field_values' => [],
@@ -2614,7 +2648,7 @@ class PurchaseReturnController extends Controller
                                 Log::debug('FIFO allocation', [
                                     'product_id' => $productData['product_id'],
                                     'index' => $index,
-                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'purchase_stock_product_id' => $purchaseProduct->id,
                                     'allocated_regular_pieces' => $allocateRegularPieces,
                                     'allocated_free_pieces' => $allocateFreePieces,
                                     'total_allocated_pieces' => $allocateRegularPieces + $allocateFreePieces,
@@ -2643,9 +2677,9 @@ class PurchaseReturnController extends Controller
 
                     // Build processed products
                     foreach ($allocations as $allocation) {
-                        $purchaseProduct = PurchaseProduct::findOrFail($allocation['purchase_product_id']);
+                        $purchaseProduct = PurchaseStockProduct::findOrFail($allocation['purchase_stock_product_id']);
                         $processedProducts[] = [
-                            'purchase_product_id' => $allocation['purchase_product_id'],
+                            'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
                             'product_id' => $productData['product_id'],
                             'product_name' => $productData['product_name'] ?? $purchaseProduct->product->name ?? '',
                             'purchase_product_code' => $productData['purchase_product_code'] ?? $purchaseProduct->product_code ?? '',
@@ -2670,22 +2704,29 @@ class PurchaseReturnController extends Controller
                 // Create purchase return
                 $purchaseReturnData = array_filter($validated, fn($key) => !in_array($key, ['purchase_return_products']), ARRAY_FILTER_USE_KEY);
                 $purchaseReturnData['purchase_id'] = null;
-                $purchaseReturn = PurchaseReturn::create($purchaseReturnData);
+                $purchaseReturn = PurchaseStockReturn::create($purchaseReturnData);
 
                 foreach ($processedProducts as $productData) {
                     $productDataFiltered = array_filter($productData, fn($key) => !in_array($key, ['field_values', 'purchase_id', 'purchase_purchase_bill_number']), ARRAY_FILTER_USE_KEY);
-                    $purchaseReturnProduct = $purchaseReturn->purchaseReturnProducts()->create(array_merge($productDataFiltered, ['company_id' => $purchaseReturn->company_id]));
+                    $purchaseReturnProduct = $purchaseReturn->purchaseStockProductReturns()->create(array_merge($productDataFiltered, ['company_id' => $purchaseReturn->company_id, 'branch_id' => $purchaseReturn->branch_id]));
 
                     if (!empty($productData['field_values'])) {
                         foreach ($productData['field_values'] as $arrayIndex => $fvSet) {
                             $quantityIndex = isset($fvSet[0]['quantity_index']) ? $fvSet[0]['quantity_index'] : $arrayIndex;
                             foreach ($fvSet as $fv) {
-                                PurchaseReturnProductFieldValue::create([
-                                    'purchase_return_product_id' => $purchaseReturnProduct->id,
+                                PurchaseStockProductReturnFieldValue::create([
+                                    'purchase_stock_product_return_id' => $purchaseReturnProduct->id,
+                                    'purchase_stock_product_id' => $fv['purchase_stock_product_id'] ?? null,
+                                    'purchase_product_id' => $fv['purchase_product_id'] ?? null,
+                                    'stock_product_id' => $fv['stock_product_id'] ?? null,
+                                    'stock_reconciliation_id' => $fv['stock_reconciliation_id'] ?? null,
+                                    'stock_adjustment_id' => $fv['stock_adjustment_id'] ?? null,
+                                    'stock_transfer_id' => $fv['stock_transfer_id'] ?? null,
                                     'product_field_id' => $fv['product_field_id'],
                                     'value' => $fv['value'],
                                     'product_id' => $purchaseReturnProduct->product_id,
                                     'company_id' => $purchaseReturnProduct->company_id,
+                                    'branch_id' => $purchaseReturnProduct->branch_id,
                                     'quantity_index' => $fv['quantity_index'],
                                     'quantity_type' => $fv['quantity_type'], // Remove ?? null to ensure value is saved
                                 ]);
@@ -2694,18 +2735,13 @@ class PurchaseReturnController extends Controller
                     }
                 }
 
-                // Note: PurchaseReturnHistory creation is missing in your code; adding it back
-                PurchaseReturnHistory::create([
-                    'purchase_return_id' => $purchaseReturn->id,
-                    'action' => 'created',
-                    'data' => array_merge($purchaseReturnData, ['purchase_return_products' => $processedProducts]),
-                ]);
 
-                Log::debug('Purchase return created', ['purchase_return_id' => $purchaseReturn->id, 'processed_products' => $processedProducts]);
+
+                Log::debug('Purchase return created', ['purchase_stock_return_id' => $purchaseReturn->id, 'processed_products' => $processedProducts]);
 
                 return $purchaseReturn->load([
-                    'purchaseReturnProducts' => fn($query) => $query->select('id', 'purchase_return_id', 'purchase_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id'),
-                    'purchaseReturnProducts.fieldValues' => fn($query) => $query->select('id', 'purchase_return_product_id', 'product_field_id', 'value', 'quantity_index', 'quantity_type', 'product_id', 'company_id', 'created_at', 'updated_at', 'deleted_at')->orderBy('quantity_index')->orderBy('product_field_id')
+                    'purchaseStockProductReturns' => fn($query) => $query->select('id', 'purchase_stock_return_id', 'purchase_stock_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id'),
+                    'purchaseStockProductReturns.fieldValues' => fn($query) => $query->select('id', 'purchase_stock_product_return_id', 'product_field_id', 'value', 'quantity_index', 'quantity_type', 'product_id', 'company_id', 'created_at', 'updated_at', 'deleted_at')->orderBy('quantity_index')->orderBy('product_field_id')
                 ]);
             });
 
@@ -2717,6 +2753,7 @@ class PurchaseReturnController extends Controller
             Log::error('Database error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
+            dd($e->getMessage());
             Log::error('Unexpected error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Error creating purchase return: ' . $e->getMessage()], 500);
         }
@@ -2735,9 +2772,14 @@ class PurchaseReturnController extends Controller
 
             foreach ($items as $item) {
                 if (is_array($item)) {
-                    if (isset($item['purchase_product_id'], $item['product_field_id'], $item['value'], $item['quantity_index'])) {
+                    if (isset($item['purchase_stock_product_id'], $item['product_field_id'], $item['value'], $item['quantity_index'])) {
                         // Valid field value object
                         $flattened[] = [
+                            'purchase_stock_product_id' => $item['purchase_stock_product_id'],
+                            'stock_product_id' => $item['stock_product_id'],
+                            'stock_adjustment_id' => $item['stock_adjustment_id'],
+                            'stock_reconciliation_id' => $item['stock_reconciliation_id'],
+                            'stock_transfer_id' => $item['stock_transfer_id'],
                             'purchase_product_id' => $item['purchase_product_id'],
                             'product_field_id' => $item['product_field_id'],
                             'value' => $item['value'],
@@ -3201,6 +3243,8 @@ class PurchaseReturnController extends Controller
                 $purchaseProducts = $purchaseProductsQuery->orderBy('created_at')->get();
 
                 if ($purchaseProducts->isEmpty()) {
+
+
                     return response()->json(['error' => "No valid purchase products found for product ID {$productId}"], 404);
                 }
 
@@ -3816,7 +3860,12 @@ class PurchaseReturnController extends Controller
                 ],
                 'purchase_return_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_return_products.*.purchase_product_code' => 'nullable|string|max:255',
-                'purchase_return_products.*.purchase_product_id' => 'nullable|integer|exists:purchase_products,id',
+                'purchase_return_products.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
+                'purchase_return_products.*.purchase_product_id' => 'nullable',
+                'purchase_return_products.*.stock_product_id' => 'nullable',
+                'purchase_return_products.*.stock_reconciliation_id' => 'nullable',
+                'purchase_return_products.*.stock_adjustment_id' => 'nullable',
+                'purchase_return_products.*.stock_transfer_id' => 'nullable',
                 'purchase_return_products.*.product_name' => 'nullable|string|max:255',
                 'purchase_return_products.*.mfd' => 'nullable|string|max:255',
                 'purchase_return_products.*.customer_id' => 'nullable|integer|exists:customers,id',
@@ -3831,7 +3880,12 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.expiry_date' => 'nullable|string|max:255',
                 'purchase_return_products.*.field_values' => 'present|array',
                 'purchase_return_products.*.field_values.*' => 'array|min:1',
-                'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'required_if:field_values,array|integer|exists:purchase_products,id',
+                'purchase_return_products.*.field_values.*.*.purchase_stock_product_id' => 'required_if:field_values,array|integer|exists:purchase_stock_products,id',
+                'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_product_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_adjustment_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_reconciliation_id' => 'nullable',
+                'purchase_return_products.*.field_values.*.*.stock_transfer_id' => 'nullable',
                 'purchase_return_products.*.field_values.*.*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
                 'purchase_return_products.*.field_values.*.*.value' => 'required_if:field_values,array|string|max:255',
                 'purchase_return_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
@@ -3843,21 +3897,23 @@ class PurchaseReturnController extends Controller
             }
 
             $validated = $validator->validated();
+
+            $validated['branch_id'] = $request->branch_id;
             Log::debug('Validated request data for update', ['data' => $validated]);
 
             // Process in transaction
             $purchaseReturn = DB::transaction(function () use ($validated, $id) {
                 // Find the existing purchase return
-                $purchaseReturn = PurchaseReturn::findOrFail($id);
+                $purchaseReturn = PurchaseStockReturn::findOrFail($id);
                 $oldData = $purchaseReturn->toArray();
-                $oldProducts = $purchaseReturn->purchaseReturnProducts()->with('fieldValues')->get()->toArray();
+                $oldProducts = $purchaseReturn->purchaseStockProductReturns()->with('fieldValues')->get()->toArray();
 
                 // Update purchase return data
                 $purchaseReturnData = array_filter($validated, fn($key) => !in_array($key, ['purchase_return_products']), ARRAY_FILTER_USE_KEY);
                 $purchaseReturn->update($purchaseReturnData);
                 // 1. indices this return already owns (run once)
                 $myOldIndices = $purchaseReturn
-                    ->purchaseReturnProducts()
+                    ->purchaseStockProductReturns()
                     ->with('fieldValues')
                     ->get()
                     ->flatMap(fn($prp) => $prp->fieldValues->pluck('quantity_index'))
@@ -3902,8 +3958,8 @@ class PurchaseReturnController extends Controller
 
                     // Validate field values
                     collect($fieldValuesFlat)->each(function ($fv) use ($index) {
-                        if (empty($fv['purchase_product_id']) || !is_numeric($fv['purchase_product_id'])) {
-                            throw new \Exception("Invalid purchase_product_id in field_values at index {$index}");
+                        if (empty($fv['purchase_stock_product_id']) || !is_numeric($fv['purchase_stock_product_id'])) {
+                            throw new \Exception("Invalid purchase_stock_product_id in field_values at index {$index}");
                         }
                         if (!isset($fv['quantity_index']) || !is_numeric($fv['quantity_index']) || $fv['quantity_index'] < 0) {
                             throw new \Exception("Invalid quantity_index in field_values at index {$index}");
@@ -3917,6 +3973,12 @@ class PurchaseReturnController extends Controller
                             return $group->groupBy('quantity_index')->map(function ($fvGroup) {
                                 return collect($fvGroup)->map(function ($fv) {
                                     return [
+                                        'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
+                                        'purchase_product_id' => $fv['purchase_product_id'],
+                                        'stock_product_id' => $fv['stock_product_id'],
+                                        'stock_adjustment_id' => $fv['stock_adjustment_id'],
+                                        'stock_reconciliation_id' => $fv['stock_reconciliation_id'],
+                                        'stock_transfer_id' => $fv['stock_transfer_id'],
                                         'product_field_id' => $fv['product_field_id'],
                                         'value' => $fv['value'],
                                         'quantity_index' => $fv['quantity_index'],
@@ -3938,17 +4000,17 @@ class PurchaseReturnController extends Controller
                     // Count field value sets
                     $regularFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
-                        ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                        ->map(fn($fv) => "{$fv['purchase_stock_product_id']}:{$fv['quantity_index']}")
                         ->unique()
                         ->count();
                     $freeFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'free')
-                        ->map(fn($fv) => "{$fv['purchase_product_id']}:{$fv['quantity_index']}")
+                        ->map(fn($fv) => "{$fv['purchase_stock_product_id']}:{$fv['quantity_index']}")
                         ->unique()
                         ->count();
 
                     $hasFieldValues = !empty($fieldValuesFlat);
-                    $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) && PurchaseProductFieldValue::whereIn('purchase_product_id', $purchaseProductIds)->whereNull('deleted_at')->exists();
+                    $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) && PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $purchaseProductIds)->whereNull('deleted_at')->exists();
 
                     Log::debug('Field value requirements', [
                         'product_id' => $productData['product_id'],
@@ -3978,33 +4040,35 @@ class PurchaseReturnController extends Controller
                     $usedQuantityIndexes = [];
 
                     // Fetch PurchaseProducts
-                    $query = PurchaseProduct::where('product_id', $productData['product_id'])
+                    $query = PurchaseStockProduct::where('product_id', $productData['product_id'])
                         ->where('company_id', $validated['company_id'])
+                        ->where('branch_id', $validated['branch_id'])
                         ->whereNull('deleted_at')
                         ->with([
-                            'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
-                            'purchaseProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with('measureUnit'),
-                            'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
+                            // 'purchase' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']),
+                            'purchaseStockProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id'])->with('measureUnit'),
+                            'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id']),
                             'saleProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with(['saleProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']), 'measureUnit'])
                         ]);
 
                     if ($hasFieldValues) {
                         $query->whereIn('id', $purchaseProductIds);
-                    } elseif (isset($productData['purchase_product_id'])) {
-                        $query->where('id', $productData['purchase_product_id']);
+                    } elseif (isset($productData['purchase_stock_product_id'])) {
+                        $query->where('id', $productData['purchase_stock_product_id']);
                     } else {
-                        $query->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))->from('purchase_product_field_values')->whereColumn('purchase_product_id', 'purchase_products.id')->where('company_id', $validated['company_id'])->whereNull('deleted_at'));
+                        $query->whereNotExists(fn($subQuery) => $subQuery->select(DB::raw(1))->from('purchase_stock_product_field_values')->whereColumn('purchase_stock_product_id', 'purchase_stock_products.id')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id'])->whereNull('deleted_at'));
                     }
 
                     $purchaseProducts = $query->orderBy('created_at')->distinct()->get();
                     Log::debug('Fetched PurchaseProducts', [
                         'product_id' => $productData['product_id'],
                         'index' => $index,
-                        'purchase_product_ids' => $purchaseProducts->pluck('id')->toArray(),
+                        'purchase_stock_product_ids' => $purchaseProducts->pluck('id')->toArray(),
                         'count' => $purchaseProducts->count()
                     ]);
 
                     if ($purchaseProducts->isEmpty()) {
+
                         throw new \Exception("No valid purchase products found for product ID {$productData['product_id']} at index {$index}.");
                     }
 
@@ -4022,7 +4086,7 @@ class PurchaseReturnController extends Controller
                             Log::debug('Stock calculation for PurchaseProduct', [
                                 'product_id' => $productData['product_id'],
                                 'index' => $index,
-                                'purchase_product_id' => $purchaseProductId,
+                                'purchase_stock_product_id' => $purchaseProductId,
                                 'quantity' => $purchaseProduct->quantity,
                                 'free_quantity' => $purchaseProduct->free_quantity,
                                 'measure_unit_id' => $purchaseProduct->measure_unit_id,
@@ -4038,7 +4102,7 @@ class PurchaseReturnController extends Controller
                             Log::debug('Field value validation', [
                                 'product_id' => $productData['product_id'],
                                 'index' => $index,
-                                'purchase_product_id' => $purchaseProductId,
+                                'purchase_stock_product_id' => $purchaseProductId,
                                 'existing_field_values' => $existingFieldValues,
                                 'unavailable_quantity_indices' => $unavailableQuantityIndices,
                                 'sales_returned_indices' => $salesReturnedIndices
@@ -4046,13 +4110,13 @@ class PurchaseReturnController extends Controller
 
                             foreach ($fvByIndex as $quantityIndex => $fvSet) {
                                 if (in_array($quantityIndex, $unavailableQuantityIndices) || !isset($existingFieldValues[$quantityIndex])) {
-                                    throw new \Exception("Invalid quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}.");
+                                    throw new \Exception("Invalid quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} at index {$index}.");
                                 }
                                 if (in_array($quantityIndex, $usedQuantityIndexes[$purchaseProductId] ?? [])) {
-                                    throw new \Exception("Duplicate quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}.");
+                                    throw new \Exception("Duplicate quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} at index {$index}.");
                                 }
                                 if (collect($fvSet)->pluck('value', 'product_field_id')->toArray() != $existingFieldValues[$quantityIndex]) {
-                                    throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} do not match at index {$index}.");
+                                    throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} do not match at index {$index}.");
                                 }
                                 $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
                             }
@@ -4075,7 +4139,7 @@ class PurchaseReturnController extends Controller
                                 [$allocateRegularQuantity, $allocateFreeQuantity] = $this->convertToTargetMeasureUnit($allocateRegularPieces, $allocateFreePieces, $targetMeasureUnitQuantity);
 
                                 $allocations[] = [
-                                    'purchase_product_id' => $purchaseProductId,
+                                    'purchase_stock_product_id' => $purchaseProductId,
                                     'quantity' => $allocateRegularQuantity,
                                     'free_quantity' => $allocateFreeQuantity,
                                     'field_values' => array_merge(
@@ -4094,7 +4158,7 @@ class PurchaseReturnController extends Controller
                                 Log::debug('Allocation with field values', [
                                     'product_id' => $productData['product_id'],
                                     'index' => $index,
-                                    'purchase_product_id' => $purchaseProductId,
+                                    'purchase_stock_product_id' => $purchaseProductId,
                                     'allocated_regular_pieces' => $allocateRegularPieces,
                                     'allocated_free_pieces' => $allocateFreePieces,
                                     'total_allocated_pieces' => $allocatePieces,
@@ -4108,7 +4172,7 @@ class PurchaseReturnController extends Controller
 
                     // Allocate remaining pieces (FIFO or single purchase_product_id)
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                        $purchaseProduct = isset($productData['purchase_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_product_id']) : null;
+                        $purchaseProduct = isset($productData['purchase_stock_product_id']) ? $purchaseProducts->firstWhere('id', $productData['purchase_stock_product_id']) : null;
 
                         if ($purchaseProduct) {
                             if ($purchaseProduct->fieldValues->isNotEmpty()) {
@@ -4128,8 +4192,8 @@ class PurchaseReturnController extends Controller
                             $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id']);
 
 
-                            $myReturnedPieces = $purchaseReturn->purchaseReturnProducts()
-                                ->where('purchase_product_id', $purchaseProduct->id)
+                            $myReturnedPieces = $purchaseReturn->purchaseStockProductReturns()
+                                ->where('purchase_stock_product_id', $purchaseProduct->id)
                                 ->with('measureUnit')
                                 ->get()
                                 ->reduce(
@@ -4146,7 +4210,7 @@ class PurchaseReturnController extends Controller
                             Log::debug('Stock calculation for FIFO PurchaseProduct', [
                                 'product_id' => $productData['product_id'],
                                 'index' => $index,
-                                'purchase_product_id' => $purchaseProduct->id,
+                                'purchase_stock_product_id' => $purchaseProduct->id,
                                 'quantity' => $purchaseProduct->quantity,
                                 'free_quantity' => $purchaseProduct->free_quantity,
                                 'measure_unit_id' => $purchaseProduct->measure_unit_id,
@@ -4167,7 +4231,7 @@ class PurchaseReturnController extends Controller
                                 [$allocateRegularQuantity, $allocateFreeQuantity] = $this->convertToTargetMeasureUnit($allocateRegularPieces, $allocateFreePieces, $targetMeasureUnitQuantity);
 
                                 $allocations[] = [
-                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'purchase_stock_product_id' => $purchaseProduct->id,
                                     'quantity' => $allocateRegularQuantity,
                                     'free_quantity' => $allocateFreeQuantity,
                                     'field_values' => [],
@@ -4183,7 +4247,7 @@ class PurchaseReturnController extends Controller
                                 Log::debug('FIFO allocation', [
                                     'product_id' => $productData['product_id'],
                                     'index' => $index,
-                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'purchase_stock_product_id' => $purchaseProduct->id,
                                     'allocated_regular_pieces' => $allocateRegularPieces,
                                     'allocated_free_pieces' => $allocateFreePieces,
                                     'total_allocated_pieces' => $allocateRegularPieces + $allocateFreePieces,
@@ -4212,9 +4276,9 @@ class PurchaseReturnController extends Controller
 
                     // Build processed products
                     foreach ($allocations as $allocation) {
-                        $purchaseProduct = PurchaseProduct::findOrFail($allocation['purchase_product_id']);
+                        $purchaseProduct = PurchaseStockProduct::findOrFail($allocation['purchase_stock_product_id']);
                         $processedProducts[] = [
-                            'purchase_product_id' => $allocation['purchase_product_id'],
+                            'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
                             'product_id' => $productData['product_id'],
                             'product_name' => $productData['product_name'] ?? $purchaseProduct->product->name ?? '',
                             'purchase_product_code' => $productData['purchase_product_code'] ?? $purchaseProduct->product_code ?? '',
@@ -4237,7 +4301,7 @@ class PurchaseReturnController extends Controller
                 }
 
                 // Delete existing products and their field values
-                $purchaseReturn->purchaseReturnProducts()->each(function ($product) {
+                $purchaseReturn->purchaseStockProductReturns()->each(function ($product) {
                     $product->fieldValues()->delete();
                     $product->delete();
                 });
@@ -4245,18 +4309,25 @@ class PurchaseReturnController extends Controller
                 // Create new purchase return products
                 foreach ($processedProducts as $productData) {
                     $productDataFiltered = array_filter($productData, fn($key) => !in_array($key, ['field_values', 'purchase_id', 'purchase_purchase_bill_number']), ARRAY_FILTER_USE_KEY);
-                    $purchaseReturnProduct = $purchaseReturn->purchaseReturnProducts()->create(array_merge($productDataFiltered, ['company_id' => $purchaseReturn->company_id]));
+                    $purchaseReturnProduct = $purchaseReturn->purchaseStockProductReturns()->create(array_merge($productDataFiltered, ['company_id' => $purchaseReturn->company_id, 'branch_id' => $purchaseReturn->branch_id]));
 
                     if (!empty($productData['field_values'])) {
                         foreach ($productData['field_values'] as $arrayIndex => $fvSet) {
                             $quantityIndex = isset($fvSet[0]['quantity_index']) ? $fvSet[0]['quantity_index'] : $arrayIndex;
                             foreach ($fvSet as $fv) {
-                                PurchaseReturnProductFieldValue::create([
-                                    'purchase_return_product_id' => $purchaseReturnProduct->id,
+                                PurchaseStockProductReturnFieldValue::create([
+                                    'purchase_stock_product_return_id' => $purchaseReturnProduct->id,
+                                    'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
+                                    'stock_product_id' => $fv['stock_product_id'],
+                                    'purchase_product_id' => $fv['purchase_product_id'],
+                                    'stock_adjustment_id' => $fv['stock_adjustment_id'],
+                                    'stock_reconciliation_id' => $fv['stock_reconciliation_id'],
+                                    'stock_transfer_id' => $fv['stock_transfer_id'],
                                     'product_field_id' => $fv['product_field_id'],
                                     'value' => $fv['value'],
                                     'product_id' => $purchaseReturnProduct->product_id,
                                     'company_id' => $purchaseReturnProduct->company_id,
+                                    'branch_id' => $purchaseReturnProduct->branch_id,
                                     'quantity_index' => $fv['quantity_index'],
                                     'quantity_type' => $fv['quantity_type'],
                                 ]);
@@ -4265,21 +4336,13 @@ class PurchaseReturnController extends Controller
                     }
                 }
 
-                // Log update history
-                PurchaseReturnHistory::create([
-                    'purchase_return_id' => $purchaseReturn->id,
-                    'action' => 'updated',
-                    'data' => [
-                        'old' => array_merge($oldData, ['purchase_return_products' => $oldProducts]),
-                        'new' => array_merge($purchaseReturnData, ['purchase_return_products' => $processedProducts]),
-                    ],
-                ]);
 
-                Log::debug('Purchase return updated', ['purchase_return_id' => $purchaseReturn->id, 'processed_products' => $processedProducts]);
+
+                Log::debug('Purchase return updated', ['purchase_stock_return_id' => $purchaseReturn->id, 'processed_products' => $processedProducts]);
 
                 return $purchaseReturn->load([
-                    'purchaseReturnProducts' => fn($query) => $query->select('id', 'purchase_return_id', 'purchase_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id'),
-                    'purchaseReturnProducts.fieldValues' => fn($query) => $query->select('id', 'purchase_return_product_id', 'product_field_id', 'value', 'quantity_index', 'quantity_type', 'product_id', 'company_id', 'created_at', 'updated_at', 'deleted_at')->orderBy('quantity_index')->orderBy('product_field_id')
+                    'purchaseStockProductReturns' => fn($query) => $query->select('id', 'purchase_stock_return_id', 'purchase_stock_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id'),
+                    'purchaseStockProductReturns.fieldValues' => fn($query) => $query->select('id', 'purchase_stock_product_return_id', 'product_field_id', 'value', 'quantity_index', 'quantity_type', 'product_id', 'company_id', 'created_at', 'updated_at', 'deleted_at')->orderBy('quantity_index')->orderBy('product_field_id')
                 ]);
             });
 
@@ -5556,28 +5619,46 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    public function show($id): JsonResponse
-    {
-        try {
-            $item = PurchaseStockReturn::with([
-                'purchaseStockProductReturns',
-                'purchaseStockProductReturns.fieldValues'
-            ])->findOrFail($id);
+public function show(Request $request, $id): JsonResponse
+{
+    try {
+        $item = PurchaseStockReturn::with([
+            'purchaseStockProductReturns.fieldValues'
+        ])->findOrFail($id);
 
+      
+        $productIds = $item->purchaseStockProductReturns->pluck('product_id')->unique();
 
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected show error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
+        
+        $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+            ->where('company_id', $request->company_id)
+            ->with(['measureUnit:id,name,quantity'])
+            ->get()
+            ->groupBy('product_id'); 
 
-            return response()->json(['error' => 'An unexpected show exception error occurred'], 500);
+       
+        foreach ($item->purchaseStockProductReturns as $productReturn) {
+            $units = $productMeasureUnits->get($productReturn->product_id, collect())
+                ->pluck('measureUnit'); 
+            $productReturn->measure_units = $units;
         }
+
+        return response()->json([
+            "message" => "Successful!!",
+            "data" => $item
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected query error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
 
 
     public function destroy($id): JsonResponse

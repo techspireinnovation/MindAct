@@ -63,6 +63,10 @@ class Product extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+    public function productList(){
+        return $this->hasMany(ProductList::class);
+    }
+
     public function category()
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');

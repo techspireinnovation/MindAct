@@ -285,6 +285,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::apiResource('product-fields', ProductFieldController::class);
         Route::apiResource('product-field-values', ProductFieldValueController::class);
         Route::apiResource('sales-returns', SalesReturnController::class);
+        Route::get('product-lists/names', [ProductListController::class, 'productNames']);
         Route::apiResource('product-lists', ProductListController::class);
 
         Route::apiResource('sale-additionals', SaleAdditionalController::class);

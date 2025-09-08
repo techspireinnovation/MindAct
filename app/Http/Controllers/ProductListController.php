@@ -117,4 +117,28 @@ class ProductListController extends Controller
         }
 
     }
+            public function productNames(): \Illuminate\Http\JsonResponse
+            {
+                try {
+                    $products = ProductList::with('product:id,name')
+                        ->get()
+                        ->map(function ($item) {
+                            return [
+                                'product_id' => $item->product->id,
+                                'product_name' => $item->product->name,
+                            ];
+                        })
+                        ->unique('product_id') // optional: avoid duplicate products
+                        ->values(); // reset array keys
+
+                    return response()->json([
+                        'success' => true,
+                        'data' => $products
+                    ]);
+                } catch (\Exception $e) {
+                    return response()->json(['error' => 'An unexpected error occurred'], 500);
+                }
+            }
+
+
 }

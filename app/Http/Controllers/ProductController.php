@@ -989,4 +989,34 @@ class ProductController extends Controller
         return is_numeric($value) ? (double) $value : null;
     }
 
+public function activeProducts(Request $request): JsonResponse
+{
+    try {
+        $products = Product::where('company_id', $request->company_id)
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->select('id', 'name')
+            ->get();
+
+        if ($products->isEmpty()) {
+            return response()->json([
+                "message" => "No active products found !!",
+                "data" => []
+            ], 200);
+        }
+
+        return response()->json([
+            "message" => "Active products received !!",
+            "data" => $products
+        ], 200);
+
+    } catch (QueryException $e) {
+        return response()->json(["error" => "Database query error occurred !!"], 500);
+    } catch (\Exception $e) {
+        return response()->json(["error" => "Unexpected error occurred !!"], 500);
+    }
+}
+
+
+
 }

@@ -117,7 +117,7 @@ class ProductListController extends Controller
         }
 
     }
-            public function productNames(): \Illuminate\Http\JsonResponse
+            public function productNames(): JsonResponse
             {
                 try {
                     $products = ProductList::with('product:id,name')

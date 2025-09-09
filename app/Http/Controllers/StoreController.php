@@ -177,4 +177,31 @@ class StoreController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
+    public function activeStores(Request $request): JsonResponse
+{
+    try {
+        $stores = Store::where('company_id', $request->company_id) // filter by company
+            ->where('is_active', 1) // only active
+            ->whereNull('deleted_at') // ignore deleted
+            ->get(['id', 'name']); // only id and name
+
+        if ($stores->isEmpty()) {
+            return response()->json([
+                'message' => 'No active stores found',
+                'data' => []
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Active stores retrieved successfully',
+            'data' => $stores
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Exception in activeStores: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
 }

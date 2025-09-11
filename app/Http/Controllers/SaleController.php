@@ -119,7 +119,7 @@ class SaleController extends Controller
 
 
 
-    private function getAvailableProductsForSale($purchaseType, $companyId,$branchId)
+    private function getAvailableProductsForSale($purchaseType, $companyId, $branchId)
     {
 
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
@@ -178,9 +178,9 @@ class SaleController extends Controller
                 // eager-load relations exactly as before
                 ->with([
                     'purchaseStockProductReturns' => fn($q) => $q
-                        ->whereNull('purchase_stock_product_returns.deleted_at')
+                        ->whereNull('purchase_product_returns.deleted_at')
                         ->where('purchase_stock_product_returns.company_id', $companyId)
-                         ->where('purchase_stock_product_returns.branch_id', $branchId)
+                        ->where('purchase_atock_product_returns.branch_id', $branchId)
                         ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])]),
 
                     'saleProducts' => fn($q) => $q
@@ -352,8 +352,8 @@ class SaleController extends Controller
 
 
             $products = $includeDetails
-                ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'],$branchId)
-                : $this->getAvailableProductsForSale($purchaseType, $companyId,$branchId);
+                ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'], $branchId)
+                : $this->getAvailableProductsForSale($purchaseType, $companyId, $branchId);
 
 
             return response()->json([
@@ -1793,10 +1793,10 @@ class SaleController extends Controller
                                         'sale_product_id' => $saleProduct->id,
                                         'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
                                         'purchase_product_id' => $fv['purchase_product_id'] ?? null,
-                                        'stock_product_id' => $fv['stock_product_id']  ?? null,
-                                        'stock_reconciliation_id' => $fv['stock_reconciliation_id']  ?? null,
-                                        'stock_transfer_id' => $fv['stock_transfer_id']  ?? null,
-                                        'stock_adjustment_id' => $fv['stock_adjustment_id']  ?? null,
+                                        'stock_product_id' => $fv['stock_product_id'] ?? null,
+                                        'stock_reconciliation_id' => $fv['stock_reconciliation_id'] ?? null,
+                                        'stock_transfer_id' => $fv['stock_transfer_id'] ?? null,
+                                        'stock_adjustment_id' => $fv['stock_adjustment_id'] ?? null,
                                         'product_id' => $productId,
                                         'product_field_id' => $fv['product_field_id'],
                                         'value' => $fv['value'],

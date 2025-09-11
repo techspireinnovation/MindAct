@@ -43,10 +43,10 @@ class PurchaseStockProductReturnFieldValue extends Model
            return $this->belongsTo(StockProductDetails::class, 'stock_product_id');
        }
 
-       public function purchaseProduct()
-       {
-           return $this->belongsTo(PurchaseProduct::class, 'purchase_product_id');
-       }
+    //    public function purchaseProduct()
+    //    {
+    //        return $this->belongsTo(PurchaseProduct::class, 'purchase_product_id');
+    //    }
 
        public function purchaseStockProduct()
        {

@@ -90,6 +90,11 @@ class PurchaseStockReturn extends Model
         return $this->belongsTo(PurchaseProduct::class);
     }
 
+     public function purchaseDtockProduct()
+    {
+        return $this->belongsTo(PurchaseStockProduct::class);
+    }
+
     public function product()
     {
         return $this->belongsTo(Product::class);

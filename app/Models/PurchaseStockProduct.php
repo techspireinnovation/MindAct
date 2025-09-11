@@ -85,7 +85,7 @@ class PurchaseStockProduct extends Model
 
     public function saleProducts()
     {
-        return $this->hasMany(SaleProduct::class, 'purchase_product_id');
+        return $this->hasMany(SaleProduct::class, 'purchase_stock_product_id');
     }
 
 

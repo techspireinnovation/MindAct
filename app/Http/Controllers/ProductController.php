@@ -996,9 +996,15 @@ public function activeProducts(Request $request): JsonResponse
             ->where('is_active', 1)
             ->whereNull('deleted_at')
             ->select('id', 'name')
-            ->get();
+            ->get()
+            ->map(fn($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+            ])
+            ->values()
+            ->toArray();
 
-        if ($products->isEmpty()) {
+        if (empty($products)) {
             return response()->json([
                 "message" => "No active products found !!",
                 "data" => []
@@ -1016,6 +1022,7 @@ public function activeProducts(Request $request): JsonResponse
         return response()->json(["error" => "Unexpected error occurred !!"], 500);
     }
 }
+
 
 
 

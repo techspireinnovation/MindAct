@@ -203,6 +203,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::apiResource('projects', ProjectController::class);
         Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
         Route::apiResource('journal-vouchers', JournalVoucherController::class);
+        Route::get('/customers-active-list', [CustomerController::class, 'activeCustomers']);////
         Route::resource('customers', CustomerController::class);
         Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
         Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
@@ -279,7 +280,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
         Route::get('stores-active-list', [StoreController::class, 'activeStores']);
         Route::apiResource('stores', StoreController::class);
-        Route::get('locations-active-list', [LocationController::class, 'activeLocations']);
+        Route::get('locations-active-list', [LocationController::class, 'activeLocations']);////
         Route::apiResource('locations', LocationController::class);
         Route::apiResource('main-groups', MainGroupController::class);
         Route::apiResource('sub-groups', SubGroupController::class);
@@ -337,7 +338,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('nozzles', NozzleController::class);
 
        
-        Route::get('products-active-list', [ProductController::class, 'activeProducts']);
+        Route::get('products-active-list', [ProductController::class, 'activeProducts']);////
 
         Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
         Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);

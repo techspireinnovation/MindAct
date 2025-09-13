@@ -217,15 +217,22 @@ class LocationController extends Controller
         }
     }
 
-    public function activeLocations(Request $request): JsonResponse
+public function activeLocations(Request $request): JsonResponse
 {
     try {
         $locations = Location::where('company_id', $request->company_id) // filter by company
             ->where('is_active', 1) // only active
             ->whereNull('deleted_at') // ignore deleted
-            ->get(['id', 'name']); // only id and name
+            ->get(['id', 'name', 'is_primary']) // ✅ include is_primary
+            ->map(fn($location) => [
+                'id' => $location->id,
+                'name' => $location->name,
+                'is_primary' => $location->is_primary, // ✅ add in response
+            ])
+            ->values()
+            ->toArray();
 
-        if ($locations->isEmpty()) {
+        if (empty($locations)) {
             return response()->json([
                 'message' => 'No active locations found',
                 'data' => []
@@ -238,9 +245,12 @@ class LocationController extends Controller
         ], 200);
 
     } catch (\Exception $e) {
-        \Log::error('Exception in activeLocations: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        \Log::error('Exception in activeLocations: ' . $e->getMessage(), [
+            'trace' => $e->getTraceAsString()
+        ]);
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
+
 
 }

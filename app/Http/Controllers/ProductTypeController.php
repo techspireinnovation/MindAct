@@ -194,18 +194,26 @@ class ProductTypeController extends Controller
         }
     }
 
-    public function activeProductTypeList(Request $request)
+ public function activeProductTypeList(Request $request): JsonResponse
 {
     try {
         $types = ProductType::where('company_id', $request->company_id)
             ->where('is_active', 1)
             ->whereNull('deleted_at')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'is_primary']) // ✅ fetch is_primary too
+            ->map(fn($type) => [
+                'id' => $type->id,
+                'name' => $type->name,
+                'is_primary' => $type->is_primary, // ✅ include in response
+            ])
+            ->values()
+            ->toArray();
 
-        if ($types->isEmpty()) {
+        if (empty($types)) {
             return response()->json([
-                "message" => "No active product types found !!"
-            ], 404);
+                "message" => "No active product types found !!",
+                "data" => []
+            ], 200);
         }
 
         return response()->json([

@@ -208,16 +208,17 @@ class BrandController extends Controller
         }
     }
 
-    public function activeBrandList(Request $request): JsonResponse
+ public function activeBrandList(Request $request): JsonResponse
 {
     try {
         $brands = Brand::where('company_id', $request->company_id)
             ->whereNull('deleted_at')
             ->where('is_active', true) // ✅ only active brands
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'is_primary']) // ✅ fetch is_primary
             ->map(fn($brand) => [
                 'id' => $brand->id,
-                'name' => $brand->name
+                'name' => $brand->name,
+                'is_primary' => $brand->is_primary, // ✅ include in response
             ])
             ->values()
             ->toArray();
@@ -228,7 +229,7 @@ class BrandController extends Controller
         ], 200);
 
     } catch (ModelNotFoundException $e) {
-        \Log::error($e);
+        Log::error($e);
         return response()->json(["error" => "Brand not Found !!"], 404);
     } catch (QueryException $e) {
         \Log::error($e);
@@ -239,4 +240,7 @@ class BrandController extends Controller
     }
 }
 
+
+
+    
 }

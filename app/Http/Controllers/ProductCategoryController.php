@@ -262,7 +262,7 @@ class ProductCategoryController extends Controller
         }
     }
 
-    public function activeCategoryList(Request $request): JsonResponse
+ public function activeCategoryList(Request $request): JsonResponse
 {
     try {
         $companyId = $request->company_id;
@@ -274,10 +274,11 @@ class ProductCategoryController extends Controller
         $categories = ProductCategory::where('company_id', $companyId)
             ->whereNull('deleted_at')
             ->where('is_active', true) // ✅ only active categories
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'is_primary']) // ✅ also fetch is_primary
             ->map(fn($category) => [
                 'id' => $category->id,
-                'name' => $category->name
+                'name' => $category->name,
+                'is_primary' => $category->is_primary, // ✅ add to response
             ])
             ->values()
             ->toArray();
@@ -295,5 +296,6 @@ class ProductCategoryController extends Controller
         return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
 }
+
 
 }

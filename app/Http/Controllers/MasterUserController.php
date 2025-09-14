@@ -52,6 +52,8 @@ class MasterUserController extends Controller
                     'id' => $master->id,
                     'name' => $master->name,
                     'email' => $master->email,
+                    'created_at' => $master->created_at,////
+                    'updated_at' => $master->updated_at,
                 ],
             ], 201);
         } catch (\Exception $e) {

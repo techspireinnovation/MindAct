@@ -533,6 +533,7 @@ class ProductController extends Controller
                                 ->whereNull('deleted_at');
                         }),
                 ],
+                'minimum_stock' => 'nullable|integer',
                 'company_id' => 'integer|exists:companies,id',
                 'category_id' => 'integer|nullable|',
                 'sub_category_id' => 'integer|nullable|',
@@ -715,6 +716,7 @@ class ProductController extends Controller
 
                 }),
             ],
+             'minimum_stock' => 'nullable|integer',
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',

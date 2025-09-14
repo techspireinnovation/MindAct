@@ -31,6 +31,7 @@ class Company extends Model
         'contact_person',
         'contact_person_position',
         'agreement_holder_name',
+        'contact_number',
         'phone',
         'position',
         'license_number',

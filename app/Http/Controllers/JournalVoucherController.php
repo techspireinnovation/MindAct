@@ -176,8 +176,9 @@ class JournalVoucherController extends Controller
                 }),
             ],
 
-            'project_id' => 'integer|exists:projects,id',
-            'salesman_id' => 'integer|exists:salesmen,id',
+            'project_id' => 'nullable|integer|exists:projects,id',
+            'salesman_id' => 'nullable|integer|exists:salesmen,id',
+
             'date' => 'nullable|string',
             'transactions' => 'nullable|array',
             'transactions.*.main_group_id' => 'nullable|integer|exists:main_groups,id',

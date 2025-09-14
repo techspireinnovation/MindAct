@@ -40,6 +40,7 @@ class Product extends Model
         'brand_id',
         'purchase_status',
         'measure_unit_id',
+        'minimum_stock',
         'purchase_rate',
         'purchase_rate_vat',
         'retail_sales_price',

@@ -866,4 +866,138 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+public function filterbyBarcode(Request $request): JsonResponse
+{
+    try {
+        // Validate the request
+        $validator = Validator::make($request->all(), [
+            'barcode' => 'required|exists:product_lists,barcode',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $barcode = $request->input('barcode');
+
+        // Fetch ProductList entries with the given barcode and load product + relations
+        $productList = ProductList::with([
+            'product.category',
+            'product.subCategory',
+            'product.brand',
+            'product.measureUnit',
+            'product.productType',
+            'product.location',
+            'product.productFieldValues',
+            'product.productLists.measureUnit'
+        ])->where('barcode', $barcode)->first();
+
+        if (!$productList) {
+            return response()->json(['error' => 'No products found for this barcode'], 404);
+        }
+
+        $product = $productList->product;
+
+        // --- Custom Transformation ---
+        $data = [
+            "id" => $product->id,
+            "name" => $product->name,
+            "product_unique_id" => $product->product_unique_id,
+            "debit_note" => $product->debit_note,
+            "credit_note" => $product->credit_note,
+            "company_id" => $product->company_id,
+            "category_id" => $product->category_id ?? 0,
+            "sub_category_id" => $product->sub_category_id ?? 0,
+            "brand_id" => $product->brand_id ?? 0,
+            "measure_unit_id" => $product->measure_unit_id,
+            "purchase_rate" => $product->purchase_rate,
+            "purchase_type" => $product->purchase_type,
+            "purchase_status" => $product->purchase_status,
+            "purchase_rate_vat" => $product->purchase_rate_vat,
+            "retail_sales_price" => $product->retail_sales_price,
+            "retail_sales_price_vat" => $product->retail_sales_price_vat,
+            "retail_sales_price_profit_percent" => $product->retail_sales_price_profit_percent,
+            "wholesales_price" => $product->wholesales_price,
+            "wholesales_price_vat" => $product->wholesales_price_vat,
+            "wholesales_price_profit_percent" => $product->wholesales_price_profit_percent,
+            "is_vatable" => $product->is_vatable,
+            "product_type_id" => $product->product_type_id,
+            "location_id" => $product->location_id,
+            "is_fixed_amount" => (bool) $product->is_fixed_amount,
+            "created_at" => $product->created_at,
+            "updated_at" => $product->updated_at,
+            "deleted_at" => $product->deleted_at,
+            "stock_alert" => $product->stock_alert,
+            "is_active" => (bool) $product->is_active,
+
+            // primary measure unit
+            "primary_measure_unit" => $product->measureUnit ? [
+                "id" => $product->measureUnit->id,
+                "name" => $product->measureUnit->name,
+                "symbol" => $product->measureUnit->symbol,
+                "quantity" => $product->measureUnit->quantity,
+                "company_id" => $product->measureUnit->company_id,
+                "is_primary" => (bool) $product->measureUnit->is_primary,
+                "is_active" => (bool) $product->measureUnit->is_active,
+                "created_at" => $product->measureUnit->created_at,
+                "updated_at" => $product->measureUnit->updated_at,
+                "deleted_at" => $product->measureUnit->deleted_at,
+            ] : null,
+
+            // product_lists
+            "product_lists" => $product->productLists->map(function ($pl) {
+                return [
+                    "id" => $pl->id,
+                    "product_unique_id" => $pl->product_unique_id,
+                    "product_id" => $pl->product_id,
+                    "measure_unit_id" => $pl->measure_unit_id,
+                    "company_id" => $pl->company_id,
+                    "quantity" => $pl->quantity,
+                    "barcode" => $pl->barcode,
+                    "hs_code" => $pl->hs_code,
+                    "price" => $pl->price,
+                    "discount" => $pl->discount,
+                    "final_price" => $pl->final_price,
+                    "is_primary" => (bool) $pl->is_primary,
+                    "primary_measure_unit_id" => $pl->primary_measure_unit_id,
+                    "deleted_at" => $pl->deleted_at,
+                    "created_at" => $pl->created_at,
+                    "updated_at" => $pl->updated_at,
+                ];
+            }),
+
+            // product_field_values
+            "product_field_values" => $product->productFieldValues ?? [],
+
+            // measure_units
+            "measure_units" => $product->productLists->map(function ($pl) {
+                return [
+                    "id" => $pl->measureUnit->id,
+                    "name" => $pl->measureUnit->name,
+                    "measure_unit_quantity" => $pl->measureUnit->quantity,
+                ];
+            })->unique("id")->values(),
+
+            // example calculations (dummy for now)
+            "average_price" => $product->purchase_rate,
+            "min_price" => $product->purchase_rate,
+            "last_purchase_price" => $product->purchase_rate,
+        ];
+
+        return response()->json([
+            "message" => "Successful!!",
+            "data" => $data
+        ]);
+
+    } catch (QueryException $e) {
+        \Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
+        return response()->json(['error' => 'Database error'], 500);
+    } catch (\Exception $e) {
+        \Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
+        return response()->json(['error' => 'Server error'], 500);
+    }
+}
+
+
+
 }

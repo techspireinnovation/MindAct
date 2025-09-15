@@ -1196,6 +1196,7 @@ class CompanyController extends Controller
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
                 'admin_name' => 'sometimes|required|string|max:255',
+                'admin_selection' => 'required|in:existing,new',
                 'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
                 'password' => 'sometimes|required|string|min:6',
             ]);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
 use App\Models\MeasureUnit;
+use App\Models\ProductList;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
@@ -5428,4 +5429,107 @@ class PurchaseReturnController extends Controller
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
+public function filterByBarcode(Request $request): JsonResponse
+{
+    try {
+        $barcode = $request->input('barcode');
+
+        if (!$barcode) {
+            return response()->json([
+                'message' => 'Barcode is required'
+            ], 422);
+        }
+
+        $productList = ProductList::with(['product', 'measureUnit'])
+            ->where('barcode', $barcode)
+            ->first();
+
+        if (!$productList) {
+            return response()->json([
+                'message' => 'No product found for this barcode'
+            ], 404);
+        }
+
+        $product = $productList->product;
+
+        // Map measure units
+        $measureUnitsForProducts = $product->productLists->map(function ($pl) {
+            return [
+                'id' => $pl->measureUnit->id ?? null,
+                'name' => $pl->measureUnit->name ?? null,
+                'measure_unit_quantity' => $pl->measureUnit->quantity ?? 1,
+            ];
+        })->unique('id')->values();
+
+        // Map purchase_products (if you have actual purchase data)
+        // Here using dummy data, you can replace with real purchase join later
+        $purchaseProducts = [[
+            'purchase_product_id' => null,
+            'purchase_id' => null,
+            'purchase_bill_number' => null,
+            'invoice_date' => null,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->product_code ?? null,
+            'quantity' => $productList->quantity,
+            'free_quantity' => 0,
+            'price' => $productList->price,
+            'is_vatable' => $product->is_vatable ?? true,
+            'measure_unit_id' => $productList->measure_unit_id,
+            'measure_unit_name' => $productList->measureUnit->name ?? null,
+            'measure_unit_quantity' => $productList->measureUnit->quantity ?? 1,
+            'remaining_quantity_in_pieces' => $productList->quantity,
+            'remaining_quantity_in_uom' => $productList->quantity,
+            'return_quantity' => 0,
+            'sale_quantity' => 0,
+            'sales_return_quantity' => 0,
+            'expiry_date' => null
+        ]];
+
+        $data = [[
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->product_code ?? null,
+            'original_price' => $productList->price,
+            'min_price' => $productList->price,
+            'avg_price' => $productList->price,
+            'latest_price' => $productList->price,
+            'measure_units_for_products' => $measureUnitsForProducts,
+            'is_vatable' => $product->is_vatable ?? true,
+            'measure_unit_id' => $productList->measure_unit_id,
+            'measure_unit_name' => $productList->measureUnit->name ?? null,
+            'measure_unit_quantity' => $productList->measureUnit->quantity ?? 1,
+            'purchased_quantity' => $productList->quantity,
+            'return_quantity' => 0,
+            'sale_quantity' => 0,
+            'sales_return_quantity' => 0,
+            'available_quantity' => $productList->quantity,
+            'expiry_dates' => [],
+            'field_values' => [],
+            'purchase_products' => $purchaseProducts
+        ]];
+
+        return response()->json([
+            'message' => 'Product details retrieved successfully',
+            'data' => $data
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error filtering product by barcode',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+    
 }

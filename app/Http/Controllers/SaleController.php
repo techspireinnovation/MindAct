@@ -2685,5 +2685,100 @@ class SaleController extends Controller
         }
     }
 
+    public function filterByBarcode(Request $request): JsonResponse
+{
+    try {
+        $barcode = $request->input('barcode');
+
+        if (!$barcode) {
+            return response()->json([
+                'message' => 'Barcode is required'
+            ], 422);
+        }
+
+        $productList = ProductList::with(['product', 'measureUnit'])
+            ->where('barcode', $barcode)
+            ->first();
+
+        if (!$productList) {
+            return response()->json([
+                'message' => 'No product found for this barcode'
+            ], 404);
+        }
+
+        $product = $productList->product;
+
+        // Measure units used
+        $measureUnitsUsed = $product->productLists->map(function ($pl) {
+            return [
+                'id' => $pl->measureUnit->id ?? null,
+                'name' => $pl->measureUnit->name ?? null,
+                'measure_unit_quantity' => $pl->measureUnit->quantity ?? 1,
+            ];
+        })->unique('id')->values();
+
+        // Purchase products placeholder (replace with actual sale/purchase join if needed)
+        $purchaseProducts = [[
+            'purchase_product_id' => null,
+            'purchase_id' => null,
+            'purchase_bill_number' => null,
+            'invoice_date' => null,
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->product_code ?? null,
+            'mfd' => null,
+            'quantity' => $productList->quantity,
+            'free_quantity' => 0,
+            'price' => $productList->price,
+            'is_vatable' => $product->is_vatable ?? true,
+            'measure_unit_id' => $productList->measure_unit_id,
+            'measure_unit_name' => $productList->measureUnit->name ?? null,
+            'measure_unit_quantity' => $productList->measureUnit->quantity ?? 1,
+            'expiry_date' => null,
+            'return_quantity' => 0,
+            'sale_quantity' => 0,
+            'sales_return_quantity' => 0,
+            'available_quantity' => $productList->quantity,
+            'purchased_quantity' => $productList->quantity
+        ]];
+
+        $data = [[
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->product_code ?? null,
+            'is_vatable' => $product->is_vatable ?? true,
+            'measure_unit_id' => $productList->measure_unit_id,
+            'measure_unit_quantity' => $productList->measureUnit->quantity ?? 1,
+            'retail_sale_price' => $product->retail_sales_price ?? 0,
+            'avg_price' => 0,
+            'min_price' => 0,
+            'latest_price' => 0,
+            'measure_units_used' => $measureUnitsUsed,
+            'avg_sales_price' => null,
+            'min_sales_price' => null,
+            'latest_sales_price' => null,
+            'purchased_quantity' => $productList->quantity,
+            'return_quantity' => 0,
+            'sale_quantity' => 0,
+            'sales_return_quantity' => 0,
+            'available_quantity' => $productList->quantity,
+            'expiry_dates' => [],
+            'field_values' => [],
+            'purchase_products' => $purchaseProducts
+        ]];
+
+        return response()->json([
+            'message' => 'Product details retrieved',
+            'data' => $data
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Error filtering product by barcode',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
 
 }

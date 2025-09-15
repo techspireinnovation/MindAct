@@ -5462,4 +5462,70 @@ class SalesReturnController extends Controller
         }
     }
 
+  public function filterByBarcode(Request $request): JsonResponse
+{
+    $barcode = $request->input('barcode'); // get barcode from JSON body
+
+    if (!$barcode) {
+        return response()->json([
+            'message' => 'Barcode is required'
+        ], 422);
+    }
+
+    // Fetch ProductList with the barcode
+    $productList = ProductList::with(['product.measureUnit'])->where('barcode', $barcode)->first();
+
+    if (!$productList || !$productList->product) {
+        return response()->json([
+            'message' => 'Product details retrieved successfully',
+            'data' => ['products' => []]
+        ], 200);
+    }
+
+    $product = $productList->product;
+
+    $data = [
+        'products' => [
+            [
+                'products' => [
+                    [
+                        'product_id' => $product->id,
+                        'product_name' => $product->name,
+                        'product_code' => $productList->barcode,
+                        'original_price' => $product->purchase_rate ?? 0,
+                        'latest_price' => $product->retail_sales_price ?? 0,
+                        'min_price' => $product->purchase_rate ?? 0,
+                        'avg_price' => $product->purchase_rate ?? 0,
+                        'amount' => $product->retail_sales_price ?? 0,
+                        'is_vatable' => $product->is_vatable,
+                        'used_measure_units' => [
+                            [
+                                'id' => $productList->measureUnit->id ?? null,
+                                'name' => $productList->measureUnit->name ?? null,
+                                'quantity' => $productList->measureUnit->quantity ?? 0,
+                            ]
+                        ],
+                        'measure_unit_id' => $productList->measure_unit_id,
+                        'measure_unit_quantity' => $productList->measureUnit->quantity ?? 0,
+                        'purchased_quantity' => $productList->quantity ?? 0,
+                        'return_quantity' => 0,
+                        'sale_quantity' => 0,
+                        'sales_return_quantity' => 0,
+                        'available_quantity' => $productList->quantity ?? 0,
+                        'expiry_dates' => [],
+                        'field_values' => [],
+                        'sale_products' => [] // fill if needed
+                    ]
+                ]
+            ]
+        ]
+    ];
+
+    return response()->json([
+        'message' => 'Product details retrieved successfully',
+        'data' => $data
+    ]);
+}
+
+
 }

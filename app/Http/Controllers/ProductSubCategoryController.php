@@ -195,7 +195,7 @@ class ProductSubCategoryController extends Controller
         }
     }
 
-    public function activeSubCategoryList(Request $request): JsonResponse
+ public function activeSubCategoryList(Request $request): JsonResponse
 {
     try {
         $companyId = $request->company_id;
@@ -207,10 +207,11 @@ class ProductSubCategoryController extends Controller
         $subCategories = ProductSubCategory::where('company_id', $companyId)
             ->whereNull('deleted_at')
             ->where('is_active', true) // ✅ only active subcategories
-            ->get(['id', 'name'])
+            ->get(['id', 'name', 'category_id']) // ✅ include category_id
             ->map(fn($subCategory) => [
                 'id' => $subCategory->id,
-                'name' => $subCategory->name
+                'name' => $subCategory->name,
+                'category_id' => $subCategory->category_id // ✅ add to response
             ])
             ->values()
             ->toArray();
@@ -228,6 +229,7 @@ class ProductSubCategoryController extends Controller
         return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
 }
+
 
 
 }

@@ -203,19 +203,29 @@ class MeasureUnitController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
-    public function activeUnitList(Request $request)
+
+
+    public function activeUnitList(Request $request): JsonResponse
 {
     try {
         $units = MeasureUnit::where('company_id', $request->company_id)
             ->where('is_active', 1)
             ->whereNull('deleted_at')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'symbol', 'quantity']); // ✅ include symbol & quantity
 
         if ($units->isEmpty()) {
             return response()->json([
                 "message" => "No active measure units found !!"
             ], 404);
         }
+
+        // Map response to keep it clean
+        $units = $units->map(fn($unit) => [
+            'id' => $unit->id,
+            'name' => $unit->name,
+            'symbol' => $unit->symbol,
+            'quantity' => $unit->quantity,
+        ])->values()->toArray();
 
         return response()->json([
             "message" => "Active measure units received !!",
@@ -230,5 +240,6 @@ class MeasureUnitController extends Controller
         return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
 }
+
 
 }

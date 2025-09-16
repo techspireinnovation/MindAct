@@ -178,13 +178,13 @@ class StoreController extends Controller
         }
     }
 
-    public function activeStores(Request $request): JsonResponse
+public function activeStores(Request $request): JsonResponse
 {
     try {
         $stores = Store::where('company_id', $request->company_id) // filter by company
             ->where('is_active', 1) // only active
             ->whereNull('deleted_at') // ignore deleted
-            ->get(['id', 'name']); // only id and name
+            ->get(['id', 'name', 'is_primary']); // ✅ include is_primary
 
         if ($stores->isEmpty()) {
             return response()->json([
@@ -192,6 +192,13 @@ class StoreController extends Controller
                 'data' => []
             ], 404);
         }
+
+        // Map to keep response clean
+        $stores = $stores->map(fn($store) => [
+            'id' => $store->id,
+            'name' => $store->name,
+            'is_primary' => $store->is_primary
+        ])->values()->toArray();
 
         return response()->json([
             'message' => 'Active stores retrieved successfully',
@@ -203,5 +210,6 @@ class StoreController extends Controller
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
+
 
 }

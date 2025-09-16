@@ -299,5 +299,10 @@ class SalesmanController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+    
+
+    
+
+
 
 }

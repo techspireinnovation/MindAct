@@ -1090,55 +1090,96 @@ class CompanyController extends Controller
 
 
 
-    public function show($id)
-    {
-        try {
-            $company = Company::findOrFail($id);
+    // public function show($id)
+    // {
+    //     try {
+    //         $company = Company::findOrFail($id);
 
-            $companyUser = CompanyUser::where('company_id', $company->id)->first();
-            if (!$companyUser) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company Not found',
-                ], 404);
-            }
-            $userAdmin = $companyUser->user;
-            if (!$userAdmin) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No user associated with this company',
-                ], 404);
-            }
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'company' => $company,
-                    'user' => $userAdmin,
-                ]
-            ], 200);
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'Company not found',
-            ], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'An unexpected error occurred',
-                'error' => $e->getMessage(),
-            ], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json([
-                'success' => false,
-                'message' => 'An unexpected error occurred',
-                'error' => $e->getMessage(),
-            ], 500);
-        }
+    //         $companyUser = CompanyUser::where('company_id', $company->id)->first();
+    //         if (!$companyUser) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'Company Not found',
+    //             ], 404);
+    //         }
+    //         $userAdmin = $companyUser->user;
+    //         if (!$userAdmin) {
+    //             return response()->json([
+    //                 'success' => false,
+    //                 'message' => 'No user associated with this company',
+    //             ], 404);
+    //         }
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => [
+    //                 'company' => $company,
+    //                 'user' => $userAdmin,
+    //             ]
+    //         ], 200);
+    //     } catch (ModelNotFoundException $e) {
+    //         \Log::error($e);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Company not found',
+    //         ], 404);
+    //     } catch (QueryException $e) {
+    //         \Log::error($e);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'An unexpected error occurred',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'An unexpected error occurred',
+    //             'error' => $e->getMessage(),
+    //         ], 500);
+    //     }
 
+    // }
+
+public function show($id): JsonResponse
+{
+    try {
+        $company = Company::with(['branches'])->findOrFail($id);
+
+        // Get the first associated admin via pivot
+        $companyUser = CompanyUser::where('company_id', $company->id)->with('user')->first();
+        $admin = $companyUser->user ?? null;
+
+        $admin_selection = $admin ? 'existing' : 'new';
+        $existing_admin_id = $admin ? $admin->id : null;
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Company details retrieved successfully',
+            'data' => [
+                'company' => $company,
+                'admin_selection' => $admin_selection,
+                'existing_admin_id' => $existing_admin_id,
+                'admin' => $admin,
+            ]
+        ], 200);
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Company not found'
+        ], 404);
+    } catch (\Exception $e) {
+        \Log::error('Exception in show: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json([
+            'success' => false,
+            'message' => 'An unexpected error occurred'
+        ], 500);
     }
+}
+
+
+
+
     public function updateCompany(Request $request, $id): JsonResponse
     {
         try {
@@ -1197,6 +1238,7 @@ class CompanyController extends Controller
                 'url_link' => 'nullable|string|max:255',
                 'admin_name' => 'sometimes|required|string|max:255',
                 'admin_selection' => 'required|in:existing,new',
+                
                 'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
                 'password' => 'sometimes|required|string|min:6',
             ]);

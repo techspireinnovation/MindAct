@@ -379,7 +379,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('branch-details', [BranchController::class, 'branchDetails']);
 
 
-        Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);
+        Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);  ////
         Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
 
         Route::get('measure-units-active-list', [MeasureUnitController::class, 'activeUnitList']);////

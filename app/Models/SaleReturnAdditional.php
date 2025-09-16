@@ -16,6 +16,7 @@ class SaleReturnAdditional extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'sales_return_id',
         'place',
         'transport',

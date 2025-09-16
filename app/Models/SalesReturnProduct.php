@@ -22,9 +22,15 @@ class SalesReturnProduct extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'sales_return_id',
         'sale_product_id',
+        'purchase_stock_product_id',
         'purchase_product_id',
+        'stock_product_id', 
+        'stock_transfer_id',
+        'stock_reconciliation_id', 
+        'stock_adjustment_id',
         'product_id',
         'product_code',
         'product_name',

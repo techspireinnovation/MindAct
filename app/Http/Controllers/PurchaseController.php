@@ -869,68 +869,66 @@ class PurchaseController extends Controller
 public function filterbyBarcode(Request $request): JsonResponse
 {
     try {
-        // Validate the request
+        // Validate request: either barcode or product_id must be provided
         $validator = Validator::make($request->all(), [
-            'barcode' => 'required|exists:product_lists,barcode',
+            'barcode' => 'required_without:product_id|exists:product_lists,barcode',
+            'product_id' => 'required_without:barcode|exists:products,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $barcode = $request->input('barcode');
-
-        // Fetch ProductList entries with the given barcode and load product + relations
-        $productList = ProductList::with([
-            'product.category',
-            'product.subCategory',
-            'product.brand',
-            'product.measureUnit',
-            'product.productType',
-            'product.location',
-            'product.productFieldValues',
-            'product.productLists.measureUnit'
-        ])->where('barcode', $barcode)->first();
+        if ($request->filled('barcode')) {
+            $productList = ProductList::with([
+                'product.category',
+                'product.subCategory',
+                'product.brand',
+                'product.measureUnit',
+                'product.productType',
+                'product.location',
+                'product.productFieldValues',
+                'product.productLists.measureUnit'
+            ])->where('barcode', $request->barcode)->first();
+        } else {
+            $productList = ProductList::with([
+                'product.category',
+                'product.subCategory',
+                'product.brand',
+                'product.measureUnit',
+                'product.productType',
+                'product.location',
+                'product.productFieldValues',
+                'product.productLists.measureUnit'
+            ])->where('product_id', $request->product_id)->first();
+        }
 
         if (!$productList) {
-            return response()->json(['error' => 'No products found for this barcode'], 404);
+            return response()->json(['error' => 'No products found'], 404);
         }
 
         $product = $productList->product;
 
-        // --- Custom Transformation ---
+        // --- Transform data ---
         $data = [
             "id" => $product->id,
             "name" => $product->name,
             "product_unique_id" => $product->product_unique_id,
-            "debit_note" => $product->debit_note,
-            "credit_note" => $product->credit_note,
-            "company_id" => $product->company_id,
             "category_id" => $product->category_id ?? 0,
             "sub_category_id" => $product->sub_category_id ?? 0,
             "brand_id" => $product->brand_id ?? 0,
             "measure_unit_id" => $product->measure_unit_id,
             "purchase_rate" => $product->purchase_rate,
-            "purchase_type" => $product->purchase_type,
-            "purchase_status" => $product->purchase_status,
-            "purchase_rate_vat" => $product->purchase_rate_vat,
             "retail_sales_price" => $product->retail_sales_price,
-            "retail_sales_price_vat" => $product->retail_sales_price_vat,
-            "retail_sales_price_profit_percent" => $product->retail_sales_price_profit_percent,
             "wholesales_price" => $product->wholesales_price,
-            "wholesales_price_vat" => $product->wholesales_price_vat,
-            "wholesales_price_profit_percent" => $product->wholesales_price_profit_percent,
             "is_vatable" => $product->is_vatable,
             "product_type_id" => $product->product_type_id,
             "location_id" => $product->location_id,
-            "is_fixed_amount" => (bool) $product->is_fixed_amount,
+            "is_active" => (bool) $product->is_active,
             "created_at" => $product->created_at,
             "updated_at" => $product->updated_at,
             "deleted_at" => $product->deleted_at,
-            "stock_alert" => $product->stock_alert,
-            "is_active" => (bool) $product->is_active,
 
-            // primary measure unit
             "primary_measure_unit" => $product->measureUnit ? [
                 "id" => $product->measureUnit->id,
                 "name" => $product->measureUnit->name,
@@ -944,17 +942,14 @@ public function filterbyBarcode(Request $request): JsonResponse
                 "deleted_at" => $product->measureUnit->deleted_at,
             ] : null,
 
-            // product_lists
             "product_lists" => $product->productLists->map(function ($pl) {
                 return [
                     "id" => $pl->id,
-                    "product_unique_id" => $pl->product_unique_id,
                     "product_id" => $pl->product_id,
                     "measure_unit_id" => $pl->measure_unit_id,
                     "company_id" => $pl->company_id,
                     "quantity" => $pl->quantity,
                     "barcode" => $pl->barcode,
-                    "hs_code" => $pl->hs_code,
                     "price" => $pl->price,
                     "discount" => $pl->discount,
                     "final_price" => $pl->final_price,
@@ -966,10 +961,8 @@ public function filterbyBarcode(Request $request): JsonResponse
                 ];
             }),
 
-            // product_field_values
             "product_field_values" => $product->productFieldValues ?? [],
 
-            // measure_units
             "measure_units" => $product->productLists->map(function ($pl) {
                 return [
                     "id" => $pl->measureUnit->id,
@@ -978,7 +971,6 @@ public function filterbyBarcode(Request $request): JsonResponse
                 ];
             })->unique("id")->values(),
 
-            // example calculations (dummy for now)
             "average_price" => $product->purchase_rate,
             "min_price" => $product->purchase_rate,
             "last_purchase_price" => $product->purchase_rate,
@@ -997,6 +989,7 @@ public function filterbyBarcode(Request $request): JsonResponse
         return response()->json(['error' => 'Server error'], 500);
     }
 }
+
 
 
 

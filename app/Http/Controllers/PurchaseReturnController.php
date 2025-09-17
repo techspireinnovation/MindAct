@@ -5433,26 +5433,32 @@ public function filterByBarcode(Request $request): JsonResponse
 {
     try {
         $barcode = $request->input('barcode');
+        $productId = $request->input('product_id');
 
-        if (!$barcode) {
+        if (!$barcode && !$productId) {
             return response()->json([
-                'message' => 'Barcode is required'
+                'message' => 'Either barcode or product_id is required'
             ], 422);
         }
 
-        $productList = ProductList::with(['product', 'measureUnit'])
-            ->where('barcode', $barcode)
-            ->first();
+        $query = ProductList::with(['product', 'measureUnit']);
+
+        if ($barcode) {
+            $query->where('barcode', $barcode);
+        } elseif ($productId) {
+            $query->where('product_id', $productId);
+        }
+
+        $productList = $query->first();
 
         if (!$productList) {
             return response()->json([
-                'message' => 'No product found for this barcode'
+                'message' => 'No product found'
             ], 404);
         }
 
         $product = $productList->product;
 
-        // Map measure units
         $measureUnitsForProducts = $product->productLists->map(function ($pl) {
             return [
                 'id' => $pl->measureUnit->id ?? null,
@@ -5461,8 +5467,6 @@ public function filterByBarcode(Request $request): JsonResponse
             ];
         })->unique('id')->values();
 
-        // Map purchase_products (if you have actual purchase data)
-        // Here using dummy data, you can replace with real purchase join later
         $purchaseProducts = [[
             'purchase_product_id' => null,
             'purchase_id' => null,
@@ -5516,11 +5520,13 @@ public function filterByBarcode(Request $request): JsonResponse
 
     } catch (\Exception $e) {
         return response()->json([
-            'message' => 'Error filtering product by barcode',
+            'message' => 'Error filtering product',
             'error' => $e->getMessage()
         ], 500);
     }
 }
+
+
 
 
 

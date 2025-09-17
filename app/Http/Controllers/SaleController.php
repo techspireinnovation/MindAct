@@ -2685,24 +2685,31 @@ class SaleController extends Controller
         }
     }
 
-    public function filterByBarcode(Request $request): JsonResponse
+public function filterByBarcode(Request $request): JsonResponse
 {
     try {
         $barcode = $request->input('barcode');
+        $productId = $request->input('product_id');
 
-        if (!$barcode) {
+        if (!$barcode && !$productId) {
             return response()->json([
-                'message' => 'Barcode is required'
+                'message' => 'Either barcode or product_id is required'
             ], 422);
         }
 
-        $productList = ProductList::with(['product', 'measureUnit'])
-            ->where('barcode', $barcode)
-            ->first();
+        $query = ProductList::with(['product', 'measureUnit']);
+
+        if ($barcode) {
+            $query->where('barcode', $barcode);
+        } elseif ($productId) {
+            $query->where('product_id', $productId);
+        }
+
+        $productList = $query->first();
 
         if (!$productList) {
             return response()->json([
-                'message' => 'No product found for this barcode'
+                'message' => 'No product found'
             ], 404);
         }
 
@@ -2717,7 +2724,7 @@ class SaleController extends Controller
             ];
         })->unique('id')->values();
 
-        // Purchase products placeholder (replace with actual sale/purchase join if needed)
+        // Purchase products placeholder
         $purchaseProducts = [[
             'purchase_product_id' => null,
             'purchase_id' => null,
@@ -2774,11 +2781,12 @@ class SaleController extends Controller
 
     } catch (\Exception $e) {
         return response()->json([
-            'message' => 'Error filtering product by barcode',
+            'message' => 'Error filtering product',
             'error' => $e->getMessage()
         ], 500);
     }
 }
+
 
 
 }

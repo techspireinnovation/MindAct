@@ -173,7 +173,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::put('update', [CompanyController::class, 'update']);
 
 
-        Route::get('/sales-filter-by-barcode', [SaleController::class, 'filterByBarcode']);////
+        Route::get('/sales-filter-by-barcode-id', [SaleController::class, 'filterByBarcode']);////
         Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
         Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
         Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
@@ -186,7 +186,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         //Sales Returns
 
-         Route::get('sales-returns-filter-by-barcode', [SalesReturnController::class, 'filterByBarcode']);////
+         Route::get('sales-returns-filter-by-barcode-id', [SalesReturnController::class, 'filterByBarcode']);////
         Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
         Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
         Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
@@ -256,7 +256,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
 
 
-        Route::get('/purchases/filter-by-barcode', [PurchaseController::class, 'filterbyBarcode']);
+        Route::get('/purchases/filter-by-barcode-id', [PurchaseController::class, 'filterbyBarcode']);////
         Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
         Route::resource('purchases', PurchaseController::class);
         Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
@@ -302,7 +302,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-purchase-masters', [CompanyController::class, 'getPurchaseMasterKey']);
         Route::get('get-sales-masters', [CompanyController::class, 'getSalesMasterKey']);
         Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
-        Route::get('/purchase-return/filter-by-barcode', [PurchaseReturnController::class, 'filterByBarcode']);////
+        Route::get('/purchase-return/filter-by-barcode-id', [PurchaseReturnController::class, 'filterByBarcode']);////
 
         Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
         Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);

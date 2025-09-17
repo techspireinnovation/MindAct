@@ -5462,18 +5462,27 @@ class SalesReturnController extends Controller
         }
     }
 
-  public function filterByBarcode(Request $request): JsonResponse
+public function filterByBarcode(Request $request): JsonResponse
 {
     $barcode = $request->input('barcode'); // get barcode from JSON body
+    $productId = $request->input('product_id'); // get product_id from JSON body
 
-    if (!$barcode) {
+    if (!$barcode && !$productId) {
         return response()->json([
-            'message' => 'Barcode is required'
+            'message' => 'Either barcode or product_id is required'
         ], 422);
     }
 
-    // Fetch ProductList with the barcode
-    $productList = ProductList::with(['product.measureUnit'])->where('barcode', $barcode)->first();
+    // Build query
+    $query = ProductList::with(['product.measureUnit']);
+
+    if ($barcode) {
+        $query->where('barcode', $barcode);
+    } elseif ($productId) {
+        $query->where('product_id', $productId);
+    }
+
+    $productList = $query->first();
 
     if (!$productList || !$productList->product) {
         return response()->json([
@@ -5526,6 +5535,7 @@ class SalesReturnController extends Controller
         'data' => $data
     ]);
 }
+
 
 
 }

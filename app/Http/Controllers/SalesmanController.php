@@ -26,7 +26,7 @@ class SalesmanController extends Controller
 
 
 
-    public function salesmenList(Request $request)
+    public function activesalesmenList(Request $request)
     {
         try {
 

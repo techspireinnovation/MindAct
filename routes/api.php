@@ -89,6 +89,8 @@ Route::get('/company/product-types/{productType}', [ProductController::class, 'g
 
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
+    
+
     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
     Route::put('change-password', [AuthController::class, 'changePassword']);
     Route::put('update', [AuthController::class, 'update']);
@@ -96,23 +98,24 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
-
+    
     Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
-
+    Route::get('companies-search', [CompanyController::class, 'Companysearch'])->name('companies.search');////
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
-
-    Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-
+   
+    Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy',]);
+    
 });
 
-Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
-     ->apiResource('master-users', MasterUserController::class)
-     ->only(['index', 'store', 'show', 'update', 'destroy']);
-     Route::get(
-        'master-users/{masterUser}/companies-with-branches',
-        [MasterUserController::class, 'companiesWithBranches']
-    );
+Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])->group(function () {
+    Route::apiResource('master-users', MasterUserController::class)
+        ->only(['index', 'store', 'show', 'update', 'destroy']);
+
+    Route::get('master-users/{masterUser}/companies-with-branches', [MasterUserController::class, 'companiesWithBranches']);
+    Route::get('master-users-search', [MasterUserController::class, 'masterUserSearch'])->name('master-users.search');////
+});
+
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     // User management routes (company_admin only, assuming company.admin middleware enforces this)
     Route::middleware(['company.admin'])->group(function () {
@@ -336,6 +339,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('voucher-summary', VoucherSummaryController::class);
         Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
         Route::resource('company-staff', StaffController::class);
+        Route::get('active-work-shifts', [WorkShiftController::class, 'activeWorkShiftList']);
         Route::resource('work-shifts', WorkShiftController::class);
         Route::resource('nozzles', NozzleController::class);
 
@@ -379,7 +383,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('branch-details', [BranchController::class, 'branchDetails']);
 
 
-        Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);  ////
+        Route::get('salesmen-active-list', [SalesmanController::class, 'activesalesmenList']);  ////
         Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
 
         Route::get('measure-units-active-list', [MeasureUnitController::class, 'activeUnitList']);////

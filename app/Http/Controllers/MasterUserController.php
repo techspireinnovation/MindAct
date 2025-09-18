@@ -10,6 +10,10 @@ use App\Models\User;
 use App\Models\CompanyUser;
 use App\Models\Branch;
 use Spatie\Permission\Models\Role;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+
+
 
 class MasterUserController extends Controller
 {
@@ -274,4 +278,65 @@ class MasterUserController extends Controller
             ], 500);
         }
     }
+
+    public function masterUserSearch(Request $request): JsonResponse
+{
+    try {
+        $search = $request->input('search');
+
+        if (!$search) {
+            \Log::info('No search term provided in masterUserSearch');
+            return response()->json([
+                'success' => false,
+                'message' => 'Search term is required'
+            ], 422);
+        }
+
+        \Log::info('masterUserSearch called', ['search' => $search]);
+
+        // Query master users with optional search term
+        $masters = User::role('master_user')
+            ->where(function ($query) use ($search) {
+                $query->where('name', 'LIKE', "%{$search}%")
+                      ->orWhere('email', 'LIKE', "%{$search}%");
+            })
+            ->select('id', 'name', 'email', 'created_at')
+            ->get()
+            ->map(function ($master, $index) {
+                return [
+                    'sn' => $index + 1,
+                    'id' => $master->id,
+                    'name' => $master->name,
+                    'email' => $master->email,
+                    'created_at' => $master->created_at->format('Y-m-d H:i:s'),
+                ];
+            });
+
+        if ($masters->isEmpty()) {
+            \Log::info('No master users found for search term', ['search' => $search]);
+            return response()->json([
+                'success' => false,
+                'message' => 'No master users found matching the search term',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Master users retrieved successfully!',
+            'data' => $masters
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Unexpected error in masterUserSearch: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json([
+            'success' => false,
+            'message' => 'An unexpected error occurred',
+        ], 500);
+    }
+}
+
+
+    
+
+    
 }

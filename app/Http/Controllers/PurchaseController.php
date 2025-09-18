@@ -167,7 +167,8 @@ class PurchaseController extends Controller
 
 
 
- 
+
+
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -319,7 +320,6 @@ class PurchaseController extends Controller
                 $processedPurchaseProductIds = [];
                 $processedStockProductIds = [];
                 $fieldValuesToDelete = [];
-                $stockFieldValuesToDelete = [];
 
                 if (isset($validated['purchase_products'])) {
                     foreach ($validated['purchase_products'] as $purchaseProductData) {
@@ -387,9 +387,7 @@ class PurchaseController extends Controller
                         $processedPurchaseProductIds[] = $purchaseProduct->id;
 
                         // Handle PurchaseStockProduct
-                        $existingStockProduct = PurchaseStockProduct::where('purchase_id', $item->id)
-                            ->where('product_id', $purchaseProductData['product_id'])
-                            ->first();
+                        $existingStockProduct = PurchaseStockProduct::where('purchase_product_id', $purchaseProduct->id)->first();
 
                         if (!$existingStockProduct) {
                             $purchaseStockProduct = PurchaseStockProduct::create(
@@ -504,94 +502,35 @@ class PurchaseController extends Controller
                             }
                         }
 
-                        // Handle PurchaseStockProductFieldValues
-                        if (isset($purchaseProductData['field_values'])) {
-                            $processedStockFieldIds = [];
-                            $existingStockFieldIds = PurchaseStockProductFieldValue::where('purchase_stock_product_id', $purchaseStockProduct->id)
-                                ->pluck('id')
-                                ->toArray();
-                            $existingStockFieldValues = PurchaseStockProductFieldValue::where('purchase_stock_product_id', $purchaseStockProduct->id)
-                                ->get()
-                                ->keyBy('id');
+                        // Sync PurchaseStockProductFieldValues from PurchaseProductFieldValues
+                        PurchaseStockProductFieldValue::where('purchase_stock_product_id', $purchaseStockProduct->id)->delete();
 
-                            $maxStockQuantityIndex = PurchaseStockProductFieldValue::where('purchase_stock_product_id', $purchaseStockProduct->id)
-                                ->max('quantity_index') ?? -1;
+                        $fieldValues = PurchaseProductFieldValue::where('purchase_product_id', $purchaseProduct->id)->get();
 
-                            foreach ($purchaseProductData['field_values'] as $quantityIndex => $fieldValueSet) {
-                                $newStockQuantityIndex = $maxStockQuantityIndex + 1;
-                                foreach ($fieldValueSet as $fieldValue) {
-                                    if (isset($fieldValue['id']) && !empty($fieldValue['id'])) {
-                                        $existingStockValue = $existingStockFieldValues->get($fieldValue['id']);
-                                        if ($existingStockValue) {
-                                            if ($existingStockValue->trashed()) {
-                                                $existingStockValue->restore();
-                                            }
-                                            $existingStockValue->update([
-                                                'product_field_id' => $fieldValue['product_field_id'],
-                                                'value' => $fieldValue['value'],
-                                                'quantity_type' => $fieldValue['quantity_type'],
-                                                'quantity_index' => $existingStockValue->quantity_index,
-                                                'updated_at' => now(),
-                                            ]);
-                                            $processedStockFieldIds[] = $existingStockValue->id;
-                                        } else {
-                                            $newStockFieldValue = PurchaseStockProductFieldValue::create([
-                                                'product_field_id' => $fieldValue['product_field_id'],
-                                                'value' => $fieldValue['value'],
-                                                'quantity_type' => $fieldValue['quantity_type'],
-                                                'product_id' => $purchaseStockProduct->product_id,
-                                                'company_id' => $purchaseStockProduct->company_id,
-                                                'branch_id' => $purchaseStockProduct->branch_id,
-                                                'purchase_product_id' => $purchaseProduct->id,
-                                                'purchase_stock_product_id' => $purchaseStockProduct->id,
-                                                'quantity_index' => $newStockQuantityIndex,
-                                            ]);
-                                            $processedStockFieldIds[] = $newStockFieldValue->id;
-                                        }
-                                    } else {
-                                        $newStockFieldValue = PurchaseStockProductFieldValue::create([
-                                            'product_field_id' => $fieldValue['product_field_id'],
-                                            'value' => $fieldValue['value'],
-                                            'quantity_type' => $fieldValue['quantity_type'],
-                                            'product_id' => $purchaseStockProduct->product_id,
-                                            'company_id' => $purchaseStockProduct->company_id,
-                                            'branch_id' => $purchaseStockProduct->branch_id,
-                                            'purchase_product_id' => $purchaseProduct->id,
-                                            'purchase_stock_product_id' => $purchaseStockProduct->id,
-                                            'quantity_index' => $newStockQuantityIndex,
-                                        ]);
-                                        $processedStockFieldIds[] = $newStockFieldValue->id;
-                                    }
-                                }
-                                $maxStockQuantityIndex = $newStockQuantityIndex;
-                            }
-
-                            $unprocessedStockFieldIds = array_diff($existingStockFieldIds, $processedStockFieldIds);
-                            if (!empty($unprocessedStockFieldIds)) {
-                                $stockFieldValuesToDelete[] = [
-                                    'purchase_stock_product_id' => $purchaseStockProduct->id,
-                                    'ids' => $unprocessedStockFieldIds,
-                                ];
-                            }
-                        } else {
-                            $existingStockFieldIds = PurchaseStockProductFieldValue::where('purchase_stock_product_id', $purchaseStockProduct->id)
-                                ->pluck('id')
-                                ->toArray();
-                            if (!empty($existingStockFieldIds)) {
-                                $stockFieldValuesToDelete[] = [
-                                    'purchase_stock_product_id' => $purchaseStockProduct->id,
-                                    'ids' => $existingStockFieldIds,
-                                ];
-                            }
+                        foreach ($fieldValues as $fv) {
+                            PurchaseStockProductFieldValue::create([
+                                'product_field_id' => $fv->product_field_id,
+                                'value' => $fv->value,
+                                'quantity_type' => $fv->quantity_type,
+                                'quantity_index' => $fv->quantity_index,
+                                'product_id' => $fv->product_id,
+                                'company_id' => $fv->company_id,
+                                'branch_id' => $fv->branch_id,
+                                'purchase_product_id' => $fv->purchase_product_id,
+                                'purchase_stock_product_id' => $purchaseStockProduct->id,
+                            ]);
                         }
                     }
 
-                    // Delete unprocessed purchase products
+                    // Delete unprocessed purchase products and their field values
                     $existingPurchaseProductIds = PurchaseProduct::where('purchase_id', $item->id)
                         ->pluck('id')
                         ->toArray();
                     $unprocessedPurchaseProductIds = array_diff($existingPurchaseProductIds, $processedPurchaseProductIds);
                     if (!empty($unprocessedPurchaseProductIds)) {
+                        // Delete field values first
+                        PurchaseProductFieldValue::whereIn('purchase_product_id', $unprocessedPurchaseProductIds)->delete();
+
                         Log::debug('Deleting unprocessed purchase products', [
                             'purchase_id' => $item->id,
                             'ids' => $unprocessedPurchaseProductIds,
@@ -601,12 +540,15 @@ class PurchaseController extends Controller
                             ->delete();
                     }
 
-                    // Delete unprocessed purchase stock products
+                    // Delete unprocessed purchase stock products and their field values
                     $existingStockProductIds = PurchaseStockProduct::where('purchase_id', $item->id)
                         ->pluck('id')
                         ->toArray();
                     $unprocessedStockProductIds = array_diff($existingStockProductIds, $processedStockProductIds);
                     if (!empty($unprocessedStockProductIds)) {
+                        // Delete field values first
+                        PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $unprocessedStockProductIds)->delete();
+
                         Log::debug('Deleting unprocessed purchase stock products', [
                             'purchase_id' => $item->id,
                             'ids' => $unprocessedStockProductIds,
@@ -616,11 +558,14 @@ class PurchaseController extends Controller
                             ->delete();
                     }
                 } else {
-                    // If no purchase products are provided, delete all associated purchase products and stock products
+                    // If no purchase products are provided, delete all associated purchase products, stock products, and their field values
                     $existingPurchaseProductIds = PurchaseProduct::where('purchase_id', $item->id)
                         ->pluck('id')
                         ->toArray();
                     if (!empty($existingPurchaseProductIds)) {
+                        // Delete field values first
+                        PurchaseProductFieldValue::whereIn('purchase_product_id', $existingPurchaseProductIds)->delete();
+
                         Log::debug('Deleting all purchase products as none provided', [
                             'purchase_id' => $item->id,
                             'ids' => $existingPurchaseProductIds,
@@ -632,6 +577,9 @@ class PurchaseController extends Controller
                         ->pluck('id')
                         ->toArray();
                     if (!empty($existingStockProductIds)) {
+                        // Delete field values first
+                        PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $existingStockProductIds)->delete();
+
                         Log::debug('Deleting all purchase stock products as none provided', [
                             'purchase_id' => $item->id,
                             'ids' => $existingStockProductIds,
@@ -640,17 +588,10 @@ class PurchaseController extends Controller
                     }
                 }
 
-                // Delete unprocessed field values
+                // Delete unprocessed field values (for purchase only, stock is handled via sync)
                 foreach ($fieldValuesToDelete as $deleteSet) {
                     Log::debug("Deleting field values for purchase_product_id {$deleteSet['purchase_product_id']}", $deleteSet['ids']);
                     PurchaseProductFieldValue::where('purchase_product_id', $deleteSet['purchase_product_id'])
-                        ->whereIn('id', $deleteSet['ids'])
-                        ->delete();
-                }
-
-                foreach ($stockFieldValuesToDelete as $deleteSet) {
-                    Log::debug("Deleting field values for purchase_stock_product_id {$deleteSet['purchase_stock_product_id']}", $deleteSet['ids']);
-                    PurchaseStockProductFieldValue::where('purchase_stock_product_id', $deleteSet['purchase_stock_product_id'])
                         ->whereIn('id', $deleteSet['ids'])
                         ->delete();
                 }
@@ -678,9 +619,6 @@ class PurchaseController extends Controller
         }
     }
 
-
-
-
     public function store(Request $request): JsonResponse
     {
 
@@ -697,7 +635,7 @@ class PurchaseController extends Controller
                     }),
             ],
             'customer_id' => 'required|exists:customers,id',
-           
+
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|string|max:255',
             'address' => 'nullable|string|max:255',
@@ -782,7 +720,7 @@ class PurchaseController extends Controller
         $branchId = $request->branch_id;
 
         try {
-            $item = DB::transaction(function () use ($validated,$companyId,$branchId) {
+            $item = DB::transaction(function () use ($validated, $companyId, $branchId) {
 
 
                 // Create Purchase
@@ -792,7 +730,7 @@ class PurchaseController extends Controller
                     'customer_name' => $validated['customer_name'] ?? null,
                     'pan_number' => $validated['pan_number'] ?? null,
                     'company_id' => $validated['company_id'],
-                  
+
                     'branch_id' => $branchId ?? null,
                     'address' => $validated['address'] ?? null,
                     'customer_contact' => $validated['customer_contact'] ?? null,
@@ -962,7 +900,7 @@ class PurchaseController extends Controller
             Log::error('Database error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-           
+
             Log::error('Unexpected error', ['error' => $e->getMessage()]);
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }

@@ -134,7 +134,7 @@ class PurchaseController extends Controller
 
         $company = $request->company_id;
         $names = Helper::getProductNames($company);
-        dd($names);
+     
 
         return response()->json($names);
     }

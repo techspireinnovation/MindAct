@@ -227,4 +227,31 @@ class BankController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
+    public function activeBanks(Request $request): JsonResponse
+{
+    try {
+        $banks = Bank::where('company_id', $request->company_id)
+            ->where('is_active', 1)          
+            ->whereNull('deleted_at')
+            ->get(['id', 'name']);           
+
+        if ($banks->isEmpty()) {
+            return response()->json([
+                "message" => "No active banks found",
+                "data" => []
+            ], 404);
+        }
+
+        return response()->json([
+            "message" => "Active banks retrieved successfully!",
+            "data" => $banks
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(["error" => "An unexpected error occurred !!"], 500);
+    }
+}
+
 }

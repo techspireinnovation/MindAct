@@ -89,6 +89,8 @@ Route::get('/company/product-types/{productType}', [ProductController::class, 'g
 
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {
     Route::get('profile', [AuthController::class, 'profile']);
+    
+
     Route::patch('/company-update/{id}', [CompanyController::class, 'updateCompany']);
     Route::put('change-password', [AuthController::class, 'changePassword']);
     Route::put('update', [AuthController::class, 'update']);
@@ -96,23 +98,24 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::post('/upload', [FileUploadController::class, 'upload']);
     Route::get('/download/{filename}', [FileUploadController::class, 'download']);
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
-
+    
     Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
-
+    Route::get('companies-search', [CompanyController::class, 'Companysearch'])->name('companies.search');////
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
-
-    Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy']);
-
+   
+    Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy',]);
+    
 });
 
-Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])
-     ->apiResource('master-users', MasterUserController::class)
-     ->only(['index', 'store', 'show', 'update', 'destroy']);
-     Route::get(
-        'master-users/{masterUser}/companies-with-branches',
-        [MasterUserController::class, 'companiesWithBranches']
-    );
+Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])->group(function () {
+    Route::apiResource('master-users', MasterUserController::class)
+        ->only(['index', 'store', 'show', 'update', 'destroy']);
+
+    Route::get('master-users/{masterUser}/companies-with-branches', [MasterUserController::class, 'companiesWithBranches']);
+    Route::get('master-users-search', [MasterUserController::class, 'masterUserSearch'])->name('master-users.search');////
+});
+
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     // User management routes (company_admin only, assuming company.admin middleware enforces this)
     Route::middleware(['company.admin'])->group(function () {
@@ -173,7 +176,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::put('update', [CompanyController::class, 'update']);
 
 
-
+        Route::get('/sales-filter-by-barcode-id', [SaleController::class, 'filterByBarcode']);////
         Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
         Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
         Route::get('sale-customer-filter', [SaleController::class, 'getSalesByCustomer']);
@@ -186,7 +189,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         //Sales Returns
 
-
+         Route::get('sales-returns-filter-by-barcode-id', [SalesReturnController::class, 'filterByBarcode']);////
         Route::get('sales-returns-product-filter', [SalesReturnController::class, 'getSalesReturnByProduct']);
         Route::get('sales-returns-batch-filter', [SalesReturnController::class, 'getSalesReturnByBatch']);
         Route::get('sales-returns-customer-filter', [SalesReturnController::class, 'getSalesReturnByCustomer']);
@@ -203,6 +206,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::apiResource('projects', ProjectController::class);
         Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
         Route::apiResource('journal-vouchers', JournalVoucherController::class);
+        Route::get('/customers-active-list', [CustomerController::class, 'activeCustomers']);////
         Route::resource('customers', CustomerController::class);
         Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
         Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
@@ -255,7 +259,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
 
 
-
+        Route::get('/purchases/filter-by-barcode-id', [PurchaseController::class, 'filterbyBarcode']);////
         Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
         Route::resource('purchases', PurchaseController::class);
         Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
@@ -269,14 +273,17 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('sub-groups-of-main', [MainGroupController::class, 'subGroupOfMainGroup']);
         Route::resource('purchase-returns', PurchaseReturnController::class);
         Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
+        Route::get('brands-active-list', [BrandController::class, 'activeBrandList']);////
         Route::apiResource('brands', BrandController::class);
         Route::resource('areas', AreaController::class);
+        Route::get('cashes-active-list', [CashController::class, 'activeCashList']);////
+
         Route::resource('cashes', CashController::class);
 
         Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
-
+        Route::get('stores-active-list', [StoreController::class, 'activeStores']);
         Route::apiResource('stores', StoreController::class);
-
+        Route::get('locations-active-list', [LocationController::class, 'activeLocations']);////
         Route::apiResource('locations', LocationController::class);
         Route::apiResource('main-groups', MainGroupController::class);
         Route::apiResource('sub-groups', SubGroupController::class);
@@ -285,6 +292,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::apiResource('product-fields', ProductFieldController::class);
         Route::apiResource('product-field-values', ProductFieldValueController::class);
         Route::apiResource('sales-returns', SalesReturnController::class);
+        Route::get('product-lists/names', [ProductListController::class, 'productNames']);////
         Route::apiResource('product-lists', ProductListController::class);
 
         Route::apiResource('sale-additionals', SaleAdditionalController::class);
@@ -297,6 +305,8 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-purchase-masters', [CompanyController::class, 'getPurchaseMasterKey']);
         Route::get('get-sales-masters', [CompanyController::class, 'getSalesMasterKey']);
         Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
+        Route::get('/purchase-return/filter-by-barcode-id', [PurchaseReturnController::class, 'filterByBarcode']);////
+
         Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
         Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);
         Route::get('get-ref-bill-numbers', [PurchaseController::class, 'getRefBillNumber']);
@@ -317,20 +327,27 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('stock-transfers', StockTransferController::class);
         Route::resource('stock-receives', StockReceiveController::class);
         Route::resource('stock-reconciliation', StockReconciliationController::class);
+        Route::get('products-barcode-uniqueid', [ProductionSettingController::class, 'filterByBarcodeOrUniqueId']);
+
         Route::resource('production-settings', ProductionSettingController::class);
         Route::resource('production-assembles', ProductionAssembleController::class);
         Route::get('production-settings-list', [ProductionAssembleController::class, 'getProductionSettingList']);
         Route::get('production-settings-details', [ProductionAssembleController::class, 'getProductionSettingDetail']);
         Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
         Route::get('purchase-products-shrinking-working-loss', [ShrinkingWorkingLossController::class, 'getProductDetailsforShrinkingWorkingLoss']);
+        Route::get('nozzles-active-list', [NozzleController::class, 'activeNozzles']);////
         Route::resource('receipt-vouchers', ReceiptVoucherController::class);
         Route::resource('payment-vouchers', PaymentVoucherController::class);
         Route::resource('voucher-summary', VoucherSummaryController::class);
         Route::get('voucher-ledger', [VoucherSummaryController::class, 'ledgerList']);
         Route::resource('company-staff', StaffController::class);
+        Route::get('active-work-shifts', [WorkShiftController::class, 'activeWorkShiftList']);
         Route::resource('work-shifts', WorkShiftController::class);
         Route::resource('nozzles', NozzleController::class);
-        Route::resource('meter-readings', MeterReadingController::class);
+
+       
+        Route::get('products-active-list', [ProductController::class, 'activeProducts']);////
+
         Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
         Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
         Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);
@@ -355,24 +372,28 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
 
         Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
+        Route::get('categories-active-list', [ProductCategoryController::class, 'activeCategoryList']);/////
         Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
 
 
         Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+        Route::get('product-types-active-list', [ProductTypeController::class, 'activeProductTypeList']);////
+
         Route::get('product-type-details', [ProductTypeController::class, 'productTypeDetails']);
 
         Route::get('branch-list', [BranchController::class, 'branchList']);
         Route::get('branch-details', [BranchController::class, 'branchDetails']);
 
 
-        Route::get('salesmen-list', [SalesmanController::class, 'salesmenList']);
+        Route::get('salesmen-active-list', [SalesmanController::class, 'activesalesmenList']);  ////
         Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
 
-
+        Route::get('measure-units-active-list', [MeasureUnitController::class, 'activeUnitList']);////
         Route::get('unit-list', [MeasureUnitController::class, 'unitList']);
         Route::get('unit-details', [MeasureUnitController::class, 'unitDetails']);
 
         Route::get('sub-category-list', [ProductSubCategoryController::class, 'subCategoryList']);
+        Route::get('sub-categories-active-list', [ProductSubCategoryController::class, 'activeSubCategoryList']);////
         Route::get('sub-category-details', [ProductSubCategoryController::class, 'subCategoryDetails']);
 
         Route::get('brand-list', [BrandController::class, 'brandList']);
@@ -411,6 +432,8 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         Route::get('product-list', [ProductController::class, 'productList']);
         Route::get('product-details', [ProductController::class, 'productDetails']);
+
+        Route::get('/banks-active-list', [BankController::class, 'activeBanks']);////
 
         Route::get('bank-list', [BankController::class, 'bankList']);
         Route::get('bank-details', [BankController::class, 'bankDetails']);

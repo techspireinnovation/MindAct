@@ -520,45 +520,45 @@ class SalesReturnController extends Controller
 
 
 
-    public function listAvailableInvoiceNumbers(Request $request): JsonResponse
-    {
-        try {
-            // Validate company_id
-            $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id'
-            ]);
+   public function listAvailableInvoiceNumbers(Request $request): JsonResponse
+{
+    try {
+        // Validate company_id
+        $validator = Validator::make($request->all(), [
+            'company_id' => 'required|exists:companies,id'
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-            $companyId = $request->input('company_id');
+        $companyId = $request->input('company_id');
 
-            // Fetch all active measure units for the company
-            $measureUnits = MeasureUnit::where('company_id', $companyId)
-                ->where('is_active', 1)
-                ->whereNull('deleted_at')
-                ->select(['id', 'name', 'quantity'])
-                ->get()
-                ->keyBy('id');
+        // Fetch all active measure units for the company
+        $measureUnits = MeasureUnit::where('company_id', $companyId)
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->select(['id', 'name', 'quantity'])
+            ->get()
+            ->keyBy('id');
 
-            // Get invoice numbers where at least one product has remaining quantity
-            $invoiceNumbers = Sale::where('sales.company_id', $companyId)
-                ->whereNotNull('sales.invoice_number')
-                ->where('sales.invoice_number', '!=', '')
-                ->whereHas('saleProducts', function ($query) use ($companyId, $measureUnits) {
-                    $query->leftJoin('measure_units as sale_mu', function ($join) use ($companyId) {
-                        $join->on('sale_products.measure_unit_id', '=', 'sale_mu.id')
-                            ->where('sale_mu.company_id', $companyId)
-                            ->where('sale_mu.is_active', 1)
-                            ->whereNull('sale_mu.deleted_at');
-                    })
-                        ->where('sale_products.company_id', $companyId)
-                        ->whereNull('sale_products.deleted_at')
-                        ->whereRaw('
+        // Get invoice numbers where at least one product has remaining quantity
+        $invoiceNumbers = Sale::where('sales.company_id', $companyId)
+            ->whereNotNull('sales.invoice_number')
+            ->where('sales.invoice_number', '!=', '')
+            ->whereHas('saleProducts', function ($query) use ($companyId, $measureUnits) {
+                $query->leftJoin('measure_units as sale_mu', function ($join) use ($companyId) {
+                    $join->on('sale_products.measure_unit_id', '=', 'sale_mu.id')
+                        ->where('sale_mu.company_id', $companyId)
+                        ->where('sale_mu.is_active', 1)
+                        ->whereNull('sale_mu.deleted_at');
+                })
+                    ->where('sale_products.company_id', $companyId)
+                    ->whereNull('sale_products.deleted_at')
+                    ->whereRaw('
                         (
                             (sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(sale_mu.quantity, 1)
                         ) - COALESCE((
@@ -575,44 +575,42 @@ class SalesReturnController extends Controller
                             AND srp.deleted_at IS NULL
                         ), 0) > 0.0001
                     ', [
-                            $companyId, // return_mu.company_id
-                            $companyId  // srp.company_id
-                        ]);
-                })
-                ->distinct()
-                ->pluck('sales.invoice_number')
-                ->toArray();
+                        $companyId, // return_mu.company_id
+                        $companyId  // srp.company_id
+                    ]);
+            })
+            ->distinct()
+            ->pluck('sales.invoice_number')
+            ->toArray();
 
-            // Log for debugging
-            Log::info('Available invoice numbers retrieved', [
-                'company_id' => $companyId,
-                'invoice_numbers' => $invoiceNumbers,
-                'measure_units_count' => count($measureUnits),
-            ]);
+        // Log for debugging
+        Log::info('Available invoice numbers retrieved', [
+            'company_id' => $companyId,
+            'invoice_numbers' => $invoiceNumbers,
+            'measure_units_count' => count($measureUnits),
+        ]);
 
-            if (empty($invoiceNumbers)) {
-                return response()->json(['error' => 'No sales with available products found'], 404);
-            }
+        // Always return success, even if empty
+        return response()->json([
+            'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
+            'data' => $invoiceNumbers
+        ], 200);
 
-            return response()->json([
-                'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
-                'data' => $invoiceNumbers
-            ], 200);
-        } catch (QueryException $e) {
-            Log::error('Database error in listAvailableInvoiceNumbers', [
-                'error' => $e->getMessage(),
-                'sql' => $e->getSql(),
-                'bindings' => $e->getBindings(),
-            ]);
-            return response()->json(['error' => 'A database error occurred'], 500);
-        } catch (\Exception $e) {
-            Log::error('Unexpected error in listAvailableInvoiceNumbers', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
+    } catch (QueryException $e) {
+        Log::error('Database error in listAvailableInvoiceNumbers', [
+            'error' => $e->getMessage(),
+            'sql' => $e->getSql(),
+            'bindings' => $e->getBindings(),
+        ]);
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        Log::error('Unexpected error in listAvailableInvoiceNumbers', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
 
     public function getSaleByRefNumber(Request $request): JsonResponse
     {
@@ -5461,5 +5459,189 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
     }
+
+public function filterbyBarcode(Request $request): JsonResponse
+{
+    try {
+        \Log::info('Filter by barcode request: ', $request->all());
+        
+        // Validate request
+        $validator = Validator::make($request->all(), [
+            'barcode' => 'required_without:product_unique_id',
+            'product_unique_id' => 'required_without:barcode',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $productList = null;
+        $product = null;
+
+        // Search logic
+        if ($request->filled('barcode')) {
+            \Log::info('Searching by barcode: ' . $request->barcode);
+            
+            // Find product list by barcode
+            $productList = ProductList::with([
+                'product.category',
+                'product.subCategory',
+                'product.brand',
+                'product.measureUnit',
+                'product.productType',
+                'product.location',
+                'product.productFieldValues',
+                'product.productLists.measureUnit'
+            ])->where('barcode', $request->barcode)->first();
+            
+            if ($productList) {
+                $product = $productList->product;
+            }
+        } else {
+            \Log::info('Searching by product_unique_id: ' . $request->product_unique_id);
+            
+            // Try different approaches to find the product
+            $product = Product::with([
+                'category',
+                'subCategory',
+                'brand',
+                'measureUnit',
+                'productType',
+                'location',
+                'productFieldValues',
+                'productLists.measureUnit'
+            ])->where('product_unique_id', $request->product_unique_id)->first();
+            
+            // If not found, try case-insensitive search
+            if (!$product) {
+                $product = Product::with([
+                    'category',
+                    'subCategory',
+                    'brand',
+                    'measureUnit',
+                    'productType',
+                    'location',
+                    'productFieldValues',
+                    'productLists.measureUnit'
+                ])->whereRaw('LOWER(product_unique_id) = ?', [strtolower($request->product_unique_id)])->first();
+            }
+            
+            // If still not found, try trimming whitespace
+            if (!$product) {
+                $product = Product::with([
+                    'category',
+                    'subCategory',
+                    'brand',
+                    'measureUnit',
+                    'productType',
+                    'location',
+                    'productFieldValues',
+                    'productLists.measureUnit'
+                ])->where('product_unique_id', 'like', '%' . trim($request->product_unique_id) . '%')->first();
+            }
+            
+            if ($product) {
+                // Get the first product list for this product
+                $productList = $product->productLists()->first();
+            }
+        }
+
+        if (!$product) {
+            \Log::warning('No products found for search criteria: ' . json_encode($request->all()));
+            
+            // Provide more helpful error message
+            return response()->json([
+                'error' => 'No products found',
+                'searched_value' => $request->filled('barcode') ? $request->barcode : $request->product_unique_id,
+                'search_type' => $request->filled('barcode') ? 'barcode' : 'product_unique_id'
+            ], 404);
+        }
+
+        \Log::info('Product found: ' . $product->id);
+        
+        // --- Transform data ---
+        $data = [
+            "id" => $product->id,
+            "name" => $product->name,
+            "product_unique_id" => $product->product_unique_id,
+            "category_id" => $product->category_id ?? 0,
+            "sub_category_id" => $product->sub_category_id ?? 0,
+            "brand_id" => $product->brand_id ?? 0,
+            "measure_unit_id" => $product->measure_unit_id,
+            "purchase_rate" => $product->purchase_rate,
+            "retail_sales_price" => $product->retail_sales_price,
+            "wholesales_price" => $product->wholesales_price,
+            "is_vatable" => $product->is_vatable,
+            "product_type_id" => $product->product_type_id,
+            "location_id" => $product->location_id,
+            "is_active" => (bool) $product->is_active,
+            "created_at" => $product->created_at,
+            "updated_at" => $product->updated_at,
+            "deleted_at" => $product->deleted_at,
+
+            "primary_measure_unit" => $product->measureUnit ? [
+                "id" => $product->measureUnit->id,
+                "name" => $product->measureUnit->name,
+                "symbol" => $product->measureUnit->symbol,
+                "quantity" => $product->measureUnit->quantity,
+                "company_id" => $product->measureUnit->company_id,
+                "is_primary" => (bool) $product->measureUnit->is_primary,
+                "is_active" => (bool) $product->measureUnit->is_active,
+                "created_at" => $product->measureUnit->created_at,
+                "updated_at" => $product->measureUnit->updated_at,
+                "deleted_at" => $product->measureUnit->deleted_at,
+            ] : null,
+
+            "product_lists" => $product->productLists->map(function ($pl) {
+                return [
+                    "id" => $pl->id,
+                    "product_id" => $pl->product_id,
+                    "measure_unit_id" => $pl->measure_unit_id,
+                    "company_id" => $pl->company_id,
+                    "quantity" => $pl->quantity,
+                    "barcode" => $pl->barcode,
+                    "price" => $pl->price,
+                    "discount" => $pl->discount,
+                    "final_price" => $pl->final_price,
+                    "is_primary" => (bool) $pl->is_primary,
+                    "primary_measure_unit_id" => $pl->primary_measure_unit_id,
+                    "deleted_at" => $pl->deleted_at,
+                    "created_at" => $pl->created_at,
+                    "updated_at" => $pl->updated_at,
+                ];
+            }),
+
+            "product_field_values" => $product->productFieldValues ?? [],
+
+            "measure_units" => $product->productLists->map(function ($pl) {
+                return $pl->measureUnit ? [
+                    "id" => $pl->measureUnit->id,
+                    "name" => $pl->measureUnit->name,
+                    "measure_unit_quantity" => $pl->measureUnit->quantity,
+                ] : null;
+            })->filter()->unique("id")->values(),
+
+            "average_price" => $product->purchase_rate,
+            "min_price" => $product->purchase_rate,
+            "last_purchase_price" => $product->purchase_rate,
+            
+            // Add barcode from the product list if available
+            "barcode" => $productList ? $productList->barcode : null,
+        ];
+
+        return response()->json([
+            "message" => "Successful!!",
+            "data" => $data
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error in filterbyBarcode: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
+    }
+}
+
+
+
 
 }

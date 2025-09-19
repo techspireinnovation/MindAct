@@ -26,7 +26,7 @@ class SalesmanController extends Controller
 
 
 
-    public function salesmenList(Request $request)
+    public function activesalesmenList(Request $request)
     {
         try {
 
@@ -299,5 +299,10 @@ class SalesmanController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+    
+
+    
+
+
 
 }

@@ -16,6 +16,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 
+
+
+
+
+
 class ProductionSettingController extends Controller
 {
     public function index(Request $request): JsonResponse
@@ -357,5 +362,45 @@ class ProductionSettingController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
+
+
+
+
+public function filterByBarcodeOrUniqueId(Request $request): JsonResponse
+{
+    $request->validate([
+        'product_unique_id' => 'required'
+    ]);
+
+    $productUniqueId = (int) trim($request->product_unique_id);
+
+    $product = ProductList::with('product.measureUnit')
+        ->where('product_unique_id', $productUniqueId)
+        ->first();
+
+    if (!$product) {
+        return response()->json([
+            'message' => 'Product not found'
+        ], 404);
+    }
+
+    return response()->json([
+        'message' => 'Product found',
+        'data' => $product
+    ], 200);
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 }

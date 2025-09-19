@@ -327,6 +327,8 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::resource('stock-transfers', StockTransferController::class);
         Route::resource('stock-receives', StockReceiveController::class);
         Route::resource('stock-reconciliation', StockReconciliationController::class);
+        Route::get('products-barcode-uniqueid', [ProductionSettingController::class, 'filterByBarcodeOrUniqueId']);
+
         Route::resource('production-settings', ProductionSettingController::class);
         Route::resource('production-assembles', ProductionAssembleController::class);
         Route::get('production-settings-list', [ProductionAssembleController::class, 'getProductionSettingList']);

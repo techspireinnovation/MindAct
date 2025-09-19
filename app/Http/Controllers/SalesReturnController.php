@@ -5462,79 +5462,187 @@ class SalesReturnController extends Controller
         }
     }
 
-public function filterByBarcode(Request $request): JsonResponse
+public function filterbyBarcode(Request $request): JsonResponse
 {
-    $barcode = $request->input('barcode'); // get barcode from JSON body
-    $productId = $request->input('product_id'); // get product_id from JSON body
+    try {
+        \Log::info('Filter by barcode request: ', $request->all());
+        
+        // Validate request
+        $validator = Validator::make($request->all(), [
+            'barcode' => 'required_without:product_unique_id',
+            'product_unique_id' => 'required_without:barcode',
+        ]);
 
-    if (!$barcode && !$productId) {
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $productList = null;
+        $product = null;
+
+        // Search logic
+        if ($request->filled('barcode')) {
+            \Log::info('Searching by barcode: ' . $request->barcode);
+            
+            // Find product list by barcode
+            $productList = ProductList::with([
+                'product.category',
+                'product.subCategory',
+                'product.brand',
+                'product.measureUnit',
+                'product.productType',
+                'product.location',
+                'product.productFieldValues',
+                'product.productLists.measureUnit'
+            ])->where('barcode', $request->barcode)->first();
+            
+            if ($productList) {
+                $product = $productList->product;
+            }
+        } else {
+            \Log::info('Searching by product_unique_id: ' . $request->product_unique_id);
+            
+            // Try different approaches to find the product
+            $product = Product::with([
+                'category',
+                'subCategory',
+                'brand',
+                'measureUnit',
+                'productType',
+                'location',
+                'productFieldValues',
+                'productLists.measureUnit'
+            ])->where('product_unique_id', $request->product_unique_id)->first();
+            
+            // If not found, try case-insensitive search
+            if (!$product) {
+                $product = Product::with([
+                    'category',
+                    'subCategory',
+                    'brand',
+                    'measureUnit',
+                    'productType',
+                    'location',
+                    'productFieldValues',
+                    'productLists.measureUnit'
+                ])->whereRaw('LOWER(product_unique_id) = ?', [strtolower($request->product_unique_id)])->first();
+            }
+            
+            // If still not found, try trimming whitespace
+            if (!$product) {
+                $product = Product::with([
+                    'category',
+                    'subCategory',
+                    'brand',
+                    'measureUnit',
+                    'productType',
+                    'location',
+                    'productFieldValues',
+                    'productLists.measureUnit'
+                ])->where('product_unique_id', 'like', '%' . trim($request->product_unique_id) . '%')->first();
+            }
+            
+            if ($product) {
+                // Get the first product list for this product
+                $productList = $product->productLists()->first();
+            }
+        }
+
+        if (!$product) {
+            \Log::warning('No products found for search criteria: ' . json_encode($request->all()));
+            
+            // Provide more helpful error message
+            return response()->json([
+                'error' => 'No products found',
+                'searched_value' => $request->filled('barcode') ? $request->barcode : $request->product_unique_id,
+                'search_type' => $request->filled('barcode') ? 'barcode' : 'product_unique_id'
+            ], 404);
+        }
+
+        \Log::info('Product found: ' . $product->id);
+        
+        // --- Transform data ---
+        $data = [
+            "id" => $product->id,
+            "name" => $product->name,
+            "product_unique_id" => $product->product_unique_id,
+            "category_id" => $product->category_id ?? 0,
+            "sub_category_id" => $product->sub_category_id ?? 0,
+            "brand_id" => $product->brand_id ?? 0,
+            "measure_unit_id" => $product->measure_unit_id,
+            "purchase_rate" => $product->purchase_rate,
+            "retail_sales_price" => $product->retail_sales_price,
+            "wholesales_price" => $product->wholesales_price,
+            "is_vatable" => $product->is_vatable,
+            "product_type_id" => $product->product_type_id,
+            "location_id" => $product->location_id,
+            "is_active" => (bool) $product->is_active,
+            "created_at" => $product->created_at,
+            "updated_at" => $product->updated_at,
+            "deleted_at" => $product->deleted_at,
+
+            "primary_measure_unit" => $product->measureUnit ? [
+                "id" => $product->measureUnit->id,
+                "name" => $product->measureUnit->name,
+                "symbol" => $product->measureUnit->symbol,
+                "quantity" => $product->measureUnit->quantity,
+                "company_id" => $product->measureUnit->company_id,
+                "is_primary" => (bool) $product->measureUnit->is_primary,
+                "is_active" => (bool) $product->measureUnit->is_active,
+                "created_at" => $product->measureUnit->created_at,
+                "updated_at" => $product->measureUnit->updated_at,
+                "deleted_at" => $product->measureUnit->deleted_at,
+            ] : null,
+
+            "product_lists" => $product->productLists->map(function ($pl) {
+                return [
+                    "id" => $pl->id,
+                    "product_id" => $pl->product_id,
+                    "measure_unit_id" => $pl->measure_unit_id,
+                    "company_id" => $pl->company_id,
+                    "quantity" => $pl->quantity,
+                    "barcode" => $pl->barcode,
+                    "price" => $pl->price,
+                    "discount" => $pl->discount,
+                    "final_price" => $pl->final_price,
+                    "is_primary" => (bool) $pl->is_primary,
+                    "primary_measure_unit_id" => $pl->primary_measure_unit_id,
+                    "deleted_at" => $pl->deleted_at,
+                    "created_at" => $pl->created_at,
+                    "updated_at" => $pl->updated_at,
+                ];
+            }),
+
+            "product_field_values" => $product->productFieldValues ?? [],
+
+            "measure_units" => $product->productLists->map(function ($pl) {
+                return $pl->measureUnit ? [
+                    "id" => $pl->measureUnit->id,
+                    "name" => $pl->measureUnit->name,
+                    "measure_unit_quantity" => $pl->measureUnit->quantity,
+                ] : null;
+            })->filter()->unique("id")->values(),
+
+            "average_price" => $product->purchase_rate,
+            "min_price" => $product->purchase_rate,
+            "last_purchase_price" => $product->purchase_rate,
+            
+            // Add barcode from the product list if available
+            "barcode" => $productList ? $productList->barcode : null,
+        ];
+
         return response()->json([
-            'message' => 'Either barcode or product_id is required'
-        ], 422);
+            "message" => "Successful!!",
+            "data" => $data
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error in filterbyBarcode: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
+        return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
     }
-
-    // Build query
-    $query = ProductList::with(['product.measureUnit']);
-
-    if ($barcode) {
-        $query->where('barcode', $barcode);
-    } elseif ($productId) {
-        $query->where('product_id', $productId);
-    }
-
-    $productList = $query->first();
-
-    if (!$productList || !$productList->product) {
-        return response()->json([
-            'message' => 'Product details retrieved successfully',
-            'data' => ['products' => []]
-        ], 200);
-    }
-
-    $product = $productList->product;
-
-    $data = [
-        'products' => [
-            [
-                'products' => [
-                    [
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'product_code' => $productList->barcode,
-                        'original_price' => $product->purchase_rate ?? 0,
-                        'latest_price' => $product->retail_sales_price ?? 0,
-                        'min_price' => $product->purchase_rate ?? 0,
-                        'avg_price' => $product->purchase_rate ?? 0,
-                        'amount' => $product->retail_sales_price ?? 0,
-                        'is_vatable' => $product->is_vatable,
-                        'used_measure_units' => [
-                            [
-                                'id' => $productList->measureUnit->id ?? null,
-                                'name' => $productList->measureUnit->name ?? null,
-                                'quantity' => $productList->measureUnit->quantity ?? 0,
-                            ]
-                        ],
-                        'measure_unit_id' => $productList->measure_unit_id,
-                        'measure_unit_quantity' => $productList->measureUnit->quantity ?? 0,
-                        'purchased_quantity' => $productList->quantity ?? 0,
-                        'return_quantity' => 0,
-                        'sale_quantity' => 0,
-                        'sales_return_quantity' => 0,
-                        'available_quantity' => $productList->quantity ?? 0,
-                        'expiry_dates' => [],
-                        'field_values' => [],
-                        'sale_products' => [] // fill if needed
-                    ]
-                ]
-            ]
-        ]
-    ];
-
-    return response()->json([
-        'message' => 'Product details retrieved successfully',
-        'data' => $data
-    ]);
 }
+
 
 
 

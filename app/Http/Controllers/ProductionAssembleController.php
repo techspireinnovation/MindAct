@@ -314,111 +314,87 @@ public function getProductionSettingDetail(Request $request): JsonResponse
         $detailProductIds = collect($settingDetails)->pluck('product_id')->filter()->unique()->toArray();
         $allProductIds = array_unique(array_merge($detailProductIds, [$mainProductId]));
 
-        // Fetch product measure units
-        $productUnits = Product::whereIn('id', $allProductIds)->get(['id', 'measure_unit_id']);
-        $productUnitsMap = [];
-        foreach ($productUnits as $p) {
-            if ($p->measure_unit_id) {
-                $productUnitsMap[$p->id][] = $p->measure_unit_id;
-            }
-        }
+        // Fetch products
+        $products = Product::whereIn('id', $allProductIds)
+            ->get(['id', 'product_unique_id', 'name', 'measure_unit_id'])
+            ->keyBy('id');
 
-        // Fetch product list measure units
-        $productListUnits = ProductList::whereIn('product_id', $allProductIds)->get(['product_id', 'measure_unit_id']);
+        // Fetch product list for measure units + barcode
+        $productLists = ProductList::whereIn('product_id', $allProductIds)
+            ->get(['product_id', 'measure_unit_id', 'barcode']);
+
         $productListUnitsMap = [];
-        foreach ($productListUnits as $pl) {
+        $productBarcodesMap = [];
+        foreach ($productLists as $pl) {
             if ($pl->measure_unit_id) {
                 $productListUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
             }
+            if ($pl->barcode) {
+                $productBarcodesMap[$pl->product_id][] = $pl->barcode;
+            }
         }
 
-        // Map units for setting details
-        $detailUnitsMap = [];
-        foreach ($settingDetails as $detail) {
-            $productId = $detail->product_id;
-            $units = array_merge(
-                $productUnitsMap[$productId] ?? [],
-                $productListUnitsMap[$productId] ?? [],
-                $detail->measure_unit_id ? [$detail->measure_unit_id] : []
-            );
-            $detailUnitsMap[$productId] = array_unique($units);
+        // Collect measure unit IDs
+        $allMeasureUnitIds = [];
+        foreach ($products as $p) {
+            if ($p->measure_unit_id) $allMeasureUnitIds[] = $p->measure_unit_id;
+            if (isset($productListUnitsMap[$p->id])) $allMeasureUnitIds = array_merge($allMeasureUnitIds, $productListUnitsMap[$p->id]);
         }
+        $allMeasureUnitIds = array_unique($allMeasureUnitIds);
 
-        // Units for main product
-        $mainUnits = array_unique(array_merge(
-            $productUnitsMap[$mainProductId] ?? [],
-            $productListUnitsMap[$mainProductId] ?? [],
-            $item->measure_unit_id ? [$item->measure_unit_id] : []
-        ));
-
-        // All measure unit IDs
-        $allMeasureUnitIds = array_unique(array_merge(
-            $mainUnits,
-            ...array_values($detailUnitsMap)
-        ));
-
-        // Fetch measure unit details
+        // Fetch measure units
         $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
             ->get(['id', 'name', 'quantity'])
             ->keyBy('id');
 
-        // Map main used measure units
-        $mainUsedMeasureUnits = collect($mainUnits)
+        // Map main product measure units
+        $mainUnitIds = array_unique(array_merge(
+            $products[$mainProductId]->measure_unit_id ? [$products[$mainProductId]->measure_unit_id] : [],
+            $productListUnitsMap[$mainProductId] ?? []
+        ));
+
+        $mainUsedMeasureUnits = collect($mainUnitIds)
             ->filter(fn($id) => isset($measureUnits[$id]))
             ->map(fn($id) => [
                 'id' => $id,
                 'name' => $measureUnits[$id]->name,
-                'quantity' => $measureUnits[$id]->quantity,
-            ])
-            ->values()
-            ->toArray();
+                'quantity' => $measureUnits[$id]->quantity
+            ])->values()->toArray();
 
-        // Map used measure units for details
-        $detailUsedMeasureUnits = [];
-        foreach ($detailUnitsMap as $productId => $unitIds) {
-            $detailUsedMeasureUnits[$productId] = collect($unitIds)
+        // Enrich setting details with measure units, product_unique_id, and barcode
+        $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($products, $productListUnitsMap, $measureUnits, $productBarcodesMap) {
+            $product = $products[$detail->product_id] ?? null;
+            $unitIds = array_merge(
+                $product->measure_unit_id ? [$product->measure_unit_id] : [],
+                $productListUnitsMap[$detail->product_id] ?? []
+            );
+            $usedUnits = collect($unitIds)
                 ->filter(fn($id) => isset($measureUnits[$id]))
                 ->map(fn($id) => [
                     'id' => $id,
                     'name' => $measureUnits[$id]->name,
-                    'quantity' => $measureUnits[$id]->quantity,
-                ])
-                ->values()
-                ->toArray();
-        }
+                    'quantity' => $measureUnits[$id]->quantity
+                ])->values()->toArray();
 
-        // Enrich setting details with used measure units + product_unique_id
-        $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($detailUsedMeasureUnits) {
-            $product = Product::find($detail->product_id);
             return array_merge($detail->toArray(), [
-                'used_measure_units' => $detailUsedMeasureUnits[$detail->product_id] ?? [],
-                'product_unique_id' => $product->product_unique_id ?? null
+                'used_measure_units' => $usedUnits,
+                'product_unique_id' => $product->product_unique_id ?? null,
+                'barcode' => $productBarcodesMap[$detail->product_id] ?? []
             ]);
         });
 
-        // Fetch main product unique ID
-        $mainProduct = Product::find($mainProductId);
+        // Main product
+        $mainProduct = $products[$mainProductId] ?? null;
 
-        // Main measure unit details
-        $measureUnitDetails = null;
-        if ($item->measure_unit_id && isset($measureUnits[$item->measure_unit_id])) {
-            $measureUnit = $measureUnits[$item->measure_unit_id];
-            $measureUnitDetails = [
-                'id' => $measureUnit->id,
-                'name' => $measureUnit->name,
-                'quantity' => $measureUnit->quantity,
-            ];
-        }
-
-        // Prepare main data with product_unique_id immediately after product_id
         $mainData = [
             'id' => $item->id,
             'company_id' => $item->company_id,
             'date' => $item->date,
             'document_no' => $item->document_no,
-            'product_id' => $item->product_id,
-            'product_unique_id' => $mainProduct->product_unique_id ?? null, // <-- right after product_id
-            'product_name' => $item->product_name,
+            'product_id' => $mainProductId,
+            'product_unique_id' => $mainProduct->product_unique_id ?? null,
+            'product_name' => $mainProduct->name ?? $item->product_name,
+            'barcode' => $productBarcodesMap[$mainProductId] ?? [],
             'quantity' => $item->quantity,
             'measure_unit_id' => $item->measure_unit_id,
             'product_details' => $item->product_details ?? [],
@@ -426,13 +402,13 @@ public function getProductionSettingDetail(Request $request): JsonResponse
             'created_at' => $item->created_at,
             'updated_at' => $item->updated_at,
             'setting_detail' => $enrichedDetails,
-            'measure_unit' => $measureUnitDetails,
-            'used_measure_units' => $mainUsedMeasureUnits,
+            'measure_unit' => $mainUsedMeasureUnits[0] ?? null,
+            'used_measure_units' => $mainUsedMeasureUnits
         ];
 
         return response()->json([
             'message' => 'Production Settings fetched successfully.',
-            'data' => $mainData,
+            'data' => $mainData
         ], 200);
 
     } catch (ModelNotFoundException $e) {
@@ -446,6 +422,7 @@ public function getProductionSettingDetail(Request $request): JsonResponse
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
+
 
 
 
@@ -651,6 +628,8 @@ public function show($id): JsonResponse
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
+
+
 
 
 

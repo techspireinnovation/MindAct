@@ -520,45 +520,45 @@ class SalesReturnController extends Controller
 
 
 
-    public function listAvailableInvoiceNumbers(Request $request): JsonResponse
-    {
-        try {
-            // Validate company_id
-            $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id'
-            ]);
+   public function listAvailableInvoiceNumbers(Request $request): JsonResponse
+{
+    try {
+        // Validate company_id
+        $validator = Validator::make($request->all(), [
+            'company_id' => 'required|exists:companies,id'
+        ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-            $companyId = $request->input('company_id');
+        $companyId = $request->input('company_id');
 
-            // Fetch all active measure units for the company
-            $measureUnits = MeasureUnit::where('company_id', $companyId)
-                ->where('is_active', 1)
-                ->whereNull('deleted_at')
-                ->select(['id', 'name', 'quantity'])
-                ->get()
-                ->keyBy('id');
+        // Fetch all active measure units for the company
+        $measureUnits = MeasureUnit::where('company_id', $companyId)
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->select(['id', 'name', 'quantity'])
+            ->get()
+            ->keyBy('id');
 
-            // Get invoice numbers where at least one product has remaining quantity
-            $invoiceNumbers = Sale::where('sales.company_id', $companyId)
-                ->whereNotNull('sales.invoice_number')
-                ->where('sales.invoice_number', '!=', '')
-                ->whereHas('saleProducts', function ($query) use ($companyId, $measureUnits) {
-                    $query->leftJoin('measure_units as sale_mu', function ($join) use ($companyId) {
-                        $join->on('sale_products.measure_unit_id', '=', 'sale_mu.id')
-                            ->where('sale_mu.company_id', $companyId)
-                            ->where('sale_mu.is_active', 1)
-                            ->whereNull('sale_mu.deleted_at');
-                    })
-                        ->where('sale_products.company_id', $companyId)
-                        ->whereNull('sale_products.deleted_at')
-                        ->whereRaw('
+        // Get invoice numbers where at least one product has remaining quantity
+        $invoiceNumbers = Sale::where('sales.company_id', $companyId)
+            ->whereNotNull('sales.invoice_number')
+            ->where('sales.invoice_number', '!=', '')
+            ->whereHas('saleProducts', function ($query) use ($companyId, $measureUnits) {
+                $query->leftJoin('measure_units as sale_mu', function ($join) use ($companyId) {
+                    $join->on('sale_products.measure_unit_id', '=', 'sale_mu.id')
+                        ->where('sale_mu.company_id', $companyId)
+                        ->where('sale_mu.is_active', 1)
+                        ->whereNull('sale_mu.deleted_at');
+                })
+                    ->where('sale_products.company_id', $companyId)
+                    ->whereNull('sale_products.deleted_at')
+                    ->whereRaw('
                         (
                             (sale_products.quantity + COALESCE(sale_products.free_quantity, 0)) * COALESCE(sale_mu.quantity, 1)
                         ) - COALESCE((
@@ -575,44 +575,42 @@ class SalesReturnController extends Controller
                             AND srp.deleted_at IS NULL
                         ), 0) > 0.0001
                     ', [
-                            $companyId, // return_mu.company_id
-                            $companyId  // srp.company_id
-                        ]);
-                })
-                ->distinct()
-                ->pluck('sales.invoice_number')
-                ->toArray();
+                        $companyId, // return_mu.company_id
+                        $companyId  // srp.company_id
+                    ]);
+            })
+            ->distinct()
+            ->pluck('sales.invoice_number')
+            ->toArray();
 
-            // Log for debugging
-            Log::info('Available invoice numbers retrieved', [
-                'company_id' => $companyId,
-                'invoice_numbers' => $invoiceNumbers,
-                'measure_units_count' => count($measureUnits),
-            ]);
+        // Log for debugging
+        Log::info('Available invoice numbers retrieved', [
+            'company_id' => $companyId,
+            'invoice_numbers' => $invoiceNumbers,
+            'measure_units_count' => count($measureUnits),
+        ]);
 
-            if (empty($invoiceNumbers)) {
-                return response()->json(['error' => 'No sales with available products found'], 404);
-            }
+        // Always return success, even if empty
+        return response()->json([
+            'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
+            'data' => $invoiceNumbers
+        ], 200);
 
-            return response()->json([
-                'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
-                'data' => $invoiceNumbers
-            ], 200);
-        } catch (QueryException $e) {
-            Log::error('Database error in listAvailableInvoiceNumbers', [
-                'error' => $e->getMessage(),
-                'sql' => $e->getSql(),
-                'bindings' => $e->getBindings(),
-            ]);
-            return response()->json(['error' => 'A database error occurred'], 500);
-        } catch (\Exception $e) {
-            Log::error('Unexpected error in listAvailableInvoiceNumbers', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
+    } catch (QueryException $e) {
+        Log::error('Database error in listAvailableInvoiceNumbers', [
+            'error' => $e->getMessage(),
+            'sql' => $e->getSql(),
+            'bindings' => $e->getBindings(),
+        ]);
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        Log::error('Unexpected error in listAvailableInvoiceNumbers', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
 
     public function getSaleByRefNumber(Request $request): JsonResponse
     {

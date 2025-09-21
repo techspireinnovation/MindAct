@@ -2700,9 +2700,7 @@ public function filterByBarcode(Request $request): JsonResponse
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $purchaseProducts = null;
-
-        // Search by barcode
+        // Get product
         if ($request->filled('barcode')) {
             $productList = ProductList::where('barcode', $request->barcode)->first();
             if (!$productList) {
@@ -2711,55 +2709,86 @@ public function filterByBarcode(Request $request): JsonResponse
                     'searched_value' => $request->barcode
                 ], 404);
             }
-            $purchaseProducts = PurchaseProduct::with(['purchase'])
-                ->where('product_id', $productList->product_id)
-                ->get();
-        } else { // Search by product_unique_id
-            $product = Product::where('product_unique_id', $request->product_unique_id)->first();
+            $product = Product::with(['measureUnit', 'productLists', 'productFieldValues'])->find($productList->product_id);
+        } else {
+            $product = Product::with(['measureUnit', 'productLists', 'productFieldValues'])
+                ->where('product_unique_id', $request->product_unique_id)
+                ->first();
             if (!$product) {
                 return response()->json([
                     'error' => 'No product found for this product_unique_id',
                     'searched_value' => $request->product_unique_id
                 ], 404);
             }
-            $purchaseProducts = PurchaseProduct::with(['purchase'])
-                ->where('product_id', $product->id)
-                ->get();
         }
 
-        if ($purchaseProducts->isEmpty()) {
-            return response()->json([
-                'error' => 'No purchase record found',
-                'searched_value' => $request->filled('barcode') ? $request->barcode : $request->product_unique_id
-            ], 404);
-        }
+        // Purchase products
+        $purchaseProducts = PurchaseProduct::with('purchase')
+            ->where('product_id', $product->id)
+            ->get();
 
-        // Transform data to return similar format
-        $data = $purchaseProducts->map(function ($pp) {
-            return [
-                "id" => $pp->id,
+        // Transform to match JSON format
+        $data = [
+            "product_id" => $product->id,
+            "product_name" => $product->name,
+            "product_code" => $product->product_code,
+            "is_vatable" => (bool)$product->is_vatable,
+            "measure_unit_id" => $product->measure_unit_id,
+            "measure_unit_name" => $product->measureUnit?->name,
+            "measure_unit_quantity" => $product->measureUnit?->quantity ?? 1,
+            "retail_sale_price" => $product->retail_sales_price,
+            "avg_price" => 0,
+            "min_price" => 0,
+            "latest_price" => 0,
+            "measure_units_used" => $product->productLists->map(fn($pl) => [
+                "id" => $pl->measure_unit_id,
+                "name" => $pl->measureUnit?->name,
+                "measure_unit_quantity" => $pl->measureUnit?->quantity ?? 1
+            ]),
+            "avg_sales_price" => null,
+            "min_sales_price" => null,
+            "latest_sales_price" => null,
+            "purchased_quantity" => $purchaseProducts->sum('quantity'),
+            "return_quantity" => 0,
+            "sale_quantity" => 0,
+            "sales_return_quantity" => 0,
+            "available_quantity" => $purchaseProducts->sum('quantity'),
+            "expiry_dates" => [],
+            "field_values" => $product->productFieldValues->map(fn($fv) => [
+                "purchase_product_id" => $fv->purchase_product_id,
+                "product_field_id" => $fv->product_field_id,
+                "name" => $fv->name,
+                "value" => $fv->value,
+                "quantity_index" => $fv->quantity_index
+            ]),
+            "purchase_products" => $purchaseProducts->map(fn($pp) => [
+                "purchase_product_id" => $pp->id,
                 "purchase_id" => $pp->purchase_id,
+                "purchase_bill_number" => $pp->purchase->purchase_bill_number ?? null,
+                "invoice_date" => $pp->purchase->invoice_date ?? null,
                 "product_id" => $pp->product_id,
-                "product_code" => $pp->product_code,
                 "product_name" => $pp->product_name,
+                "product_code" => $pp->product_code,
+                "mfd" => $pp->mfd ?? null,
                 "quantity" => $pp->quantity,
                 "free_quantity" => $pp->free_quantity,
                 "price" => $pp->price,
-                "discount_percent" => $pp->discount_percent,
-                "discount_amount" => $pp->discount_amount,
-                "amount" => $pp->amount,
                 "is_vatable" => $pp->is_vatable,
                 "measure_unit_id" => $pp->measure_unit_id,
+                "measure_unit_name" => $pp->measureUnit?->name,
+                "measure_unit_quantity" => $pp->measureUnit?->quantity ?? 1,
                 "expiry_date" => $pp->expiry_date,
-                "created_at" => $pp->created_at,
-                "updated_at" => $pp->updated_at,
-                "deleted_at" => $pp->deleted_at,
-            ];
-        });
+                "return_quantity" => 0,
+                "sale_quantity" => 0,
+                "sales_return_quantity" => 0,
+                "available_quantity" => $pp->quantity,
+                "purchased_quantity" => $pp->quantity,
+            ])
+        ];
 
         return response()->json([
-            "message" => "Successful!!",
-            "data" => $data
+            "message" => "Product details retrieved",
+            "data" => [$data]
         ]);
 
     } catch (\Exception $e) {
@@ -2767,6 +2796,7 @@ public function filterByBarcode(Request $request): JsonResponse
         return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
     }
 }
+
 
 
 

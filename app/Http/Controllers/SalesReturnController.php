@@ -5461,11 +5461,6 @@ class SalesReturnController extends Controller
     }
 
 public function filterByBarcode(Request $request): JsonResponse
-
-
-
-
-
 {
     try {
         // Validate request: either barcode or product_unique_id must be provided
@@ -5491,8 +5486,6 @@ public function filterByBarcode(Request $request): JsonResponse
 
         } else {
             $productUniqueId = trim($request->product_unique_id);
-
-            // Ensure correct type comparison: string or integer depending on your DB
             $product = \App\Models\Product::where('product_unique_id', $productUniqueId)->first();
 
             if (!$product) {
@@ -5517,9 +5510,71 @@ public function filterByBarcode(Request $request): JsonResponse
             ], 404);
         }
 
+        // Transform data to match your JSON format
+        $productData = [
+            'products' => [
+                [
+                    'product_id' => $productId,
+                    'product_name' => $product->name ?? $productList->product->name,
+                    'product_code' => $product->product_unique_id ?? null,
+                    'original_price' => $product->purchase_rate ?? 0,
+                    'latest_price' => $sales->first()->saleProducts->first()->price ?? 0,
+                    'min_price' => $sales->min(fn($sale) => $sale->saleProducts->first()->price) ?? 0,
+                    'avg_price' => $sales->avg(fn($sale) => $sale->saleProducts->first()->price) ?? 0,
+                    'amount' => $sales->sum(fn($sale) => $sale->saleProducts->first()->price) ?? 0,
+                    'is_vatable' => $product->is_vatable ?? true,
+                    'used_measure_units' => $product->measureUnit ? [
+                        [
+                            'id' => $product->measureUnit->id,
+                            'name' => $product->measureUnit->name,
+                            'quantity' => $product->measureUnit->quantity
+                        ]
+                    ] : [],
+                    'measure_unit_id' => $product->measure_unit_id ?? null,
+                    'measure_unit_quantity' => $product->measureUnit->quantity ?? null,
+                    'purchased_quantity' => 0,
+                    'return_quantity' => 0,
+                    'sale_quantity' => $sales->sum(fn($sale) => $sale->saleProducts->sum('quantity')) ?? 0,
+                    'sales_return_quantity' => 0,
+                    'available_quantity' => $sales->sum(fn($sale) => $sale->saleProducts->sum('quantity')) ?? 0,
+                    'expiry_dates' => [],
+                    'field_values' => $sales->flatMap(fn($sale) => $sale->saleProducts->map(fn($sp) => [
+                        'sale_product_id' => $sp->id,
+                        'purchase_product_id' => $sp->purchase_product_id ?? null,
+                        'product_field_id' => $sp->product_field_id ?? null,
+                        'name' => $sp->name ?? null,
+                        'value' => $sp->value ?? null,
+                        'quantity_index' => $sp->quantity_index ?? 0
+                    ]))->toArray(),
+                    'sale_products' => $sales->flatMap(fn($sale) => $sale->saleProducts->map(fn($sp) => [
+                        'sale_product_id' => $sp->id,
+                        'sale_id' => $sale->id,
+                        'invoice_number' => $sale->invoice_number,
+                        'invoice_date' => $sale->invoice_date,
+                        'product_id' => $sp->product_id,
+                        'product_name' => $sp->product_name,
+                        'product_code' => $sp->product_code,
+                        'quantity' => $sp->quantity,
+                        'free_quantity' => $sp->free_quantity ?? 0,
+                        'price' => $sp->price,
+                        'is_vatable' => $sp->is_vatable,
+                        'measure_unit_id' => $sp->measure_unit_id,
+                        'measure_unit_name' => $sp->measureUnit->name ?? null,
+                        'measure_unit_quantity' => $sp->measureUnit->quantity ?? null,
+                        'available_quantity' => $sp->quantity,
+                        'return_quantity' => 0,
+                        'sale_quantity' => $sp->quantity,
+                        'sales_return_quantity' => 0,
+                        'expiry_date' => $sp->expiry_date ?? null,
+                        'purchase_product_id' => $sp->purchase_product_id ?? null
+                    ]))->toArray()
+                ]
+            ]
+        ];
+
         return response()->json([
-            'message' => 'Sales found for this product',
-            'data' => $sales
+            'message' => 'Product details retrieved successfully',
+            'data' => $productData
         ]);
 
     } catch (\Exception $e) {
@@ -5527,6 +5582,7 @@ public function filterByBarcode(Request $request): JsonResponse
         return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
     }
 }
+
 
 
 

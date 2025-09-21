@@ -5467,15 +5467,21 @@ public function filterByBarcode(Request $request): JsonResponse
         $validator = Validator::make($request->all(), [
             'barcode' => 'required_without:product_unique_id',
             'product_unique_id' => 'required_without:barcode',
+            'company_id' => 'required|integer|exists:companies,id',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        $companyId = $request->company_id;
+
         // Determine product_id
         if ($request->filled('barcode')) {
-            $productList = \App\Models\ProductList::where('barcode', $request->barcode)->first();
+            $productList = \App\Models\ProductList::where('barcode', $request->barcode)
+                ->where('company_id', $companyId)
+                ->first();
+
             if (!$productList) {
                 return response()->json([
                     'error' => 'No product found for this barcode',
@@ -5483,10 +5489,13 @@ public function filterByBarcode(Request $request): JsonResponse
                 ], 404);
             }
             $productId = $productList->product_id;
+            $product = $productList->product;
 
         } else {
             $productUniqueId = trim($request->product_unique_id);
-            $product = \App\Models\Product::where('product_unique_id', $productUniqueId)->first();
+            $product = \App\Models\Product::where('product_unique_id', $productUniqueId)
+                ->where('company_id', $companyId)
+                ->first();
 
             if (!$product) {
                 return response()->json([
@@ -5497,88 +5506,107 @@ public function filterByBarcode(Request $request): JsonResponse
             $productId = $product->id;
         }
 
-        // Get sales that include this product
-        $sales = \App\Models\Sale::whereHas('saleProducts', function ($query) use ($productId) {
-            $query->where('product_id', $productId);
-        })->with(['saleProducts' => function ($query) use ($productId) {
-            $query->where('product_id', $productId);
-        }])->get();
+        // Fetch all sales containing this product
+        $sales = \App\Models\Sale::where('company_id', $companyId)
+            ->whereHas('saleProducts', function ($q) use ($productId) {
+                $q->where('product_id', $productId);
+            })
+            ->with(['saleProducts' => function ($q) use ($productId) {
+                $q->where('product_id', $productId)
+                    ->with(['measureUnit', 'fieldValues']);
+            }])
+            ->get();
 
         if ($sales->isEmpty()) {
             return response()->json([
-                'message' => 'No sale found for this product'
+                'message' => 'No sale found for this product',
+                'data' => []
             ], 404);
         }
 
-        // Transform data to match your JSON format
+        // Collect measure units (used + primary)
+        $productMeasureUnitIds = \App\Models\ProductList::where('product_id', $productId)
+            ->where('company_id', $companyId)
+            ->pluck('measure_unit_id')
+            ->toArray();
+
+        $productMeasureUnitIds[] = $product->measure_unit_id;
+
+        $usedMeasureUnits = \App\Models\MeasureUnit::whereIn('id', $productMeasureUnitIds)
+            ->where('company_id', $companyId)
+            ->get(['id', 'name', 'quantity']);
+
+        // Prices
+        $prices = $sales->flatMap(fn($s) => $s->saleProducts->pluck('price'));
+        $latestPrice = $prices->last();
+        $minPrice = $prices->min();
+        $avgPrice = $prices->avg();
+
+        // Build product JSON
         $productData = [
-            'products' => [
-                [
-                    'product_id' => $productId,
-                    'product_name' => $product->name ?? $productList->product->name,
-                    'product_code' => $product->product_unique_id ?? null,
-                    'original_price' => $product->purchase_rate ?? 0,
-                    'latest_price' => $sales->first()->saleProducts->first()->price ?? 0,
-                    'min_price' => $sales->min(fn($sale) => $sale->saleProducts->first()->price) ?? 0,
-                    'avg_price' => $sales->avg(fn($sale) => $sale->saleProducts->first()->price) ?? 0,
-                    'amount' => $sales->sum(fn($sale) => $sale->saleProducts->first()->price) ?? 0,
-                    'is_vatable' => $product->is_vatable ?? true,
-                    'used_measure_units' => $product->measureUnit ? [
-                        [
-                            'id' => $product->measureUnit->id,
-                            'name' => $product->measureUnit->name,
-                            'quantity' => $product->measureUnit->quantity
-                        ]
-                    ] : [],
-                    'measure_unit_id' => $product->measure_unit_id ?? null,
-                    'measure_unit_quantity' => $product->measureUnit->quantity ?? null,
-                    'purchased_quantity' => 0,
-                    'return_quantity' => 0,
-                    'sale_quantity' => $sales->sum(fn($sale) => $sale->saleProducts->sum('quantity')) ?? 0,
-                    'sales_return_quantity' => 0,
-                    'available_quantity' => $sales->sum(fn($sale) => $sale->saleProducts->sum('quantity')) ?? 0,
-                    'expiry_dates' => [],
-                    'field_values' => $sales->flatMap(fn($sale) => $sale->saleProducts->map(fn($sp) => [
-                        'sale_product_id' => $sp->id,
-                        'purchase_product_id' => $sp->purchase_product_id ?? null,
-                        'product_field_id' => $sp->product_field_id ?? null,
-                        'name' => $sp->name ?? null,
-                        'value' => $sp->value ?? null,
-                        'quantity_index' => $sp->quantity_index ?? 0
-                    ]))->toArray(),
-                    'sale_products' => $sales->flatMap(fn($sale) => $sale->saleProducts->map(fn($sp) => [
-                        'sale_product_id' => $sp->id,
-                        'sale_id' => $sale->id,
-                        'invoice_number' => $sale->invoice_number,
-                        'invoice_date' => $sale->invoice_date,
-                        'product_id' => $sp->product_id,
-                        'product_name' => $sp->product_name,
-                        'product_code' => $sp->product_code,
-                        'quantity' => $sp->quantity,
-                        'free_quantity' => $sp->free_quantity ?? 0,
-                        'price' => $sp->price,
-                        'is_vatable' => $sp->is_vatable,
-                        'measure_unit_id' => $sp->measure_unit_id,
-                        'measure_unit_name' => $sp->measureUnit->name ?? null,
-                        'measure_unit_quantity' => $sp->measureUnit->quantity ?? null,
-                        'available_quantity' => $sp->quantity,
-                        'return_quantity' => 0,
-                        'sale_quantity' => $sp->quantity,
-                        'sales_return_quantity' => 0,
-                        'expiry_date' => $sp->expiry_date ?? null,
-                        'purchase_product_id' => $sp->purchase_product_id ?? null
-                    ]))->toArray()
-                ]
-            ]
+            'product_id' => $product->id,
+            'product_name' => $product->name,
+            'product_code' => $product->product_unique_id,
+            'original_price' => $product->purchase_rate,
+            'latest_price' => $latestPrice,
+            'min_price' => $minPrice,
+            'avg_price' => $avgPrice,
+            'amount' => $prices->sum(),
+            'is_vatable' => (bool) $product->is_vatable,
+            'used_measure_units' => $usedMeasureUnits,
+            'measure_unit_id' => $product->measure_unit_id,
+            'measure_unit_quantity' => $product->measureUnit->quantity ?? 1,
+            'purchased_quantity' => 0,
+            'return_quantity' => 0,
+            'sale_quantity' => $sales->sum(fn($s) => $s->saleProducts->sum('quantity')),
+            'sales_return_quantity' => 0,
+            'available_quantity' => $sales->sum(fn($s) => $s->saleProducts->sum('quantity')),
+            'expiry_dates' => [],
+            'field_values' => $sales->flatMap(fn($s) => $s->saleProducts->flatMap(fn($sp) => 
+                $sp->fieldValues->map(fn($fv) => [
+                    'sale_product_id' => $sp->id,
+                    'purchase_product_id' => $sp->purchase_product_id,
+                    'product_field_id' => $fv->product_field_id,
+                    'name' => $fv->name,
+                    'value' => $fv->value,
+                    'quantity_index' => $fv->quantity_index
+                ])
+            ))->toArray(),
+            'sale_products' => $sales->flatMap(fn($s) => $s->saleProducts->map(fn($sp) => [
+                'sale_product_id' => $sp->id,
+                'sale_id' => $s->id,
+                'invoice_number' => $s->invoice_number,
+                'invoice_date' => $s->invoice_date,
+                'product_id' => $sp->product_id,
+                'product_name' => $sp->product_name,
+                'product_code' => $sp->product_code,
+                'quantity' => $sp->quantity,
+                'free_quantity' => $sp->free_quantity ?? 0,
+                'price' => $sp->price,
+                'is_vatable' => $sp->is_vatable,
+                'measure_unit_id' => $sp->measure_unit_id,
+                'measure_unit_name' => $sp->measureUnit->name ?? null,
+                'measure_unit_quantity' => $sp->measureUnit->quantity ?? 1,
+                'available_quantity' => $sp->quantity,
+                'return_quantity' => 0,
+                'sale_quantity' => $sp->quantity,
+                'sales_return_quantity' => 0,
+                'expiry_date' => $sp->expiry_date,
+                'purchase_product_id' => $sp->purchase_product_id
+            ]))->toArray(),
         ];
 
         return response()->json([
             'message' => 'Product details retrieved successfully',
-            'data' => $productData
+            'data' => [
+                [
+                    'products' => [$productData]
+                ]
+            ]
         ]);
 
     } catch (\Exception $e) {
-        \Log::error('Error in filterByBarcodeOrUniqueId: ' . $e->getMessage());
+        \Log::error('Error in filterByBarcode (sales return): ' . $e->getMessage());
         return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
     }
 }

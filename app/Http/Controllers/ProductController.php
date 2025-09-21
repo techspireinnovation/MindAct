@@ -533,6 +533,7 @@ class ProductController extends Controller
                                 ->whereNull('deleted_at');
                         }),
                 ],
+                'minimum_stock' => 'nullable|integer',
                 'company_id' => 'integer|exists:companies,id',
                 'category_id' => 'integer|nullable|',
                 'sub_category_id' => 'integer|nullable|',
@@ -715,6 +716,7 @@ class ProductController extends Controller
 
                 }),
             ],
+             'minimum_stock' => 'nullable|integer',
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',
@@ -988,5 +990,42 @@ class ProductController extends Controller
     {
         return is_numeric($value) ? (double) $value : null;
     }
+
+public function activeProducts(Request $request): JsonResponse
+{
+    try {
+        $products = Product::where('company_id', $request->company_id)
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->select('id', 'name')
+            ->get()
+            ->map(fn($product) => [
+                'id' => $product->id,
+                'name' => $product->name,
+            ])
+            ->values()
+            ->toArray();
+
+        if (empty($products)) {
+            return response()->json([
+                "message" => "No active products found !!",
+                "data" => []
+            ], 200);
+        }
+
+        return response()->json([
+            "message" => "Active products received !!",
+            "data" => $products
+        ], 200);
+
+    } catch (QueryException $e) {
+        return response()->json(["error" => "Database query error occurred !!"], 500);
+    } catch (\Exception $e) {
+        return response()->json(["error" => "Unexpected error occurred !!"], 500);
+    }
+}
+
+
+
 
 }

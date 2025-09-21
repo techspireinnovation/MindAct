@@ -195,4 +195,41 @@ class ProductSubCategoryController extends Controller
         }
     }
 
+ public function activeSubCategoryList(Request $request): JsonResponse
+{
+    try {
+        $companyId = $request->company_id;
+
+        if (!$companyId) {
+            return response()->json(["error" => "No Associated company Found !!"], 404);
+        }
+
+        $subCategories = ProductSubCategory::where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->where('is_active', true) // ✅ only active subcategories
+            ->get(['id', 'name', 'category_id']) // ✅ include category_id
+            ->map(fn($subCategory) => [
+                'id' => $subCategory->id,
+                'name' => $subCategory->name,
+                'category_id' => $subCategory->category_id // ✅ add to response
+            ])
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            "message" => "Active Sub Category List Received !!",
+            "data" => $subCategories
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json(["error" => "Sub Category not Found !!"], 404);
+    } catch (QueryException $e) {
+        return response()->json(["error" => "Database error occurred !!"], 500);
+    } catch (\Exception $e) {
+        return response()->json(["error" => "An unexpected error occurred !!"], 500);
+    }
+}
+
+
+
 }

@@ -28,6 +28,10 @@ class NozzleController extends Controller
 
     }
 
+    
+
+
+
     public function store(Request $request): JsonResponse
     {
         try {
@@ -199,4 +203,36 @@ class NozzleController extends Controller
             return response()->json(['error' => 'An unexpected error occurred', 'exception' => $e->getMessage()], 500);
         }
     }
+    public function activeNozzles(): JsonResponse
+{
+    try {
+        $nozzles = Nozzle::where('is_active', 1)   // ✅ Only active nozzles
+            ->whereNull('deleted_at')
+            ->get(['id', 'title as name', 'fuel_type', 'nozzle_number', 'is_active']);
+
+        if ($nozzles->isEmpty()) {
+            return response()->json([
+                'message' => 'No active nozzles found',
+                'data' => []
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Active nozzles retrieved successfully!',
+            'data' => $nozzles
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Exception in activeNozzles: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json(['error' => 'An unexpected error occurred!'], 500);
+    }
+}
+
+
+
+
+
+
+
+
 }

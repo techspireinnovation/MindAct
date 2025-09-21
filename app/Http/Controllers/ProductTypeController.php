@@ -194,4 +194,41 @@ class ProductTypeController extends Controller
         }
     }
 
+ public function activeProductTypeList(Request $request): JsonResponse
+{
+    try {
+        $types = ProductType::where('company_id', $request->company_id)
+            ->where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->get(['id', 'name', 'is_primary']) // ✅ fetch is_primary too
+            ->map(fn($type) => [
+                'id' => $type->id,
+                'name' => $type->name,
+                'is_primary' => $type->is_primary, // ✅ include in response
+            ])
+            ->values()
+            ->toArray();
+
+        if (empty($types)) {
+            return response()->json([
+                "message" => "No active product types found !!",
+                "data" => []
+            ], 200);
+        }
+
+        return response()->json([
+            "message" => "Active product types received !!",
+            "data" => $types
+        ], 200);
+
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(["error" => "Database error occurred !!"], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(["error" => "An unexpected error occurred !!"], 500);
+    }
+}
+
+
 }

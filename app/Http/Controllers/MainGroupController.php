@@ -131,7 +131,30 @@ public function draggable(Request $request): JsonResponse
 
 
 
-    public function subGroupOfMainGroup(Request $request): JsonResponse
+//     public function subGroupOfMainGroup(Request $request): JsonResponse
+// {
+//     try {
+//         $mainGroup = $request->main_group_id;
+
+//         if (!$mainGroup) {
+//             return response()->json(['error' => 'Main Group Id not Found!!'], 404);
+//         }
+
+//         $subGroupList = SubGroup::whereNull('deleted_at')
+//             ->where('company_id', $request->company_id)
+//             ->where('main_group_id', $mainGroup)
+//             ->get(['id', 'name', 'ranking_for_trial']);
+
+//         return response()->json($subGroupList);
+//     } catch (\Exception $e) {
+//         return response()->json([
+//             'error' => 'Something went wrong!',
+//             'message' => $e->getMessage()
+//         ], 500);
+//     }
+// }
+
+public function subGroupOfMainGroup(Request $request): JsonResponse  ////
 {
     try {
         $mainGroup = $request->main_group_id;
@@ -140,10 +163,16 @@ public function draggable(Request $request): JsonResponse
             return response()->json(['error' => 'Main Group Id not Found!!'], 404);
         }
 
+        // Fetch all subgroups of this main group
         $subGroupList = SubGroup::whereNull('deleted_at')
             ->where('company_id', $request->company_id)
             ->where('main_group_id', $mainGroup)
             ->get(['id', 'name', 'ranking_for_trial']);
+
+        // If only one subgroup, return empty list
+        if ($subGroupList->count() <= 1) {
+            return response()->json([]);
+        }
 
         return response()->json($subGroupList);
     } catch (\Exception $e) {
@@ -153,6 +182,7 @@ public function draggable(Request $request): JsonResponse
         ], 500);
     }
 }
+
 
 
     public function index(Request $request): JsonResponse

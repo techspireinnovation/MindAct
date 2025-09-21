@@ -38,4 +38,18 @@ class AccountHead extends Model
     {
         return $this->belongsTo(AccountGroup::class, 'account_group_id');
     }
+    public function voucherSummaries()
+    {
+        return $this->hasMany(VoucherSummary::class, 'account_head_id');
+
+    }
+
+    public function voucherSummaryDetails()
+    {
+        return $this->hasMany(VoucherSummaryDetail::class, 'account_head_id');
+
+    }
+    public function journalVoucherTransactions(){
+        return $this->hasMany(JournalVoucherTransaction::class,'account_head_id');
+    }
 }

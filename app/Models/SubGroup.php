@@ -8,6 +8,8 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
 class SubGroup extends Model
 {
     use softDeletes, HasFactory;
@@ -39,4 +41,16 @@ class SubGroup extends Model
         return $this->belongsTo(MainGroup::class, 'main_group_id');
 
     }
+
+
+
+    public function accountGroups(): HasMany
+    {
+        return $this->hasMany(AccountGroup::class, 'sub_group_id');
+    }
+    public function journalVoucherTransactions(): HasMany
+    {
+        return $this->hasMany(JournalVoucherTransaction::class, 'sub_group_id');
+    }
+
 }

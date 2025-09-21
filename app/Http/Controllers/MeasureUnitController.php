@@ -183,63 +183,104 @@ class MeasureUnitController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = MeasureUnit::findOrFail($id);
+            $unit = MeasureUnit::findOrFail($id);
 
-            $products = Product::where('measure_unit_id', $item->id)->get();
-            $productLists = ProductList::where('measure_unit_id', $item->id)->get();
+            $usedIn = [];
 
-            if ($products->isNotEmpty() || $productLists->isNotEmpty()) {
-                return response()->json(['error' => 'Measure Unit cannot be deleted !!'], 200);
-            } else {
-                $item->delete();
+            if ($unit->products()->exists()) {
+                $usedIn[] = 'products';
+            }
+            if ($unit->productLists()->exists()) {
+                $usedIn[] = 'product lists';
+            }
+            if ($unit->productAssembleDetails()->exists()) {
+                $usedIn[] = 'production assemble details';
+            }
+            if ($unit->productionSettings()->exists()) {
+                $usedIn[] = 'production settings';
+            }
+            if ($unit->purchaseProducts()->exists()) {
+                $usedIn[] = 'purchase products';
+            }
+            if ($unit->saleProducts()->exists()) {
+                $usedIn[] = 'sale products';
             }
 
-            return response()->json(['message' => 'Unit of Measurement deleted!!']);
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Measure Unit cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $unit->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Measure Unit deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Item not found!!'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Measure Unit not found!'
+            ], 404);
+
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Measure Unit.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Measure Unit.'
+            ], 500);
         }
     }
+
 
 
     public function activeUnitList(Request $request): JsonResponse
-{
-    try {
-        $units = MeasureUnit::where('company_id', $request->company_id)
-            ->where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name', 'symbol', 'quantity']); // ✅ include symbol & quantity
+    {
+        try {
+            $units = MeasureUnit::where('company_id', $request->company_id)
+                ->where('is_active', 1)
+                ->whereNull('deleted_at')
+                ->get(['id', 'name', 'symbol', 'quantity']); // ✅ include symbol & quantity
 
-        if ($units->isEmpty()) {
+            if ($units->isEmpty()) {
+                return response()->json([
+                    "message" => "No active measure units found !!"
+                ], 404);
+            }
+
+            // Map response to keep it clean
+            $units = $units->map(fn($unit) => [
+                'id' => $unit->id,
+                'name' => $unit->name,
+                'symbol' => $unit->symbol,
+                'quantity' => $unit->quantity,
+            ])->values()->toArray();
+
             return response()->json([
-                "message" => "No active measure units found !!"
-            ], 404);
+                "message" => "Active measure units received !!",
+                "data" => $units
+            ], 200);
+
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
-
-        // Map response to keep it clean
-        $units = $units->map(fn($unit) => [
-            'id' => $unit->id,
-            'name' => $unit->name,
-            'symbol' => $unit->symbol,
-            'quantity' => $unit->quantity,
-        ])->values()->toArray();
-
-        return response()->json([
-            "message" => "Active measure units received !!",
-            "data" => $units
-        ], 200);
-
-    } catch (QueryException $e) {
-        \Log::error($e);
-        return response()->json(["error" => "Database error occurred !!"], 500);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
-}
 
 
 }

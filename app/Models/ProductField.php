@@ -33,4 +33,19 @@ class ProductField extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+  
+
+    public function productFieldValues()
+    {
+        return $this->hasMany(ProductFieldValue::class, 'product_field_id');
+    }
+    public function purchaseProductFieldValues()
+    {
+        return $this->hasMany(PurchaseProductFieldValue::class, 'product_field_id');
+    }
+    public function salesProductFieldValues()
+    {
+        return $this->hasMany(SalesProductFieldValue::class, 'product_field_id');
+    }
 }

@@ -17,7 +17,7 @@ class ProductCategory extends Model
         'is_primary' => 'boolean'
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'is_active',
@@ -32,4 +32,16 @@ class ProductCategory extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'category_id');
+    }
+    public function productSubCategory()
+    {
+        return $this->hasMany(ProductSubCategory::class, 'category_id');
+    }
+
+
 }

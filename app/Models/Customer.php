@@ -57,5 +57,23 @@ class Customer extends Model
     {
         return $this->hasMany(PurchaseReturn::class, 'customer_id', 'id');
     }
+    public function purchasesUse()
+    {
+        return $this->hasMany(Purchase::class, 'customer_id');
+    }
+
+    public function salesUse()
+    {
+        return $this->hasMany(Sale::class, 'customer_id');
+    }
+    public function purchaseProductsUse()
+    {
+        return $this->hasMany(PurchaseProduct::class, 'customer_id');
+    }
+
+    public function paymentVoucherDetails()
+    {
+        return $this->hasMany(PaymentVoucherDetail::class, 'customer_id');
+    }
 
 }

@@ -76,7 +76,7 @@ class ProductController extends Controller
             $products = Product::query()
                 ->where('company_id', $companyId)
                 ->where('product_type_id', $type->id)
-                ->whereNotIn('id', $existingProductIds) 
+                ->whereNotIn('id', $existingProductIds)
                 ->select(['id', 'name'])
                 ->get()
                 ->makeHidden('primary_measure_unit');
@@ -716,7 +716,7 @@ class ProductController extends Controller
 
                 }),
             ],
-             'minimum_stock' => 'nullable|integer',
+            'minimum_stock' => 'nullable|integer',
             'sub_category_id' => 'integer|nullable',
             'brand_id' => 'integer|nullable',
             'measure_unit_id' => 'integer|exists:measure_units,id',
@@ -853,33 +853,76 @@ class ProductController extends Controller
         }
     }
 
+
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Product::findOrFail($id);
+            $product = Product::findOrFail($id);
 
-            $hasPurchases = DB::table('purchase_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
-            $hasSales = DB::table('sale_products')->where('product_id', $id)->whereNull('deleted_at')->exists();
+            $usedIn = [];
 
-            if ($hasPurchases || $hasSales) {
-                return response()->json([
-                    'error' => 'Cannot delete product because it is associated with purchases or sales.'
-                ], 422);
-
+            if ($product->salesProductFieldValueUse()->exists()) {
+                $usedIn[] = 'sales_product_field_values';
             }
-            $item->delete();
 
-            return response()->json(['message' => 'Product deleted!!']);
+            if ($product->saleProductsUse()->exists()) {
+                $usedIn[] = 'sale_products';
+            }
+
+            if ($product->purchaseProductsUse()->exists()) {
+                $usedIn[] = 'purchase_products';
+            }
+
+            if ($product->productListsUse()->exists()) {
+                $usedIn[] = 'product_lists';
+            }
+
+            if ($product->productionSettingsUse()->exists()) {
+                $usedIn[] = 'production_settings';
+            }
+
+            if ($product->productFieldValuesUse()->exists()) {
+                $usedIn[] = 'product_field_values';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Product cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $product->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product deleted successfully!'
+            ]);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Product not found!'
+            ], 404);
+
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the product.'
+            ], 500);
+
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the product.'
+            ], 500);
         }
     }
+
 
     public function print(): JsonResponse
     {
@@ -991,39 +1034,39 @@ class ProductController extends Controller
         return is_numeric($value) ? (double) $value : null;
     }
 
-public function activeProducts(Request $request): JsonResponse
-{
-    try {
-        $products = Product::where('company_id', $request->company_id)
-            ->where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->select('id', 'name')
-            ->get()
-            ->map(fn($product) => [
-                'id' => $product->id,
-                'name' => $product->name,
-            ])
-            ->values()
-            ->toArray();
+    public function activeProducts(Request $request): JsonResponse
+    {
+        try {
+            $products = Product::where('company_id', $request->company_id)
+                ->where('is_active', 1)
+                ->whereNull('deleted_at')
+                ->select('id', 'name')
+                ->get()
+                ->map(fn($product) => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                ])
+                ->values()
+                ->toArray();
 
-        if (empty($products)) {
+            if (empty($products)) {
+                return response()->json([
+                    "message" => "No active products found !!",
+                    "data" => []
+                ], 200);
+            }
+
             return response()->json([
-                "message" => "No active products found !!",
-                "data" => []
+                "message" => "Active products received !!",
+                "data" => $products
             ], 200);
+
+        } catch (QueryException $e) {
+            return response()->json(["error" => "Database query error occurred !!"], 500);
+        } catch (\Exception $e) {
+            return response()->json(["error" => "Unexpected error occurred !!"], 500);
         }
-
-        return response()->json([
-            "message" => "Active products received !!",
-            "data" => $products
-        ], 200);
-
-    } catch (QueryException $e) {
-        return response()->json(["error" => "Database query error occurred !!"], 500);
-    } catch (\Exception $e) {
-        return response()->json(["error" => "Unexpected error occurred !!"], 500);
     }
-}
 
 
 

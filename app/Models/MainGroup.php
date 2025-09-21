@@ -34,4 +34,13 @@ class MainGroup extends Model
     {
         return $this->hasMany(SubGroup::class, 'main_group_id');
     }
+    public function accountGroups(): HasMany
+    {
+        return $this->hasMany(AccountGroup::class, 'main_group_id');
+    }
+    public function journalVoucherTransactions(): HasMany
+    {
+        return $this->hasMany(JournalVoucherTransaction::class, 'main_group_id');
+    }
+
 }

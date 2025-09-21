@@ -19,23 +19,23 @@ class ProductSubCategoryController extends Controller
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
-     
+
         $subCategories = $query->paginate(50);
 
-      
+
         $transformed = $subCategories->getCollection()->map(function ($subCategory) {
             return [
                 'id' => $subCategory->id,
                 'name' => $subCategory->name,
                 'category_id' => optional($subCategory->category)->id,
-                'category_name' => optional($subCategory->category)->name, 
+                'category_name' => optional($subCategory->category)->name,
                 'is_active' => $subCategory->is_active,
                 'company_id' => $subCategory->company_id,
-               
+
             ];
         });
 
-       
+
         $subCategories->setCollection($transformed);
 
         return response()->json($subCategories);
@@ -185,15 +185,53 @@ class ProductSubCategoryController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = ProductSubCategory::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Product Sub Category deleted!!']);
+            $unit = ProductSubCategory::findOrFail($id);
+
+            $usedIn = [];
+
+            if ($unit->productscategory()->exists()) {
+                $usedIn[] = 'products';
+            }
+
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Product category cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $unit->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product category deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found!!'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Product category not found!'
+            ], 404);
+
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Product category.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Product category.'
+            ], 500);
         }
     }
+
 
  public function activeSubCategoryList(Request $request): JsonResponse
 {

@@ -134,4 +134,18 @@ class SaleProduct extends Model
 
     }
 
+ 
+    public function salesReturnProductsUse()
+    {
+        return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
+    }
+    public function salesProductFieldValuesUse()
+    {
+        return $this->hasMany(SalesProductFieldValue::class, 'sale_product_id');
+    }
+    public function saleReturnProductFieldValuesUse()
+    {
+        return $this->hasMany(SaleReturnProductFieldValue::class, 'sale_product_id');
+    }
+
 }

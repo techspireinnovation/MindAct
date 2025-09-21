@@ -158,10 +158,10 @@ class FixedAssetGroupController extends Controller
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Fixed Asset Group not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
             Log::error($e);
@@ -169,21 +169,55 @@ class FixedAssetGroupController extends Controller
         }
     }
 
+
+
     public function destroy($id): JsonResponse
     {
         try {
-            $item = FixedAssetGroup::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Fixed Asset Group deleted!']);
+            $group = FixedAssetGroup::findOrFail($id);
+
+            $usedIn = [];
+
+            if ($group->fixedAssetAccounts()->exists()) {
+                $usedIn[] = 'fixed asset accounts';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Fixed Asset Group cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $group->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Fixed Asset Group deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
+            Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Fixed Asset Group not found!'
+            ], 404);
+
         } catch (QueryException $e) {
             Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Fixed Asset Group.'
+            ], 500);
+
         } catch (\Exception $e) {
             Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Fixed Asset Group.'
+            ], 500);
         }
     }
+
 }

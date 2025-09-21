@@ -87,7 +87,7 @@ class FixedAssetGroupController extends Controller
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('brands')
+                    Rule::unique('fixed_asset_groups')
                         ->ignore($id)
                         ->where(function ($query) use ($request, $item) {
                             return $query->where('company_id', $request->input('company_id', $item->company_id))

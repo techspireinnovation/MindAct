@@ -30,7 +30,7 @@ class MainGroup extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function subGroups():HasMany
+    public function subGroups(): HasMany
     {
         return $this->hasMany(SubGroup::class, 'main_group_id');
     }

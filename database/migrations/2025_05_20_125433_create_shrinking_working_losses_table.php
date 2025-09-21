@@ -11,19 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('shrinking_working_losses', function (Blueprint $table) {
-            $table->foreignId('branch_id')->constrained('branches')->nullable()->after('company_id');
-                        $table->dropForeign(['product_id']);
-            $table->dropColumn([
-                'date_from',
-                'date_to',
-                'product_id',
-                'adjustment_ref_no',
-                'product_details',
-                'total_purchase_quantity',
-                'total_loss_quantity',
-                'deleted_at'
-            ]);
+        Schema::create('shrinking_working_losses', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('company_id')->constrained('companies')->nullable();
+            $table->date('date_from')->nullable();
+            $table->date('date_to')->nullable();
+            $table->foreignId('product_id')->constrained('products')->nullable();
+            $table->double('shrinking_loss_percent')->nullable();
+            $table->double('working_loss_percent')->nullable();
+            $table->double('internal_loss_percent')->nullable();
+            $table->text('adjustment_ref_no')->nullable();
+            $table->json('product_details')->nullable();
+            $table->double('total_purchase_quantity')->nullable();
+            $table->double('total_loss_quantity')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
         });
     }
 
@@ -32,18 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('shrinking_working_losses', function (Blueprint $table) {
-            $table->dropForeign(['branch_id']);
-            $table->dropColumn('branch_id');
-            
-            $table->date('date_from')->nullable();
-            $table->date('date_to')->nullable();
-            $table->foreignId('product_id')->constrained('products')->nullable();
-            $table->text('adjustment_ref_no')->nullable();
-            $table->json('product_details')->nullable();
-            $table->double('total_purchase_quantity')->nullable();
-            $table->double('total_loss_quantity')->nullable();
-            $table->softDeletes();
-        });
+        Schema::dropIfExists('shrinking_working_losses');
     }
 };

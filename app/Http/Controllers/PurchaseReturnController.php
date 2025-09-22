@@ -5559,6 +5559,7 @@ class PurchaseReturnController extends Controller
                 "product_id" => $product->id,
                 "product_name" => $product->name,
                 "product_code" => $product->product_unique_id,
+                "barcode" => $request->barcode ?? $product->productLists->first()?->barcode, 
                 "original_price" => $product->purchase_rate,
                 "min_price" => $product->purchase_rate,
                 "avg_price" => $product->purchase_rate,

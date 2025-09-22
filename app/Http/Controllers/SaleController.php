@@ -2826,6 +2826,7 @@ public function filterByBarcode(Request $request): JsonResponse
             "product_id" => $product->id,
             "product_name" => $product->name,
             "product_code" => $product->product_unique_id,
+            "barcode" => $product->productLists->first()?->barcode,
             "is_vatable" => (bool)$product->is_vatable,
             "measure_unit_id" => $primary?->id ?? $product->measure_unit_id,
             "measure_unit_quantity" => $primary?->quantity ?? $product->measureUnit?->quantity ?? 1,

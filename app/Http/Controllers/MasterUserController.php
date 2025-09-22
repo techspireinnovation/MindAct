@@ -101,40 +101,90 @@ class MasterUserController extends Controller
     }
 
 
-    public function index(Request $request)
-    {
-        try {
-            $masters = User::role('master_user')
-                ->select('id', 'name', 'email', 'created_at')
-                ->get()
-                ->map(function ($master) {
-                    $admins = User::role('company_admin')
-                        ->whereHas('companies', fn($q) => $q->whereIn(
-                            'companies.id',
-                            $master->companies()->pluck('companies.id')
-                        ))
-                        ->get(['id', 'name', 'email']);
+    // public function index(Request $request)
+    // {
+    //     try {
+    //         $masters = User::role('master_user')
+    //             ->select('id', 'name', 'email', 'created_at')
+    //             ->get()
+    //             ->map(function ($master) {
+    //                 $admins = User::role('company_admin')
+    //                     ->whereHas('companies', fn($q) => $q->whereIn(
+    //                         'companies.id',
+    //                         $master->companies()->pluck('companies.id')
+    //                     ))
+    //                     ->get(['id', 'name', 'email']);
 
-                    return [
-                        'id' => $master->id,
-                        'name' => $master->name,
-                        'email' => $master->email,
+    //                 return [
+    //                     'id' => $master->id,
+    //                     'name' => $master->name,
+    //                     'email' => $master->email,
 
-                    ];
-                });
+    //                 ];
+    //             });
 
-            return response()->json([
-                'success' => true,
-                'data' => $masters
-            ], 200);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve master users.',
-                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
-            ], 500);
+    //         return response()->json([
+    //             'success' => true,
+    //             'data' => $masters
+    //         ], 200);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'Failed to retrieve master users.',
+    //             'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+    //         ], 500);
+    //     }
+    // }
+
+public function index(Request $request)
+{
+    try {
+        // base query for master users, eager-load companies to avoid N+1
+        $query = User::role('master_user')
+            ->select('id', 'name', 'email', 'created_at')
+            ->with('companies:id'); // only load id from companies
+
+        // 🔍 search by name or email
+        if ($request->filled('search')) {
+            $search = trim($request->input('search'));
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', '%' . $search . '%')
+                  ->orWhere('email', 'LIKE', '%' . $search . '%');
+            });
         }
+
+        $masters = $query->get()->map(function ($master) {
+            $companyIds = $master->companies->pluck('id')->toArray();
+
+            if (empty($companyIds)) {
+                $admins = collect();
+            } else {
+                $admins = User::role('company_admin')
+                    ->whereHas('companies', function ($q) use ($companyIds) {
+                        $q->whereIn('companies.id', $companyIds);
+                    })
+                    ->get(['id', 'name', 'email']);
+            }
+
+            return [
+                'name'  => $master->name,
+                'email' => $master->email,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $masters
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve master users.',
+            'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
+        ], 500);
     }
+}
+
 
 
     public function show($id)
@@ -279,61 +329,6 @@ class MasterUserController extends Controller
         }
     }
 
-    public function masterUserSearch(Request $request): JsonResponse
-{
-    try {
-        $search = $request->input('search');
-
-        if (!$search) {
-            \Log::info('No search term provided in masterUserSearch');
-            return response()->json([
-                'success' => false,
-                'message' => 'Search term is required'
-            ], 422);
-        }
-
-        \Log::info('masterUserSearch called', ['search' => $search]);
-
-        // Query master users with optional search term
-        $masters = User::role('master_user')
-            ->where(function ($query) use ($search) {
-                $query->where('name', 'LIKE', "%{$search}%")
-                      ->orWhere('email', 'LIKE', "%{$search}%");
-            })
-            ->select('id', 'name', 'email', 'created_at')
-            ->get()
-            ->map(function ($master, $index) {
-                return [
-                    'sn' => $index + 1,
-                    'id' => $master->id,
-                    'name' => $master->name,
-                    'email' => $master->email,
-                    'created_at' => $master->created_at->format('Y-m-d H:i:s'),
-                ];
-            });
-
-        if ($masters->isEmpty()) {
-            \Log::info('No master users found for search term', ['search' => $search]);
-            return response()->json([
-                'success' => false,
-                'message' => 'No master users found matching the search term',
-            ], 404);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Master users retrieved successfully!',
-            'data' => $masters
-        ], 200);
-
-    } catch (\Exception $e) {
-        \Log::error('Unexpected error in masterUserSearch: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        return response()->json([
-            'success' => false,
-            'message' => 'An unexpected error occurred',
-        ], 500);
-    }
-}
 
 
     

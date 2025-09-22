@@ -22,7 +22,7 @@ class BankController extends Controller
 
         return response()->json($query->paginate(50));
     }
-    
+
         public function bankList(Request $request): JsonResponse
         {
             try {
@@ -33,7 +33,7 @@ class BankController extends Controller
                     ->map(fn($bank) => ['id' => $bank->id, 'name' => $bank->name])
                     ->values()
                     ->toArray();
-    
+
                 return response()->json([
                     "message" => "Bank List Received !!",
                     "data" => $banks
@@ -49,7 +49,7 @@ class BankController extends Controller
                 return response()->json(["error" => "An unexpected error occurred !!"], 500);
             }
         }
-    
+
         public function bankDetails(Request $request): JsonResponse
         {
             try {
@@ -57,13 +57,13 @@ class BankController extends Controller
                 if (!$companyId) {
                     return response()->json(["error" => "No Company Logged In !!"], 404);
                 }
-    
+
                 $bankName = $request->bank_name;
                 $bankDetails = Bank::where('company_id', $request->company_id)
                     ->where('name', $bankName)
                     ->whereNull('deleted_at')
                     ->firstOrFail();
-    
+
                 return response()->json([
                     "message" => "Bank Details Received !!",
                     "data" => $bankDetails
@@ -183,7 +183,7 @@ class BankController extends Controller
             'class' => 'nullable|string|max:255',
             'number' => 'nullable|string|max:255',
             'swift' => 'nullable|string|max:255',
-           
+
             'company_id' => 'required|integer|exists:companies,id'
         ]);
 
@@ -216,15 +216,44 @@ class BankController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Bank::findOrFail($id);
-            $item->delete();
+            $bank = Bank::findOrFail($id);
+
+            $usedIn = [];
+
+            if ($bank->purchases()->exists()) {
+                $usedIn[] = 'purchases';
+            }
+            if ($bank->sales()->exists()) {
+                $usedIn[] = 'sales';
+            }
+            if ($bank->bankVouchers()->exists()) {
+                $usedIn[] = 'bank vouchers';
+            }
+            if ($bank->customers()->exists()) {
+                $usedIn[] = 'customers';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'cannot delete in use',
+                    'message' => 'Bank cannot be deleted because it is used in: ' . implode(', ', $usedIn)
+                ], 400);
+            }
+
+            $bank->delete();
+
             return response()->json(['message' => 'Bank deleted']);
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json(['error' => 'Item not found'], 404);
+
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the bank.'
+            ], 500);
         }
     }
 
@@ -232,9 +261,9 @@ class BankController extends Controller
 {
     try {
         $banks = Bank::where('company_id', $request->company_id)
-            ->where('is_active', 1)          
+            ->where('is_active', 1)
             ->whereNull('deleted_at')
-            ->get(['id', 'name']);           
+            ->get(['id', 'name']);
 
         if ($banks->isEmpty()) {
             return response()->json([

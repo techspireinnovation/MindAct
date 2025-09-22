@@ -128,13 +128,55 @@ class SaleProductController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = SaleProduct::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Sale Product deleted']);
+            $saleProduct = SaleProduct::findOrFail($id);
+
+            $usedIn = [];
+
+            if ($saleProduct->salesReturnProductsUse()->exists()) {
+                $usedIn[] = 'sales return products';
+            }
+
+            if ($saleProduct->salesProductFieldValuesUse()->exists()) {
+                $usedIn[] = 'sales product field values';
+            }
+
+            if ($saleProduct->saleReturnProductFieldValuesUse()->exists()) {
+                $usedIn[] = 'sale return product field values';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Sale Product cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $saleProduct->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Sale Product deleted successfully!'
+            ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Sale Product not found!'
+            ], 404);
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            \Log::error($e->getMessage());
+            return response()->json([
+                'error' => 'query_error',
+                'message' => $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Sale Product.'
+            ], 500);
         }
     }
+
 }

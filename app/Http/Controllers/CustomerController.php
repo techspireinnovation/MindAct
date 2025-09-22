@@ -395,21 +395,68 @@ class CustomerController extends Controller
     }
 
 
-
+   
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Customer::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Customer deleted']);
+            $customer = Customer::findOrFail($id);
+    
+            $usedIn = [];
+    
+            if ($customer->purchasesUse()->exists()) {
+                $usedIn[] = 'purchases';
+            }
+    
+            if ($customer->salesUse()->exists()) {
+                $usedIn[] = 'sales';
+            }
+    
+            if ($customer->purchaseProductsUse()->exists()) {
+                $usedIn[] = 'purchase_products';
+            }
+    
+            if ($customer->paymentVoucherDetails()->exists()) {
+                $usedIn[] = 'payment_voucher_details';
+            }
+    
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Customer cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+    
+            $customer->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Customer not found'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Customer not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the customer.'
+            ], 500);
+    
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the customer.'
+            ], 500);
         }
     }
+    
 
 
     public function activeCustomers(Request $request): JsonResponse

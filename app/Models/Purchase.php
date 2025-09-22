@@ -100,4 +100,14 @@ class Purchase extends Model
         return PurchaseReturn::where('purchase_id', $this->id)->sum('discount_value') ?? 0;
     }
 
+
+    public function purchaseProductsUse(){
+        return $this->hasMany(PurchaseProduct::class,'purchase_id');
+    }
+    public function purchaseReturnProductsUse(){
+        return $this->hasMany(PurchaseReturnProductDetails::class,'purchase_id');
+    }
+    public function purchaseReturnsUse(){
+        return $this->hasMany(PurchaseReturn::class,'purchase_id');
+    }
 }

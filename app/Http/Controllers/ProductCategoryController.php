@@ -232,35 +232,58 @@ class ProductCategoryController extends Controller
         }
     }
 
-    // Delete a resource
     public function destroy($id): JsonResponse
     {
         try {
+            $unit = ProductCategory::findOrFail($id);
 
-            $product_category = ProductCategory::findorFail($id);
+            $usedIn = [];
 
-            $products = Product::where('category_id', $product_category->id)->get();
-
-
-            if ($products->isNotEmpty()) {
-                return response()->json([
-                    'error' => 'Item Cannot be deleted !!',
-
-                ], 200);
-            } else {
-
-                $product_category->delete();
-
-                return response()->json(['message' => 'Product Category deleted!!']);
+            if ($unit->products()->exists()) {
+                $usedIn[] = 'products';
+            }
+            if ($unit->productSubCategory()->exists()) {
+                $usedIn[] = 'product sub categories';
             }
 
-        } catch (ModelNotFoundException) {
-            return response()->json(['error' => 'Product Category not found'], 404);
-        } catch (QueryException) {
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Product Category cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
 
+            $unit->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Product Category deleted successfully!'
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Product Category not found!'
+            ], 404);
+
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Product Category.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Product Category.'
+            ], 500);
         }
     }
+
 
  public function activeCategoryList(Request $request): JsonResponse
 {

@@ -2670,18 +2670,46 @@ class SaleController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Sale::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Sale deleted']);
+            $sale = Sale::findOrFail($id);
+
+            if (
+                $sale->salesReturnUse()->exists() ||
+                $sale->saleProductUse()->exists() ||
+                $sale->saleAdditionalUse()->exists()
+            ) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Sale cannot be deleted because it has related sales or return records.'
+                ], 400);
+            }
+
+            $sale->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Sale deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Sale not found!'
+            ], 404);
+
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the sale.'
+            ], 500);
+
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the sale.'
+            ], 500);
         }
     }
 
@@ -2883,9 +2911,9 @@ public function filterByBarcode(Request $request): JsonResponse
             'response_unit_id' => 'nullable|integer|exists:measure_units,id',
         ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
 
         $companyId = $request->company_id;
         $responseUnitId = $request->response_unit_id ?? null;

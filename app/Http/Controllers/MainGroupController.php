@@ -306,22 +306,59 @@ public function subGroupOfMainGroup(Request $request): JsonResponse  ////
         }
     }
 
+   
     public function destroy($id): JsonResponse
     {
         try {
+            $mainGroup = MainGroup::findOrFail($id);
 
-            if ($this->checkIfUsed($id))
-                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+            $usedIn = [];
 
-            $group = MainGroup::findOrFail($id);
-            $group->delete();
-            return response()->json(['message' => 'Main Group deleted!!']);
+            if ($mainGroup->subGroups()->exists()) {
+                $usedIn[] = 'sub groups';
+            }
+            if ($mainGroup->accountGroups()->exists()) {
+                $usedIn[] = 'account groups';
+            }
+            if($mainGroup->journalVoucherTransactions()->exists()){
+                $usedIn[] = 'journal voucher transactions';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'cannot delete, in use',
+                    'message' => 'Main Group cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $mainGroup->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Main Group deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Main Group not found!!'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Main Group not found!'
+            ], 404);
+
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the mainGroup.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the mainGroup.'
+            ], 500);
         }
     }
 

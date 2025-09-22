@@ -194,13 +194,47 @@ class ProjectController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Project::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Project deleted']);
+            $project = Project::findOrFail($id);
+    
+            $usedIn = [];
+    
+            if ($project->journalVouchers()->exists()) {
+                $usedIn[] = 'journal vouchers';
+            }
+    
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Project cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
+                    'used_in' => $usedIn
+                ], 400);
+            }
+    
+            $project->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Project deleted successfully!'
+            ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Project not found!'
+            ], 404);
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            \Log::error($e->getMessage()); // log exact SQL error
+            return response()->json([
+                'error' => 'query_error',
+                'message' => $e->getMessage() // careful, expose only in dev
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the project.'
+            ], 500);
         }
     }
+    
 }

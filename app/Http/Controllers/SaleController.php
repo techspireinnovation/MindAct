@@ -2831,9 +2831,9 @@ public function filterByBarcode(Request $request): JsonResponse
             "measure_unit_id" => $primary?->id ?? $product->measure_unit_id,
             "measure_unit_quantity" => $primary?->quantity ?? $product->measureUnit?->quantity ?? 1,
             "retail_sale_price" => $product->retail_sales_price,
-            "avg_price" => $product->purchase_rate,
-            "min_price" => $product->purchase_rate,
-            "latest_price" => $product->purchase_rate,
+            "avg_price" => 0,
+            "min_price" => 0,
+            "latest_price" => 0,
             "measure_units_used" => $product->productLists->map(fn($pl) => [
                 "id" => $pl->measure_unit_id,
                 "name" => $pl->measureUnit?->name,
@@ -2868,6 +2868,7 @@ public function filterByBarcode(Request $request): JsonResponse
         return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
     }
 }
+
 
 
 

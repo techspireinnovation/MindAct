@@ -98,7 +98,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
 
     Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
-    Route::get('companies-search', [CompanyController::class, 'Companysearch'])->name('companies.search');////
+   
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
 
@@ -111,7 +111,7 @@ Route::middleware(['auth:sanctum', SuperAdminMiddleware::class])->group(function
         ->only(['index', 'store', 'show', 'update', 'destroy']);
 
     Route::get('master-users/{masterUser}/companies-with-branches', [MasterUserController::class, 'companiesWithBranches']);
-    Route::get('master-users-search', [MasterUserController::class, 'masterUserSearch'])->name('master-users.search');////
+    
 });
 
 Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {

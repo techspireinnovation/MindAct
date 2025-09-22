@@ -261,16 +261,31 @@ class CompanyController extends Controller
             ], 500);
         }
     }
-    public function index(Request $request): JsonResponse
-    {
-        $query = Company::query();
+   public function index(Request $request): JsonResponse
+{
+    $query = Company::query();
 
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
-
-        return response()->json($query->paginate(50));
+    if ($request->has('keywords')) {
+        $keywords = $request->input('keywords');
+        $query->where(function ($q) use ($keywords) {
+            $q->where('name', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('full_address', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('email_address', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('phone', 'LIKE', '%' . $keywords . '%');
+        });
     }
+
+    $companies = $query->orderBy('id', 'asc')->paginate(50);
+
+    $transformed = $companies->getCollection()->map(function ($company) {
+        return $company->toArray(); // get all fields automatically
+    });
+
+    $companies->setCollection($transformed);
+
+    return response()->json($companies);
+}
+
     public function companyList(Request $request): JsonResponse
     {
         // Check if the user is a super_admin
@@ -1347,73 +1362,6 @@ public function show($id): JsonResponse
         }
     }
 
-public function Companysearch(Request $request): JsonResponse
-{
-    // Check if the user is a super_admin
-    $user = Auth::user();
-    if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Unauthorized: Super admin required',
-        ], 200);
-    }
-
-    try {
-        $search = $request->input('search');
-
-        if (!$search) {
-            \Log::info('No search term provided in Companysearch', ['user_id' => $user->id]);
-            return response()->json([
-                'success' => false,
-                'message' => 'Search term is required'
-            ], 422);
-        }
-
-        \Log::info('Companysearch called', [
-            'user_id' => $user->id,
-            'search' => $search
-        ]);
-
-        $companies = \App\Models\Company::whereNull('deleted_at')
-            ->where(function ($query) use ($search) {
-                $query->where('name', 'LIKE', "%{$search}%")
-                    ->orWhere('full_address', 'LIKE', "%{$search}%")
-                    ->orWhere('email_address', 'LIKE', "%{$search}%")
-                    ->orWhere('phone', 'LIKE', "%{$search}%");
-            })
-            ->get(['id', 'name', 'full_address', 'email_address', 'phone']);
-
-        if ($companies->isEmpty()) {
-            \Log::info('No companies found for search term', [
-                'search' => $search,
-                'user_id' => $user->id
-            ]);
-            return response()->json([
-                'success' => false,
-                'message' => 'No companies found matching the search term',
-            ], 404);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Search results retrieved successfully!',
-            'data' => $companies
-        ], 200);
-
-    } catch (QueryException $e) {
-        \Log::error('Database error in Companysearch: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        return response()->json([
-            'success' => false,
-            'message' => 'Database error occurred',
-        ], 500);
-    } catch (\Exception $e) {
-        \Log::error('Unexpected error in Companysearch: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        return response()->json([
-            'success' => false,
-            'message' => 'An unexpected error occurred',
-        ], 500);
-    }
-}
 
 
 

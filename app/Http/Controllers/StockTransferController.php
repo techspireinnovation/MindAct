@@ -768,7 +768,7 @@ class StockTransferController extends Controller
 
 
 
-   public function update(Request $request, $id): JsonResponse
+ public function update(Request $request, $id): JsonResponse
 {
     try {
         Log::info('Starting stock transfer update process', [
@@ -864,85 +864,21 @@ class StockTransferController extends Controller
             $measureUnitsCalc = MeasureUnit::where('company_id', $validated['company_id'])
                 ->whereNull('deleted_at')
                 ->get()
-                ->keyBy('id');
+                ->keyBy('id')
+                ->map(function ($unit) {
+                    return (object) ['quantity' => $unit->quantity ?? 1];
+                })->toArray();
 
             Log::debug('Fetched measure units', [
                 'stock_transfer_id' => $id,
-                'measure_units' => $measureUnitsCalc->toArray(),
+                'measure_units' => $measureUnitsCalc,
             ]);
 
-            // Reverse existing stock changes by grouping pieces per psp_id
-            $existingDetails = StockTransferDetails::where('stock_transfer_id', $stockTransfer->id)->get();
+            // Reverse existing stock changes
+            $existingDetails = $stockTransfer->stockTransferDetails()->get();
 
-            $pspPieces = [];
-
-            foreach ($existingDetails as $index => $existingDetail) {
-                $detail = [
-                    'product_id' => $existingDetail->product_id,
-                    'product_name' => $existingDetail->product_name,
-                    'quantity' => $existingDetail->quantity,
-                    'free_quantity' => $existingDetail->free_quantity ?? 0,
-                    'measure_unit_id' => $existingDetail->measure_unit_id,
-                    'purchase_stock_product_id' => $existingDetail->purchase_stock_product_id,
-                ];
-                Log::debug('Calculating pieces for existing detail', [
-                    'stock_transfer_id' => $id,
-                    'stock_transfer_details_id' => $existingDetail->id,
-                    'index' => $index,
-                    'detail' => $detail,
-                ]);
-
-                $measureUnitQuantity = $measureUnitsCalc[$detail['measure_unit_id']]->quantity ?? 1;
-                $toRestoreRegular = $this->stockTransferService->calculatePieces($detail['quantity'], $measureUnitQuantity);
-                $toRestoreFree = $this->stockTransferService->calculatePieces($detail['free_quantity'], $measureUnitQuantity);
-
-                $pspId = $detail['purchase_stock_product_id'];
-                if ($pspId) {
-                    $pspPieces[$pspId]['regular'] = ($pspPieces[$pspId]['regular'] ?? 0) + $toRestoreRegular;
-                    $pspPieces[$pspId]['free'] = ($pspPieces[$pspId]['free'] ?? 0) + $toRestoreFree;
-                }
-            }
-
-            Log::debug('Grouped pieces for reversal', [
-                'stock_transfer_id' => $id,
-                'psp_pieces' => $pspPieces,
-            ]);
-
-            // Add back grouped pieces to each psp
-            foreach ($pspPieces as $pspId => $pieces) {
-                $psp = PurchaseStockProduct::find($pspId);
-                if (!$psp) {
-                    Log::warning('PurchaseStockProduct not found for reverse', [
-                        'purchase_stock_product_id' => $pspId,
-                        'stock_transfer_id' => $id,
-                    ]);
-                    continue;
-                }
-
-                Log::debug('Before reversing PurchaseStockProduct', [
-                    'purchase_stock_product_id' => $pspId,
-                    'current_quantity' => $psp->quantity,
-                    'current_free_quantity' => $psp->free_quantity ?? 0,
-                    'pieces_to_restore' => $pieces,
-                ]);
-
-                $pspMuQty = $measureUnitsCalc[$psp->measure_unit_id]->quantity ?? 1;
-                list($regularQty, $freeQty) = $this->stockTransferService->convertToTargetMeasureUnit(
-                    $pieces['regular'],
-                    $pieces['free'],
-                    $pspMuQty
-                );
-
-                $psp->quantity += $regularQty;
-                $psp->free_quantity = ($psp->free_quantity ?? 0) + $freeQty;
-                $psp->save();
-
-                Log::info('Reversed stock for PurchaseStockProduct', [
-                    'purchase_stock_product_id' => $pspId,
-                    'new_quantity' => $psp->quantity,
-                    'new_free_quantity' => $psp->free_quantity,
-                    'stock_transfer_id' => $id,
-                ]);
+            foreach ($existingDetails as $existingDetail) {
+                $this->reverseStockTransfer($id, $existingDetail->toArray(), $validated['company_id'], $validated['branch_id'], $existingDetail->id);
             }
 
             // Delete existing details and field values
@@ -1177,7 +1113,6 @@ class StockTransferController extends Controller
         return response()->json(['error' => $e->getMessage()], 500);
     }
 }
-
     private function reverseStockTransfer($stockTransferId, $detail, $companyId, $branchId, $index)
     {
         Log::info('Starting reverseStockTransfer', [

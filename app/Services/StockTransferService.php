@@ -41,7 +41,7 @@ class StockTransferService
 
         $returnedIndices = PurchaseStockProductReturnFieldValue::whereIn('purchase_stock_product_return_id', $purchaseProduct->purchaseProductReturns->pluck('id'))
             ->where('company_id', $companyId)
-             ->where('branch_id', $branchId)
+            ->where('branch_id', $branchId)
             ->whereNull('deleted_at')
             ->pluck('quantity_index')
             ->unique()
@@ -67,7 +67,7 @@ class StockTransferService
             return 0;
         }
 
-       
+
 
 
         $integerPart = floor($quantity);
@@ -111,7 +111,7 @@ class StockTransferService
 
     }
 
-    public function calculateAvailablePieces($purchaseProduct, int $companyId,int $branchId, $measureUnitsCalc): int
+    public function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
 
@@ -466,7 +466,7 @@ class StockTransferService
             }
 
             $productIds = $products->pluck('id')->toArray();
-           
+
 
             if (strtolower($purchaseType) === 'capital') {
                 Log::warning('Purchase type "Capital" is not allowed', [
@@ -476,7 +476,7 @@ class StockTransferService
                 ]);
                 return collect([]);
             }
-           
+
             $purchaseProducts = PurchaseStockProduct::select('purchase_stock_products.*')
                 ->whereIn('purchase_stock_products.product_id', $productIds)
                 ->where('purchase_stock_products.company_id', $companyId)
@@ -507,9 +507,9 @@ class StockTransferService
                         ->where('purchase_stock_product_field_values.branch_id', $branchId)
                 ])
                 ->get();
-                
 
-            
+
+
 
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', ['company_id' => $companyId, 'branch_id' => $branchId, 'product_ids' => $productIds]);
@@ -804,10 +804,7 @@ class StockTransferService
                 ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
                 ->with([
-                    // 'purchase' => fn($q) => $q->select(['id', 'company_id', 'purchase_bill_number', 'invoice_date'])
-                    //     ->whereNull('deleted_at')
-                    //     ->where('company_id', $companyId),
-                    // ->where('branch_id', $branchId),
+                    
                     'purchaseStockProductReturns' => fn($q) => $q->whereNull('deleted_at')
                         ->where('company_id', $companyId)
                         ->where('branch_id', $branchId)
@@ -819,7 +816,7 @@ class StockTransferService
                             'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
                             'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
                                 ->where('company_id', $companyId)
-                                // ->where('branch_id', $branchId)
+                                ->where('branch_id', $branchId)
                                 ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
                         ]),
                     'fieldValues' => fn($q) => $q->whereNull('deleted_at')
@@ -848,7 +845,7 @@ class StockTransferService
             // Fetch quantity indexes
             $soldQuantityIndexes = SalesProductFieldValue::whereIn('sale_product_id', $purchaseProducts->flatMap(fn($pp) => $pp->saleProducts->pluck('id')))
                 ->where('company_id', $companyId)
-                 ->where('branch_id', $branchId)
+                ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
                 ->select(['sale_product_id', 'quantity_index'])
                 ->get()
@@ -943,7 +940,7 @@ class StockTransferService
                         );
 
                         // Calculate available pieces
-                        $availablePieces = $this->calculateAvailablePieces($pp, $companyId,$branchId, $measureUnitsCalc);
+                        $availablePieces = $this->calculateAvailablePieces($pp, $companyId, $branchId, $measureUnitsCalc);
 
                         // Collect field values for this purchase product
                         $fieldValues = $pp->fieldValues->filter(function ($fv) use ($soldQuantityIndexes, $returnedQuantityIndexes, $returnedstockIndexes, $pp) {
@@ -1014,7 +1011,7 @@ class StockTransferService
 
                 $salesPrice = SaleProduct::where('product_id', $product->product_id)
                     ->where('company_id', $companyId)
-                     ->where('branch_id', $branchId)
+                    ->where('branch_id', $branchId)
                     ->whereNull('deleted_at')
                     ->pluck('price');
                 $lastSalesPrice = SaleProduct::where('product_id', $product->product_id)

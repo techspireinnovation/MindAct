@@ -218,7 +218,7 @@ class StockTransferController extends Controller
                     $fieldValues = is_array($detail['field_values']) && isset($detail['field_values'][0]) && is_array($detail['field_values'][0]) && !isset($detail['field_values'][0]['product_field_id']) ? $detail['field_values'] : [$detail['field_values']];
 
                     // Calculate pieces for validation
-                    $quantity =  $detail['quantity'];
+                    $quantity = $detail['quantity'];
                     $measureUnitId = $detail['measure_unit_id'];
                     $targetMeasureUnit = $measureUnitsCalc[$measureUnitId] ?? throw new \Exception("Measure unit ID {$measureUnitId} not found.");
                     $targetMeasureUnitQuantity = $targetMeasureUnit->quantity ?? 1;
@@ -768,202 +768,283 @@ class StockTransferController extends Controller
 
 
 
- public function update(Request $request, $id): JsonResponse
-{
-    try {
-        Log::info('Starting stock transfer update process', [
-            'stock_transfer_id' => $id,
-            'request_data' => $request->all(),
-            'user_id' => auth()->id(),
-        ]);
-
-        $stockTransfer = StockTransfer::where('id', $id)
-            ->where('company_id', $request->company_id)
-            ->where('branch_id', $request->branch_id)
-            ->whereNull('deleted_at')
-            ->firstOrFail();
-
-        Log::debug('Fetched StockTransfer', [
-            'stock_transfer_id' => $id,
-            'stock_transfer' => $stockTransfer->toArray(),
-        ]);
-
-        $validator = Validator::make($request->all(), [
-            'reference_no' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('stock_transfers')
-                    ->where(fn($query) => $query->where('company_id', $request->company_id)
-                        ->whereNull('deleted_at'))
-                    ->ignore($id),
-            ],
-            'transfer_to' => 'required|integer|exists:branches,id',
-            'document_no' => 'nullable|string|max:255',
-            'current_location' => 'required|integer|exists:branches,id',
-            'date_ad' => 'nullable|date',
-            'transfer_date_bs' => 'nullable|string',
-            'document_number' => 'nullable|string|max:255',
-            'remarks' => 'nullable|string|max:255',
-            'reasons_for' => 'nullable|string|max:255',
-            'product_details' => 'required|array',
-            'product_details.*.id' => 'nullable|integer|exists:stock_transfer_details,id',
-            'product_details.*.product_id' => 'required|integer|exists:products,id',
-            'product_details.*.product_name' => 'required|string|max:255',
-            'product_details.*.product_code' => 'required|string|max:255',
-            'product_details.*.expiry_date' => 'nullable|string|max:255',
-            'product_details.*.mfd' => 'nullable|string|max:255',
-            'product_details.*.discount_amount' => 'nullable|numeric',
-            'product_details.*.discount_percent' => 'nullable|numeric',
-            'product_details.*.quantity' => 'required|numeric|min:0.01',
-            'product_details.*.purchase_type' => 'required|string',
-            'product_details.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-            'product_details.*.price' => 'required|numeric|min:0',
-            'product_details.*.amount' => 'required|numeric|min:0',
-            'product_details.*.field_values' => 'present|array',
-            'product_details.*.field_values.*' => 'array|min:1',
-            'product_details.*.field_values.*.*.product_field_id' => 'nullable|integer|exists:product_fields,id',
-            'product_details.*.field_values.*.*.purchase_stock_product_field_value_id' => 'nullable|numeric',
-            'product_details.*.field_values.*.*.purchase_product_id' => 'nullable|numeric',
-            'product_details.*.field_values.*.*.stock_product_id' => 'nullable|numeric',
-            'product_details.*.field_values.*.*.product_id' => 'nullable|numeric',
-            'product_details.*.field_values.*.*.stock_adjustment_id' => 'nullable|numeric',
-            'product_details.*.field_values.*.*.stock_reconciliation_id' => 'nullable|numeric',
-            'product_details.*.field_values.*.*.value' => 'nullable|string|max:255',
-            'product_details.*.field_values.*.*.quantity_index' => 'nullable|integer|min:0',
-            'product_details.*.field_values.*.*.quantity_type' => 'nullable|string|in:regular,free',
-            'product_details.*.field_values.*.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
-            'company_id' => 'required|integer|exists:companies,id',
-        ]);
-
-        if ($validator->fails()) {
-            Log::warning('Validation failed for stock transfer update', [
+    public function update(Request $request, $id): JsonResponse
+    {
+        try {
+            Log::info('Starting stock transfer update process', [
                 'stock_transfer_id' => $id,
-                'errors' => $validator->errors()->toArray(),
                 'request_data' => $request->all(),
+                'user_id' => auth()->id(),
             ]);
-            return response()->json([
-                'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
-            ], 422);
-        }
 
-        $validated = $validator->validated();
-        Log::debug('Validated product details for update', [
-            'stock_transfer_id' => $id,
-            'product_details' => $validated['product_details'],
-        ]);
-
-        $item = DB::transaction(function () use ($validated, $stockTransfer, $id) {
-            $validated['branch_id'] = $validated['current_location'];
-            $validated['accept_status'] = $stockTransfer->accept_status; // Preserve existing status
-            $productDetails = $validated['product_details'];
-            unset($validated['product_details']);
-
-            // Fetch measure units
-            $measureUnitsCalc = MeasureUnit::where('company_id', $validated['company_id'])
+            $stockTransfer = StockTransfer::where('id', $id)
+                ->where('company_id', $request->company_id)
+                ->where('branch_id', $request->branch_id)
                 ->whereNull('deleted_at')
-                ->get()
-                ->keyBy('id')
-                ->map(function ($unit) {
-                    return (object) ['quantity' => $unit->quantity ?? 1];
-                })->toArray();
+                ->firstOrFail();
 
-            Log::debug('Fetched measure units', [
+            Log::debug('Fetched StockTransfer', [
                 'stock_transfer_id' => $id,
-                'measure_units' => $measureUnitsCalc,
+                'stock_transfer' => $stockTransfer->toArray(),
             ]);
 
-            // Reverse existing stock changes
-            $existingDetails = $stockTransfer->stockTransferDetails()->get();
+            $validator = Validator::make($request->all(), [
+                'reference_no' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('stock_transfers')
+                        ->where(fn($query) => $query->where('company_id', $request->company_id)
+                            ->whereNull('deleted_at'))
+                        ->ignore($id),
+                ],
+                'transfer_to' => 'required|integer|exists:branches,id',
+                'document_no' => 'nullable|string|max:255',
+                'current_location' => 'required|integer|exists:branches,id',
+                'date_ad' => 'nullable|date',
+                'transfer_date_bs' => 'nullable|string',
+                'document_number' => 'nullable|string|max:255',
+                'remarks' => 'nullable|string|max:255',
+                'reasons_for' => 'nullable|string|max:255',
+                'product_details' => 'required|array',
+                'product_details.*.id' => 'nullable|integer|exists:stock_transfer_details,id',
+                'product_details.*.product_id' => 'required|integer|exists:products,id',
+                'product_details.*.product_name' => 'required|string|max:255',
+                'product_details.*.product_code' => 'required|string|max:255',
+                'product_details.*.expiry_date' => 'nullable|string|max:255',
+                'product_details.*.mfd' => 'nullable|string|max:255',
+                'product_details.*.discount_amount' => 'nullable|numeric',
+                'product_details.*.discount_percent' => 'nullable|numeric',
+                'product_details.*.quantity' => 'required|numeric|min:0.01',
+                'product_details.*.purchase_type' => 'required|string',
+                'product_details.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
+                'product_details.*.price' => 'required|numeric|min:0',
+                'product_details.*.amount' => 'required|numeric|min:0',
+                'product_details.*.field_values' => 'present|array',
+                'product_details.*.field_values.*' => 'array|min:1',
+                'product_details.*.field_values.*.*.product_field_id' => 'nullable|integer|exists:product_fields,id',
+                'product_details.*.field_values.*.*.purchase_stock_product_field_value_id' => 'nullable|numeric',
+                'product_details.*.field_values.*.*.purchase_product_id' => 'nullable|numeric',
+                'product_details.*.field_values.*.*.stock_product_id' => 'nullable|numeric',
+                'product_details.*.field_values.*.*.product_id' => 'nullable|numeric',
+                'product_details.*.field_values.*.*.stock_adjustment_id' => 'nullable|numeric',
+                'product_details.*.field_values.*.*.stock_reconciliation_id' => 'nullable|numeric',
+                'product_details.*.field_values.*.*.value' => 'nullable|string|max:255',
+                'product_details.*.field_values.*.*.quantity_index' => 'nullable|integer|min:0',
+                'product_details.*.field_values.*.*.quantity_type' => 'nullable|string|in:regular,free',
+                'product_details.*.field_values.*.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
+                'company_id' => 'required|integer|exists:companies,id',
+            ]);
 
-            foreach ($existingDetails as $existingDetail) {
-                $this->reverseStockTransfer($id, $existingDetail->toArray(), $validated['company_id'], $validated['branch_id'], $existingDetail->id);
+            if ($validator->fails()) {
+                Log::warning('Validation failed for stock transfer update', [
+                    'stock_transfer_id' => $id,
+                    'errors' => $validator->errors()->toArray(),
+                    'request_data' => $request->all(),
+                ]);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
-            // Delete existing details and field values
-            Log::info('Deleting existing stock transfer field values and details', [
+            $validated = $validator->validated();
+            Log::debug('Validated product details for update', [
                 'stock_transfer_id' => $id,
+                'product_details' => $validated['product_details'],
             ]);
-            StockTransferFieldValue::where('stock_transfer_id', $stockTransfer->id)->delete();
-            StockTransferDetails::where('stock_transfer_id', $stockTransfer->id)->delete();
 
-            // Update StockTransfer
-            Log::debug('Updating StockTransfer', [
-                'stock_transfer_id' => $id,
-                'validated_data' => $validated,
-            ]);
-            $stockTransfer->update($validated);
+            $item = DB::transaction(function () use ($validated, $stockTransfer, $id) {
+                $validated['branch_id'] = $validated['current_location'];
+                $validated['accept_status'] = $stockTransfer->accept_status; // Preserve existing status
+                $productDetails = $validated['product_details'];
+                unset($validated['product_details']);
 
-            $fieldValuesToCreate = [];
+                // Fetch measure units
+                $measureUnitsCalc = MeasureUnit::where('company_id', $validated['company_id'])
+                    ->whereNull('deleted_at')
+                    ->get()
+                    ->keyBy('id')
+                    ->map(function ($unit) {
+                        return (object) ['quantity' => $unit->quantity ?? 1];
+                    })->toArray();
 
-            foreach ($productDetails as $index => $detail) {
-                Log::debug('Processing product detail in update', [
+                Log::debug('Fetched measure units', [
                     'stock_transfer_id' => $id,
-                    'index' => $index,
-                    'detail' => $detail,
+                    'measure_units' => $measureUnitsCalc,
                 ]);
 
-                // Normalize field_values
-                $fieldValues = is_array($detail['field_values']) && isset($detail['field_values'][0]) && is_array($detail['field_values'][0]) && !isset($detail['field_values'][0]['product_field_id']) ? $detail['field_values'] : [$detail['field_values']];
+                // Reverse existing stock changes
+                $existingDetails = $stockTransfer->stockTransferDetails()->get();
 
-                // Calculate pieces for validation
-                $quantity = $detail['quantity'];
-                $measureUnitId = $detail['measure_unit_id'];
-                $targetMeasureUnit = $measureUnitsCalc[$measureUnitId] ?? throw new \Exception("Measure unit ID {$measureUnitId} not found.");
-                $targetMeasureUnitQuantity = $targetMeasureUnit->quantity ?? 1;
-                $transferredPieces = $this->stockTransferService->calculatePieces($quantity, $targetMeasureUnitQuantity);
+                foreach ($existingDetails as $existingDetail) {
+                    $this->reverseStockTransfer($id, $existingDetail->toArray(), $validated['company_id'], $validated['branch_id'], $existingDetail->id);
+                }
 
-                Log::debug('Calculated transferred pieces', [
+                // Delete existing details and field values
+                Log::info('Deleting existing stock transfer field values and details', [
                     'stock_transfer_id' => $id,
-                    'index' => $index,
-                    'quantity' => $quantity,
-                    'measure_unit_id' => $measureUnitId,
-                    'target_measure_unit_quantity' => $targetMeasureUnitQuantity,
-                    'transferred_pieces' => $transferredPieces,
                 ]);
+                StockTransferFieldValue::where('stock_transfer_id', $stockTransfer->id)->delete();
+                StockTransferDetails::where('stock_transfer_id', $stockTransfer->id)->delete();
 
-                // Check if field_values are present
-                $hasFieldValues = !empty($fieldValues[0]);
+                // Update StockTransfer
+                Log::debug('Updating StockTransfer', [
+                    'stock_transfer_id' => $id,
+                    'validated_data' => $validated,
+                ]);
+                $stockTransfer->update($validated);
 
-                if ($hasFieldValues) {
-                    // Field-valued product logic
-                    $fieldValuesByStockId = [];
-                    foreach ($fieldValues as $fieldValueSet) {
-                        $purchaseStockProductId = $fieldValueSet[0]['purchase_stock_product_id'] ?? null;
-                        if ($purchaseStockProductId) {
-                            $fieldValuesByStockId[$purchaseStockProductId][] = $fieldValueSet;
-                        } else {
-                            Log::warning('Missing purchase_stock_product_id in field value set', [
-                                'stock_transfer_id' => $id,
-                                'index' => $index,
-                                'field_value_set' => $fieldValueSet,
-                            ]);
-                            continue;
+                $fieldValuesToCreate = [];
+
+                foreach ($productDetails as $index => $detail) {
+                    Log::debug('Processing product detail in update', [
+                        'stock_transfer_id' => $id,
+                        'index' => $index,
+                        'detail' => $detail,
+                    ]);
+
+                    // Normalize field_values
+                    $fieldValues = is_array($detail['field_values']) && isset($detail['field_values'][0]) && is_array($detail['field_values'][0]) && !isset($detail['field_values'][0]['product_field_id']) ? $detail['field_values'] : [$detail['field_values']];
+
+                    // Calculate pieces for validation
+                    $quantity = $detail['quantity'];
+                    $measureUnitId = $detail['measure_unit_id'];
+                    $targetMeasureUnit = $measureUnitsCalc[$measureUnitId] ?? throw new \Exception("Measure unit ID {$measureUnitId} not found.");
+                    $targetMeasureUnitQuantity = $targetMeasureUnit->quantity ?? 1;
+                    $transferredPieces = $this->stockTransferService->calculatePieces($quantity, $targetMeasureUnitQuantity);
+
+                    Log::debug('Calculated transferred pieces', [
+                        'stock_transfer_id' => $id,
+                        'index' => $index,
+                        'quantity' => $quantity,
+                        'measure_unit_id' => $measureUnitId,
+                        'target_measure_unit_quantity' => $targetMeasureUnitQuantity,
+                        'transferred_pieces' => $transferredPieces,
+                    ]);
+
+                    // Check if field_values are present
+                    $hasFieldValues = !empty($fieldValues[0]);
+
+                    if ($hasFieldValues) {
+                        // Field-valued product logic
+                        $fieldValuesByStockId = [];
+                        foreach ($fieldValues as $fieldValueSet) {
+                            $purchaseStockProductId = $fieldValueSet[0]['purchase_stock_product_id'] ?? null;
+                            if ($purchaseStockProductId) {
+                                $fieldValuesByStockId[$purchaseStockProductId][] = $fieldValueSet;
+                            } else {
+                                Log::warning('Missing purchase_stock_product_id in field value set', [
+                                    'stock_transfer_id' => $id,
+                                    'index' => $index,
+                                    'field_value_set' => $fieldValueSet,
+                                ]);
+                                continue;
+                            }
                         }
-                    }
 
-                    $totalPieces = count($fieldValues);
-                    if ($totalPieces != $transferredPieces) {
-                        Log::error('Quantity mismatch in update', [
-                            'product_id' => $detail['product_id'],
+                        $totalPieces = count($fieldValues);
+                        if ($totalPieces != $transferredPieces) {
+                            Log::error('Quantity mismatch in update', [
+                                'product_id' => $detail['product_id'],
+                                'index' => $index,
+                                'transferred_pieces' => $transferredPieces,
+                                'total_pieces' => $totalPieces,
+                            ]);
+                            throw new \Exception("Requested quantity ({$transferredPieces}) does not match provided field value pieces ({$totalPieces}) for product {$detail['product_name']} at index {$index}.");
+                        }
+
+                        foreach ($fieldValuesByStockId as $purchaseStockProductId => $fieldValueSets) {
+                            $transferResult = $this->transferProduct(
+                                array_merge($detail, ['field_values' => $fieldValueSets]),
+                                $validated['company_id'],
+                                $validated['current_location'],
+                                $validated['transfer_to'],
+                                $measureUnitsCalc,
+                                $stockTransfer->id,
+                                $index,
+                                count($fieldValueSets)
+                            );
+
+                            $detailData = [
+                                'stock_transfer_id' => $stockTransfer->id,
+                                'company_id' => $validated['company_id'],
+                                'product_id' => $detail['product_id'],
+                                'product_name' => $detail['product_name'],
+                                'product_code' => $detail['product_code'],
+                                'expiry_date' => $detail['expiry_date'] ?? null,
+                                'mfd' => $detail['mfd'] ?? null,
+                                'discount_amount' => $detail['discount_amount'] ?? 0,
+                                'discount_percent' => $detail['discount_percent'] ?? 0,
+                                'quantity' => count($fieldValueSets) / $targetMeasureUnitQuantity,
+                                'purchase_type' => $detail['purchase_type'],
+                                'measure_unit_id' => $detail['measure_unit_id'],
+                                'price' => $detail['price'],
+                                'amount' => $detail['amount'],
+                                'purchase_stock_product_id' => $transferResult['purchase_stock_product_id'] ?? null,
+                                'stock_adjustment_id' => $transferResult['stock_adjustment_id'] ?? null,
+                                'stock_reconciliation_id' => $transferResult['stock_reconciliation_id'] ?? null,
+                                'purchase_product_id' => $transferResult['purchase_product_id'] ?? null,
+                                'stock_product_id' => $transferResult['stock_product_id'] ?? null,
+                                'branch_id' => $validated['current_location'],
+                            ];
+
+                            // Create or update stock transfer detail
+                            $stockTransferDetail = isset($detail['id'])
+                                ? StockTransferDetails::updateOrCreate(
+                                    ['id' => $detail['id'], 'stock_transfer_id' => $stockTransfer->id],
+                                    $detailData
+                                )
+                                : $stockTransfer->stockTransferDetails()->create($detailData);
+
+                            Log::debug('Created/Updated StockTransferDetail', [
+                                'stock_transfer_id' => $id,
+                                'stock_transfer_details_id' => $stockTransferDetail->id,
+                                'detail_data' => $detailData,
+                            ]);
+
+                            // Build field values for this detail
+                            foreach ($fieldValueSets as $fieldValueGroup) {
+                                foreach ($fieldValueGroup as $fieldValue) {
+                                    $fieldValuesToCreate[] = [
+                                        'stock_transfer_id' => $stockTransfer->id,
+                                        'stock_transfer_details_id' => $stockTransferDetail->id,
+                                        'company_id' => $validated['company_id'],
+                                        'branch_id' => $validated['current_location'],
+                                        'product_id' => $detail['product_id'],
+                                        'product_field_id' => $fieldValue['product_field_id'] ?? null,
+                                        'purchase_product_id' => $fieldValue['purchase_product_id'] ?? null,
+                                        'purchase_stock_product_id' => $fieldValue['purchase_stock_product_id'] ?? null,
+                                        'stock_product_id' => $fieldValue['stock_product_id'] ?? null,
+                                        'stock_adjustment_id' => $fieldValue['stock_adjustment_id'] ?? null,
+                                        'stock_reconciliation_id' => $fieldValue['stock_reconciliation_id'] ?? null,
+                                        'quantity_index' => $fieldValue['quantity_index'] ?? 0,
+                                        'quantity_type' => $fieldValue['quantity_type'] ?? null,
+                                        'value' => $fieldValue['value'] ?? null,
+                                        'created_at' => now(),
+                                        'updated_at' => now(),
+                                    ];
+                                }
+                            }
+                        }
+                    } else {
+                        // Non-field-valued product logic
+                        Log::info('Processing non-field-valued product detail in update', [
                             'index' => $index,
+                            'product_id' => $detail['product_id'],
+                            'quantity' => $quantity,
                             'transferred_pieces' => $transferredPieces,
-                            'total_pieces' => $totalPieces,
                         ]);
-                        throw new \Exception("Requested quantity ({$transferredPieces}) does not match provided field value pieces ({$totalPieces}) for product {$detail['product_name']} at index {$index}.");
-                    }
 
-                    foreach ($fieldValuesByStockId as $purchaseStockProductId => $fieldValueSets) {
                         $transferResult = $this->transferProduct(
-                            array_merge($detail, ['field_values' => $fieldValueSets]),
+                            $detail,
                             $validated['company_id'],
                             $validated['current_location'],
                             $validated['transfer_to'],
                             $measureUnitsCalc,
                             $stockTransfer->id,
                             $index,
-                            count($fieldValueSets)
+                            $transferredPieces
                         );
 
                         $detailData = [
@@ -976,7 +1057,7 @@ class StockTransferController extends Controller
                             'mfd' => $detail['mfd'] ?? null,
                             'discount_amount' => $detail['discount_amount'] ?? 0,
                             'discount_percent' => $detail['discount_percent'] ?? 0,
-                            'quantity' => count($fieldValueSets) / $targetMeasureUnitQuantity,
+                            'quantity' => $quantity,
                             'purchase_type' => $detail['purchase_type'],
                             'measure_unit_id' => $detail['measure_unit_id'],
                             'price' => $detail['price'],
@@ -1002,117 +1083,36 @@ class StockTransferController extends Controller
                             'stock_transfer_details_id' => $stockTransferDetail->id,
                             'detail_data' => $detailData,
                         ]);
-
-                        // Build field values for this detail
-                        foreach ($fieldValueSets as $fieldValueGroup) {
-                            foreach ($fieldValueGroup as $fieldValue) {
-                                $fieldValuesToCreate[] = [
-                                    'stock_transfer_id' => $stockTransfer->id,
-                                    'stock_transfer_details_id' => $stockTransferDetail->id,
-                                    'company_id' => $validated['company_id'],
-                                    'branch_id' => $validated['current_location'],
-                                    'product_id' => $detail['product_id'],
-                                    'product_field_id' => $fieldValue['product_field_id'] ?? null,
-                                    'purchase_product_id' => $fieldValue['purchase_product_id'] ?? null,
-                                    'purchase_stock_product_id' => $fieldValue['purchase_stock_product_id'] ?? null,
-                                    'stock_product_id' => $fieldValue['stock_product_id'] ?? null,
-                                    'stock_adjustment_id' => $fieldValue['stock_adjustment_id'] ?? null,
-                                    'stock_reconciliation_id' => $fieldValue['stock_reconciliation_id'] ?? null,
-                                    'quantity_index' => $fieldValue['quantity_index'] ?? 0,
-                                    'quantity_type' => $fieldValue['quantity_type'] ?? null,
-                                    'value' => $fieldValue['value'] ?? null,
-                                    'created_at' => now(),
-                                    'updated_at' => now(),
-                                ];
-                            }
-                        }
                     }
-                } else {
-                    // Non-field-valued product logic
-                    Log::info('Processing non-field-valued product detail in update', [
-                        'index' => $index,
-                        'product_id' => $detail['product_id'],
-                        'quantity' => $quantity,
-                        'transferred_pieces' => $transferredPieces,
-                    ]);
-
-                    $transferResult = $this->transferProduct(
-                        $detail,
-                        $validated['company_id'],
-                        $validated['current_location'],
-                        $validated['transfer_to'],
-                        $measureUnitsCalc,
-                        $stockTransfer->id,
-                        $index,
-                        $transferredPieces
-                    );
-
-                    $detailData = [
-                        'stock_transfer_id' => $stockTransfer->id,
-                        'company_id' => $validated['company_id'],
-                        'product_id' => $detail['product_id'],
-                        'product_name' => $detail['product_name'],
-                        'product_code' => $detail['product_code'],
-                        'expiry_date' => $detail['expiry_date'] ?? null,
-                        'mfd' => $detail['mfd'] ?? null,
-                        'discount_amount' => $detail['discount_amount'] ?? 0,
-                        'discount_percent' => $detail['discount_percent'] ?? 0,
-                        'quantity' => $quantity,
-                        'purchase_type' => $detail['purchase_type'],
-                        'measure_unit_id' => $detail['measure_unit_id'],
-                        'price' => $detail['price'],
-                        'amount' => $detail['amount'],
-                        'purchase_stock_product_id' => $transferResult['purchase_stock_product_id'] ?? null,
-                        'stock_adjustment_id' => $transferResult['stock_adjustment_id'] ?? null,
-                        'stock_reconciliation_id' => $transferResult['stock_reconciliation_id'] ?? null,
-                        'purchase_product_id' => $transferResult['purchase_product_id'] ?? null,
-                        'stock_product_id' => $transferResult['stock_product_id'] ?? null,
-                        'branch_id' => $validated['current_location'],
-                    ];
-
-                    // Create or update stock transfer detail
-                    $stockTransferDetail = isset($detail['id'])
-                        ? StockTransferDetails::updateOrCreate(
-                            ['id' => $detail['id'], 'stock_transfer_id' => $stockTransfer->id],
-                            $detailData
-                        )
-                        : $stockTransfer->stockTransferDetails()->create($detailData);
-
-                    Log::debug('Created/Updated StockTransferDetail', [
-                        'stock_transfer_id' => $id,
-                        'stock_transfer_details_id' => $stockTransferDetail->id,
-                        'detail_data' => $detailData,
-                    ]);
                 }
-            }
 
-            // Insert field values
-            if (!empty($fieldValuesToCreate)) {
-                Log::debug('Inserting stock transfer field values in update', [
-                    'stock_transfer_id' => $id,
-                    'field_values_to_create' => $fieldValuesToCreate,
-                ]);
-                StockTransferFieldValue::insert($fieldValuesToCreate);
-            }
+                // Insert field values
+                if (!empty($fieldValuesToCreate)) {
+                    Log::debug('Inserting stock transfer field values in update', [
+                        'stock_transfer_id' => $id,
+                        'field_values_to_create' => $fieldValuesToCreate,
+                    ]);
+                    StockTransferFieldValue::insert($fieldValuesToCreate);
+                }
 
-            return $stockTransfer;
-        });
+                return $stockTransfer;
+            });
 
-        Log::info('Completed stock transfer update', [
-            'stock_transfer_id' => $id,
-            'updated_stock_transfer' => $item->toArray(),
-        ]);
+            Log::info('Completed stock transfer update', [
+                'stock_transfer_id' => $id,
+                'updated_stock_transfer' => $item->toArray(),
+            ]);
 
-        return response()->json($item->load('stockTransferDetails.fieldValues'), 200);
-    } catch (\Exception $e) {
-        Log::error('Exception in StockTransfer::update', [
-            'stock_transfer_id' => $id,
-            'message' => $e->getMessage(),
-            'trace' => $e->getTraceAsString(),
-        ]);
-        return response()->json(['error' => $e->getMessage()], 500);
+            return response()->json($item->load('stockTransferDetails.fieldValues'), 200);
+        } catch (\Exception $e) {
+            Log::error('Exception in StockTransfer::update', [
+                'stock_transfer_id' => $id,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
     }
-}
     private function reverseStockTransfer($stockTransferId, $detail, $companyId, $branchId, $index)
     {
         Log::info('Starting reverseStockTransfer', [

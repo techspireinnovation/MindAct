@@ -14,6 +14,9 @@ use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
+use App\Models\StockTransferFieldValue;
+use App\Models\StockTransfer;
+use App\Models\StockTransferDetails;
 use App\Models\PurchaseStockProductReturn;
 use App\Models\PurchaseStockProductReturnFieldValue;
 use App\Models\Purchase;
@@ -311,7 +314,7 @@ class SaleController extends Controller
 
 
     public function listAvailableProducts(Request $request): JsonResponse
-    { 
+    {
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'nullable|integer|exists:companies,id,deleted_at,NULL',
@@ -448,7 +451,7 @@ class SaleController extends Controller
 
 
 
-    
+
     private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $branchId = null, ?int $responseUnitId = null): array
     {
         Log::debug('Fetching detailed available products with purchase products', [
@@ -704,23 +707,51 @@ class SaleController extends Controller
                 })
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
-            Log::debug('Returned quantity indexes fetched', [
+            $transferQuantityIndexes =  StockTransferFieldValue::whereIn('purchase_stock_product_id', $purchaseProducts->pluck('id'))
+                ->where('company_id', $companyId)
+                ->where('branch_id', $branchId)
+                ->whereNull('deleted_at')
+                ->select(['purchase_stock_product_id', 'quantity_index'])
+                ->get()
+                ->groupBy('purchase_stock_product_id')
+                ->map(fn($group) => $group->pluck('quantity_index')->toArray());
+
+            // Log the results for debugging
+            Log::debug('Transfer quantity indexes fetched', [
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
-                'returned_quantity_indexes' => $returnedQuantityIndexes->toArray()
+                'purchase_product_ids' => $purchaseProducts->pluck('id')->toArray(),
+                'transfer_quantity_indexes' => $transferQuantityIndexes->toArray()
             ]);
+
+            // Check for missing purchase_stock_product_ids
+            $expectedIds = $purchaseProducts->pluck('id')->toArray();
+            $returnedIds = array_keys($transferQuantityIndexes->toArray());
+            $missingIds = array_diff($expectedIds, $returnedIds);
+            if (!empty($missingIds)) {
+                Log::warning('Missing quantity indexes for some purchase_stock_product_ids in stock transfers', [
+                    'company_id' => $companyId,
+                    'branch_id' => $branchId,
+                    'missing_ids' => $missingIds,
+                    'expected_ids' => $expectedIds
+                ]);
+                // Initialize missing IDs with empty arrays to prevent errors
+                foreach ($missingIds as $missingId) {
+                    $transferQuantityIndexes[$missingId] = [];
+                }
+            }
 
             $saleReturnProductIds = $purchaseProducts->flatMap(fn($pp) => $pp->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns->pluck('id')))->unique();
             $salesReturnQuantityIndexes = collect();
             if ($saleReturnProductIds->isNotEmpty()) {
-                $salesReturnQuantityIndexes = \App\Models\SaleReturnProductFieldValue::whereIn('sale_return_product_id', $saleReturnProductIds)
+                $salesReturnQuantityIndexes = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $saleReturnProductIds)
                     ->where('company_id', $companyId)
                     ->where('branch_id', $branchId)
                     ->whereNull('deleted_at')
                     ->select(['sale_return_product_id', 'quantity_index'])
                     ->get()
                     ->groupBy(function ($fv) {
-                        $saleReturnProduct = \App\Models\SalesReturnProduct::find($fv->sale_return_product_id);
+                        $saleReturnProduct = SalesReturnProduct::find($fv->sale_return_product_id);
                         return $saleReturnProduct ? $saleReturnProduct->saleProduct->purchase_stock_product_id : null;
                     })
                     ->map(fn($group) => $group->pluck('quantity_index')->toArray());
@@ -734,19 +765,22 @@ class SaleController extends Controller
             ]);
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes,$transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes,$transferQuantityIndexes,) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
-                            $returnedQuantityIndexes[$pp->id] ?? []
+                            $returnedQuantityIndexes[$pp->id]
+                            ?? [],
+                            $transferQuantityIndexes[$pp->id] ?? []
                         ));
                         return $pp->fieldValues->filter(function ($fv) use ($excludedIndexes) {
                             return !in_array($fv->quantity_index, $excludedIndexes);
                         })->map(function ($fv) {
                             return [
+                                'purchase_stock_product_field_value_id' => $fv->id,
                                 'purchase_stock_product_id' => $fv->purchase_stock_product_id,
                                 'purchase_product_id' => $fv->purchase_product_id,
                                 'stock_product_id' => $fv->stock_product_id,
@@ -847,6 +881,7 @@ class SaleController extends Controller
                             return $isAvailable;
                         })->map(function ($fv) {
                             return [
+                                'purchase_stock_product_field_value_id' => $fv->id,
                                 'purchase_stock_product_id' => $fv->purchase_stock_product_id,
                                 'purchase_product_id' => $fv->purchase_product_id,
                                 'stock_product_id' => $fv->stock_product_id,
@@ -993,10 +1028,10 @@ class SaleController extends Controller
         }
     }
 
-   
 
 
-   
+
+
     public function changeDate(Request $request)
     {
         $dateString = $request->input('date');

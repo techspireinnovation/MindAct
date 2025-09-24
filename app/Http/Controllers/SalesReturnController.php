@@ -2325,7 +2325,7 @@ class SalesReturnController extends Controller
                 ]);
             }
 
-            // Filter products with available quantity
+
             $products = array_filter($products, function ($product) {
                 Log::info('Filtering product', [
                     'product_id' => $product['product_id'],
@@ -3285,6 +3285,12 @@ class SalesReturnController extends Controller
                 'sales_return_products' => 'array|min:1',
                 'sales_return_products.*.sale_product_id' => 'nullable|integer|exists:sale_products,id',
                 'sales_return_products.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
+                'sales_return_products.*.purchase_product_id' => 'nullable',
+                'sales_return_products.*.stock_product_id' => 'nullable',
+                'sales_return_products.*.stock_adjustsment_id' => 'nullable',
+                'sales_return_products.*.stock_reconciliation_id' => 'nullable',
+                'sales_return_products.*.stock_transfer_id' => 'nullable',
+
                 'sales_return_products.*.product_id' => 'nullable|exists:products,id',
                 'sales_return_products.*.product_name' => 'nullable|string|max:255',
                 'sales_return_products.*.barcode' => 'nullable|string|max:255',
@@ -3301,7 +3307,13 @@ class SalesReturnController extends Controller
                 'sales_return_products.*.expiry_date' => 'nullable|string|max:255',
                 'sales_return_products.*.field_values' => 'nullable|array',
                 'sales_return_products.*.field_values.*' => 'array|min:1',
-                'sales_return_products.*.field_values.*.*.purchase_product_id' => 'nullable|integer|exists:purchase_products,id',
+                'sales_return_products.*.field_values.*.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
+
+                'sales_return_products.*.field_values.*.*.purchase_product_id' => 'nullable',
+                'sales_return_products.*.field_values.*.*.stock_product_id' => 'nullable',
+                'sales_return_products.*.field_values.*.*.stock_transfer_id' => 'nullable',
+                'sales_return_products.*.field_values.*.*.stock_reconciliation_id' => 'nullable',
+                'sales_return_products.*.field_values.*.*.stock_adjustment_id' => 'nullable',
                 'sales_return_products.*.field_values.*.*.sale_product_id' => 'required_if:sales_return_products.*.field_values,exists|integer|exists:sale_products,id',
                 'sales_return_products.*.field_values.*.*.product_field_id' => 'required_if:sales_return_products.*.field_values,exists|integer|exists:product_fields,id',
                 'sales_return_products.*.field_values.*.*.value' => 'required_if:sales_return_products.*.field_values,exists|string|max:255',
@@ -3840,6 +3852,7 @@ class SalesReturnController extends Controller
                             foreach ($fieldValueSet as $fieldValue) {
                                 $fieldValues[] = [
                                     'company_id' => $validated['company_id'],
+                                    'branch_id' => $validated['branch_id'],
                                     'product_field_id' => $fieldValue['product_field_id'],
                                     'product_id' => $salesReturnProduct->product_id,
                                     'sale_return_product_id' => $salesReturnProduct->id,

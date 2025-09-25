@@ -220,30 +220,7 @@ class StockTransferService
     }
 
 
-    // public function flattenFieldValues(array $fieldValues, int $index): array
-    // {
-    //     $flat = [];
-    //     foreach ($fieldValues as $set) {
-    //         if (!is_array($set)) {
-    //             throw new \Exception("Invalid field_values format at index {$index}.");
-    //         }
-    //         foreach ($set as $fv) {
-    //             if (!isset($fv['product_field_id'], $fv['value'], $fv['quantity_index'], $fv['purchase_stock_product_id'])) {
-    //                 throw new \Exception("Missing required field value attributes at index {$index}.");
-    //             }
-    //             $flat[] = [
-    //                 'product_field_id' => $fv['product_field_id'],
-    //                 'value' => $fv['value'],
-    //                 'quantity_index' => $fv['quantity_index'],
-    //                 'quantity_type' => $fv['quantity_type'] ?? 'regular',
-    //                 'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
-    //             ];
-    //         }
-    //     }
-    //     return $flat;
-    // }
-
-
+    
 
     public function flattenFieldValues($fieldValues, $index)
     {

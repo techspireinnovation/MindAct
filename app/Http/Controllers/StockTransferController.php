@@ -1147,7 +1147,7 @@ class StockTransferController extends Controller
 
                             // Create or update stock transfer detail
                             $stockTransferDetail = isset($detail['id'])
-                                ? StockTransferDetail::updateOrCreate(
+                                ? StockTransferDetails::updateOrCreate(
                                     ['id' => $detail['id'], 'stock_transfer_id' => $stockTransfer->id],
                                     $detailData
                                 )
@@ -1232,7 +1232,7 @@ class StockTransferController extends Controller
 
                         // Create or update stock transfer detail
                         $stockTransferDetail = isset($detail['id'])
-                            ? StockTransferDetail::updateOrCreate(
+                            ? StockTransferDetails::updateOrCreate(
                                 ['id' => $detail['id'], 'stock_transfer_id' => $stockTransfer->id],
                                 $detailData
                             )
@@ -1436,6 +1436,9 @@ class StockTransferController extends Controller
             'index' => $index,
         ]);
     }
+
+
+
 
 
 
@@ -1716,6 +1719,190 @@ class StockTransferController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
+
+
+
+    public function acceptStockTransfer(Request $request, $stockTransferId): JsonResponse
+    {
+        try {
+            \Log::info('Starting stock transfer acceptance process', [
+                'stock_transfer_id' => $stockTransferId,
+                'request_data' => $request->all(),
+                'user_id' => auth()->id(),
+            ]);
+
+            $validator = Validator::make($request->all(), [
+                'accept_status' => 'required|in:0,1',
+               
+            ]);
+
+            if ($validator->fails()) {
+                \Log::warning('Validation failed for stock transfer acceptance', [
+                    'errors' => $validator->errors()->toArray(),
+                    'request_data' => $request->all(),
+                ]);
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $validated = $validator->validated();
+            $companyId = $request->input('company_id');
+            $branchId = $request->input('branch_id');
+
+            if ($validated['accept_status'] !== 1) {
+                \Log::info('Accept status is not 1, no transfer required', [
+                    'stock_transfer_id' => $stockTransferId,
+                    'accept_status' => $validated['accept_status'],
+                ]);
+                return response()->json(['message' => 'Stock transfer not accepted, no changes made.'], 200);
+            }
+
+            $result = DB::transaction(function () use ($stockTransferId, $validated,$companyId, $branchId): array {
+                // Fetch the stock transfer
+                $stockTransfer = StockTransfer::with(['stockTransferDetails.fieldValues'])
+                    ->where('id', $stockTransferId)
+                    ->where('company_id', $companyId)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if (!$stockTransfer) {
+                    \Log::error('Stock transfer not found', [
+                        'stock_transfer_id' => $stockTransferId,
+                        'company_id' => $validated['company_id'],
+                    ]);
+                    throw new \Exception("Stock transfer ID {$stockTransferId} not found.");
+                }
+
+                if ($stockTransfer->accept_status === '1') {
+                    \Log::warning('Stock transfer already accepted', [
+                        'stock_transfer_id' => $stockTransferId,
+                    ]);
+                    throw new \Exception("Stock transfer ID {$stockTransferId} has already been accepted.");
+                }
+
+                // Validate transfer_to is a valid branch ID
+                if (!$stockTransfer->transfer_to || !is_numeric($stockTransfer->transfer_to)) {
+                    \Log::error('Invalid transfer_to in stock transfer', [
+                        'stock_transfer_id' => $stockTransferId,
+                        'transfer_to' => $stockTransfer->transfer_to,
+                    ]);
+                    throw new \Exception("Invalid or missing transfer_to in stock transfer ID {$stockTransferId}.");
+                }
+
+                $newPurchaseStockProducts = [];
+                $newFieldValues = [];
+
+                foreach ($stockTransfer->stockTransferDetails as $detail) {
+                    // Copy all data from stock_transfer_details to purchase_stock_products
+                    // Set branch_id to transfer_to, do not copy purchase_stock_product_id
+                    $purchaseStockProductData = [
+                        'stock_adjustment_id' => $detail->stock_adjustment_id,
+                        'stock_reconciliation_id' => $detail->stock_reconciliation_id,
+                        'branch_id' => $stockTransfer->transfer_to, // Set to transfer_to from stock_transfers
+                        'mfd' => $detail->mfd,
+                        'purchase_type' => $detail->purchase_type,
+                        'purchase_product_id' => $detail->purchase_product_id,
+                        'stock_product_id' => $detail->stock_product_id,
+                        'purchase_id' => $detail->purchase_id,
+                        'product_code' => $detail->product_code,
+                        'expiry_date' => $detail->expiry_date,
+                        'free_quantity' => $detail->free_quantity,
+                        'discount_percent' => $detail->discount_percent,
+                        'discount_amount' => $detail->discount_amount,
+                        'is_vatable' => $detail->is_vatable ?? 0,
+                        'measure_unit_id' => $detail->measure_unit_id,
+                        'stock_transfer_id' => $detail->stock_transfer_id, // Keep the same as in stock_transfer_details
+                        'company_id' => $detail->company_id,
+                        'product_id' => $detail->product_id,
+                        'product_name' => $detail->product_name,
+                        'quantity' => $detail->quantity,
+                        'unit' => $detail->unit,
+                        'batch_no' => $detail->batch_no,
+                        'price' => $detail->price,
+                        'amount' => $detail->amount,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+
+                    // Create new PurchaseStockProduct (new id will be auto-generated)
+                    $newPsp = PurchaseStockProduct::create($purchaseStockProductData);
+                    $newPurchaseStockProducts[] = $newPsp;
+
+                    // Handle field values if they exist - copy to purchase_stock_product_field_values
+                    $fieldValues = $detail->fieldValues;
+                    if ($fieldValues->isNotEmpty()) {
+                        \Log::info('Processing field values for stock transfer detail', [
+                            'stock_transfer_detail_id' => $detail->id,
+                            'field_value_count' => $fieldValues->count(),
+                            'new_psp_id' => $newPsp->id,
+                        ]);
+
+                        foreach ($fieldValues as $fieldValue) {
+                            $newFieldValues[] = [
+                                // Do not copy purchase_stock_product_field_value_id, as it should be new
+                                'stock_transfer_id' => $fieldValue->stock_transfer_id, // Keep the same
+                              // Keep the same
+                                'company_id' => $fieldValue->company_id,
+                                'branch_id' => $stockTransfer->transfer_to, // Set to transfer_to from stock_transfers
+                                'purchase_stock_product_id' => $newPsp->id, // Link to new PSP id
+                                'purchase_product_id' => $fieldValue->purchase_product_id,
+                                'stock_product_id' => $fieldValue->stock_product_id,
+                                'stock_adjustment_id' => $fieldValue->stock_adjustment_id,
+                                'stock_reconciliation_id' => $fieldValue->stock_reconciliation_id,
+                                'product_field_id' => $fieldValue->product_field_id,
+                                'quantity_index' => $fieldValue->quantity_index,
+                                'quantity_type' => $fieldValue->quantity_type,
+                                'product_id' => $fieldValue->product_id,
+                                'value' => $fieldValue->value,
+                                'created_at' => now(),
+                                'updated_at' => now(),
+                            ];
+                        }
+                    }
+                }
+
+                // Insert new field values in batch
+                if (!empty($newFieldValues)) {
+                    \Log::info('Inserting new purchase stock product field values', [
+                        'count' => count($newFieldValues),
+                    ]);
+                    PurchaseStockProductFieldValue::insert($newFieldValues);
+                }
+
+                // Update stock transfer accept_status
+                $stockTransfer->accept_status = '1';
+                $stockTransfer->save();
+
+                \Log::info('Stock transfer accepted and processed', [
+                    'stock_transfer_id' => $stockTransferId,
+                    'new_purchase_stock_products_count' => count($newPurchaseStockProducts),
+                    'new_field_values_count' => count($newFieldValues),
+                ]);
+
+                return [
+                    'stock_transfer' => $stockTransfer->fresh()->load('stockTransferDetails.fieldValues'),
+                    'new_purchase_stock_products' => $newPurchaseStockProducts,
+                ];
+            });
+
+            return response()->json([
+                'message' => 'Stock transfer accepted and processed successfully.',
+                'data' => $result['stock_transfer'],
+            ], 200);
+        } catch (\Exception $e) {
+            \Log::error('Exception in acceptStockTransfer', [
+                'stock_transfer_id' => $stockTransferId,
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+
 
     public function destroy($id): JsonResponse
     {

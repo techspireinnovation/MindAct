@@ -153,30 +153,83 @@ public function index(Request $request): JsonResponse
 
 
 
+    // public function getProductionSettingList(Request $request): JsonResponse
+    // {
+    //     try {
+    //         $productionSettings = ProductionSetting::select('id', 'product_id', 'product_name', 'quantity')
+    //             ->whereNull('deleted_at')
+    //             ->where('company_id', $request->company_id)
+    //             ->get();
+
+    //         return response()->json([
+    //             'message' => 'Production Settings fetched successfully.',
+    //             'data' => $productionSettings
+    //         ], 200);
+
+    //     } catch (ModelNotFoundException $e) {
+    //         \Log::error('Item not Found in getProductionSettingList', ['error' => $e->getMessage()]);
+    //         return response()->json(['message' => 'Item Not Found !!'], 404);
+    //     } catch (QueryException $e) {
+    //         \Log::error('Database error in getProductionSettingList', ['error' => $e->getMessage()]);
+    //         return response()->json(['message' => 'Database error occurred.'], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error('Unexpected error in getProductionSettingList', ['error' => $e->getMessage()]);
+    //         return response()->json(['message' => 'Unexpected error occurred.'], 500);
+    //     }
+    // }
+
     public function getProductionSettingList(Request $request): JsonResponse
-    {
-        try {
-            $productionSettings = ProductionSetting::select('id', 'product_id', 'product_name', 'quantity')
-                ->whereNull('deleted_at')
-                ->where('company_id', $request->company_id)
-                ->get();
+{
+    try {
+        $productionSettings = ProductionSetting::whereNull('deleted_at')
+            ->where('company_id', $request->company_id)
+            ->get();
 
-            return response()->json([
-                'message' => 'Production Settings fetched successfully.',
-                'data' => $productionSettings
-            ], 200);
+        // Collect all product IDs
+        $productIds = $productionSettings->pluck('product_id')->unique();
 
-        } catch (ModelNotFoundException $e) {
-            \Log::error('Item not Found in getProductionSettingList', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Item Not Found !!'], 404);
-        } catch (QueryException $e) {
-            \Log::error('Database error in getProductionSettingList', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Database error occurred.'], 500);
-        } catch (\Exception $e) {
-            \Log::error('Unexpected error in getProductionSettingList', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Unexpected error occurred.'], 500);
-        }
+        // Fetch products with product_unique_id
+        $products = Product::whereIn('id', $productIds)
+            ->get(['id', 'product_unique_id', 'name'])
+            ->keyBy('id');
+
+        // Fetch product lists (to get barcodes)
+        $productLists = ProductList::whereIn('product_id', $productIds)
+            ->get(['product_id', 'barcode'])
+            ->groupBy('product_id');
+
+        $data = $productionSettings->map(function ($item) use ($products, $productLists) {
+            $product = $products[$item->product_id] ?? null;
+            $barcode = $productLists[$item->product_id][0]->barcode ?? null; // take only first barcode
+
+            return [
+                'id' => $item->id,
+                'company_id' => $item->company_id,
+                'product_id' => $item->product_id,
+                'product_name' => $item->product_name,
+                'quantity' => $item->quantity,
+                'product_unique_id' => $product->product_unique_id ?? null,
+                'barcode' => $barcode,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Production Settings fetched successfully.',
+            'data' => $data
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        \Log::error('Item not Found in getProductionSettingList', ['error' => $e->getMessage()]);
+        return response()->json(['message' => 'Item Not Found !!'], 404);
+    } catch (QueryException $e) {
+        \Log::error('Database error in getProductionSettingList', ['error' => $e->getMessage()]);
+        return response()->json(['message' => 'Database error occurred.'], 500);
+    } catch (\Exception $e) {
+        \Log::error('Unexpected error in getProductionSettingList', ['error' => $e->getMessage()]);
+        return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
+}
+
 
 
     // public function getProductionSettingDetail(Request $request): JsonResponse
@@ -443,7 +496,10 @@ public function getProductionSettingDetail(Request $request): JsonResponse
                 'product_location_id' => 'nullable|exists:locations,id',
                 'measure_unit_id' => 'nullable|exists:measure_units,id',
                 'product_quantity' => 'nullable|numeric',
-                'production_date' => 'nullable|string|max:255',
+                // 'production_date' => 'nullable|string|max:255',
+                // ✅ Changed production_date → production_date_bs & production_date_ad
+                'production_date_bs' => 'nullable|string|max:255', // BS date stored as string
+                 'production_date_ad' => 'nullable|date',           // AD date stored as date
                 'production_no' => 'nullable|string|max:255',
 
                 'document_no' => [
@@ -643,7 +699,10 @@ public function show($id): JsonResponse
                 'product_location_id' => 'nullable|exists:locations,id',
                 'measure_unit_id' => 'nullable|exists:measure_units,id',
                 'product_quantity' => 'nullable|numeric',
-                'production_date' => 'nullable|string|max:255',
+                // 'production_date' => 'nullable|string|max:255',
+                // ✅ Changed production_date → production_date_bs & production_date_ad
+                'production_date_bs' => 'nullable|string|max:255', // BS date stored as string
+                 'production_date_ad' => 'nullable|date',           // AD date stored as date
                 'production_no' => 'nullable|string|max:255',
 
                 'document_no' => [
@@ -730,5 +789,11 @@ public function show($id): JsonResponse
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
+
+
+
+
+
 
 }

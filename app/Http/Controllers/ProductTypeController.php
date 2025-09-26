@@ -53,6 +53,13 @@ class ProductTypeController extends Controller
         }
     }
 
+
+
+
+
+
+
+
     public function productTypeDetails(Request $request)
     {
         try {
@@ -162,7 +169,7 @@ class ProductTypeController extends Controller
         return response()->json($item, 201);
     }
 
-    public function show($id): JsonResponse
+    public function getById($id): JsonResponse
     {
         try {
             $item = ProductType::findOrFail($id);
@@ -173,6 +180,9 @@ class ProductTypeController extends Controller
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
+
+   
+
 
   
     public function destroy($id): JsonResponse

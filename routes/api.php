@@ -138,6 +138,10 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::get('/getById/{id}', [RoleController::class, 'getById'])->name('company.role.getById');
 
     });
+    
+    
+Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
+
 
     Route::middleware(['company.access'])->group(function () {
 
@@ -197,9 +201,16 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::apiResource('sale-additionals', SaleController::class);
 
         Route::apiResource('product-categories', ProductCategoryController::class);
+        // For both list and by id in same function
+       
+
         Route::resource('product-types', ProductTypeController::class);
+      
+
         Route::resource('branches', BranchController::class);
         Route::apiResource('banks', BankController::class);
+        Route::get('/bank-vouchers-totals', [BankVoucherController::class, 'getTotals']);////
+
         Route::apiResource('bank-vouchers', BankVoucherController::class);
         Route::apiResource('projects', ProjectController::class);
         Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
@@ -329,8 +340,10 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         Route::resource('production-settings', ProductionSettingController::class);
         Route::resource('production-assembles', ProductionAssembleController::class);
-        Route::get('production-settings-list', [ProductionAssembleController::class, 'getProductionSettingList']);
+        Route::get('production-settings-list', [ProductionAssembleController::class, 'getProdFmeatheructionSettingList']);
         Route::get('production-settings-details', [ProductionAssembleController::class, 'getProductionSettingDetail']);
+        Route::get('filter-barcode', [ProductionAssembleController::class, 'filterByBarcode']);///
+
         Route::resource('shrinking-working-loss', ShrinkingWorkingLossController::class);
         Route::get('purchase-products-shrinking-working-loss', [ShrinkingWorkingLossController::class, 'getProductDetailsforShrinkingWorkingLoss']);
         Route::get('nozzles-active-list', [NozzleController::class, 'activeNozzles']);////
@@ -375,6 +388,8 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
 
         Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+        
+
         Route::get('product-types-active-list', [ProductTypeController::class, 'activeProductTypeList']);////
 
         Route::get('product-type-details', [ProductTypeController::class, 'productTypeDetails']);
@@ -435,6 +450,9 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
         Route::get('bank-list', [BankController::class, 'bankList']);
         Route::get('bank-details', [BankController::class, 'bankDetails']);
+
+        Route::resource('meter-readings', MeterReadingController::class);
+        Route::get('meter-readings-last-closing', [MeterReadingController::class, 'getLastClosingReading']);///
 
         Route::get('project-list', [ProjectController::class, 'projectList']);
         Route::get('project-details', [ProjectController::class, 'projectDetails']);

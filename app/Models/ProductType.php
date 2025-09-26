@@ -30,6 +30,8 @@ class ProductType extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+   
+
     public function products()
     {
         return $this->hasMany(Product::class, 'product_type_id');

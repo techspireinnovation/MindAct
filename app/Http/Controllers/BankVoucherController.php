@@ -8,6 +8,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Validator;
+use App\Models\VoucherSummary;
+
 
 class BankVoucherController extends Controller
 {
@@ -109,4 +111,44 @@ class BankVoucherController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
+
+
+public function getTotals(Request $request): JsonResponse
+{
+    $validator = Validator::make($request->all(), [
+        'from_date' => 'required|string',
+        'to_date' => 'required|string',
+        'company_id' => 'required|integer|exists:companies,id',
+        'account_head_id' => 'nullable|integer',
+        'account_group_id' => 'nullable|integer',
+        'payment_type' => 'nullable|string|in:cash,bank',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json($validator->errors(), 422);
+    }
+
+    $query = VoucherSummary::where('company_id', $request->company_id)
+        ->whereBetween('date_bs', [$request->from_date, $request->to_date])
+        ->when($request->account_head_id, fn($q) => $q->where('account_head_id', $request->account_head_id))
+        ->when($request->account_group_id, fn($q) => $q->where('account_group_id', $request->account_group_id))
+        ->when($request->payment_type, fn($q) => $q->where('payment_type', $request->payment_type));
+
+    $totalDebit = $query->sum('debit');
+    $totalCredit = $query->sum('credit');
+    $finalBalance = $totalDebit - $totalCredit;
+
+    return response()->json([
+        'totals' => [
+            'total_debit' => number_format($totalDebit, 2),
+            'total_credit' => number_format($totalCredit, 2),
+            'final_balance' => $finalBalance >= 0
+                ? number_format($finalBalance, 2) . ' DR'
+                : number_format(abs($finalBalance), 2) . ' CR'
+        ]
+    ]);
+}
+
+
+
 }

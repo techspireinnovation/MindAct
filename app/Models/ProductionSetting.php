@@ -41,4 +41,7 @@ class ProductionSetting extends Model
         return $this->hasMany(ProductionSettingDetail::class); 
     }
 
+ 
 }
+
+

@@ -25,6 +25,8 @@ class AccountGroupController extends Controller
 
         return response()->json($query->paginate(50));
     }
+
+    
     public function accountGroupList(Request $request){
         try{
 

@@ -79,125 +79,258 @@ class BankController extends Controller
             }
         }
 
+    // public function update(Request $request, $id): JsonResponse
+    // {
+    //     try {
+    //         $item = Bank::findOrFail($id);
+
+
+    //         $validator = Validator::make($request->all(), [
+    //             'name' => [
+    //                 'required',
+    //                 'string',
+    //                 'max:255',
+    //                 Rule::unique('banks')
+    //                     ->ignore($id)
+    //                     ->where(function ($query) use ($request, $item) {
+    //                         return $query->where('company_id', $request->input('company_id', $request->company_id))
+    //                             ->whereNull('deleted_at');
+    //                     }),
+    //             ],
+    //             'is_active' => 'boolean|required',
+    //             'is_primary' => 'boolean',
+    //             'address' => 'nullable|string|max:255',
+    //             'class' => 'nullable|string|max:255',
+    //             'number' => 'nullable|string|max:255',
+    //             'swift' => 'nullable|string|max:255',
+    //             'company_id' => 'required|integer|exists:companies,id'
+    //         ]);
+
+
+    //         if ($validator->fails()) {
+    //             return response()->json($validator->errors(), 422);
+    //         }
+
+
+    //         $validated = $validator->validated();
+
+    //         // Handle is_primary logic: Set other banks' is_primary to false if this one is true
+    //         // Handle is_primary logic: Set other banks' is_primary to false if this one is true
+    //         if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+    //             Bank::where('company_id', $item->company_id)
+    //                 ->where('id', '!=', $id)
+    //                 ->where('is_primary', true)
+    //                 ->update(['is_primary' => false]);
+    //         }
+
+    //         // Explicitly set nullable fields to null if not provided in the request
+    //         $updateData = [
+    //             'name' => $validated['name'],
+    //             'is_active' => (bool) $validated['is_active'],
+    //             'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
+    //             'company_id' => $validated['company_id'],
+    //             'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
+    //             'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
+    //             'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
+    //             'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
+    //         ];
+
+    //         $item->update($updateData);
+    //         // Explicitly set nullable fields to null if not provided in the request
+    //         $updateData = [
+    //             'name' => $validated['name'],
+    //             'is_active' => (bool) $validated['is_active'],
+    //             'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
+    //             'company_id' => $validated['company_id'],
+    //             'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
+    //             'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
+    //             'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
+    //             'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
+    //         ];
+
+    //         $item->update($updateData);
+    //         $item->refresh();
+
+    //         return response()->json($item);
+    //     } catch (ModelNotFoundException $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'Item not found'], 404);
+    //     } catch (QueryException $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     }
+    // }
+
+
     public function update(Request $request, $id): JsonResponse
-    {
-        try {
-            $item = Bank::findOrFail($id);
+{
+    try {
+        $item = Bank::findOrFail($id);
 
+        $messages = [
+            'swift.unique' => 'Swift code already taken.',
+        ];
 
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('banks')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
-                'address' => 'nullable|string|max:255',
-                'class' => 'nullable|string|max:255',
-                'number' => 'nullable|string|max:255',
-                'swift' => 'nullable|string|max:255',
-                'company_id' => 'required|integer|exists:companies,id'
-            ]);
-
-
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
-            }
-
-
-            $validated = $validator->validated();
-
-            // Handle is_primary logic: Set other banks' is_primary to false if this one is true
-            // Handle is_primary logic: Set other banks' is_primary to false if this one is true
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                Bank::where('company_id', $item->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            // Explicitly set nullable fields to null if not provided in the request
-            $updateData = [
-                'name' => $validated['name'],
-                'is_active' => (bool) $validated['is_active'],
-                'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
-                'company_id' => $validated['company_id'],
-                'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
-                'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
-                'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
-                'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
-            ];
-
-            $item->update($updateData);
-            // Explicitly set nullable fields to null if not provided in the request
-            $updateData = [
-                'name' => $validated['name'],
-                'is_active' => (bool) $validated['is_active'],
-                'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
-                'company_id' => $validated['company_id'],
-                'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
-                'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
-                'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
-                'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
-            ];
-
-            $item->update($updateData);
-            $item->refresh();
-
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
-        }
-    }
-
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
+        $validator = Validator::make($request->all(), [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('banks')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->input('company_id', $request->company_id))
-                        ->whereNull('deleted_at');
-
-                }),
+                Rule::unique('banks')
+                    ->ignore($id)
+                    ->where(function ($query) use ($request, $item) {
+                        return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                     ->whereNull('deleted_at');
+                    }),
             ],
             'is_active' => 'boolean|required',
             'is_primary' => 'boolean',
             'address' => 'nullable|string|max:255',
             'class' => 'nullable|string|max:255',
             'number' => 'nullable|string|max:255',
-            'swift' => 'nullable|string|max:255',
-
+            'swift' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('banks')
+                    ->ignore($id)
+                    ->where(function ($query) use ($request, $item) {
+                        return $query->where('company_id', $request->input('company_id', $request->company_id))
+                                     ->whereNull('deleted_at');
+                    }),
+            ],
             'company_id' => 'required|integer|exists:companies,id'
-        ]);
+        ], $messages);
 
-        if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
-            Bank::where('company_id', $validated['company_id'])
-                ->update(['is_primary' => 0]);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
         }
 
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-        $validated['is_active'] = $validated['is_active'] ?? true;
+        $validated = $validator->validated();
 
-        $item = Bank::create($validated);
-        return response()->json($item, 201);
+        // Handle is_primary logic: reset other banks if this one is set to primary
+        if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
+            Bank::where('company_id', $item->company_id)
+                ->where('id', '!=', $id)
+                ->where('is_primary', true)
+                ->update(['is_primary' => false]);
+        }
+
+        // Update data
+        $updateData = [
+            'name' => $validated['name'],
+            'is_active' => (bool) $validated['is_active'],
+            'is_primary' => isset($validated['is_primary']) ? (bool) $validated['is_primary'] : $item->is_primary,
+            'company_id' => $validated['company_id'],
+            'address' => $request->has('address') ? ($validated['address'] ?? null) : null,
+            'class' => $request->has('class') ? ($validated['class'] ?? null) : null,
+            'number' => $request->has('number') ? ($validated['number'] ?? null) : null,
+            'swift' => $request->has('swift') ? ($validated['swift'] ?? null) : null,
+        ];
+
+        $item->update($updateData);
+        $item->refresh();
+
+        return response()->json($item);
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
+
+
+    // public function store(Request $request): JsonResponse
+    // {
+    //     $validated = $request->validate([
+    //         'name' => [
+    //             'required',
+    //             'string',
+    //             'max:255',
+    //             Rule::unique('banks')->where(function ($query) use ($request) {
+    //                 return $query->where('company_id', $request->input('company_id', $request->company_id))
+    //                     ->whereNull('deleted_at');
+
+    //             }),
+    //         ],
+    //         'is_active' => 'boolean|required',
+    //         'is_primary' => 'boolean',
+    //         'address' => 'nullable|string|max:255',
+    //         'class' => 'nullable|string|max:255',
+    //         'number' => 'nullable|string|max:255',
+    //         'swift' => 'nullable|string|max:255',
+
+    //         'company_id' => 'required|integer|exists:companies,id'
+    //     ]);
+
+    //     if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
+    //         Bank::where('company_id', $validated['company_id'])
+    //             ->update(['is_primary' => 0]);
+    //     }
+
+    //     $validated['is_primary'] = $validated['is_primary'] ?? false;
+    //     $validated['is_active'] = $validated['is_active'] ?? true;
+
+    //     $item = Bank::create($validated);
+    //     return response()->json($item, 201);
+    // }
+
+
+    public function store(Request $request): JsonResponse
+{
+    $messages = [
+        'swift.unique' => 'Swift code already taken.',
+    ];
+
+    $validated = $request->validate([
+        'name' => [
+            'required',
+            'string',
+            'max:255',
+            Rule::unique('banks')->where(function ($query) use ($request) {
+                return $query->where('company_id', $request->input('company_id', $request->company_id))
+                             ->whereNull('deleted_at');
+            }),
+        ],
+        'is_active' => 'boolean|required',
+        'is_primary' => 'boolean',
+        'address' => 'nullable|string|max:255',
+        'class' => 'nullable|string|max:255',
+        'number' => 'nullable|string|max:255',
+        'swift' => [
+            'nullable',
+            'string',
+            'max:255',
+            Rule::unique('banks')->where(function ($query) use ($request) {
+                return $query->where('company_id', $request->input('company_id'))
+                             ->whereNull('deleted_at');
+            }),
+        ],
+        'company_id' => 'required|integer|exists:companies,id'
+    ], $messages);
+
+    // If is_primary = 1, reset others
+    if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
+        Bank::where('company_id', $validated['company_id'])
+            ->update(['is_primary' => 0]);
+    }
+
+    $validated['is_primary'] = $validated['is_primary'] ?? false;
+    $validated['is_active'] = $validated['is_active'] ?? true;
+
+    $item = Bank::create($validated);
+
+    return response()->json($item, 201);
+}
+
 
     public function show($id): JsonResponse
     {

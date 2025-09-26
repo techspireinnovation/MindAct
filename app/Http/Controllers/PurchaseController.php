@@ -847,25 +847,54 @@ class PurchaseController extends Controller
         }
     }
 
+  
+    
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Purchase::with('purchaseProducts.fieldValues')->findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Purchase deleted']);
+            $purchase = Purchase::findOrFail($id);
+    
+            if (
+                $purchase->purchaseProductsUse()->exists() ||
+                $purchase->purchaseReturnProductsUse()->exists() ||
+                $purchase->purchaseReturnsUse()->exists()
+            ) {
+                return response()->json([
+                    'error'   => 'in_use',
+                    'message' => 'Purchase cannot be deleted because it has related products or return records.'
+                ], 400);
+            }
+    
+            $purchase->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Purchase deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json([
+                'error'   => 'not_found',
+                'message' => 'Purchase not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
             \Log::error($e);
-
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error'   => 'query_error',
+                'message' => 'A database error occurred while deleting the purchase.'
+            ], 500);
+    
         } catch (\Exception $e) {
             \Log::error($e);
-
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error'   => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the purchase.'
+            ], 500);
         }
     }
+    
 // public function filterbyBarcode(Request $request): JsonResponse
 // {
 //     try {

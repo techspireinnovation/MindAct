@@ -165,18 +165,61 @@ class StoreController extends Controller
         }
     }
 
+   
+    
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Store::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Store deleted']);
+            $store = Store::findOrFail($id);
+    
+            $usedIn = [];
+    
+            if ($store->purchases()->exists()) {
+                $usedIn[] = 'purchases';
+            }
+    
+            if ($store->sales()->exists()) {
+                $usedIn[] = 'sales';
+            }
+    
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Store cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+    
+            $store->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Store deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Store not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Store.'
+            ], 500);
+    
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Store.'
+            ], 500);
         }
     }
+    
 
 public function activeStores(Request $request): JsonResponse
 {

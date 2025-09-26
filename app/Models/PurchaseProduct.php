@@ -156,4 +156,28 @@ class PurchaseProduct extends Model
         return $averagePrice['primary_units'];
 
     }
+
+
+
+
+    // public function purchaseProductFieldValuesUse()
+    // {
+    //     return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
+    // }
+    // public function purchaseProductReturnsUse()
+    // {
+    //     return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
+    // }
+    // public function saleProductsUse()
+    // {
+    //     return $this->hasMany(SaleProduct::class, 'purchase_product_id');
+    // }
+    // public function salesReturnProductsUse()
+    // {
+    //     return $this->hasMany(SalesReturnProduct::class, 'purchase_product_id');
+    // }
+    // public function saleReturnProductFieldValuesUse()
+    // {
+    //     return $this->hasMany(SaleReturnProductFieldValue::class, 'purchase_product_id');
+    // }
 }

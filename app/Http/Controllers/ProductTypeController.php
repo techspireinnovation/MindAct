@@ -53,6 +53,13 @@ class ProductTypeController extends Controller
         }
     }
 
+
+
+
+
+
+
+
     public function productTypeDetails(Request $request)
     {
         try {
@@ -162,7 +169,7 @@ class ProductTypeController extends Controller
         return response()->json($item, 201);
     }
 
-    public function show($id): JsonResponse
+    public function getById($id): JsonResponse
     {
         try {
             $item = ProductType::findOrFail($id);
@@ -174,25 +181,53 @@ class ProductTypeController extends Controller
         }
     }
 
+   
+
+
+  
     public function destroy($id): JsonResponse
     {
         try {
-            $item = ProductType::findOrFail($id);
-
-            $products = Product::where('product_type_id', $item->id)->get();
-
-            if ($products->isNotEmpty()) {
-                return response()->json(['error' => 'Product Cannot be Deleted'], 200);
+            $type = ProductType::findOrFail($id);
+    
+            // Check usage
+            if ($type->products()->exists()) {
+                return response()->json([
+                    'error'   => 'in_use',
+                    'message' => 'Product Type cannot be deleted because it is assigned to one or more products.'
+                ], 400);
             }
-
-            $item->delete();
-            return response()->json(['message' => 'Product Type deleted!!'], 200);
+    
+            $type->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Product Type deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found!!'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error'   => 'not_found',
+                'message' => 'Product Type not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error($e);
+            return response()->json([
+                'error'   => 'query_error',
+                'message' => 'A database error occurred while deleting the product type.'
+            ], 500);
+    
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error'   => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the product type.'
+            ], 500);
         }
     }
+    
 
  public function activeProductTypeList(Request $request): JsonResponse
 {

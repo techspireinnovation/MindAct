@@ -25,6 +25,8 @@ class AccountGroupController extends Controller
 
         return response()->json($query->paginate(50));
     }
+
+    
     public function accountGroupList(Request $request){
         try{
 
@@ -199,23 +201,68 @@ class AccountGroupController extends Controller
         }
     }
 
+   
     public function destroy($id): JsonResponse
     {
         try {
-            if ($this->checkIfUsed($id))
-                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
-
             $group = AccountGroup::findOrFail($id);
+    
+            $usedIn = [];
+    
+            if ($group->accountHeads()->exists()) {
+                $usedIn[] = 'account heads';
+            }
+            if ($group->voucherSummaries()->exists()) {
+                $usedIn[] = 'voucher summaries';
+            }
+            if ($group->fixedAssetGroup()->exists()) {
+                $usedIn[] = 'fixed asset groups';
+            }
+            if ($group->journalVoucherTransactions()->exists()) {
+                $usedIn[] = 'journal voucher transactions';
+            }
+            if ($group->voucherSummaryDetails()->exists()) {
+                $usedIn[] = 'voucher summary details';
+            }
+    
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Account Group cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+    
             $group->delete();
-            return response()->json(['message' => 'Account Group deleted!!']);
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Account Group deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Account Group not found!!'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Account Group not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Account Group.'
+            ], 500);
+    
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Account Group.'
+            ], 500);
         }
     }
+    
 
     private function checkIfUsed($id): bool
     {

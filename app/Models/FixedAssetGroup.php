@@ -35,4 +35,9 @@ class FixedAssetGroup extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function fixedAssetAccounts()
+    {
+        return $this->hasMany(FixedAssetAccount::class, 'fixed_asset_group_id');
+    }
 }

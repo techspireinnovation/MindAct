@@ -46,4 +46,26 @@ class AccountGroup extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+
+    public function accountHeads()
+    {
+        return $this->hasMany(AccountHead::class, 'account_group_id');
+    }
+
+    public function voucherSummaries()
+    {
+        return $this->hasMany(VoucherSummary::class, 'account_group_id');
+
+    }
+    public function fixedAssetGroup(){
+        return $this->hasMany(FixedAssetGroup::class,'account_group_id');
+    }
+
+    public function journalVoucherTransactions(){
+        return $this->hasMany(JournalVoucherTransaction::class,'account_group_id');
+    }
+    public function voucherSummaryDetails(){
+        return $this->hasMany(VoucherSummaryDetail::class,'account_group_id');
+    }
 }

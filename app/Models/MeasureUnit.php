@@ -14,7 +14,7 @@ class MeasureUnit extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_primary' => 'boolean',
-       
+
     ];
 
     protected $fillable = [
@@ -27,7 +27,7 @@ class MeasureUnit extends Model
         'quantity',
     ];
 
-   
+
     protected $dates = ['deleted_at'];
 
     protected static function booted()
@@ -35,5 +35,29 @@ class MeasureUnit extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+    public function productAssembleDetails()
+    {
+        return $this->hasMany(ProductionAssemble::class, 'measure_unit_id');
+    }
+    public function productionSettings()
+    {
+        return $this->hasMany(ProductionSetting::class, 'measure_unit_id');
+    }
+    public function productLists()
+    {
+        return $this->hasMany(ProductList::class, 'measure_unit_id');
+    }
+    public function purchaseProducts()
+    {
+        return $this->hasMany(PurchaseProduct::class, 'measure_unit_id');
+    }
+    public function saleProducts()
+    {
+        return $this->hasMany(SaleProduct::class, 'measure_unit_id');
+    }
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'measure_unit_id');
+    }
 
 }

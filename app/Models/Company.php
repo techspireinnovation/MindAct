@@ -17,7 +17,7 @@ class Company extends Model
         'working_date',
         'reg_number',
         'pan_number',
-        'vat_number',
+        // 'vat_number',
         'is_vatable',
         'full_address',
         'email_address',

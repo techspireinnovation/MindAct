@@ -18,6 +18,10 @@ class Nozzle extends Model
         'is_primary',
         'is_active',
     ];
-
+  
+    public function meterReadings()
+    {
+        return $this->hasMany(MeterReading::class, 'nozzle_id');
+    }
 
 }

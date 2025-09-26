@@ -34,4 +34,23 @@ class Bank extends Model
         self::observe(BankObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class, 'bank_id');
+    }
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'bank_id');
+    }
+    public function bankVouchers()
+    {
+        return $this->hasMany(BankVoucher::class, 'bank_id');
+    }
+    public function customers()
+    {
+        return $this->hasMany(Customer::class, 'bank_id');
+    }
+
+   
 }

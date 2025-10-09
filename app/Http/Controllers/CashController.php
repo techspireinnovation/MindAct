@@ -164,5 +164,33 @@ class CashController extends Controller
         }
     }
 
+    public function activeCashList(Request $request): JsonResponse
+{
+    try {
+        $cashes = Cash::where('company_id', $request->company_id)
+            ->whereNull('deleted_at')
+            ->where('is_active', 1)
+            ->get(['id', 'name'])
+            ->map(fn($cash) => ['id' => $cash->id, 'name' => $cash->name])
+            ->values()
+            ->toArray();
+
+        return response()->json([
+            "message" => "Active Cash List Received !!",
+            "data" => $cashes
+        ]);
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(["error" => "Cash not Found !!"], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(["error" => "Database error occurred !!"], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(["error" => "An unexpected error occurred !!"], 500);
+    }
+}
+
+
 
 }

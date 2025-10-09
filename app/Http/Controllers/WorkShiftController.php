@@ -212,4 +212,29 @@ public function update(Request $request, $id): JsonResponse
     }
 }
 
+public function activeWorkShiftList(Request $request): JsonResponse
+{
+    try {
+        $workShifts = WorkShift::where('company_id', $request->company_id)
+            ->whereNull('deleted_at')
+            ->where('is_active', 1) // Only active work shifts
+            ->get(['id', 'title', 'time_from', 'time_to']);
+
+        return response()->json([
+            'message' => 'Active Work Shifts Retrieved Successfully!!',
+            'data' => $workShifts
+        ]);
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Work shifts not found!'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Database error occurred!'], 500);
+    } catch (Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred!'], 500);
+    }
+}
+
+
 }

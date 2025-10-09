@@ -13,7 +13,7 @@ class Location extends Model
     protected $casts = [
         'is_active' => 'boolean',
         'is_primary' => 'boolean',
-    ];  
+    ];
 
     protected $fillable=[
         'name',
@@ -29,4 +29,31 @@ class Location extends Model
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+
+    public function products()
+    {
+        return $this->hasMany(Product::class, 'location_id');
+    }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class, 'location_id');
+    }
+
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'location_id');
+    }
+
+    public function productionAssembles()
+    {
+        return $this->hasMany(ProductionAssemble::class, 'product_location_id');
+    }
+
+    public function stockAdjustments()
+    {
+        return $this->hasMany(StockAdjustment::class, 'location_id');
+    }
+
 }

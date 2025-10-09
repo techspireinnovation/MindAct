@@ -49,4 +49,7 @@ class StockTransfer extends Model
     {
         return $this->hasMany(StockTransferFieldValue::class, 'stock_transfer_id');
     }
+    public function stockTransferDetailsUse(){
+        return $this->hasMany(StockTransferDetails::class, 'stock_transfer_id');
+    }
 }

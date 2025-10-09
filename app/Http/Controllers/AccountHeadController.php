@@ -189,20 +189,58 @@ class AccountHeadController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            if ($this->checkIfUsed($id))
-                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
-
-            $account_head = AccountHead::findOrFail($id);
-            $account_head->delete();
-            return response()->json(['message' => 'Account Head deleted!!']);
+            $accountHead = AccountHead::findOrFail($id);
+    
+            $usedIn = [];
+    
+            if ($accountHead->voucherSummaries()->exists()) {
+                $usedIn[] = 'voucher summaries';
+            }
+            if ($accountHead->voucherSummaryDetails()->exists()) {
+                $usedIn[] = 'voucher summary details';
+            }
+            if ($accountHead->journalVoucherTransactions()->exists()) {
+                $usedIn[] = 'journal voucher transactions';
+            }
+    
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Account Head cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+    
+            $accountHead->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Account Head deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Account Head not found!!'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Account Head not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Account Head.'
+            ], 500);
+    
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Account Head.'
+            ], 500);
         }
     }
+    
 
     private function checkIfUsed($id): bool
     {

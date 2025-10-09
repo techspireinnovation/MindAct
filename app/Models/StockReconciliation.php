@@ -28,8 +28,8 @@ class StockReconciliation extends Model
         'branch_id',
 
         'remarks',
-  
-        
+
+
     ];
 
     protected $dates = ['deleted_at'];

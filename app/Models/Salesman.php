@@ -41,4 +41,10 @@ class Salesman extends Model
         'is_active',
         'vdc_municipality'
     ];
+  
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'salesman_id');
+    }
+
 }

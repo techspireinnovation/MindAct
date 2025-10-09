@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Purchase;
+use App\Models\PurchaseReturn;
+use App\Models\Sale;
+use App\Models\SalesReturn;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -16,6 +20,57 @@ use Illuminate\Support\Facades\Validator;
 
 class CustomerController extends Controller
 {
+
+
+
+    public function getCustomerBalance($customer_id)
+    {
+        $customer = Customer::where('id', $customer_id)->first();
+
+        if (!$customer) {
+            return response()->json(['error' => 'Customer not found'], 404);
+        }
+
+        $balance = (float) $customer->opening_balance;
+
+        $purchaseCredits = Purchase::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($purchase) {
+                return (float) ($purchase->payment['credit'] ?? 0);
+            });
+        $balance -= $purchaseCredits;
+
+        $purchaseReturnCredits = PurchaseReturn::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($purchaseReturn) {
+                return (float) ($purchaseReturn->payment['credit'] ?? 0);
+            });
+        $balance += $purchaseReturnCredits;
+
+        $saleCredits = Sale::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($sale) {
+                return (float) ($sale->payment['credit'] ?? 0);
+            });
+        $balance += $saleCredits;
+
+        $saleReturnCredits = SalesReturn::where('customer_id', $customer_id)
+            ->whereNull('deleted_at')
+            ->get()
+            ->sum(function ($saleReturn) {
+                return (float) ($saleReturn->payment['credit'] ?? 0);
+            });
+        $balance -= $saleReturnCredits;
+
+        return response()->json([
+
+            'actual_balance' => round($balance, 5)
+        ]);
+    }
+
     public function index(Request $request): JsonResponse
     {
         $query = Customer::query();
@@ -340,19 +395,111 @@ class CustomerController extends Controller
     }
 
 
-
+   
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Customer::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Customer deleted']);
+            $customer = Customer::findOrFail($id);
+    
+            $usedIn = [];
+    
+            if ($customer->purchasesUse()->exists()) {
+                $usedIn[] = 'purchases';
+            }
+    
+            if ($customer->salesUse()->exists()) {
+                $usedIn[] = 'sales';
+            }
+    
+            if ($customer->purchaseProductsUse()->exists()) {
+                $usedIn[] = 'purchase_products';
+            }
+    
+            if ($customer->paymentVoucherDetails()->exists()) {
+                $usedIn[] = 'payment_voucher_details';
+            }
+    
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Customer cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+    
+            $customer->delete();
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Customer deleted successfully!'
+            ]);
+    
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Customer not found'], 404);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Customer not found!'
+            ], 404);
+    
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the customer.'
+            ], 500);
+    
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the customer.'
+            ], 500);
         }
     }
+    
+
+
+    public function activeCustomers(Request $request): JsonResponse
+{
+    try {
+        $companyId = $request->company_id;
+
+        if (!$companyId) {
+            return response()->json([
+                'message' => 'No Associated company Found !!'
+            ], 404);
+        }
+
+        $customers = Customer::where('company_id', $companyId)
+            ->where('is_active', true) 
+            ->whereNull('deleted_at')  
+            ->get(['id', 'party_name']) 
+            ->map(fn($customer) => [
+                'id' => $customer->id,
+                'name' => $customer->party_name,
+            ])
+            ->values()
+            ->toArray();
+
+        if (empty($customers)) {
+            return response()->json([
+                'message' => 'No active customers found !!',
+                'data' => []
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'Active customers received successfully',
+            'data' => $customers
+        ], 200);
+
+    } catch (QueryException $e) {
+        \Log::error('DB Error in activeCustomers: ' . $e->getMessage());
+        return response()->json(['error' => 'Database error occurred !!'], 500);
+    } catch (\Exception $e) {
+        \Log::error('Exception in activeCustomers: ' . $e->getMessage());
+        return response()->json(['error' => 'Unexpected error occurred !!'], 500);
+    }
+}
+
 }

@@ -112,7 +112,7 @@ class SubGroupController extends Controller
 
                         }),
                 ],
-               
+
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -185,7 +185,7 @@ class SubGroupController extends Controller
             $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])->orderBy('code', 'DESC')->first();
 
             $rankingForTrial = Subgroup::where('company_id', $request->company_id)
-                ->where('main_group_id',$validated['main_group_id'])
+                ->where('main_group_id', $validated['main_group_id'])
                 ->orderBy('ranking_for_trial', 'desc')
                 ->first();
             $newrankingForTrial = $rankingForTrial ? $rankingForTrial->ranking_for_trial + 1 : 1;
@@ -224,16 +224,53 @@ class SubGroupController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            if ($this->checkIfUsed($id))
-                return response()->json(['error' => 'Cannot not modify. The item has already been used'], 406);
+            $subMainGroup = SubGroup::findOrFail($id);
 
-            $group = SubGroup::findOrFail($id);
-            $group->delete();
-            return response()->json(['message' => 'Sub Group deleted!!']);
+            $usedIn = [];
+
+
+            if ($subMainGroup->accountGroups()->exists()) {
+                $usedIn[] = 'account groups';
+            }
+            if ($subMainGroup->journalVoucherTransactions()->exists()) {
+                $usedIn[] = 'journal voucher transactions';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'cannot delete, in use',
+                    'message' => 'Sub Main Group cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $subMainGroup->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Sub Main Group deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Sub Group not found!!'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Sub Main Group not found!'
+            ], 404);
+
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the mainGroup.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the mainGroup.'
+            ], 500);
         }
     }
 

@@ -92,4 +92,14 @@ class Sale extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
+    
+    public function salesReturnUse(){
+        return $this->hasMany(SalesReturn::class,'sale_id');
+    }
+    public function saleProductUse(){
+        return $this->hasMany(SaleProduct::class,'sale_id');
+    }
+    public function saleAdditionalUse(){
+        return $this->hasMany(SaleAdditional::class,'sale_id');
+    }
 }

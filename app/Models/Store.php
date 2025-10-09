@@ -30,4 +30,14 @@ class Store extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class, 'store_id');
+    }
+
+    public function sales()
+    {
+        return $this->hasMany(Sale::class, 'store_id');
+    }
+
 }

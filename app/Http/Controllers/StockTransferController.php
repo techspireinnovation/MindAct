@@ -1907,14 +1907,48 @@ class StockTransferController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $item = StockTransfer::with('stockTransferDetails')->findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Stock Transfer deleted!!']);
+            $stockTransfer = StockTransfer::findOrFail($id);
+
+            $usedIn = [];
+
+            if ($stockTransfer->stockTransferDetailsUse()->exists()) {
+                $usedIn[] = 'stock transfer details';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Stock Transfer cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $stockTransfer->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock Transfer deleted successfully!'
+            ]);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Stock Tranfer not found!!'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Stock Transfer not found!'
+            ], 404);
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+            \Log::error($e->getMessage());
+            return response()->json([
+                'error' => 'query_error',
+                'message' => $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Stock Transfer.'
+            ], 500);
         }
     }
+
 
 }

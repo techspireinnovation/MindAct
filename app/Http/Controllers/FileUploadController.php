@@ -26,7 +26,7 @@ class FileUploadController extends Controller
     //     return response()->json(['error' => 'Invalid file upload'], 400);
     // }
 
-    public function upload(Request $request)
+ public function upload(Request $request)
 {
     try {
         // Validate the uploaded file
@@ -54,10 +54,13 @@ class FileUploadController extends Controller
 
     } catch (\Illuminate\Validation\ValidationException $e) {
         \Log::error($e);
+
+        // Get the first error message
+        $firstError = collect($e->errors())->flatten()->first();
+
         return response()->json([
             'success' => false,
-            'message' => 'Validation error.',
-            'errors' => $e->errors(),
+            'message' => $firstError, // <-- set message to the first validation error
         ], 422);
 
     } catch (\Exception $e) {
@@ -69,6 +72,7 @@ class FileUploadController extends Controller
         ], 500);
     }
 }
+
 
 
     public function download($filename)

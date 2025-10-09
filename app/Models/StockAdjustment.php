@@ -34,5 +34,8 @@ class StockAdjustment extends Model
     public function StockAdjustmentProduct(): HasMany {
         return $this->hasMany(StockAdjustmentProduct::class, 'stock_adjustment_id');
     }
+    public function stockProductDetailsUse(): HasMany {
+        return $this->hasMany(StockProductDetails::class , 'stock_adjustment_id');
+    }
 
 }

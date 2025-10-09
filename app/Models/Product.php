@@ -41,6 +41,7 @@ class Product extends Model
         'brand_id',
         'purchase_status',
         'measure_unit_id',
+        'minimum_stock',
         'purchase_rate',
         'purchase_rate_vat',
         'retail_sales_price',
@@ -755,5 +756,35 @@ class Product extends Model
     }
 
 
+
+
+
+    
+    public function salesProductFieldValueUse()
+    {
+        return $this->hasMany(SalesProductFieldValue::class, 'product_id');
+    }
+    public function saleProductsUse()
+    {
+        return $this->hasMany(SaleProduct::class, 'product_id');    
+    }
+    public function purchaseProductsUse()
+    {
+        return $this->hasMany(PurchaseProduct::class, 'product_id');
+    }
+    public function productListsUse()
+    {
+        return $this->hasMany(ProductList::class, 'product_id');
+    }
+    public function productionSettingsUse()
+    {
+        return $this->hasMany(ProductionSetting::class, 'product_id');
+    }
+    public function productFieldValuesUse()
+    {
+        return $this->hasMany(ProductFieldValue::class, 'product_id');
+    }
+
+   
 
 }

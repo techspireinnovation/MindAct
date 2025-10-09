@@ -26,7 +26,7 @@ class SalesmanController extends Controller
 
 
 
-    public function salesmenList(Request $request)
+    public function activesalesmenList(Request $request)
     {
         try {
 
@@ -285,19 +285,56 @@ class SalesmanController extends Controller
     }
 
 
-
-
     public function destroy($id): JsonResponse
     {
         try {
-            $item = Salesman::findOrFail($id);
-            $item->delete();
-            return response()->json(['message' => 'Salesman deleted']);
+            $salesman = Salesman::findOrFail($id);
+
+            $usedIn = [];
+
+            if ($salesman->sales()->exists()) {
+                $usedIn[] = 'sales';
+            }
+
+            if (!empty($usedIn)) {
+                return response()->json([
+                    'error' => 'cannot delete, in use',
+                    'message' => 'Salesman cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+            }
+
+            $salesman->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Salesman deleted successfully!'
+            ]);
+
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Salesman not found'], 404);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Salesman not found!'
+            ], 404);
+
         } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            \Log::error($e);
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the salesman.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the salesman.'
+            ], 500);
         }
     }
+
+
+
 
 }

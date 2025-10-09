@@ -180,4 +180,66 @@ class MeterReadingController extends Controller
         }
     }
 
+// public function getLastClosingReading(Request $request): JsonResponse
+// {
+//     try {
+//         $request->validate([
+//             'nozzle_id' => 'required|numeric',
+//         ]);
+
+//         // Get the last closing reading for the given nozzle_id
+//         $lastClosingReading = MeterReading::where('nozzle_id', $request->nozzle_id)
+//             ->orderByDesc('id')
+//             ->value('closing_reading');
+
+//         if (is_null($lastClosingReading)) {
+//             return response()->json([
+//                 'message' => 'No closing reading found for this nozzle',
+//                 'closing_reading' => null
+//             ], 404);
+//         }
+
+//         return response()->json([
+//             'message' => 'Last closing reading retrieved successfully!',
+//             'closing_reading' => $lastClosingReading
+//         ]);
+
+//     } catch (\Exception $e) {
+//         \Log::error('Error fetching last closing reading', ['error' => $e->getMessage()]);
+//         return response()->json(['error' => 'An unexpected error occurred'], 500);
+//     }
+// }
+
+public function getLastClosingReading(Request $request): JsonResponse
+{
+    try {
+        $request->validate([
+            'nozzle_id' => 'required|numeric',
+        ]);
+
+        // Get the last closing reading for the given nozzle_id
+        $lastClosingReading = MeterReading::where('nozzle_id', $request->query('nozzle_id'))
+            ->orderByDesc('id')
+            ->value('closing_reading');
+
+        if (is_null($lastClosingReading)) {
+            return response()->json([
+                'message' => 'No closing reading found for this nozzle',
+                'closing_reading' => null
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Last closing reading retrieved successfully!',
+            'closing_reading' => $lastClosingReading
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error fetching last closing reading', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
+    }
+}
+
+
+
 }

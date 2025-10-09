@@ -28,6 +28,10 @@ class NozzleController extends Controller
 
     }
 
+    
+
+
+
     public function store(Request $request): JsonResponse
     {
         try {
@@ -176,27 +180,85 @@ class NozzleController extends Controller
     }
 
 
-    public function destroy($id)
-    {
-        try {
-            $nozzle = Nozzle::find($id);
+    // public function destroy($id)
+    // {
+    //     try {
+    //         $nozzle = Nozzle::find($id);
 
-            if (!$nozzle) {
-                return response()->json(['error' => 'Item Not Found'], 404);
-            }
+    //         if (!$nozzle) {
+    //             return response()->json(['error' => 'Item Not Found'], 404);
+    //         }
 
-            $nozzle->delete();
+    //         $nozzle->delete();
 
-            return response()->json([
-                'message' => 'Work shift deleted successfully!'
-            ]);
+    //         return response()->json([
+    //             'message' => 'Work shift deleted successfully!'
+    //         ]);
 
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item Not Found', 'exception' => $e->getMessage()], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'Database error occurred', 'exception' => $e->getMessage()], 500);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'An unexpected error occurred', 'exception' => $e->getMessage()], 500);
+    //     } catch (ModelNotFoundException $e) {
+    //         return response()->json(['error' => 'Item Not Found', 'exception' => $e->getMessage()], 404);
+    //     } catch (QueryException $e) {
+    //         return response()->json(['error' => 'Database error occurred', 'exception' => $e->getMessage()], 500);
+    //     } catch (\Exception $e) {
+    //         return response()->json(['error' => 'An unexpected error occurred', 'exception' => $e->getMessage()], 500);
+    //     }
+    // }
+
+public function destroy($id)
+{
+    try {
+        $nozzle = Nozzle::find($id);
+
+        if (!$nozzle) {
+            return response()->json(['error' => 'Nozzle not found'], 404);
         }
+
+        // Soft delete
+        $nozzle->delete();
+
+        return response()->json([
+            'message' => 'Nozzle deleted successfully (soft delete)!'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error deleting nozzle: ' . $e->getMessage());
+        return response()->json(['error' => 'An unexpected error occurred!'], 500);
     }
+}
+
+
+
+
+    public function activeNozzles(): JsonResponse
+{
+    try {
+        $nozzles = Nozzle::where('is_active', 1)   // ✅ Only active nozzles
+            ->whereNull('deleted_at')
+            ->get(['id', 'title as name', 'fuel_type', 'nozzle_number', 'is_active']);
+
+        if ($nozzles->isEmpty()) {
+            return response()->json([
+                'message' => 'No active nozzles found',
+                'data' => []
+            ], 404);
+        }
+
+        return response()->json([
+            'message' => 'Active nozzles retrieved successfully!',
+            'data' => $nozzles
+        ], 200);
+
+    } catch (\Exception $e) {
+        \Log::error('Exception in activeNozzles: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+        return response()->json(['error' => 'An unexpected error occurred!'], 500);
+    }
+}
+
+
+
+
+
+
+
+
 }

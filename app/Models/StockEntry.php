@@ -15,7 +15,9 @@ class StockEntry extends Model
         'product_code',
         'product_name',
         'company_id',
+        'branch_id',
         'product_id',
+        'purchase_type',
         'uom',
         'batch_no',
         'expiry_date',
@@ -41,6 +43,12 @@ class StockEntry extends Model
     public function location()
     {
         return $this->hasOne(Location::class, 'id', 'location_id');
+    }
+
+
+    public function fieldValues()
+    {
+        return $this->hasMany(StockProductFieldValue::class, 'stock_product_id');
     }
 
 

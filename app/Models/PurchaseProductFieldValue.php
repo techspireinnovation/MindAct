@@ -18,11 +18,12 @@ class PurchaseProductFieldValue extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'product_field_id',
         'product_id',
         'purchase_product_id',
         'quantity_index',
-        'quantity_type' ,
+        'quantity_type',
         'value',
         'deleted_at',
     ];

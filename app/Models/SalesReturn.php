@@ -25,6 +25,7 @@ class SalesReturn extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'customer_id',
         'salesman_id',
         'sale_id',

@@ -65,7 +65,7 @@ class PurchaseReturn extends Model
 
     protected static function booted()
     {
-        self::observe(PurchaseReturnObserver::class);
+        // self::observe(PurchaseReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

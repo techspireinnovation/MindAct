@@ -78,7 +78,7 @@ Route::post('/company/login', [CompanyAdminController::class, 'login'])->name('c
 Route::middleware(['auth:sanctum'])->post('/select-admin', [CompanyAdminController::class, 'selectAdmin']);
 Route::middleware('auth:sanctum')->post('/company/select-company', [CompanyAdminController::class, 'selectCompany']);
 Route::middleware(['auth:sanctum'])
-     ->get('/master/company-admin-tree', [CompanyAdminController::class, 'tree']);
+    ->get('/master/company-admin-tree', [CompanyAdminController::class, 'tree']);
 Route::get('getUserCompaniesAndBranches/{userId}', [CompanyAdminController::class, 'getUserCompaniesAndBranches']);
 Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'listCompanyAdmins']);
 Route::get('/master-users/{masterUserId}/companies', [CompanyAdminController::class, 'getMasterUserCompanies'])->middleware('auth:api');
@@ -178,6 +178,10 @@ Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getByI
         Route::put('update', [CompanyController::class, 'update']);
 
 
+
+        Route::get('get-available-stock-details', [SaleController::class, 'getAvailableProductByIdOrName']);
+        Route::get('/get-available-stock-transfer-details/{stockTransferId}', [StockTransferController::class, 'acceptStockTransfer']);
+        Route::get('stock-transfer-to-another-branch', [StockTransferController::class, 'acc']);
         Route::get('/sales-filter-by-barcode-id', [SaleController::class, 'filterByBarcode']);////
         Route::get('sale-products-filter', [SaleController::class, 'getSalesByProduct']);
         Route::get('sale-batch-filter', [SaleController::class, 'getSalesByBatch']);
@@ -331,7 +335,11 @@ Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getByI
         Route::get('get-sales-invoice-numbers', [SalesReturnController::class, 'listAvailableInvoiceNumbers']);
         Route::get('get-sales-by-invoice-numbers', [SalesReturnController::class, 'getSaleByInvoiceNumber']);
         Route::resource('salesman', SalesmanController::class);
-        Route::resource('stock-entries', StockEntryController::class);
+        Route::apiResource('stock-entries', StockEntryController::class);
+        Route::get('get-available-stock', ([SaleController::class, 'listAvailableProducts']));
+        // Route::get('get-available-stock-details', ([StockTransferController::class, 'getProductDetails']));
+        Route::post('stock-entries-update', [StockEntryController::class, 'update']);
+        Route::get('stock-entries-details', [StockEntryController::class, 'show']);
         Route::resource('stock-adjustments', StockAdjustmentController::class);
         Route::resource('stock-transfers', StockTransferController::class);
         Route::resource('stock-receives', StockReceiveController::class);
@@ -371,7 +379,7 @@ Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getByI
         Route::get('get-all-sale-product-names', [SalesReturnController::class, 'getSaleProductNames']);
         Route::get('get-available-sale-product-details-for-return', [SalesReturnController::class, 'getAvailableProductsForSalesReturn']);
         Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
-    Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
+        Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
 
         //List and Details
         Route::get('change-test', [SaleController::class, 'changeDate']);

@@ -25,6 +25,7 @@ class Purchase extends Model
         'customer_name',
         'pan_number',
         'company_id',
+        'branch_id',
         'bank_id',
         'purchase_type',
         'address',
@@ -61,7 +62,7 @@ class Purchase extends Model
 
     protected static function booted()
     {
-        // self::observe(PurchaseObserver::class);
+         self::observe(PurchaseObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 
@@ -80,9 +81,19 @@ class Purchase extends Model
         return $this->hasMany(PurchaseReturn::class, 'purchase_id');
     }
 
+    public function purchaseStockReturns()
+    {
+        return $this->hasMany(PurchaseStockReturn::class, 'purchase_id');
+    }
+
     public function purchaseProducts(): HasMany
     {
         return $this->hasMany(PurchaseProduct::class);
+    }
+
+     public function purchaseStockProducts(): HasMany
+    {
+        return $this->hasMany(PurchaseStockProduct::class);
     }
 
     public function getPurchaseProductQuantityAttribute(): int

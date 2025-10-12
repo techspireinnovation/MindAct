@@ -63,4 +63,10 @@ class Company extends Model
         return $this->hasMany(Branch::class);
     }
 
+    public function tenant()
+{
+    return $this->hasOne(Tenant::class, 'company_id');
+}
+
+
 }

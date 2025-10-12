@@ -10,15 +10,16 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class StockTransfer extends Model
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
     protected $casts = [
         'is_active' => 'boolean'
-       
+
     ];
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'transfer_to',
         'reference_no',
         'document_no',
@@ -28,8 +29,8 @@ class StockTransfer extends Model
         'remarks',
         'reason_for',
         'is_active',
-        'product_details',
-        
+        'accept_status'
+
     ];
 
     protected $dates = ['deleted_at'];
@@ -39,9 +40,14 @@ class StockTransfer extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function stockTransferDetails(): HasMany 
+    public function stockTransferDetails(): HasMany
     {
         return $this->hasMany(StockTransferDetails::class, 'stock_transfer_id');
+    }
+
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(StockTransferFieldValue::class, 'stock_transfer_id');
     }
     public function stockTransferDetailsUse(){
         return $this->hasMany(StockTransferDetails::class, 'stock_transfer_id');

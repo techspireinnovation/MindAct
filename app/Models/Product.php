@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Auth\Request;
 
 class Product extends Model
 {
@@ -62,6 +63,10 @@ class Product extends Model
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function productList(){
+        return $this->hasMany(ProductList::class);
     }
 
     public function category()

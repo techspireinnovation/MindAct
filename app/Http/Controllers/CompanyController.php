@@ -99,8 +99,9 @@ class CompanyController extends Controller
             ]);
 
             $branch = Branch::create([
-                'name' => $validated['name'] . ' Main Branch',
+                'name' => $validated['name'],
                 'company_id' => $company->id,
+                'branch_type' => 'Main',
                 'is_active' => true,
                 'is_primary' => true,
             ]);
@@ -608,12 +609,14 @@ class CompanyController extends Controller
                 'message' => 'Purchase master key not found',
             ], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
+             dd($e->getMessage());
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,

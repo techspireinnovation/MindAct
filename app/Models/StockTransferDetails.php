@@ -11,10 +11,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class StockTransferDetails extends Model
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
     protected $casts = [
-       
+
         'deleted_at' => 'datetime',
     ];
 
@@ -28,7 +28,31 @@ class StockTransferDetails extends Model
         'batch_no',
         'price',
         'amount',
-      
+        'purchase_stock_product_id',
+        'stock_adjustment_id',
+        'stock_reconciliation_id',
+        'transfer_status',
+        'branch_id',
+        'mfd',
+        'purchase_type',
+        'purchase_product_id',
+        'stock_product_id',
+        'purchase_id',
+        'product_id',
+        'product_name',
+        'product_code',
+        'expiry_date',
+        'quantity',
+        'deleted_at',
+        'free_quantity',
+        'price',
+        'mfd',
+        'discount_percent',
+        'discount_amount',
+        'amount',
+        'is_vatable',
+        'measure_unit_id',
+
     ];
 
     protected $dates = ['deleted_at'];
@@ -38,9 +62,15 @@ class StockTransferDetails extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function measureUnit(){
+    public function measureUnit()
+    {
         return $this->belongsTo(MeasureUnit::class, 'unit_id');
     }
 
-   
+    public function fieldValues(): HasMany
+    {
+        return $this->hasMany(StockTransferFieldValue::class, 'stock_transfer_details_id');
+    }
+
+
 }

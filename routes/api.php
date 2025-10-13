@@ -66,6 +66,9 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
 use App\Http\Middleware\SuperAdminMiddleware;
+ use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
+ use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
+ use App\Http\Controllers\CompanyDashboard\QuickActionController;
 
 
 
@@ -122,7 +125,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
         Route::put('/users/{id}', [UserController::class, 'update'])->name('company.users.update');
         Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('company.users.destroy');
 
-
+      
 
 
     });
@@ -139,8 +142,18 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
 
     });
     
-    
+   
+
+
+
 Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
+
+ Route::get('/dashboard/transaction-summary', [TransactionSummaryController::class, 'summary']);
+ Route::get('/dashboard/sales-purchase', [SalesPurchaseController::class, 'summary']);
+ Route::get('dashboard/quick-actions', [QuickActionController::class, 'index']);
+ Route::put('dashboard/quick-actions/toggle', [QuickActionController::class, 'toggle']);
+Route::get('dashboard/quick-actions/getStatus', [QuickActionController::class, 'getStatus']);
+ 
 
 
     Route::middleware(['company.access'])->group(function () {

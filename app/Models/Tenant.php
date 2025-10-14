@@ -2,22 +2,31 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Str;
 use Stancl\Tenancy\Database\Models\Tenant as BaseTenant;
+use Stancl\Tenancy\Contracts\TenantWithDatabase;
+use Stancl\Tenancy\Database\Concerns\HasDatabase;
 use Stancl\Tenancy\Database\Concerns\HasDomains;
 
-class Tenant extends BaseTenant
+class Tenant extends BaseTenant implements TenantWithDatabase
 {
-    use HasDomains;
+    use HasDatabase, HasDomains;
 
-    protected $fillable = [
-        'id',
-        'company_id',   // optional: link tenant to your Company model
-        'data',         // JSON column for custom info (license, plan, etc.)
-    ];
+    protected $primaryKey = 'id';
+    public $incrementing = false;
+    protected $keyType = 'string';
+    protected $casts = ['data' => 'array'];
 
-    public function company()
-{
-    return $this->belongsTo(Company::class);
-}
+    protected $fillable = ['id', 'database', 'data'];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->id)) {
+                $model->id = (string) Str::uuid();
+            }
+        });
+    }
 }

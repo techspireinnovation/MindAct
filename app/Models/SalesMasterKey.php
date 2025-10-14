@@ -14,6 +14,8 @@ class SalesMasterKey extends Model
 {
     use SoftDeletes, HasFactory;
 
+    protected $connection = 'tenant';
+
     protected $fillable = [
 
             'company_id',

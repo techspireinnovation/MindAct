@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class ProductType extends Model
 {
     use HasFactory, SoftDeletes;
+    protected $connection = 'tenant';
 
     protected $casts = [
         'is_active' => 'boolean',

@@ -10,9 +10,9 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('companies', function (Blueprint $table) {
+       Schema::table('companies', function (Blueprint $table) {
             $table->boolean('is_vatable')->default(0)->nullable()->after('url_link');
-            $table->string('vat_number')->nullable()->after('url_link');
+            $table->string('vat_number')->nullable()->after('is_vatable');
         });
     }
 

@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class MeasureUnit extends Model
 {
     use SoftDeletes, HasFactory;
+    protected $connection = 'tenant';
 
     protected $casts = [
         'is_active' => 'boolean',

@@ -54,11 +54,6 @@ class CompanyController extends Controller
     }
 
 
-
-
-
-
-
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
@@ -140,24 +135,47 @@ class CompanyController extends Controller
             ]);
             Log::info('Company created successfully', ['company_id' => $company->id]);
 
-            // 2️⃣ Create tenant
-            $databaseName = 'tenant_company_' . $company->id;
-            $tenancySlug = 'tenant_company_' . Str::slug($company->name);
+            $sluggedName = Str::slug($company->name);
+
+            // Generate base database name
+            $baseDatabaseName = $sluggedName . '_' . $company->id;
+            $databaseName = $baseDatabaseName;
             $counter = 1;
-            while (Tenant::where('data->tenancy_slug', $tenancySlug)->exists()) {
-                $tenancySlug = 'tenant_company_' . Str::slug($company->name) . '_' . $counter++;
+
+            // Ensure unique database name
+            while (Tenant::where('database', $databaseName)->exists()) {
+                $databaseName = $baseDatabaseName . '_' . $counter++;
             }
 
+
+            // Base tenancy slug
+            $baseSlug = 'tenant_company_' . Str::slug($company->name);
+            $tenancySlug = $baseSlug;
+            $slugCounter = 1;
+
+            // Ensure unique tenancy slug
+            while (Tenant::where('data->tenancy_slug', $tenancySlug)->exists()) {
+                $tenancySlug = $baseSlug . '_' . $slugCounter;
+                $slugCounter++;
+            }
             $tenant = Tenant::create([
                 'id' => (string) Str::uuid(),
                 'database' => $databaseName,
-                'data' => [
-                    'database' => $databaseName,
-                    'company_id' => $company->id,
-                    'company_name' => $company->name,
-                    'tenancy_slug' => $tenancySlug,
-                ],
+                'company_id' => $company->id,
+                'tenancy_slug' => $tenancySlug,
             ]);
+
+            // $tenant->data = [
+            //     'company_id' => $company->id,
+            //     'company_name' => $company->name,
+            //     'tenancy_slug' => $tenancySlug,
+            // ];
+            // $tenant->save();
+
+
+
+
+
             Log::info('Tenant created successfully', ['tenant_id' => $tenant->id]);
 
             // 3️⃣ Initialize tenant (drop, create, and migrate)

@@ -5,9 +5,13 @@ namespace App\Providers;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Tenant;
+
+use Stancl\Tenancy\Middleware\InitializeTenancyByDomain;
+use Stancl\Tenancy\Middleware\PreventAccessFromCentralDomains;
 
 class TenancyServiceProvider extends ServiceProvider
 {
@@ -31,8 +35,9 @@ class TenancyServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        // No boot logic needed for now
+       
     }
+
 }
 
 /**
@@ -94,6 +99,17 @@ class TenantInitializer
         }
     }
 
+    public static function switchTenant(Tenant $tenant)
+    {
+        $databaseName = $tenant->database;
+
+        config(['database.connections.tenant.database' => $databaseName]);
+        DB::purge('tenant');
+        DB::connection('tenant')->reconnect();
+
+        \Log::info("Tenant connection switched", ['database' => $databaseName]);
+    }
+
     public function cleanupTenant(string $databaseName): void
     {
         try {
@@ -140,6 +156,32 @@ class TenantInitializer
                 'error' => $e->getMessage(),
             ]);
             throw $e;
+        }
+    }
+    protected function deleteDatabaseDirectory(string $databaseName): void
+    {
+        try {
+            $dataDir = config('database.connections.mysql.options.data_directory', 'C:\\ProgramData\\MySQL\\MySQL Server 8.0\\Data');
+            $tenantDir = $dataDir . DIRECTORY_SEPARATOR . $databaseName;
+            if (is_dir($tenantDir)) {
+                $command = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN'
+                    ? "rmdir /S /Q " . escapeshellarg($tenantDir)
+                    : "rm -rf " . escapeshellarg($tenantDir);
+                exec($command, $output, $returnVar);
+                if ($returnVar !== 0) {
+                    Log::warning('Failed to delete tenant database directory', [
+                        'directory' => $tenantDir,
+                        'output' => $output,
+                    ]);
+                } else {
+                    Log::info('Tenant database directory deleted', ['directory' => $tenantDir]);
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to delete tenant database directory', [
+                'directory' => $tenantDir,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

@@ -22,58 +22,62 @@ class StoreController extends Controller
 
 
 
-    
-    public function storeList(Request $request){
-        try{
 
-            $stores = Store::where('company_id',$request->company_id)
-            ->whereNull('deleted_at')
-            ->where('is_active', 1)
-            ->get(['id', 'name'])
-            ->map(fn($store) => ['id' => $store->id, 'name' => $store->name])
-            ->values()
-            ->toArray();
-            return response()->json(["message"=>"Store List Received !!",
-                                       "data"=>$stores
-                                    ]);
+    public function storeList(Request $request)
+    {
+        try {
 
-        }catch(ModelNotFoundException $e){
+            $stores = Store::where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($store) => ['id' => $store->id, 'name' => $store->name])
+                ->values()
+                ->toArray();
+            return response()->json([
+                "message" => "Store List Received !!",
+                "data" => $stores
+            ]);
+
+        } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(["error"=>"Store not Found !!"],404);
-        }catch(QueryException $e){
+            return response()->json(["error" => "Store not Found !!"], 404);
+        } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(["error"=>"Database error occurred !!"],500);
-        }catch(\Exception $e){
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
 
 
-    public function storeDetails(Request $request){
-        try{
+    public function storeDetails(Request $request)
+    {
+        try {
 
-           $companyId  = $request->company_id;
-           if(!$companyId){
-            return response()->json(["error"=>"No Company Logged In !!"],404);
-           }
+            $companyId = $request->company_id;
+            if (!$companyId) {
+                return response()->json(["error" => "No Company Logged In !!"], 404);
+            }
 
-           $store = $request->store_name;
-           $storeDetails = Store::where('company_id',$request->company_id)
-                                         ->where('name',$store)
-                                       ->whereNull('deleted_at')
-                                       ->firstorFail();   
-           return response()->json(["message"=>"Store Details Received !!",
-                                    "data"=>$storeDetails
-                                ],200);
+            $store = $request->store_name;
+            $storeDetails = Store::where('company_id', $request->company_id)
+                ->where('name', $store)
+                ->whereNull('deleted_at')
+                ->firstorFail();
+            return response()->json([
+                "message" => "Store Details Received !!",
+                "data" => $storeDetails
+            ], 200);
 
 
-        }catch(ModelNotFoundException $e){
-            return response()->json(["error"=>"Store not Found !!"],404);
-        }catch(QueryException $e){
-            return response()->json(["error"=>"Database error occurred !!"],500);
-        }catch(\Exception $e){
-            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Store not Found !!"], 404);
+        } catch (QueryException $e) {
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
     public function update(Request $request, $id): JsonResponse
@@ -97,7 +101,7 @@ class StoreController extends Controller
                 'quantity' => 'integer',
                 'is_primary' => 'boolean',
                 'symbol' => 'string|max:255',
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'integer'
             ]);
 
             // Use the existing company_id if not in request
@@ -140,7 +144,7 @@ class StoreController extends Controller
             'is_primary' => 'boolean',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'integer'
         ]);
 
         if (!empty($validated['is_primary'])) {
@@ -165,23 +169,23 @@ class StoreController extends Controller
         }
     }
 
-   
-    
+
+
     public function destroy($id): JsonResponse
     {
         try {
             $store = Store::findOrFail($id);
-    
+
             $usedIn = [];
-    
+
             if ($store->purchases()->exists()) {
                 $usedIn[] = 'purchases';
             }
-    
+
             if ($store->sales()->exists()) {
                 $usedIn[] = 'sales';
             }
-    
+
             if (!empty($usedIn)) {
                 return response()->json([
                     'error' => 'in_use',
@@ -189,28 +193,28 @@ class StoreController extends Controller
                     'used_in' => $usedIn
                 ], 400);
             }
-    
+
             $store->delete();
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Store deleted successfully!'
             ]);
-    
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json([
-                'error' => 'not_found',
+                'error' => 'true',
                 'message' => 'Store not found!'
             ], 404);
-    
+
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Store.'
             ], 500);
-    
+
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -219,40 +223,40 @@ class StoreController extends Controller
             ], 500);
         }
     }
-    
 
-public function activeStores(Request $request): JsonResponse
-{
-    try {
-        $stores = Store::where('company_id', $request->company_id) // filter by company
-            ->where('is_active', 1) // only active
-            ->whereNull('deleted_at') // ignore deleted
-            ->get(['id', 'name', 'is_primary']); // ✅ include is_primary
 
-        if ($stores->isEmpty()) {
+    public function activeStores(Request $request): JsonResponse
+    {
+        try {
+            $stores = Store::where('company_id', $request->company_id) // filter by company
+                ->where('is_active', 1) // only active
+                ->whereNull('deleted_at') // ignore deleted
+                ->get(['id', 'name', 'is_primary']); // ✅ include is_primary
+
+            if ($stores->isEmpty()) {
+                return response()->json([
+                    'message' => 'No active stores found',
+                    'data' => []
+                ], 404);
+            }
+
+            // Map to keep response clean
+            $stores = $stores->map(fn($store) => [
+                'id' => $store->id,
+                'name' => $store->name,
+                'is_primary' => $store->is_primary
+            ])->values()->toArray();
+
             return response()->json([
-                'message' => 'No active stores found',
-                'data' => []
-            ], 404);
+                'message' => 'Active stores retrieved successfully',
+                'data' => $stores
+            ], 200);
+
+        } catch (\Exception $e) {
+            \Log::error('Exception in activeStores: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
-        // Map to keep response clean
-        $stores = $stores->map(fn($store) => [
-            'id' => $store->id,
-            'name' => $store->name,
-            'is_primary' => $store->is_primary
-        ])->values()->toArray();
-
-        return response()->json([
-            'message' => 'Active stores retrieved successfully',
-            'data' => $stores
-        ], 200);
-
-    } catch (\Exception $e) {
-        \Log::error('Exception in activeStores: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
-}
 
 
 }

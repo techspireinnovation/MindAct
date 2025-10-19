@@ -9,7 +9,7 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Http\Request;
 
-class PurchaseStockProductReturnFieldValue extends Model
+class PurchaseStockProductReturnFieldValue extends BaseTenantModel
 {
     use SoftDeletes;
 

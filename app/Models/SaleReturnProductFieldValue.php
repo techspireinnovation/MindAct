@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Request;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class SaleReturnProductFieldValue extends Model
+class SaleReturnProductFieldValue extends BaseTenantModel
 {
     use SoftDeletes;
 

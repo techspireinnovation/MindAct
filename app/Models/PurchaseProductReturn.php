@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class PurchaseProductReturn extends Model
+class PurchaseProductReturn extends BaseTenantModel
 {
 
     protected $table = 'purchase_product_returns';

@@ -2224,7 +2224,7 @@ public function storePurchaseReturnByInput(Request $request): JsonResponse
     try {
         // Define validation rules
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id',
+            'company_id' => 'required|integer',
             'customer_id' => 'nullable|integer|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|numeric|digits:10',
@@ -2940,7 +2940,7 @@ public function storePurchaseReturnByInput(Request $request): JsonResponse
         try {
             // Define validation rules
             $validator = Validator::make($request->all(), rules: [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
                 'purchase_id' => 'nullable|integer|exists:purchases,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
@@ -3812,7 +3812,7 @@ public function updatePurchaseReturnByInput(Request $request, $id): JsonResponse
     try {
         // Define validation rules (same as store method)
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id',
+            'company_id' => 'required|integer',
             'customer_id' => 'nullable|integer|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'pan_number' => 'nullable|numeric|digits:10',
@@ -4372,7 +4372,7 @@ public function updatePurchaseReturnByInput(Request $request, $id): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'purchase_id' => 'nullable|integer|exists:purchases,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',

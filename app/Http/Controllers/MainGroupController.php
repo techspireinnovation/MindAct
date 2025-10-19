@@ -216,7 +216,7 @@ public function draggable(Request $request): JsonResponse
 
                 ],
                 'is_active' => 'boolean|required',
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'integer'
             ]);
             if ($validator->fails()) {
                 return response()->json([
@@ -262,7 +262,7 @@ public function draggable(Request $request): JsonResponse
                 ],
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'integer'
             ]);
             if ($validator->fails()) {
                 return response()->json([

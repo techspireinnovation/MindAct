@@ -10,7 +10,7 @@ use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
 
-class PurchaseStockProduct extends Model
+class PurchaseStockProduct extends BaseTenantModel
 {
     protected $fillable = [
         'customer_id',

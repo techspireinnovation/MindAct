@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class MeasureUnit extends Model
+class MeasureUnit extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
     protected $connection = 'tenant';

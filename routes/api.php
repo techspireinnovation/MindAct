@@ -84,7 +84,7 @@ Route::get('companies/list-Company-Admins', [CompanyAdminController::class, 'lis
 Route::get('/master-users/{masterUserId}/companies', [CompanyAdminController::class, 'getMasterUserCompanies'])->middleware('auth:api');
 
 
-Route::get('/company/product-types/{productType}', [ProductController::class, 'getByProductTypeName'])
+Route::get('/company/product-types-name/{productType}', [ProductController::class, 'getByProductTypeName'])
     ->middleware('company.access');
 
 Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(function () {

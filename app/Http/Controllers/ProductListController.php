@@ -23,7 +23,7 @@ class ProductListController extends Controller
             $validator = Validator::make($request->all(), [
                 'product_id' => 'required|integer|exists:products,id',
                 'measure_unit_id' => 'required|integer|exists:measure_units,id',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required',
 
                 'quantity' => 'nullable|integer',
                 'barcode' => 'nullable|string|max:255',
@@ -73,7 +73,7 @@ class ProductListController extends Controller
             $validator = Validator::make($request->all(), [
                 'product_id' => 'required|integer|exists:products,id',
                 'measure_unit_id' => 'required|integer|exists:measure_units,id',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
 
                 'quantity' => 'nullable|integer',
                 'barcode' => 'nullable|string|max:255',

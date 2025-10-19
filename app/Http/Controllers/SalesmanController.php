@@ -89,7 +89,7 @@ class SalesmanController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'nullable|required',
                 'salesman_id' => [
                     'nullable',
                     'string',
@@ -194,7 +194,7 @@ class SalesmanController extends Controller
             $salesman = Salesman::findOrFail($id);
 
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'nullable|required',
                 'salesman_id' => [
                     'nullable',
                     'string',

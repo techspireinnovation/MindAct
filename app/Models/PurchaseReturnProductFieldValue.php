@@ -7,7 +7,7 @@
    use Illuminate\Database\Eloquent\SoftDeletes;
    use Illuminate\Http\Request;
 
-   class PurchaseReturnProductFieldValue extends Model
+   class PurchaseReturnProductFieldValue extends BaseTenantModel
    {
        use SoftDeletes;
 

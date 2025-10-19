@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
 
-class Cash extends Model
+class Cash extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

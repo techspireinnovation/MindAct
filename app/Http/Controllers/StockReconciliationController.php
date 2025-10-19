@@ -38,7 +38,7 @@ class StockReconciliationController extends Controller
         try {
 
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'date_bs' => 'nullable|string|max:255',
                 'reconciliation_no' => [
                     'nullable',
@@ -278,7 +278,7 @@ class StockReconciliationController extends Controller
 
             // Validation rules
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'date_bs' => 'nullable|string|max:255',
                 'reconciliation_no' => [
                     'required',

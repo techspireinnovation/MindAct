@@ -5,14 +5,15 @@ use App\Models\Product;
 use App\Models\ProductField;
 use App\Models\PurchaseProduct;
 use App\Models\Scopes\CompanyIdScope;
-use Illiuminate\Http\Request;
+// use Illiuminate\Http\Request;
+use Request;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 
-class StockProductFieldValue extends Model
+class StockProductFieldValue extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class StockReconciliationDetail extends Model
+class StockReconciliationDetail extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

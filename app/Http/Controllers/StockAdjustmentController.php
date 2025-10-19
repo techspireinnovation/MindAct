@@ -94,7 +94,7 @@ class StockAdjustmentController extends Controller
                 'product_details.*.field_values.*.*.quantity_type' => 'nullable|string|max:255',
                 'product_details.*.field_values.*.*.quantity_index' => 'required_with:product_details.*.field_values|numeric|min:0',
                 'product_details.*.field_values.*.*.value_type' => 'required_with:product_details.*.field_values|string|in:selected,unselected',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
             ]);
 
             if ($validator->fails()) {
@@ -382,7 +382,7 @@ class StockAdjustmentController extends Controller
                 'product_details.*.field_values.*.*.quantity_type' => 'nullable|string|max:255',
                 'product_details.*.field_values.*.*.quantity_index' => 'required_with:product_details.*.field_values|numeric|min:0',
                 'product_details.*.field_values.*.*.value_type' => 'required_with:product_details.*.field_values|string|in:selected,unselected',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
             ]);
 
             if ($validator->fails()) {

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
-class StockAdjustmentProduct extends Model
+class StockAdjustmentProduct extends BaseTenantModel
 {
      protected $fillable = [
         'stock_adjustment_id',

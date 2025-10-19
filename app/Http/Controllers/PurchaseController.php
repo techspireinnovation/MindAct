@@ -190,7 +190,7 @@ class PurchaseController extends Controller
                 'customer_name' => 'nullable|string|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required',
                 'address' => 'nullable|string|max:255',
                 'customer_contact' => 'nullable|string|max:255',
                 'document_number' => 'nullable|string|max:255',

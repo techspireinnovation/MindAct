@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class PurchaseMasterKey extends Model
+class PurchaseMasterKey extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

@@ -172,7 +172,7 @@ class StockTransferController extends Controller
                 'product_details.*.field_values.*.*.quantity_index' => 'required_if:product_details.*.field_values,array|integer|min:0',
                 'product_details.*.field_values.*.*.quantity_type' => 'required_if:product_details.*.field_values,array|string|in:regular,free',
                 'product_details.*.field_values.*.*.purchase_stock_product_id' => 'required_if:product_details.*.field_values,array|integer|exists:purchase_stock_products,id',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
             ]);
 
             if ($validator->fails()) {
@@ -941,7 +941,7 @@ class StockTransferController extends Controller
                 'product_details.*.field_values.*.*.quantity_index' => 'required_if:product_details.*.field_values,array|integer|min:0',
                 'product_details.*.field_values.*.*.quantity_type' => 'required_if:product_details.*.field_values,array|string|in:regular,free',
                 'product_details.*.field_values.*.*.purchase_stock_product_id' => 'required_if:product_details.*.field_values,array|integer|exists:purchase_stock_products,id',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
             ]);
 
             if ($validator->fails()) {

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 
-class ProductSubCategory extends Model
+class ProductSubCategory extends BaseTenantModel
 {
 
     use softDeletes, HasFactory;

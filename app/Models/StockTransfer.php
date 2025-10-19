@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockTransfer extends Model
+class StockTransfer extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 
 use Request;
-class StockTransferFieldValue extends Model
+class StockTransferFieldValue extends BaseTenantModel
 {
      use SoftDeletes, HasFactory;
 

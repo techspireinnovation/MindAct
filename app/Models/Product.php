@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Auth\Request;
 
-class Product extends Model
+class Product extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

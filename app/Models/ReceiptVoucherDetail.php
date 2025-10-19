@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 
-class ReceiptVoucherDetail extends Model
+class ReceiptVoucherDetail extends BaseTenantModel
 {
     use HasFactory;
 

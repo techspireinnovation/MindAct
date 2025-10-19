@@ -193,7 +193,7 @@ class ProductCategoryController extends Controller
 
                         }),
                 ],
-                'company_id' => 'sometimes|required|integer|exists:companies,id',
+                'company_id' => 'sometimes|required|integer',
                 'is_active' => 'sometimes|boolean',
                 'is_primary' => 'sometimes|boolean',
             ]);

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class AccountGroup extends Model
+class AccountGroup extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

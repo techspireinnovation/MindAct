@@ -9,7 +9,7 @@ use Stancl\Tenancy\Database\Concerns\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Branch extends Model
+class Branch extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

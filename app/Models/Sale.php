@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Sale extends Model
+class Sale extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 

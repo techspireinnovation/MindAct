@@ -10,7 +10,7 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class PurchaseStockProductReturn extends Model
+class PurchaseStockProductReturn extends BaseTenantModel
 {
     
     protected $table = 'purchase_stock_product_returns';

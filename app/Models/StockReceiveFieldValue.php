@@ -8,7 +8,7 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockReceiveFieldValue extends Model
+class StockReceiveFieldValue extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

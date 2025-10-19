@@ -114,7 +114,7 @@ class BrandController extends Controller
                 'is_primary' => 'sometimes|boolean',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
-                'company_id' => 'required|integer|exists:companies,id'
+                'company_id' => 'required|integer'
             ]);
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
@@ -173,7 +173,7 @@ class BrandController extends Controller
             'is_primary' => 'boolean',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',
-            'company_id' => 'required|integer|exists:companies,id'
+            'company_id' => 'required|integer'
         ]);
 
         if (!empty($validated['is_primary'])) {
@@ -229,7 +229,7 @@ class BrandController extends Controller
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json([
-                'error' => 'not_found',
+                'error' => 'true',
                 'message' => 'Brand not found!'
             ], 404);
         } catch (QueryException $e) {

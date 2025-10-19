@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
-class StockReconciliatedFieldValue extends Model
+class StockReconciliatedFieldValue extends BaseTenantModel
 {
     use SoftDeletes;
 

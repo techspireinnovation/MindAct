@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 
-class StockReceiveDetail extends Model
+class StockReceiveDetail extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

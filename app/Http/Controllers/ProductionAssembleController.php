@@ -490,7 +490,7 @@ public function getProductionSettingDetail(Request $request): JsonResponse
         try {
 
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'production_id' => 'nullable',
                 'product_name' => 'nullable|string|max:255',
                 'product_location_id' => 'nullable|exists:locations,id',
@@ -693,7 +693,7 @@ public function show($id): JsonResponse
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'production_id' => 'nullable',
                 'product_name' => 'nullable|string|max:255',
                 'product_location_id' => 'nullable|exists:locations,id',

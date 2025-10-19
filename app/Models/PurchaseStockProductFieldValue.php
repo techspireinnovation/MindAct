@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
 
-class PurchaseStockProductFieldValue extends Model
+class PurchaseStockProductFieldValue extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

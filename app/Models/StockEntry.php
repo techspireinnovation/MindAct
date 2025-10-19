@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockEntry extends Model
+class StockEntry extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

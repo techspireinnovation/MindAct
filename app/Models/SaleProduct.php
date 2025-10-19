@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 
-class SaleProduct extends Model
+class SaleProduct extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

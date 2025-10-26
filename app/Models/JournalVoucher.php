@@ -40,7 +40,7 @@ class JournalVoucher extends BaseTenantModel
 
     public function salesman()
     {
-        
+
         return $this->hasOne(Salesman::class, 'id', 'salesman_id');
     }
 }

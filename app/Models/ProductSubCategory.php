@@ -18,7 +18,7 @@ class ProductSubCategory extends BaseTenantModel
         'is_active' => 'boolean',
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'category_id',
@@ -34,10 +34,12 @@ class ProductSubCategory extends BaseTenantModel
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function category(){
+    public function category()
+    {
         return $this->belongsTo(ProductCategory::class, 'category_id');
     }
-    public function productscategory(){
+    public function productscategory()
+    {
         return $this->hasMany(Product::class, 'sub_category_id');
     }
 }

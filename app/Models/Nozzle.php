@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Nozzle extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
-    
+
     protected $fillable = [
         'title',
         'nozzle_number',
@@ -18,7 +18,7 @@ class Nozzle extends BaseTenantModel
         'is_primary',
         'is_active',
     ];
-  
+
     public function meterReadings()
     {
         return $this->hasMany(MeterReading::class, 'nozzle_id');

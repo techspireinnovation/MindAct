@@ -140,7 +140,7 @@ class SaleProduct extends BaseTenantModel
 
     }
 
- 
+
     public function salesReturnProductsUse()
     {
         return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');

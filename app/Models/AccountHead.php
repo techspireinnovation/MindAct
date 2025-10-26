@@ -49,7 +49,8 @@ class AccountHead extends BaseTenantModel
         return $this->hasMany(VoucherSummaryDetail::class, 'account_head_id');
 
     }
-    public function journalVoucherTransactions(){
-        return $this->hasMany(JournalVoucherTransaction::class,'account_head_id');
+    public function journalVoucherTransactions()
+    {
+        return $this->hasMany(JournalVoucherTransaction::class, 'account_head_id');
     }
 }

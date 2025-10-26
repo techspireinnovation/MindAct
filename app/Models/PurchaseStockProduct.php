@@ -94,7 +94,8 @@ class PurchaseStockProduct extends BaseTenantModel
         return $this->belongsTo(Product::class, 'product_id');
     }
 
-    public function stockTransferFieldValues(){
+    public function stockTransferFieldValues()
+    {
         return $this->hasMany(StockTransferFieldValue::class, 'purchase_stock_product_id');
     }
 

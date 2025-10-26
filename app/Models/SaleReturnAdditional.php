@@ -29,7 +29,7 @@ class SaleReturnAdditional extends BaseTenantModel
         'return_time'
     ];
 
-   protected $dates = ['deleted_at', 'return_date'];
+    protected $dates = ['deleted_at', 'return_date'];
 
     protected static function booted()
     {
@@ -37,12 +37,12 @@ class SaleReturnAdditional extends BaseTenantModel
     }
 
     public function company()
-{
-    return $this->belongsTo(Company::class);
-}
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-public function salesReturn()
-{
-    return $this->belongsTo(SalesReturn::class);
-}
+    public function salesReturn()
+    {
+        return $this->belongsTo(SalesReturn::class);
+    }
 }

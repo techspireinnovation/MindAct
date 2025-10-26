@@ -11,9 +11,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ShrinkingWorkingLoss extends BaseTenantModel
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
-   protected $casts = [
+    protected $casts = [
         'product_details' => 'array',
     ];
 
@@ -29,8 +29,8 @@ class ShrinkingWorkingLoss extends BaseTenantModel
         'product_details',
         'total_purchase_quantity',
         'total_loss_quantity',
-       
-   
+
+
     ];
 
     protected $dates = ['deleted_at'];

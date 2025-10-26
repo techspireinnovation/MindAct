@@ -35,7 +35,7 @@ class Project extends BaseTenantModel
     {
         static::addGlobalScope(new CompanyIdScope());
     }
- 
+
     public function journalVouchers()
     {
         return $this->hasMany(JournalVoucher::class, 'project_id');

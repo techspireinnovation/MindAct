@@ -50,11 +50,13 @@ class Company extends Model
         return $this->hasOne(SalesMasterKey::class);
     }
 
-    public function productTypes(){
+    public function productTypes()
+    {
         return $this->hasMany(ProductType::class);
     }
 
-    public function measureUnits(){
+    public function measureUnits()
+    {
         return $this->hasMany(MeasureUnit::class);
     }
 
@@ -64,9 +66,9 @@ class Company extends Model
     }
 
     public function tenant()
-{
-    return $this->hasOne(Tenant::class, 'company_id');
-}
+    {
+        return $this->hasOne(Tenant::class, 'company_id');
+    }
 
 
 }

@@ -90,7 +90,7 @@ class PurchaseStockReturn extends BaseTenantModel
         return $this->belongsTo(PurchaseProduct::class);
     }
 
-     public function purchaseDtockProduct()
+    public function purchaseDtockProduct()
     {
         return $this->belongsTo(PurchaseStockProduct::class);
     }

@@ -16,7 +16,7 @@ class Branch extends BaseTenantModel
     protected $connection = 'tenant';
 
 
-    protected $casts =[
+    protected $casts = [
         'is_active' => 'boolean'
     ];
     protected $fillable = [

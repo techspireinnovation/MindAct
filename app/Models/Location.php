@@ -15,7 +15,7 @@ class Location extends BaseTenantModel
         'is_primary' => 'boolean',
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'is_active',

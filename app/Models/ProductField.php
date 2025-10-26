@@ -34,7 +34,7 @@ class ProductField extends BaseTenantModel
         static::addGlobalScope(new CompanyIdScope());
     }
 
-  
+
 
     public function productFieldValues()
     {

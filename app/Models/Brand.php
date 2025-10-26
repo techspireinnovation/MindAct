@@ -62,5 +62,5 @@ class Brand extends BaseTenantModel
         return $this->hasMany(Product::class, 'brand_id');
     }
 
-    
+
 }

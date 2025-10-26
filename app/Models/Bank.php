@@ -52,5 +52,5 @@ class Bank extends BaseTenantModel
         return $this->hasMany(Customer::class, 'bank_id');
     }
 
-   
+
 }

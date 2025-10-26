@@ -24,14 +24,14 @@ class ProductType extends BaseTenantModel
         'deleted_at',
         'company_id',
     ];
-    
+
     protected $dates = ['deleted_at'];
 
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
     }
-   
+
 
     public function products()
     {

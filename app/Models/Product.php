@@ -65,7 +65,8 @@ class Product extends BaseTenantModel
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function productList(){
+    public function productList()
+    {
         return $this->hasMany(ProductList::class);
     }
 
@@ -759,14 +760,14 @@ class Product extends BaseTenantModel
 
 
 
-    
+
     public function salesProductFieldValueUse()
     {
         return $this->hasMany(SalesProductFieldValue::class, 'product_id');
     }
     public function saleProductsUse()
     {
-        return $this->hasMany(SaleProduct::class, 'product_id');    
+        return $this->hasMany(SaleProduct::class, 'product_id');
     }
     public function purchaseProductsUse()
     {
@@ -785,6 +786,6 @@ class Product extends BaseTenantModel
         return $this->hasMany(ProductFieldValue::class, 'product_id');
     }
 
-   
+
 
 }

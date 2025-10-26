@@ -62,7 +62,7 @@ class Purchase extends BaseTenantModel
 
     protected static function booted()
     {
-         self::observe(PurchaseObserver::class);
+        self::observe(PurchaseObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 
@@ -91,7 +91,7 @@ class Purchase extends BaseTenantModel
         return $this->hasMany(PurchaseProduct::class);
     }
 
-     public function purchaseStockProducts(): HasMany
+    public function purchaseStockProducts(): HasMany
     {
         return $this->hasMany(PurchaseStockProduct::class);
     }
@@ -112,13 +112,16 @@ class Purchase extends BaseTenantModel
     }
 
 
-    public function purchaseProductsUse(){
-        return $this->hasMany(PurchaseProduct::class,'purchase_id');
+    public function purchaseProductsUse()
+    {
+        return $this->hasMany(PurchaseProduct::class, 'purchase_id');
     }
-    public function purchaseReturnProductsUse(){
-        return $this->hasMany(PurchaseReturnProductDetails::class,'purchase_id');
+    public function purchaseReturnProductsUse()
+    {
+        return $this->hasMany(PurchaseReturnProductDetails::class, 'purchase_id');
     }
-    public function purchaseReturnsUse(){
-        return $this->hasMany(PurchaseReturn::class,'purchase_id');
+    public function purchaseReturnsUse()
+    {
+        return $this->hasMany(PurchaseReturn::class, 'purchase_id');
     }
 }

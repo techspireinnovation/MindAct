@@ -17,19 +17,19 @@ class PurchaseMasterKey extends BaseTenantModel
 
     protected $fillable = [
 
-            'company_id',
-            'product_code',
-            'free',
-            'discount_percent',
-            'discount_amount',
-            'discount',
-            'excise_duty',
-            'health_insurance',
-            'freight_charge',
-            'discount_after_vat',
-            'expiry_date',
-            'batch_no',
-            'mfd',
+        'company_id',
+        'product_code',
+        'free',
+        'discount_percent',
+        'discount_amount',
+        'discount',
+        'excise_duty',
+        'health_insurance',
+        'freight_charge',
+        'discount_after_vat',
+        'expiry_date',
+        'batch_no',
+        'mfd',
     ];
 
     protected $dates = ['deleted_at'];

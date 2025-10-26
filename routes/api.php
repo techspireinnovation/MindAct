@@ -69,6 +69,11 @@ use App\Http\Middleware\SuperAdminMiddleware;
  use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
  use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
  use App\Http\Controllers\CompanyDashboard\QuickActionController;
+ use App\Http\Controllers\CompanyDashboard\OverallInformationController;
+use App\Http\Controllers\CompanyDashboard\TopSellingProductsController;
+use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
+use App\Http\Controllers\CompanyDashboard\RecentSalesController;
+use App\Http\Controllers\CompanyDashboard\LowStockProductsController;
 
 
 
@@ -153,6 +158,27 @@ Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getByI
  Route::get('dashboard/quick-actions', [QuickActionController::class, 'index']);
  Route::put('dashboard/quick-actions/toggle', [QuickActionController::class, 'toggle']);
 Route::get('dashboard/quick-actions/getStatus', [QuickActionController::class, 'getStatus']);
+
+
+
+Route::get('dashboard/overall-information', [OverallInformationController::class, 'index']);
+Route::get('dashboard/customer-growth', [OverallInformationController::class, 'customerGrowth']);
+Route::get('/dashboard/top-selling-products', [TopSellingProductsController::class, 'index']);
+
+
+Route::get('dashboard/recent-invoice-history', [RecentInvoiceHistoryController::class, 'index']);
+
+
+Route::get('dashboard/recent-sales', [RecentSalesController::class, 'index']);
+
+
+Route::get('dashboard/low-stock-products', [LowStockProductsController::class, 'index']);
+
+
+
+
+
+
  
 
 

@@ -1,9 +1,12 @@
 <?php
 
 namespace App\Http\Controllers;
+use Stancl\Tenancy\Facades\Tenancy;
 
 use App\Models\CompanyUser;
 use App\Models\Company;
+use App\Providers\TenancyServiceProvider;
+use App\Models\Tenant;
 use App\Models\User;
 use Auth;
 use Illuminate\Http\Request;
@@ -131,7 +134,6 @@ class CompanyAdminController extends Controller
             ], 500);
         }
     }
-
     public function selectCompany(Request $request)
     {
         \Log::info('selectCompany Request', [
@@ -142,22 +144,6 @@ class CompanyAdminController extends Controller
         ]);
 
         try {
-            $rules = [
-                'company_id' => 'required|exists:companies,id,deleted_at,NULL',
-                'branch_id' => 'required|exists:branches,id,deleted_at,NULL',
-            ];
-
-            $validator = Validator::make($request->all(), $rules);
-
-            if ($validator->fails()) {
-                \Log::error('selectCompany Validation Failed', $validator->errors()->toArray());
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors(),
-                ], 422);
-            }
-
             $user = Auth::guard('api')->user();
 
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
@@ -171,6 +157,24 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
+            // Validate company_id first (central database)
+            $rules = [
+                'company_id' => 'required|exists:companies,id,deleted_at,NULL',
+                'branch_id' => 'required|integer', // Simplified; we'll validate branch existence later
+            ];
+
+            $validator = Validator::make($request->all(), $rules);
+
+            if ($validator->fails()) {
+                \Log::error('selectCompany Validation Failed', $validator->errors()->toArray());
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation error',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            // Check company association in central database
             $companyUser = CompanyUser::where('user_id', $user->id)
                 ->where('company_id', $request->company_id)
                 ->first();
@@ -186,15 +190,33 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
-            $branch = Branch::where('id', $request->branch_id)
-                ->where('company_id', $request->company_id)
+            // Find tenant for the company
+            $tenant = Tenant::where('data->company_id', $request->company_id)->first();
+            if (!$tenant) {
+                \Log::error('selectCompany Tenant Not Found', [
+                    'company_id' => $request->company_id,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tenant database not found for this company',
+                ], 404);
+            }
+
+            // Switch to tenant database
+            // Switch to tenant DB
+         \App\Providers\TenantInitializer::switchTenant($tenant);
+
+            \Log::info("Tenant database switched: {$tenant->database}");
+
+            // Fetch branch inside tenant context
+            $branch =Branch::on('tenant')
+                ->where('id', $request->branch_id)
                 ->whereNull('deleted_at')
                 ->where('is_active', true)
                 ->first();
 
             if (!$branch) {
                 \Log::error('selectCompany Branch Association Failed', [
-                    'user_id' => $user->id,
                     'branch_id' => $request->branch_id,
                     'company_id' => $request->company_id,
                 ]);
@@ -204,6 +226,8 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
+
+            // Additional branch check for company_user role
             if ($user->hasRole('company_user')) {
                 $userBranch = $user->branches()
                     ->where('branches.id', $request->branch_id)
@@ -225,6 +249,7 @@ class CompanyAdminController extends Controller
                 }
             }
 
+            // Fetch company details (from central database)
             $company = Company::where('id', $request->company_id)
                 ->select('id', 'name', 'is_vatable')
                 ->first();
@@ -240,9 +265,8 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
 
+            // Generate new token with abilities
             $user->tokens()->delete();
-
-
             $abilities = [
                 $user->hasRole('company_admin') ? 'company_admin' : ($user->hasRole('master_user') ? 'master_user' : 'company_user'),
                 "company:{$request->company_id}",
@@ -277,7 +301,6 @@ class CompanyAdminController extends Controller
             ], 500);
         }
     }
-
 
     public function profile(Request $request)
     {

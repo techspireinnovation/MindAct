@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use \Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Location extends Model
+class Location extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 
@@ -15,7 +15,7 @@ class Location extends Model
         'is_primary' => 'boolean',
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'is_active',

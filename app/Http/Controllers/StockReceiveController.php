@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 use App\Models\StockReceive;
 use App\Models\StockReceiveDetail;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Validator;
@@ -72,7 +73,7 @@ class StockReceiveController extends Controller
                 'product_details.*.batch_no' => 'required_with:product_details|string|max:255',
                 'product_details.*.price' => 'required_with:product_details|numeric',
                 'product_details.*.amount' => 'required_with:product_details|numeric',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
             ]);
 
             if ($validator->fails()) {
@@ -190,7 +191,7 @@ class StockReceiveController extends Controller
                 'product_details.*.batch_no' => 'required_with:product_details|string|max:255',
                 'product_details.*.price' => 'required_with:product_details|numeric',
                 'product_details.*.amount' => 'required_with:product_details|numeric',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
             ]);
 
             if ($validator->fails()) {

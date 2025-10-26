@@ -5,15 +5,18 @@ namespace App\Models;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use \Illuminate\Database\Eloquent\Factories\HasFactory;
+use Stancl\Tenancy\Database\Concerns\UsesTenantConnection;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Branch extends Model
+class Branch extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 
+    protected $connection = 'tenant';
 
-    protected $casts =[
+
+    protected $casts = [
         'is_active' => 'boolean'
     ];
     protected $fillable = [
@@ -27,10 +30,10 @@ class Branch extends Model
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    // protected static function booted()
+    // {
+    //     static::addGlobalScope(new CompanyIdScope());
+    // }
 
     public function company()
     {

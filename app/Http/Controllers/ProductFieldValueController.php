@@ -50,7 +50,7 @@ class ProductFieldValueController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'company_id' => 'integer|exists:companies,id',
+            'company_id' => 'integer',
             'product_id' => 'integer|required|exists:products,id',
             'product_field_id' => 'integer|exists:product_fields,id',
             'value' => 'string|max:255'
@@ -92,7 +92,7 @@ class ProductFieldValueController extends Controller
             $validated = $request->validate([
 
 
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'product_field_id' => 'integer|exists:product_fields,id',
                 'value' => 'string|max:255'
 

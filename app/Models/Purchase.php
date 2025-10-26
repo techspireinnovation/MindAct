@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Purchase extends Model
+class Purchase extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -62,7 +62,7 @@ class Purchase extends Model
 
     protected static function booted()
     {
-         self::observe(PurchaseObserver::class);
+        self::observe(PurchaseObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 
@@ -91,7 +91,7 @@ class Purchase extends Model
         return $this->hasMany(PurchaseProduct::class);
     }
 
-     public function purchaseStockProducts(): HasMany
+    public function purchaseStockProducts(): HasMany
     {
         return $this->hasMany(PurchaseStockProduct::class);
     }
@@ -112,13 +112,16 @@ class Purchase extends Model
     }
 
 
-    public function purchaseProductsUse(){
-        return $this->hasMany(PurchaseProduct::class,'purchase_id');
+    public function purchaseProductsUse()
+    {
+        return $this->hasMany(PurchaseProduct::class, 'purchase_id');
     }
-    public function purchaseReturnProductsUse(){
-        return $this->hasMany(PurchaseReturnProductDetails::class,'purchase_id');
+    public function purchaseReturnProductsUse()
+    {
+        return $this->hasMany(PurchaseReturnProductDetails::class, 'purchase_id');
     }
-    public function purchaseReturnsUse(){
-        return $this->hasMany(PurchaseReturn::class,'purchase_id');
+    public function purchaseReturnsUse()
+    {
+        return $this->hasMany(PurchaseReturn::class, 'purchase_id');
     }
 }

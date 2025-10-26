@@ -41,7 +41,7 @@ class BranchController extends Controller
             'is_primary' => 'boolean',
 
             'is_active' => 'boolean|required',
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'integer'
         ]);
         if (!empty($validated['is_primary'])) {
             Branch::where('company_id', $validated['company_id'])
@@ -132,7 +132,7 @@ class BranchController extends Controller
                 ],
                 'is_primary' => 'sometimes|boolean',
                 'is_active' => 'boolean|required',
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'integer'
             ]);
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 Branch::where('company_id', $item->company_id)

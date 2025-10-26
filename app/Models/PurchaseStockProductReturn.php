@@ -10,9 +10,9 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class PurchaseStockProductReturn extends Model
+class PurchaseStockProductReturn extends BaseTenantModel
 {
-    
+
     protected $table = 'purchase_stock_product_returns';
 
     protected $fillable = [
@@ -71,7 +71,7 @@ class PurchaseStockProductReturn extends Model
         return $this->belongsTo(PurchaseProduct::class);
     }
 
-     public function stockProduct()
+    public function stockProduct()
     {
         return $this->belongsTo(StockProductDetails::class);
     }
@@ -82,7 +82,7 @@ class PurchaseStockProductReturn extends Model
     }
 
 
-     public function reconciliationProduct()
+    public function reconciliationProduct()
     {
         return $this->belongsTo(StockReconciliationDetail::class);
     }

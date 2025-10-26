@@ -38,7 +38,7 @@ class ProductionSettingController extends Controller
 
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'date' => 'nullable|string|max:255',
                 'document_no' => [
                     'nullable',
@@ -240,7 +240,7 @@ class ProductionSettingController extends Controller
 
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'date' => 'nullable|string|max:255',
                 'document_no' => [
                     'nullable',

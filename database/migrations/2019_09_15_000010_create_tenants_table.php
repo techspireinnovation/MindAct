@@ -16,14 +16,13 @@ class CreateTenantsTable extends Migration
     public function up(): void
     {
         Schema::create('tenants', function (Blueprint $table) {
-            $table->string('id')->primary();
-
-            $table->unsignedBigInteger('company_id')->nullable()->index();
-            $table->string('database')->unique(); // name of tenant-specific database
-            $table->string('tenancy_slug')->unique()->nullable(); // for domain or subdomain identification
-
-            $table->timestamps();
+            $table->uuid('id')->primary();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->string('database')->unique()->nullable();
             $table->json('data')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+
         });
     }
 

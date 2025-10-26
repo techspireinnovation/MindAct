@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockAdjustment extends Model
+class StockAdjustment extends BaseTenantModel
 {
     use softDeletes,HasFactory;
 

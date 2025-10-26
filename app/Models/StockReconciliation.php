@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockReconciliation extends Model
+class StockReconciliation extends BaseTenantModel
 {
   use softDeletes,HasFactory;
 

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\softDeletes;
 use Request;
 
-class ProductList extends Model
+class ProductList extends BaseTenantModel
 {
   use softDeletes, HasFactory;
 

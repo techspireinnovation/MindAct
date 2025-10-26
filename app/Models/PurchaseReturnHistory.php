@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Scopes\CompanyIdScope;
 
-class PurchaseReturnHistory extends Model
+class PurchaseReturnHistory extends BaseTenantModel
 {
     use SoftDeletes;
 

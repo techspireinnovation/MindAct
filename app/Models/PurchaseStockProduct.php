@@ -10,7 +10,7 @@ use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
 
-class PurchaseStockProduct extends Model
+class PurchaseStockProduct extends BaseTenantModel
 {
     protected $fillable = [
         'customer_id',
@@ -94,7 +94,8 @@ class PurchaseStockProduct extends Model
         return $this->belongsTo(Product::class, 'product_id');
     }
 
-    public function stockTransferFieldValues(){
+    public function stockTransferFieldValues()
+    {
         return $this->hasMany(StockTransferFieldValue::class, 'purchase_stock_product_id');
     }
 

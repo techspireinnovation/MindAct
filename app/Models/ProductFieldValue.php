@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\softDeletes;
 use Request;
 
-class ProductFieldValue extends Model
+class ProductFieldValue extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 

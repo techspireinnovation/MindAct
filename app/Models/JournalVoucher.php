@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class JournalVoucher extends Model
+class JournalVoucher extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 
@@ -40,7 +40,7 @@ class JournalVoucher extends Model
 
     public function salesman()
     {
-        
+
         return $this->hasOne(Salesman::class, 'id', 'salesman_id');
     }
 }

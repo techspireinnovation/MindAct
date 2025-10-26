@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class StockReconciliationFieldValue extends Model
+class StockReconciliationFieldValue extends BaseTenantModel
 {
      use SoftDeletes, HasFactory;
 

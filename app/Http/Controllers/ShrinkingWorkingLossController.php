@@ -148,7 +148,7 @@ class ShrinkingWorkingLossController extends Controller
         try {
 
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'date_from' => 'nullable|string|max:255',
                 'date_to' => 'nullable|string|max:255',
                 'product_id' => 'nullable|exists:products,id',
@@ -221,7 +221,7 @@ class ShrinkingWorkingLossController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'date_from' => 'nullable|string|max:255',
                 'date_to' => 'nullable|string|max:255',
                 'product_id' => 'nullable|exists:products,id',

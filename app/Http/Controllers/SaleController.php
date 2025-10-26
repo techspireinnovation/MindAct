@@ -1397,7 +1397,7 @@ class SaleController extends Controller
         try {
 
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'salesman_id' => 'nullable|integer|exists:salesmen,id',
                 'customer_name' => 'required|string|max:255',
@@ -2124,7 +2124,7 @@ class SaleController extends Controller
         try {
             // Define validation rules (same as store method)
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'salesman_id' => 'nullable|integer|exists:salesmen,id',
                 'customer_name' => 'required|string|max:255',

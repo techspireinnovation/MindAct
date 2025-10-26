@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
 
-class Brand extends Model
+class Brand extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 
@@ -62,5 +62,5 @@ class Brand extends Model
         return $this->hasMany(Product::class, 'brand_id');
     }
 
-    
+
 }

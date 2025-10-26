@@ -10,11 +10,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ProductionAssemble extends Model
+class ProductionAssemble extends BaseTenantModel
 {
-    use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
-   protected $casts = [
+    protected $casts = [
         'product_details' => 'array',
     ];
 
@@ -25,8 +25,8 @@ class ProductionAssemble extends Model
         'measure_unit_id',
         'product_quantity',
         // 'production_date',
-        'production_date_bs',  
-        'production_date_ad',   
+        'production_date_bs',
+        'production_date_ad',
         'production_no',
         'product_location_id',
         'document_no',
@@ -39,7 +39,7 @@ class ProductionAssemble extends Model
         'product_defect_quantity',
         'total_product_cost',
         'remarks',
-   
+
     ];
 
     protected $dates = ['deleted_at'];

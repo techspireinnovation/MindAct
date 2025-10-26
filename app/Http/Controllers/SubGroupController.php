@@ -92,7 +92,7 @@ class SubGroupController extends Controller
                         }),
                 ],
                 'is_active' => 'boolean|required',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'main_group_id' => [
                     'integer',
                     Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
@@ -164,7 +164,7 @@ class SubGroupController extends Controller
 
                 ],
 
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'main_group_id' => [
                     'required',
                     'integer',

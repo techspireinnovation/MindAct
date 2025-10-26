@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Salesman extends Model
+class Salesman extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
     protected $dates = ['deleted_at'];
@@ -41,7 +41,7 @@ class Salesman extends Model
         'is_active',
         'vdc_municipality'
     ];
-  
+
     public function sales()
     {
         return $this->hasMany(Sale::class, 'salesman_id');

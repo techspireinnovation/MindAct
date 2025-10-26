@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class PurchaseReturnProductDetails extends Model
+class PurchaseReturnProductDetails extends BaseTenantModel
 {
     use SoftDeletes;
 

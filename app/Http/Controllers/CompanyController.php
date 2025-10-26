@@ -2,13 +2,23 @@
 
 namespace App\Http\Controllers;
 
+
+use Illuminate\Support\Facades\Artisan;
+use App\Providers\TenancyServiceProvider;
+use App\Jobs\InitializeTenant;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\CompanyUser;
+use App\Models\ProductType;
+use App\Models\MeasureUnit;
 use App\Models\PurchaseMasterKey;
 use App\Models\SalesMasterKey;
 use App\Models\User;
 use App\Stubs\MainGroupStub;
+use Stancl\Tenancy\Jobs\CreateDatabase;
+use Stancl\Tenancy\Jobs\MigrateDatabase;
+use Stancl\Tenancy\Jobs\SeedDatabase;
+use Stancl\JobPipeline\JobPipeline;
 use DB;
 use Hash;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,31 +28,60 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
+use App\Models\Tenant;
+
+use Stancl\Tenancy\Database\Models\Domain;
+use Stancl\Tenancy\Features\TenantDatabase;
+use Str;
+
+use App\Providers\TenantInitializer;
+
+use Stancl\Tenancy\Database\DatabaseManager;
 
 class CompanyController extends Controller
 {
+
+
+
+    protected $tenantInitializer;
+
+    public function __construct(TenantInitializer $tenantInitializer)
+    {
+        $this->tenantInitializer = $tenantInitializer; // Use the injected instance
+    }
+
+
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
+
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Super admin required',
-            ], 200);
+            ], 403);
         }
+
+        // Set higher execution time limit
+        set_time_limit(300); // 5 minutes
+
+        $company = null;
+        $tenant = null;
+        $companyAdmin = null;
+        $databaseName = null;
 
         try {
             $validated = $request->validate([
-                'name' => 'required|string|max:255|unique:companies,name,NULL,id,deleted_at,NULL',
-                'licence_issue_date' => 'nullable|date_format:Y-m-d', // Enforce Y-m-d or null
-                'working_date' => 'nullable|date_format:Y-m-d', // Enforce Y-m-d or null
+                'name' => 'required|string|max:255',
+                'licence_issue_date' => 'nullable|date_format:Y-m-d',
+                'working_date' => 'nullable|date_format:Y-m-d',
                 'is_vatable' => 'nullable|boolean',
                 'reg_number' => 'nullable|string|max:255',
                 'full_address' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
-                // 'vat_number' => 'nullable|string|max:255',
                 'email_address' => 'nullable|string|email|max:255',
                 'website' => 'nullable|string|max:255',
                 'fax' => 'nullable|string|max:255',
@@ -60,7 +99,6 @@ class CompanyController extends Controller
                 'license_number' => 'nullable|string|max:255',
                 'activation_key' => 'nullable|string|max:255',
                 'url_link' => 'nullable|string|max:255',
-                // Admin fields
                 'admin_selection' => 'required|in:existing,new',
                 'existing_admin_id' => 'nullable|exists:users,id,deleted_at,NULL',
                 'admin_email' => 'sometimes|nullable|string|email|max:255|unique:users,email,NULL,id,deleted_at,NULL|required_if:admin_selection,new',
@@ -68,8 +106,7 @@ class CompanyController extends Controller
                 'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
 
-            DB::beginTransaction();
-
+            // 1️⃣ Create company in CENTRAL database
             $company = Company::create([
                 'name' => $validated['name'],
                 'licence_issue_date' => $validated['licence_issue_date'] ?? null,
@@ -77,7 +114,6 @@ class CompanyController extends Controller
                 'reg_number' => $validated['reg_number'] ?? '',
                 'pan_number' => $validated['pan_number'] ?? '',
                 'is_vatable' => $validated['is_vatable'] ?? false,
-                // 'vat_number' => $validated['vat_number'] ?? '',
                 'full_address' => $validated['full_address'] ?? '',
                 'email_address' => $validated['email_address'] ?? '',
                 'website' => $validated['website'] ?? '',
@@ -97,195 +133,200 @@ class CompanyController extends Controller
                 'activation_key' => $validated['activation_key'] ?? '',
                 'url_link' => $validated['url_link'] ?? '',
             ]);
+            Log::info('Company created successfully', ['company_id' => $company->id]);
 
-            $branch = Branch::create([
-                'name' => $validated['name'],
+            $sluggedName = Str::slug($company->name);
+
+            // Generate base database name
+            $baseDatabaseName = $sluggedName . '_' . $company->id;
+            $databaseName = $baseDatabaseName;
+            $counter = 1;
+
+            // Ensure unique database name
+            while (Tenant::where('database', $databaseName)->exists()) {
+                $databaseName = $baseDatabaseName . '_' . $counter++;
+            }
+
+
+            // Base tenancy slug
+            $baseSlug = 'tenant_company_' . Str::slug($company->name);
+            $tenancySlug = $baseSlug;
+            $slugCounter = 1;
+
+            // Ensure unique tenancy slug
+            while (Tenant::where('data->tenancy_slug', $tenancySlug)->exists()) {
+                $tenancySlug = $baseSlug . '_' . $slugCounter;
+                $slugCounter++;
+            }
+            $tenant = Tenant::create([
+                'id' => (string) Str::uuid(),
+                'database' => $databaseName,
                 'company_id' => $company->id,
-                'branch_type' => 'Main',
-                'is_active' => true,
-                'is_primary' => true,
+                'tenancy_slug' => $tenancySlug,
             ]);
 
-            $company->purchaseMasterKey()->withoutGlobalScopes()->create([
-                'company_id' => $company->id,
-                'product_code' => false,
-                'free' => false,
-                'discount_percent' => false,
-                'discount_amount' => false,
-                'discount' => false,
-                'excise_duty' => false,
-                'health_insurance' => false,
-                'freight_charge' => false,
-                'batch_no' => false,
-                'discount_after_vat' => false,
-                'expiry_date' => false,
-                'mfd' => false,
-            ]);
+            // $tenant->data = [
+            //     'company_id' => $company->id,
+            //     'company_name' => $company->name,
+            //     'tenancy_slug' => $tenancySlug,
+            // ];
+            // $tenant->save();
 
-            $company->salesMasterKey()->withoutGlobalScopes()->create([
-                'company_id' => $company->id,
-                'salesman' => false,
-                'product_code' => false,
-                'credit_days' => false,
-                'balance' => false,
-                'store' => false,
-                'location' => false,
-                'direct_whatsapp_system' => false,
-                'bill_type' => false,
-                'free' => false,
-                'discount' => false,
-                'discount_percent' => false,
-                'discount_amount' => false,
-                'additional' => false,
-                'mfd' => false,
-                'excise_duty' => false,
-                'health_insurance' => false,
-                'freight_charge' => false,
-                'batch_no' => false,
-                'discount_after_vat' => false,
-                'expiry_date' => false,
-            ]);
 
-            $company->productTypes()->createMany([
-                [
-                    'name' => 'Inventory',
-                    'delete_status' => 0,
-                    'company_id' => $company->id,
-                ],
-                [
-                    'name' => 'Assets',
-                    'delete_status' => 0,
-                    'company_id' => $company->id,
-                ],
-                [
-                    'name' => 'Service',
-                    'delete_status' => 0,
-                    'company_id' => $company->id,
-                ],
-                [
-                    'name' => 'Raw Materials',
-                    'delete_status' => 0,
-                    'company_id' => $company->id,
-                ]
-            ]);
 
-            $company->measureUnits()->create([
-                'name' => 'Piece',
-                'company_id' => $company->id,
-                'symbol' => 'Pcs',
-                'quantity' => 1
-            ]);
 
-            if ($validated['admin_selection'] === 'existing') {
-                $companyAdmin = User::findOrFail($validated['existing_admin_id']);
 
-                $role = Role::firstOrCreate([
-                    'name' => 'company_admin',
-                    'guard_name' => 'api'
+            Log::info('Tenant created successfully', ['tenant_id' => $tenant->id]);
+
+            // 3️⃣ Initialize tenant (drop, create, and migrate)
+            $this->tenantInitializer->initializeTenant($tenant, $databaseName);
+
+            // 4️⃣ Create domain if provided
+            if (!empty($validated['url_link'])) {
+                Domain::create([
+                    'tenant_id' => $tenant->id,
+                    'domain' => $validated['url_link'],
                 ]);
-                if (!$companyAdmin->hasRole('company_admin')) {
-                    $companyAdmin->assignRole($role);
-                }
-            } else {
-                // Check for a soft-deleted user with the provided email
-                $companyAdmin = User::withTrashed()->where('email', $validated['admin_email'])->first();
+                Log::info('Domain created successfully', ['tenant_id' => $tenant->id]);
+            }
 
-                if ($companyAdmin && $companyAdmin->trashed()) {
-                    // Restore the soft-deleted user
-                    $companyAdmin->restore();
-                    // Update name and password if provided
-                    $companyAdmin->update([
-                        'name' => $validated['admin_name'] ?? $companyAdmin->name,
-                        'password' => isset($validated['password']) ? Hash::make($validated['password']) : $companyAdmin->password,
-                    ]);
-                } else {
-                    // Create a new user if no soft-deleted user exists
-                    $companyAdmin = User::create([
-                        'email' => $validated['admin_email'],
+            // 5️⃣ Insert tenant-specific data
+            $tenant->run(function () use ($validated, $company, $tenant) {
+                Branch::create([
+                    'name' => $validated['name'],
+                    'company_id' => $company->id,
+                    'branch_type' => 'Main',
+                    'is_active' => true,
+                    'is_primary' => true,
+                ]);
+
+                PurchaseMasterKey::create(['company_id' => $company->id]);
+                SalesMasterKey::create(['company_id' => $company->id]);
+
+                ProductType::insert([
+                    ['name' => 'Inventory', 'delete_status' => 0, 'company_id' => $company->id],
+                    ['name' => 'Assets', 'delete_status' => 0, 'company_id' => $company->id],
+                    ['name' => 'Service', 'delete_status' => 0, 'company_id' => $company->id],
+                    ['name' => 'Raw Materials', 'delete_status' => 0, 'company_id' => $company->id],
+                ]);
+
+                MeasureUnit::create([
+                    'name' => 'Piece',
+                    'symbol' => 'Pcs',
+                    'quantity' => 1,
+                    'company_id' => $company->id,
+                ]);
+
+                Role::firstOrCreate([
+                    'name' => 'company_admin',
+                    'guard_name' => 'api',
+                ]);
+
+                Log::info('Tenant data setup completed', ['tenant_id' => $tenant->id]);
+            });
+
+            // 6️⃣ Handle admin (in central database)
+            $companyAdmin = $validated['admin_selection'] === 'existing'
+                ? User::findOrFail($validated['existing_admin_id'])
+                : User::withTrashed()->firstOrCreate(
+                    ['email' => $validated['admin_email']],
+                    [
                         'name' => $validated['admin_name'],
                         'password' => Hash::make($validated['password']),
-                    ]);
-                }
+                    ]
+                );
 
-                $role = Role::firstOrCreate([
-                    'name' => 'company_admin',
-                    'guard_name' => 'api'
-                ]);
-                if (!$companyAdmin->hasRole('company_admin')) {
-                    $companyAdmin->assignRole($role);
-                }
+            if ($companyAdmin->trashed()) {
+                $companyAdmin->restore();
+                Log::info('Restored trashed admin', ['admin_id' => $companyAdmin->id]);
+            }
+
+            $role = Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
+            if (!$companyAdmin->hasRole('company_admin')) {
+                $companyAdmin->assignRole($role);
+                Log::info('Assigned company_admin role', ['admin_id' => $companyAdmin->id]);
             }
 
             CompanyUser::create([
                 'company_id' => $company->id,
-                'user_id' => $companyAdmin->id
+                'user_id' => $companyAdmin->id,
             ]);
 
-            $companyAdmin->branches()->attach($branch->id);
-
-            MainGroupStub::createMainGroups($company->id);
-
-            DB::commit();
-
-            $company->load([
-                'purchaseMasterKey',
-                'salesMasterKey' => function ($query) {
-                    $query->withoutGlobalScopes();
-                },
-                'branches'
+            Log::info('Company and tenant setup complete', [
+                'company_id' => $company->id,
+                'tenant_id' => $tenant->id,
+                'admin_id' => $companyAdmin->id,
             ]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company, branch, and admin association created successfully',
+                'message' => 'Company, tenant database, branch, and admin setup successfully',
                 'data' => [
                     'company' => $company,
                     'admin' => $companyAdmin,
-                    'branch' => $branch,
-                ]
+                ],
             ], 201);
 
         } catch (ValidationException $e) {
-            \Log::error($e);
+            Log::error('Validation error during company creation', ['errors' => $e->errors()]);
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Company creation failed: ' . $e->getMessage());
+            // Clean up tenant database
+            if ($databaseName) {
+                $this->tenantInitializer->cleanupTenant($databaseName);
+            }
+
+            // Delete tenant and company records
+            if ($tenant) {
+                $tenant->delete();
+            }
+            if ($company) {
+                $company->delete();
+            }
+
+            Log::error('Failed to create company or tenant', [
+                'error' => $e->getMessage(),
+                'tenant_id' => isset($tenant) ? $tenant->id : null,
+                'company_id' => isset($company) ? $company->id : null,
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create company, branch, or associate admin',
-                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
+                'message' => 'Failed to create company or tenant',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
-   public function index(Request $request): JsonResponse
-{
-    $query = Company::query();
 
-    if ($request->has('keywords')) {
-        $keywords = $request->input('keywords');
-        $query->where(function ($q) use ($keywords) {
-            $q->where('name', 'LIKE', '%' . $keywords . '%')
-              ->orWhere('full_address', 'LIKE', '%' . $keywords . '%')
-              ->orWhere('email_address', 'LIKE', '%' . $keywords . '%')
-              ->orWhere('phone', 'LIKE', '%' . $keywords . '%');
+
+    public function index(Request $request): JsonResponse
+    {
+        $query = Company::query();
+
+        if ($request->has('keywords')) {
+            $keywords = $request->input('keywords');
+            $query->where(function ($q) use ($keywords) {
+                $q->where('name', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('full_address', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('email_address', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('phone', 'LIKE', '%' . $keywords . '%');
+            });
+        }
+
+        $companies = $query->orderBy('id', 'asc')->paginate(50);
+
+        $transformed = $companies->getCollection()->map(function ($company) {
+            return $company->toArray(); // get all fields automatically
         });
+
+        $companies->setCollection($transformed);
+
+        return response()->json($companies);
     }
-
-    $companies = $query->orderBy('id', 'asc')->paginate(50);
-
-    $transformed = $companies->getCollection()->map(function ($company) {
-        return $company->toArray(); // get all fields automatically
-    });
-
-    $companies->setCollection($transformed);
-
-    return response()->json($companies);
-}
 
     public function companyList(Request $request): JsonResponse
     {
@@ -509,7 +550,7 @@ class CompanyController extends Controller
         try {
             $user = $request->user();
 
-                if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
                 return response()->json([
                     'success' => false,
@@ -616,7 +657,7 @@ class CompanyController extends Controller
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-             dd($e->getMessage());
+            dd($e->getMessage());
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -703,7 +744,7 @@ class CompanyController extends Controller
     {
         try {
             $user = $request->user();
-                if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
                 return response()->json([
                     'success' => false,
@@ -1158,42 +1199,42 @@ class CompanyController extends Controller
 
     // }
 
-public function show($id): JsonResponse
-{
-    try {
-        $company = Company::with(['branches'])->findOrFail($id);
+    public function show($id): JsonResponse
+    {
+        try {
+            $company = Company::with(['branches'])->findOrFail($id);
 
-        // Get the first associated admin via pivot
-        $companyUser = CompanyUser::where('company_id', $company->id)->with('user')->first();
-        $admin = $companyUser->user ?? null;
+            // Get the first associated admin via pivot
+            $companyUser = CompanyUser::where('company_id', $company->id)->with('user')->first();
+            $admin = $companyUser->user ?? null;
 
-        $admin_selection = $admin ? 'existing' : 'new';
-        $existing_admin_id = $admin ? $admin->id : null;
+            $admin_selection = $admin ? 'existing' : 'new';
+            $existing_admin_id = $admin ? $admin->id : null;
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Company details retrieved successfully',
-            'data' => [
-                'company' => $company,
-                'admin_selection' => $admin_selection,
-                'existing_admin_id' => $existing_admin_id,
-                'admin' => $admin,
-            ]
-        ], 200);
+            return response()->json([
+                'success' => true,
+                'message' => 'Company details retrieved successfully',
+                'data' => [
+                    'company' => $company,
+                    'admin_selection' => $admin_selection,
+                    'existing_admin_id' => $existing_admin_id,
+                    'admin' => $admin,
+                ]
+            ], 200);
 
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Company not found'
-        ], 404);
-    } catch (\Exception $e) {
-        \Log::error('Exception in show: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
-        return response()->json([
-            'success' => false,
-            'message' => 'An unexpected error occurred'
-        ], 500);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Company not found'
+            ], 404);
+        } catch (\Exception $e) {
+            \Log::error('Exception in show: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred'
+            ], 500);
+        }
     }
-}
 
 
 
@@ -1256,7 +1297,7 @@ public function show($id): JsonResponse
                 'url_link' => 'nullable|string|max:255',
                 'admin_name' => 'sometimes|required|string|max:255',
                 'admin_selection' => 'required|in:existing,new',
-                
+
                 'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
                 'password' => 'sometimes|required|string|min:6',
             ]);

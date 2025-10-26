@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Scopes\CompanyIdScope;
 
-class SaleReturnAdditional extends Model
+class SaleReturnAdditional extends BaseTenantModel
 {
     use HasFactory, SoftDeletes;
 
@@ -29,7 +29,7 @@ class SaleReturnAdditional extends Model
         'return_time'
     ];
 
-   protected $dates = ['deleted_at', 'return_date'];
+    protected $dates = ['deleted_at', 'return_date'];
 
     protected static function booted()
     {
@@ -37,12 +37,12 @@ class SaleReturnAdditional extends Model
     }
 
     public function company()
-{
-    return $this->belongsTo(Company::class);
-}
+    {
+        return $this->belongsTo(Company::class);
+    }
 
-public function salesReturn()
-{
-    return $this->belongsTo(SalesReturn::class);
-}
+    public function salesReturn()
+    {
+        return $this->belongsTo(SalesReturn::class);
+    }
 }

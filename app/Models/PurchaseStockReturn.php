@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class PurchaseStockReturn extends Model
+class PurchaseStockReturn extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -90,7 +90,7 @@ class PurchaseStockReturn extends Model
         return $this->belongsTo(PurchaseProduct::class);
     }
 
-     public function purchaseDtockProduct()
+    public function purchaseDtockProduct()
     {
         return $this->belongsTo(PurchaseStockProduct::class);
     }

@@ -204,12 +204,12 @@ class CompanyAdminController extends Controller
 
             // Switch to tenant database
             // Switch to tenant DB
-         \App\Providers\TenantInitializer::switchTenant($tenant);
+            \App\Providers\TenantInitializer::switchTenant($tenant);
 
             \Log::info("Tenant database switched: {$tenant->database}");
 
             // Fetch branch inside tenant context
-            $branch =Branch::on('tenant')
+            $branch = Branch::on('tenant')
                 ->where('id', $request->branch_id)
                 ->whereNull('deleted_at')
                 ->where('is_active', true)

@@ -395,30 +395,30 @@ class CustomerController extends Controller
     }
 
 
-   
+
     public function destroy($id): JsonResponse
     {
         try {
             $customer = Customer::findOrFail($id);
-    
+
             $usedIn = [];
-    
+
             if ($customer->purchasesUse()->exists()) {
                 $usedIn[] = 'purchases';
             }
-    
+
             if ($customer->salesUse()->exists()) {
                 $usedIn[] = 'sales';
             }
-    
+
             if ($customer->purchaseProductsUse()->exists()) {
                 $usedIn[] = 'purchase_products';
             }
-    
+
             if ($customer->paymentVoucherDetails()->exists()) {
                 $usedIn[] = 'payment_voucher_details';
             }
-    
+
             if (!empty($usedIn)) {
                 return response()->json([
                     'error' => 'in_use',
@@ -426,28 +426,28 @@ class CustomerController extends Controller
                     'used_in' => $usedIn
                 ], 400);
             }
-    
+
             $customer->delete();
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Customer deleted successfully!'
             ]);
-    
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Customer not found!'
             ], 404);
-    
+
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the customer.'
             ], 500);
-    
+
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -456,50 +456,50 @@ class CustomerController extends Controller
             ], 500);
         }
     }
-    
+
 
 
     public function activeCustomers(Request $request): JsonResponse
-{
-    try {
-        $companyId = $request->company_id;
+    {
+        try {
+            $companyId = $request->company_id;
 
-        if (!$companyId) {
+            if (!$companyId) {
+                return response()->json([
+                    'message' => 'No Associated company Found !!'
+                ], 404);
+            }
+
+            $customers = Customer::where('company_id', $companyId)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->get(['id', 'party_name'])
+                ->map(fn($customer) => [
+                    'id' => $customer->id,
+                    'name' => $customer->party_name,
+                ])
+                ->values()
+                ->toArray();
+
+            if (empty($customers)) {
+                return response()->json([
+                    'message' => 'No active customers found !!',
+                    'data' => []
+                ], 200);
+            }
+
             return response()->json([
-                'message' => 'No Associated company Found !!'
-            ], 404);
-        }
-
-        $customers = Customer::where('company_id', $companyId)
-            ->where('is_active', true) 
-            ->whereNull('deleted_at')  
-            ->get(['id', 'party_name']) 
-            ->map(fn($customer) => [
-                'id' => $customer->id,
-                'name' => $customer->party_name,
-            ])
-            ->values()
-            ->toArray();
-
-        if (empty($customers)) {
-            return response()->json([
-                'message' => 'No active customers found !!',
-                'data' => []
+                'message' => 'Active customers received successfully',
+                'data' => $customers
             ], 200);
+
+        } catch (QueryException $e) {
+            \Log::error('DB Error in activeCustomers: ' . $e->getMessage());
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Exception in activeCustomers: ' . $e->getMessage());
+            return response()->json(['error' => 'Unexpected error occurred !!'], 500);
         }
-
-        return response()->json([
-            'message' => 'Active customers received successfully',
-            'data' => $customers
-        ], 200);
-
-    } catch (QueryException $e) {
-        \Log::error('DB Error in activeCustomers: ' . $e->getMessage());
-        return response()->json(['error' => 'Database error occurred !!'], 500);
-    } catch (\Exception $e) {
-        \Log::error('Exception in activeCustomers: ' . $e->getMessage());
-        return response()->json(['error' => 'Unexpected error occurred !!'], 500);
     }
-}
 
 }

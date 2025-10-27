@@ -31,5 +31,6 @@ jobs:
             # Add any build or restart commands here, e.g.:
             composer install --no-interaction --prefer-dist --optimize-autoloader
             php artisan migrate --force
+            php artisan app:migrate-tenants 
             php artisan optimize
             # sudo systemctl restart nginx

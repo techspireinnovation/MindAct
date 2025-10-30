@@ -1557,7 +1557,7 @@ class SaleController extends Controller
                     'total_amount' => $validated['total_amount'] ?? 0,
                     'purchase_id' => $validated['purchase_id'] ?? null,
                     'vat_amount' => $validated['vat_amount'] ?? null,
-                    'payment' => $validated['payment'] ?? null,
+                    
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 

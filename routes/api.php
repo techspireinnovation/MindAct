@@ -8,6 +8,7 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\CompanyAdminController;
@@ -188,6 +189,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
+    Route::resource('hold-sales', HoldSaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
 
 

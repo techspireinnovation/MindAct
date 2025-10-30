@@ -9,28 +9,28 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
-class MigrateTenants extends Command
+class RollbackTenants extends Command
 {
     /**
      * The name and signature of the console command.
      *
      * @var string
      */
-    protected $signature = 'app:migrate-tenants';
+    protected $signature = 'app:rollback-tenants {--step= : Number of migrations to rollback per tenant}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Run migrations for all tenant databases safely';
+    protected $description = 'Rollback tenant-specific migrations for all tenant databases safely';
 
     /**
      * Execute the console command.
      */
     public function handle()
     {
-        $this->info('Starting tenant migrations...');
+        $this->info('Starting tenant rollbacks...');
 
         $tenants = Tenant::all();
 
@@ -44,7 +44,7 @@ class MigrateTenants extends Command
                     continue;
                 }
 
-                $this->info("Migrating tenant: {$tenant->id} ({$databaseName})");
+                $this->info("Rolling back tenant: {$tenant->id} ({$databaseName})");
 
                 // Ensure the database exists
                 $dbExists = DB::connection('mysql')->selectOne(
@@ -62,29 +62,33 @@ class MigrateTenants extends Command
                 DB::purge('tenant');
                 DB::reconnect('tenant');
 
-                // Optional: check if tenant tables exist, skip central ones
-                $centralTables = ['permissions', 'roles', 'model_has_permissions', 'model_has_roles', 'role_has_permissions'];
-                foreach ($centralTables as $table) {
-                    if (Schema::connection('tenant')->hasTable($table)) {
-                        $this->info("Skipping central table '$table' for tenant {$tenant->id}");
-                    }
+                // Optional safety check
+                if (!Schema::connection('tenant')->hasTable('migrations')) {
+                    $this->warn("No migrations table found for tenant {$tenant->id}. Skipping rollback.");
+                    continue;
                 }
 
-                // Run tenant-specific migrations only
-                Artisan::call('migrate', [
+                // Run rollback for tenant migrations
+                $options = [
                     '--database' => 'tenant',
                     '--path' => 'database/migrations/tenant',
                     '--force' => true,
-                ]);
+                ];
+
+                if ($this->option('step')) {
+                    $options['--step'] = $this->option('step');
+                }
+
+                Artisan::call('migrate:rollback', $options);
 
                 $this->info(Artisan::output());
 
             } catch (\Exception $e) {
-                $this->error("Failed migrating tenant {$tenant->id}: " . $e->getMessage());
-                Log::error("Tenant migration error", ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
+                $this->error("Failed rolling back tenant {$tenant->id}: " . $e->getMessage());
+                Log::error("Tenant rollback error", ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
             }
         }
 
-        $this->info('All tenant migrations completed (skipped errors logged).');
+        $this->info('All tenant rollbacks completed (errors logged if any).');
     }
 }

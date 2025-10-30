@@ -208,7 +208,7 @@ class CustomerController extends Controller
         DB::beginTransaction();
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'party_name' => [
                     'required',
                     'string',
@@ -282,7 +282,7 @@ class CustomerController extends Controller
             DB::rollBack();
             \Log::error($e);
 
-            dd($e->getMessage());
+          
 
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
@@ -314,7 +314,7 @@ class CustomerController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'party_name' => [
                     'required',
                     'string',

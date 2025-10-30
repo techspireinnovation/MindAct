@@ -202,7 +202,7 @@ class BankController extends Controller
                                      ->whereNull('deleted_at');
                     }),
             ],
-            'company_id' => 'required|integer|exists:companies,id'
+            'company_id' => 'required|integer'
         ], $messages);
 
         if ($validator->fails()) {
@@ -314,7 +314,7 @@ class BankController extends Controller
                              ->whereNull('deleted_at');
             }),
         ],
-        'company_id' => 'required|integer|exists:companies,id'
+        'company_id' => 'required'
     ], $messages);
 
     // If is_primary = 1, reset others

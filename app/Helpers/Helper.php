@@ -401,6 +401,7 @@ class Helper
 
         // Transform the product detail to include type in product_field_values
         $productData = $productDetail->toArray();
+        $productData['barcode'] = $productDetail->productList->pluck('barcode')->toArray();
         $getProductForMeasureUnits = Product::with('productLists')
             ->where('id', $productDetail->id)
             ->where('company_id', $company)
@@ -419,7 +420,7 @@ class Helper
 
 
         } else {
-            dd('Product not found');
+            echo 'Product not found';
         }
 
         $productData['measure_units'] = MeasureUnit::whereIn('id', $allUnitIds)

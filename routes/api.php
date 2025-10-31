@@ -67,6 +67,14 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
 use App\Http\Middleware\SuperAdminMiddleware;
+ use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
+ use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
+ use App\Http\Controllers\CompanyDashboard\QuickActionController;
+ use App\Http\Controllers\CompanyDashboard\OverallInformationController;
+use App\Http\Controllers\CompanyDashboard\TopSellingProductsController;
+use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
+use App\Http\Controllers\CompanyDashboard\RecentSalesController;
+use App\Http\Controllers\CompanyDashboard\LowStockProductsController;
 
 
 
@@ -413,11 +421,14 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('product-field-list', [ProductFieldController::class, 'productFieldList']);
     Route::get('product-field-details', [ProductFieldController::class, 'productFieldDetails']);
 
+
     Route::get('product-field-value-list', [ProductFieldValueController::class, 'productFieldValueList']);
     Route::get('product-field-value-details', [ProductFieldValueController::class, 'productFieldValueDetails']);
+    Route::get('product-field-active', [ProductFieldController::class, 'activeProductFields']);
 
     Route::get('product-list', [ProductController::class, 'productList']);
     Route::get('product-details', [ProductController::class, 'productDetails']);
+
 
     Route::get('/banks-active-list', [BankController::class, 'activeBanks']);////
 

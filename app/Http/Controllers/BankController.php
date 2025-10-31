@@ -402,7 +402,7 @@ class BankController extends Controller
             return response()->json([
                 "message" => "No active banks found",
                 "data" => []
-            ], 404);
+            ], 200);
         }
 
         return response()->json([

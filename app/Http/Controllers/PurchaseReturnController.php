@@ -5625,46 +5625,103 @@ public function updatePurchaseReturnByInput(Request $request, $id): JsonResponse
         }
     }
 
-    public function show(Request $request, $id): JsonResponse
-    {
-        try {
-            $item = PurchaseStockReturn::with([
-                'purchaseStockProductReturns.fieldValues'
-            ])->findOrFail($id);
+    // public function show(Request $request, $id): JsonResponse
+    // {
+    //     try {
+    //         $item = PurchaseStockReturn::with([
+    //             'purchaseStockProductReturns.fieldValues'
+    //         ])->findOrFail($id);
 
 
-            $productIds = $item->purchaseStockProductReturns->pluck('product_id')->unique();
+    //         $productIds = $item->purchaseStockProductReturns->pluck('product_id')->unique();
 
 
-            $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
-                ->where('company_id', $request->company_id)
-                ->with(['measureUnit:id,name,quantity'])
-                ->get()
-                ->groupBy('product_id');
+    //         $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+    //             ->where('company_id', $request->company_id)
+    //             ->with(['measureUnit:id,name,quantity'])
+    //             ->get()
+    //             ->groupBy('product_id');
 
 
-            foreach ($item->purchaseStockProductReturns as $productReturn) {
-                $units = $productMeasureUnits->get($productReturn->product_id, collect())
-                    ->pluck('measureUnit');
-                $productReturn->measure_units = $units;
+    //         foreach ($item->purchaseStockProductReturns as $productReturn) {
+    //             $units = $productMeasureUnits->get($productReturn->product_id, collect())
+    //                 ->pluck('measureUnit');
+    //             $productReturn->measure_units = $units;
+    //         }
+
+    //         return response()->json([
+    //             "message" => "Successful!!",
+    //             "data" => $item
+    //         ]);
+
+    //     } catch (ModelNotFoundException $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'Item not found'], 404);
+    //     } catch (QueryException $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An unexpected query error occurred'], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     }
+    // }
+
+public function show(Request $request, $id): JsonResponse
+{
+    try {
+        $item = PurchaseStockReturn::with([
+            'purchaseStockProductReturns.fieldValues.productField'
+        ])->findOrFail($id);
+
+        $productIds = $item->purchaseStockProductReturns->pluck('product_id')->unique();
+
+        $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+            ->where('company_id', $request->company_id)
+            ->with(['measureUnit:id,name,quantity'])
+            ->get()
+            ->groupBy('product_id');
+
+        foreach ($item->purchaseStockProductReturns as $productReturn) {
+            // Add measure units
+            $units = $productMeasureUnits->get($productReturn->product_id, collect())
+                ->pluck('measureUnit');
+            $productReturn->measure_units = $units;
+
+            // Reorder field_values with product_field_name just after product_field_id
+            $newFieldValues = [];
+            foreach ($productReturn->fieldValues as $fieldValue) {
+                $array = $fieldValue->toArray();
+                $productFieldName = $fieldValue->productField->name ?? null;
+                unset($array['product_field']); // remove full object
+
+                // Put 'product_field_name' right after 'product_field_id'
+                $before = array_slice($array, 0, array_search('product_field_id', array_keys($array)) + 1, true);
+                $after = array_slice($array, array_search('product_field_id', array_keys($array)) + 1, null, true);
+                $ordered = $before + ['name' => $productFieldName] + $after;
+
+                $newFieldValues[] = $ordered;
             }
-
-            return response()->json([
-                "message" => "Successful!!",
-                "data" => $item
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected query error occurred'], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            $productReturn->fieldValues = $newFieldValues;
         }
+
+        return response()->json([
+            "message" => "Successful!!",
+            "data" => $item
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected query error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
+
+
 
 
     public function destroy($id): JsonResponse

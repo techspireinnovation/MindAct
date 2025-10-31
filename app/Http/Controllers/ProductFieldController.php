@@ -36,7 +36,6 @@ class ProductFieldController extends Controller
                 "message" => "Product Field List Received !!",
                 "data" => $productFields
             ]);
-
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json(["error" => "Product Field not Found !!"], 404);
@@ -66,8 +65,6 @@ class ProductFieldController extends Controller
                 "message" => "Product Field Details Received !!",
                 "data" => $productFieldDetails
             ], 200);
-
-
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Product Field not Found !!"], 404);
         } catch (QueryException $e) {
@@ -87,7 +84,6 @@ class ProductFieldController extends Controller
                 Rule::unique('product_fields')->where(function ($query) use ($request) {
                     return $query->where('company_id', $request->company_id)
                         ->whereNull('deleted_at');
-
                 }),
             ],
             'is_active' => 'boolean|required',
@@ -129,7 +125,6 @@ class ProductFieldController extends Controller
                         ->where(function ($query) use ($request, $product_field) {
                             return $query->where('company_id', $request->input('company_id', $product_field->company_id))
                                 ->whereNull('deleted_at');
-
                         }),
                 ],
                 'is_active' => 'boolean|required',
@@ -183,21 +178,18 @@ class ProductFieldController extends Controller
                 'success' => true,
                 'message' => 'Product Field deleted successfully!'
             ]);
-
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Product Field not found!'
             ], 404);
-
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the product field.'
             ], 500);
-
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
@@ -206,5 +198,29 @@ class ProductFieldController extends Controller
             ], 500);
         }
     }
+    public function activeProductFields(Request $request): JsonResponse
+    {
+        try {
+            $activeFields = ProductField::where('is_active', 1)
+                ->where('company_id', $request->company_id)
+                ->whereNull('deleted_at')
+                ->select('id', 'name', 'type', 'is_active')
+                ->paginate(50);
 
+            return response()->json([
+                'message' => 'Active Product Fields Retrieved Successfully!',
+                'data' => $activeFields
+            ], 200);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'Database error occurred!!'
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json([
+                'error' => 'An unexpected error occurred!!'
+            ], 500);
+        }
+    }
 }

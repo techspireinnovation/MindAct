@@ -145,7 +145,7 @@ class PurchaseReturnController extends Controller
                 'branch_id' => 'required|integer|exists:branches,id',
             ]);
 
-            if ($validator->fails()) {
+            if ($validator->fails()) { 
                 return response()->json(['error' => $validator->errors()->first()], 422);
             }
 
@@ -524,7 +524,7 @@ class PurchaseReturnController extends Controller
         try {
             // Validate input parameters
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
                 'purchase_bill_number' => 'nullable|string|max:255',
                 'purchase_number' => 'nullable|string|max:255',

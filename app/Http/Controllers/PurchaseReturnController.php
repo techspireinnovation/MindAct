@@ -536,7 +536,7 @@ class PurchaseReturnController extends Controller
             }
 
             if (!$request->hasAny(['purchase_bill_number', 'purchase_number'])) {
-                Log::warning('No valid search parameters provided', ['request' => $request->all()]);
+                Log::warning('No valid search parameter provided', ['request' => $request->all()]);
                 return response()->json(['error' => 'At least one of purchase_bill_number or purchase_number is required'], 422);
             }
 

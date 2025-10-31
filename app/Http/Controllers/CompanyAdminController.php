@@ -9,6 +9,8 @@ use App\Providers\TenancyServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
 use Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Validator;
@@ -567,6 +569,7 @@ class CompanyAdminController extends Controller
     public function getUserCompaniesAndBranches($userId)
     {
         try {
+            \Log::info("Fetching user", ['user_id' => $userId]);
             $user = User::find($userId);
 
             if (!$user) {
@@ -576,16 +579,21 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
 
+            // Get all companies related to the user
             $companies = CompanyUser::where('user_id', $user->id)
                 ->with([
-                    'company' => function ($query) {
-                        $query->select('id', 'name', 'is_vatable')->whereNull('deleted_at');
+                    'company' => function ($q) {
+                        $q->select('id', 'name', 'is_vatable');
                     }
                 ])
                 ->get()
                 ->pluck('company')
-                ->filter()
-                ->values();
+                ->filter();
+
+            \Log::info("Companies fetched for user", [
+                'user_id' => $user->id,
+                'companies' => $companies->pluck('name', 'id')
+            ]);
 
             if ($companies->isEmpty()) {
                 return response()->json([
@@ -594,35 +602,60 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
-            $branches = $user->hasRole('company_admin')
-                ? Branch::whereIn('company_id', $companies->pluck('id'))
-                    ->whereNull('deleted_at')
-                    ->where('is_active', true)
+            $companiesWithBranches = [];
+
+            foreach ($companies as $company) {
+                \Log::info("Processing company", ['company_id' => $company->id, 'company_name' => $company->name]);
+
+                // Find tenant by decoding the raw JSON data
+                $tenant = Tenant::all()->first(
+                    fn($t) =>
+                    json_decode($t->getRawOriginal('data'), true)['company_id'] == $company->id
+                );
+
+                if (!$tenant) {
+                    \Log::warning("Tenant not found for company", ['company_id' => $company->id]);
+                    continue;
+                }
+
+                $tenantData = json_decode($tenant->getRawOriginal('data'), true);
+                $tenantDb = $tenantData['database'] ?? null;
+
+                \Log::info("Tenant database found", ['company_id' => $company->id, 'tenant_db' => $tenantDb]);
+
+                if (!$tenantDb) {
+                    \Log::warning("Tenant database name missing", ['company_id' => $company->id]);
+                    continue;
+                }
+
+                // Switch tenant connection
+                DB::purge('tenant');
+                Config::set('database.connections.tenant.database', $tenantDb);
+                DB::reconnect('tenant');
+                \Log::info("Switched tenant connection", ['tenant_db' => $tenantDb]);
+
+                // Fetch branches
+                $branches = Branch::on('tenant')
                     ->select('id', 'name', 'company_id')
-                    ->get()
-                : $user->branches()
-                    ->whereNull('branches.deleted_at')
-                    ->where('branches.is_active', true)
-                    ->select('branches.id', 'branches.name', 'branches.company_id')
+                    ->where('is_active', true)
+                    ->whereNull('deleted_at')
                     ->get();
 
-            $groupedBranches = $branches->groupBy('company_id')->map(function ($branches) {
-                return $branches->map(function ($branch) {
-                    return [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                    ];
-                })->values();
-            });
+                \Log::info("Branches fetched", [
+                    'company_id' => $company->id,
+                    'branches' => $branches->pluck('name', 'id')->toArray()
+                ]);
 
-            $companiesWithBranches = $companies->map(function ($company) use ($groupedBranches) {
-                return [
+                $branchesArray = $branches->map(fn($branch) => ['id' => $branch->id, 'name' => $branch->name]);
+
+                $companiesWithBranches[] = [
                     'id' => $company->id,
                     'name' => $company->name,
                     'is_vatable' => $company->is_vatable,
-                    'branches' => $groupedBranches->get($company->id, collect([]))->toArray(),
+                    'branches' => $branchesArray,
                 ];
-            })->values();
+            }
+
 
             return response()->json([
                 'success' => true,
@@ -632,13 +665,11 @@ class CompanyAdminController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'role' => $user->hasRole('company_admin') ? 'company_admin' :
-                            ($user->hasRole('company_user') ? 'company_user' :
-                                ($user->hasRole('master_user') ? 'master_user' : 'none')),
                     ],
                     'companies' => $companiesWithBranches,
                 ],
-            ], 200);
+            ]);
+
         } catch (\Exception $e) {
             \Log::error('getUserCompaniesAndBranches Error', [
                 'user_id' => $userId,
@@ -648,10 +679,13 @@ class CompanyAdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve user companies and branches.',
-                // 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
+
+
+
+
     public function tree(Request $request)
     {
         try {

@@ -141,7 +141,7 @@ class PurchaseReturnController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
             ]);
 

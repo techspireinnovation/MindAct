@@ -114,7 +114,6 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
     Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);
 
-
     Route::get('/userList', [UserController::class, 'userList']);
     Route::get('/userDetail/{identifier}', [UserController::class, 'userDetail']);
 

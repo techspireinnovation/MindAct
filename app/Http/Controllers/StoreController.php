@@ -237,7 +237,7 @@ class StoreController extends Controller
                 return response()->json([
                     'message' => 'No active stores found',
                     'data' => []
-                ], 404);
+                ], 200);
             }
 
             // Map to keep response clean

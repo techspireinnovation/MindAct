@@ -420,11 +420,14 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('product-field-list', [ProductFieldController::class, 'productFieldList']);
     Route::get('product-field-details', [ProductFieldController::class, 'productFieldDetails']);
 
+
     Route::get('product-field-value-list', [ProductFieldValueController::class, 'productFieldValueList']);
     Route::get('product-field-value-details', [ProductFieldValueController::class, 'productFieldValueDetails']);
+    Route::get('product-field-active', [ProductFieldController::class, 'activeProductFields']);
 
     Route::get('product-list', [ProductController::class, 'productList']);
     Route::get('product-details', [ProductController::class, 'productDetails']);
+
 
     Route::get('/banks-active-list', [BankController::class, 'activeBanks']);////
 

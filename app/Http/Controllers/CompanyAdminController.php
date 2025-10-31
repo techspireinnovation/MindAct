@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+// use Illuminate\Support\Facades\Auth;
+use Stancl\Tenancy\Concerns\CentralConnection;
 use Validator;
 use App\Models\Branch;
 
@@ -307,7 +309,11 @@ class CompanyAdminController extends Controller
     public function profile(Request $request)
     {
         try {
-            $user = Auth::guard('api')->user();
+            $user = tenancy()->central(function () {
+                return Auth::guard('api')->setConnection('mysql')->user();
+            });
+
+
 
             \Log::info('Profile Request', [
                 'user_id' => $user ? $user->id : null,

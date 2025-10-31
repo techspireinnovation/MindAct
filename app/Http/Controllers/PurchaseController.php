@@ -28,7 +28,7 @@ class PurchaseController extends Controller
     {
         // Validate the request
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id'
+            'company_id' => 'required|integer'
         ]);
 
         if ($validator->fails()) {

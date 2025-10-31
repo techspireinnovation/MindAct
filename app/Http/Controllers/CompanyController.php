@@ -870,13 +870,16 @@ class CompanyController extends Controller
     {
         try {
             // Get the authenticated user
-            $user = $request->user();
-            \Log::info('getSalesMasterKey: User', ['user_id' => $user ? $user->id : null]);
-            if (!$user || !$user->hasRole('company_admin')) {
+            $userId = $request->user_id;
+              $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found in central DB.'], 404);
+            }
+            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized: Not a company admin',
-                ], 200);
+                    'message' => 'Unauthorized: User lacks required role',
+                ], 403);
             }
 
             // Get company_id from middleware
@@ -890,7 +893,7 @@ class CompanyController extends Controller
             }
 
             // Verify company exists and is not soft-deleted
-            $company = \App\Models\Company::where('id', $companyId)
+            $company = \App\Models\Company::on('mysql')->where('id', $companyId)
                 ->whereNull('deleted_at')
                 ->first();
             if (!$company) {
@@ -901,7 +904,7 @@ class CompanyController extends Controller
             }
 
             // Verify user is associated with the company
-            $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
+            $companyUser = \App\Models\CompanyUser::on('mysql')->where('user_id', $user->id)
                 ->where('company_id', $companyId)
                 ->first();
             if (!$companyUser) {

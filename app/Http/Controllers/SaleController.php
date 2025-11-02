@@ -122,7 +122,7 @@ class SaleController extends Controller
 
 
 
-    private function getAvailableProductsForSale($purchaseType, $companyId, $branchId)
+    public function getAvailableProductsForSale($purchaseType, $companyId, $branchId)
     {
 
         Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
@@ -452,7 +452,7 @@ class SaleController extends Controller
 
 
 
-    private function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $branchId = null, ?int $responseUnitId = null): array
+    public function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $branchId = null, ?int $responseUnitId = null): array
     {
         Log::debug('Fetching detailed available products with purchase products', [
             'product_id' => $productId,
@@ -1045,7 +1045,7 @@ class SaleController extends Controller
 
 
 
-    private function safeBsDate(int $year, int $month, int $day): string
+    public function safeBsDate(int $year, int $month, int $day): string
     {
         // never start higher than 32
         $day = min($day, 33);
@@ -1145,7 +1145,7 @@ class SaleController extends Controller
 
 
 
-    private function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    public function calculatePieces(float $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
@@ -1163,7 +1163,7 @@ class SaleController extends Controller
         return ($integerPart * $measureUnitQuantity) + $decimalPieces;
     }
 
-    private function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int
+    public function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
 
@@ -1273,7 +1273,7 @@ class SaleController extends Controller
 
 
 
-    private function availablePiecesForSaleUpdate(
+    public function availablePiecesForSaleUpdate(
         $purchaseProduct,
         float $measureUnitQty,
         int $companyId,
@@ -2028,7 +2028,7 @@ class SaleController extends Controller
 
 
 
-    private function flattenFieldValues($fieldValues, $index): array
+    public function flattenFieldValues($fieldValues, $index): array
     {
         $flat = [];
         foreach ($fieldValues as $fvSet) {
@@ -2051,7 +2051,7 @@ class SaleController extends Controller
     }
 
 
-    private function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
+    public function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
     {
         if ($targetMeasureUnitQuantity <= 0) {
             Log::warning('Invalid target measure unit quantity', ['targetMeasureUnitQuantity' => $targetMeasureUnitQuantity]);
@@ -2084,7 +2084,7 @@ class SaleController extends Controller
         return [$regularQuantity, $freeQuantity];
     }
 
-    private function getUnavailableQuantityIndices($purchaseProduct, int $companyId, int $branchId): array
+    public function getUnavailableQuantityIndices($purchaseProduct, int $companyId, int $branchId): array
     {
         $soldIndices = SalesProductFieldValue::whereIn('sale_product_id', $purchaseProduct->saleProducts->pluck('id'))
             ->where('company_id', $companyId)

@@ -254,22 +254,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
             $branchId = $request->branch_id;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -333,22 +333,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
             $branchId = $request->branch_id;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -412,22 +412,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
             $branchId = $request->branch_id;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -491,22 +491,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
             $branchId = $request->branch_id;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -570,22 +570,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
             $branchId = $request->branch_id;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -649,22 +649,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
             $branchId = $request->branch_id;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([

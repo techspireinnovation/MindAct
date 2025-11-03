@@ -79,7 +79,7 @@ class SalesReturnController extends Controller
             // Validate required parameters
             $validator = Validator::make($request->all(), [
                 'invoice_number' => 'required|string|max:255',
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
             ]);
 
             if ($validator->fails()) {
@@ -524,7 +524,7 @@ class SalesReturnController extends Controller
                 'data' => $saleData,
             ]);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+           
             Log::error('Database error in getSaleByInvoiceNumber', [
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
@@ -548,7 +548,7 @@ class SalesReturnController extends Controller
     try {
         // Validate company_id
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|exists:companies,id'
+            'company_id' => 'required'
         ]);
 
         if ($validator->fails()) {
@@ -627,7 +627,7 @@ class SalesReturnController extends Controller
                 'data' => $invoiceNumbers
             ], 200);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+            
             Log::error('Database error in listAvailableInvoiceNumbers', [
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
@@ -776,7 +776,7 @@ class SalesReturnController extends Controller
         try {
             // Validate company_id
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id'
+                'company_id' => 'required'
             ]);
 
             if ($validator->fails()) {
@@ -1532,7 +1532,7 @@ class SalesReturnController extends Controller
         try {
             // Validate inputs
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required',
                 'purchase_type' => 'required|string', // Adjust 'in' values based on your valid purchase types
             ]);
 
@@ -2348,7 +2348,7 @@ class SalesReturnController extends Controller
             $validator = Validator::make($request->all(), [
                 'product_id' => 'nullable|integer|exists:products,id',
                 'product_name' => 'nullable|string|max:255',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'sale_id' => 'nullable|integer|exists:sales,id',
             ]);
 

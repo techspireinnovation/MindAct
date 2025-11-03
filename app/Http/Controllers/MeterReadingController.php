@@ -66,7 +66,7 @@ class MeterReadingController extends Controller
             \Log::error('Database error occured', ['Query Exception' => $e]);
             return response()->json(['error' => 'Database error occured'], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+          
             \Log::error('Unexpected error', ['exception' => $e]);
             return response()->json(['error' => 'An unexpected error occured'], 500);
 

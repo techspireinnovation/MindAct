@@ -548,7 +548,9 @@ class CompanyController extends Controller
     public function updatePurchaseMasterKey(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $userId = $request->user_id;
+
+            $user = User::on('mysql')->where('id', $userId)->first();
 
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
@@ -592,7 +594,7 @@ class CompanyController extends Controller
                     ], 403);
                 }
 
-                $company = Company::where('id', $companyId)
+                $company = Company::on('mysql')->where('id', $companyId)
                     ->whereNull('deleted_at')
                     ->first();
 
@@ -603,7 +605,7 @@ class CompanyController extends Controller
                     ], 404);
                 }
 
-                $companyUser = CompanyUser::where('user_id', $user->id)
+                $companyUser = CompanyUser::on('mysql')->where('user_id', $user->id)
                     ->where('company_id', $companyId)
                     ->first();
 
@@ -650,14 +652,14 @@ class CompanyController extends Controller
                 'message' => 'Purchase master key not found',
             ], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -871,7 +873,7 @@ class CompanyController extends Controller
         try {
             // Get the authenticated user
             $userId = $request->user_id;
-              $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
+            $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
             if (!$user) {
                 return response()->json(['success' => false, 'message' => 'User not found in central DB.'], 404);
             }

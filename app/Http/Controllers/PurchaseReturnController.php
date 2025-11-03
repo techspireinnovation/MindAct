@@ -1688,7 +1688,7 @@ class PurchaseReturnController extends Controller
         try {
             // Validate input
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
                 'product_code' => 'nullable|string|max:255',
                 'product_name' => 'nullable|string|max:255',
@@ -2785,11 +2785,11 @@ class PurchaseReturnController extends Controller
                         // Valid field value object
                         $flattened[] = [
                             'purchase_stock_product_id' => $item['purchase_stock_product_id'],
-                            'stock_product_id' => $item['stock_product_id'],
-                            'stock_adjustment_id' => $item['stock_adjustment_id'],
-                            'stock_reconciliation_id' => $item['stock_reconciliation_id'],
-                            'stock_transfer_id' => $item['stock_transfer_id'],
-                            'purchase_product_id' => $item['purchase_product_id'],
+                            'stock_product_id' => $item['stock_product_id'] ?? null,
+                            'stock_adjustment_id' => $item['stock_adjustment_id'] ?? null,
+                            'stock_reconciliation_id' => $item['stock_reconciliation_id'] ?? null,
+                            'stock_transfer_id' => $item['stock_transfer_id'] ?? null,
+                            'purchase_product_id' => $item['purchase_product_id'] ?? null,
                             'product_field_id' => $item['product_field_id'],
                             'value' => $item['value'],
                             'quantity_index' => $item['quantity_index'],
@@ -4980,7 +4980,7 @@ class PurchaseReturnController extends Controller
                         if ($hasFieldValues) {
                             foreach ($fieldValuesFlat as $fv) {
                                 Log::debug('Field value entry', ['fv' => $fv, 'product_id' => $productId, 'index' => $index]);
-                                if (!isset($fv['purchase_product_id']) || !is_numeric($fv['purchase_product_id'])) {
+                                if (!isset($fv['purchase_stock_product_id']) || !is_numeric($fv['purchase_stock_product_id'])) {
                                     Log::error('Invalid purchase_product_id in field_values', [
                                         'purchase_stock_return_id' => $id,
                                         'product_id' => $productId,

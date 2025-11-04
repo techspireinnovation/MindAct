@@ -4313,9 +4313,9 @@ class PurchaseReturnController extends Controller
                 }
 
                 // Create purchase return
-                $purchaseReturnData = array_filter($validated, fn($key) => !in_array($key, ['purchase_return_products']), ARRAY_FILTER_USE_KEY);
-                $purchaseReturnData['purchase_id'] = null;
-                $purchaseReturn = PurchaseStockReturn::create($purchaseReturnData);
+                // $purchaseReturnData = array_filter($validated, fn($key) => !in_array($key, ['purchase_return_products']), ARRAY_FILTER_USE_KEY);
+                // $purchaseReturnData['purchase_id'] = null;
+                // $purchaseReturn = PurchaseStockReturn::create($purchaseReturnData);
 
                 foreach ($processedProducts as $productData) {
                     $productDataFiltered = array_filter($productData, fn($key) => !in_array($key, ['field_values', 'purchase_id', 'purchase_purchase_bill_number']), ARRAY_FILTER_USE_KEY);

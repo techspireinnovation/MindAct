@@ -707,7 +707,7 @@ class SaleController extends Controller
                 })
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
-            $transferQuantityIndexes =  StockTransferFieldValue::whereIn('purchase_stock_product_id', $purchaseProducts->pluck('id'))
+            $transferQuantityIndexes = StockTransferFieldValue::whereIn('purchase_stock_product_id', $purchaseProducts->pluck('id'))
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
@@ -765,9 +765,9 @@ class SaleController extends Controller
             ]);
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes,$transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes,$transferQuantityIndexes,) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
@@ -1557,7 +1557,7 @@ class SaleController extends Controller
                     'total_amount' => $validated['total_amount'] ?? 0,
                     'purchase_id' => $validated['purchase_id'] ?? null,
                     'vat_amount' => $validated['vat_amount'] ?? null,
-                    
+
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 
@@ -2919,12 +2919,12 @@ class SaleController extends Controller
         }
     }
 
-// public function filterByBarcode(Request $request): JsonResponse
+    // public function filterByBarcode(Request $request): JsonResponse
 // {
 //     try {
 //         \Log::info('Filter Sale request: ', $request->all());
 
-//         // Validate request
+    //         // Validate request
 //         $validator = Validator::make($request->all(), [
 //             'barcode' => 'required_without:product_unique_id',
 //             'product_unique_id' => 'required_without:barcode',
@@ -2932,27 +2932,27 @@ class SaleController extends Controller
 //             'response_unit_id' => 'nullable|integer|exists:measure_units,id',
 //         ]);
 
-//         if ($validator->fails()) {
+    //         if ($validator->fails()) {
 //             return response()->json(['errors' => $validator->errors()], 422);
 //         }
 
-//         $companyId = $request->company_id;
+    //         $companyId = $request->company_id;
 //         $responseUnitId = $request->response_unit_id ?? null;
 
-//         // Get product by barcode or unique id
+    //         // Get product by barcode or unique id
 //         if ($request->filled('barcode')) {
 //             $productList = ProductList::where('company_id', $companyId)
 //                 ->where('barcode', $request->barcode)
 //                 ->first();
 
-//             if (!$productList) {
+    //             if (!$productList) {
 //                 return response()->json([
 //                     'error' => 'No product found for this barcode',
 //                     'searched_value' => $request->barcode
 //                 ], 404);
 //             }
 
-//             $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
+    //             $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
 //                 ->find($productList->product_id);
 //         } else {
 //             $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
@@ -2960,7 +2960,7 @@ class SaleController extends Controller
 //                 ->where('product_unique_id', $request->product_unique_id)
 //                 ->first();
 
-//             if (!$product) {
+    //             if (!$product) {
 //                 return response()->json([
 //                     'error' => 'No product found for this product_unique_id',
 //                     'searched_value' => $request->product_unique_id
@@ -2968,37 +2968,37 @@ class SaleController extends Controller
 //             }
 //         }
 
-//         // Measure units
+    //         // Measure units
 //         $measureUnits = MeasureUnit::where('company_id', $companyId)
 //             ->whereNull('deleted_at')
 //             ->get()
 //             ->keyBy('id');
 
-//         // Purchase products
+    //         // Purchase products
 //         $purchaseProducts = PurchaseProduct::with('purchase')
 //             ->where('company_id', $companyId)
 //             ->where('product_id', $product->id)
 //             ->whereNull('deleted_at')
 //             ->get();
 
-//         // Fetch returns, sales, and sales returns
+    //         // Fetch returns, sales, and sales returns
 //         $purchaseProductIds = $purchaseProducts->pluck('id')->toArray();
 
-//         $purchaseProductReturns = \DB::table('purchase_product_returns')
+    //         $purchaseProductReturns = \DB::table('purchase_product_returns')
 //             ->whereIn('purchase_product_id', $purchaseProductIds)
 //             ->where('company_id', $companyId)
 //             ->whereNull('deleted_at')
 //             ->get()
 //             ->groupBy('purchase_product_id');
 
-//         $saleProducts = \DB::table('sale_products')
+    //         $saleProducts = \DB::table('sale_products')
 //             ->whereIn('purchase_product_id', $purchaseProductIds)
 //             ->where('company_id', $companyId)
 //             ->whereNull('deleted_at')
 //             ->get()
 //             ->groupBy('purchase_product_id');
 
-//         $salesReturnProducts = \DB::table('sales_return_products')
+    //         $salesReturnProducts = \DB::table('sales_return_products')
 //             ->join('sale_products', 'sales_return_products.sale_product_id', '=', 'sale_products.id')
 //             ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
 //             ->where('sales_return_products.company_id', $companyId)
@@ -3006,11 +3006,11 @@ class SaleController extends Controller
 //             ->get()
 //             ->groupBy('purchase_product_id');
 
-//         // Calculate quantities per purchase product
+    //         // Calculate quantities per purchase product
 //         $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnits, $purchaseProductReturns, $saleProducts, $salesReturnProducts) {
 //             $unitQty = $measureUnits[$pp->measure_unit_id]->quantity ?? 1;
 
-//             $totalPurchased = ($pp->quantity + $pp->free_quantity) * $unitQty;
+    //             $totalPurchased = ($pp->quantity + $pp->free_quantity) * $unitQty;
 //             $totalReturned = collect($purchaseProductReturns[$pp->id] ?? [])->sum(function ($ret) use ($measureUnits) {
 //                 $unitQty = $measureUnits[$ret->measure_unit_id]->quantity ?? 1;
 //                 return ($ret->quantity + $ret->free_quantity) * $unitQty;
@@ -3024,9 +3024,9 @@ class SaleController extends Controller
 //                 return ($ret->quantity + $ret->free_quantity) * $unitQty;
 //             });
 
-//             $available = max($totalPurchased - $totalReturned - $totalSold + $totalSalesReturn, 0);
+    //             $available = max($totalPurchased - $totalReturned - $totalSold + $totalSalesReturn, 0);
 
-//             return (object) [
+    //             return (object) [
 //                 'purchase_product_id' => $pp->id,
 //                 'purchase_id' => $pp->purchase_id,
 //                 'purchase_bill_number' => $pp->purchase->purchase_bill_number ?? null,
@@ -3051,12 +3051,12 @@ class SaleController extends Controller
 //             ];
 //         });
 
-//         $availableQuantity = $purchaseProducts->sum('available_quantity');
+    //         $availableQuantity = $purchaseProducts->sum('available_quantity');
 
-//         // Primary measure unit
+    //         // Primary measure unit
 //         $primary = $product->productLists->firstWhere('is_primary', true)?->measureUnit;
 
-//         $data = [
+    //         $data = [
 //             "product_id" => $product->id,
 //             "product_name" => $product->name,
 //             "product_code" => $product->product_unique_id,
@@ -3092,104 +3092,104 @@ class SaleController extends Controller
 //             "purchase_products" => $purchaseProducts->values()->toArray()
 //         ];
 
-//         return response()->json([
+    //         return response()->json([
 //             "message" => "Product details retrieved",
 //             "data" => [$data]
 //         ]);
 
-//     } catch (\Exception $e) {
+    //     } catch (\Exception $e) {
 //         \Log::error('Error in filterByBarcode (SaleController): ' . $e->getMessage());
 //         return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
 //     }
 // }
 
 
-public function filterByBarcode(Request $request): JsonResponse
-{
-    try {
-        \Log::info('Filter Sale request: ', $request->all());
+    public function filterByBarcode(Request $request): JsonResponse
+    {
+        try {
+            \Log::info('Filter Sale request: ', $request->all());
 
-        // Validate request
-        $validator = Validator::make($request->all(), [
-            'barcode' => 'required_without:product_unique_id',
-            'product_unique_id' => 'required_without:barcode',
-            'company_id' => 'required|integer|exists:companies,id',
-            'response_unit_id' => 'nullable|integer|exists:measure_units,id',
-        ]);
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'barcode' => 'required_without:product_unique_id',
+                'product_unique_id' => 'required_without:barcode',
+                'company_id' => 'required|integer|exists:companies,id',
+                'response_unit_id' => 'nullable|integer|exists:measure_units,id',
+            ]);
 
             if ($validator->fails()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-        $companyId = $request->company_id;
-        $responseUnitId = $request->response_unit_id ?? null;
+            $companyId = $request->company_id;
+            $responseUnitId = $request->response_unit_id ?? null;
 
-        // Fetch product by barcode or unique_id
-        if ($request->filled('barcode')) {
-            $productList = ProductList::where('company_id', $companyId)
-                ->where('barcode', $request->barcode)
-                ->first();
+            // Fetch product by barcode or unique_id
+            if ($request->filled('barcode')) {
+                $productList = ProductList::where('company_id', $companyId)
+                    ->where('barcode', $request->barcode)
+                    ->first();
 
-            if (!$productList) {
-                return response()->json([
-                    'error' => 'No product found for this barcode',
-                    'searched_value' => $request->barcode
-                ], 404);
+                if (!$productList) {
+                    return response()->json([
+                        'error' => 'No product found for this barcode',
+                        'searched_value' => $request->barcode
+                    ], 404);
+                }
+
+                $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
+                    ->find($productList->product_id);
+            } else {
+                $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
+                    ->where('company_id', $companyId)
+                    ->where('product_unique_id', $request->product_unique_id)
+                    ->first();
+
+                if (!$product) {
+                    return response()->json([
+                        'error' => 'No product found for this product_unique_id',
+                        'searched_value' => $request->product_unique_id
+                    ], 404);
+                }
             }
 
-            $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
-                ->find($productList->product_id);
-        } else {
-            $product = Product::with(['measureUnit', 'productLists.measureUnit', 'productFieldValues'])
-                ->where('company_id', $companyId)
-                ->where('product_unique_id', $request->product_unique_id)
-                ->first();
+            // Call the shared function for availability & details
+            $productsData = $this->getAvailableProductsDetails(
+                $product->id,
+                null,
+                $companyId,
+                $responseUnitId
+            );
 
-            if (!$product) {
-                return response()->json([
-                    'error' => 'No product found for this product_unique_id',
-                    'searched_value' => $request->product_unique_id
-                ], 404);
+            // Add barcode to each product in data
+            if (!empty($productsData['data'])) {
+                foreach ($productsData['data'] as &$item) {
+                    $item['barcode'] = $product->productLists->first()?->barcode;
+                }
             }
+
+            return response()->json([
+                'message' => !empty($productsData['data']) ? 'Product details retrieved' : 'No matching product found',
+                'data' => $productsData['data'] ?: []
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error('Model not found in filterByBarcode', ['error' => $e->getMessage()]);
+            return response()->json(['message' => 'No matching product found', 'data' => []], 200);
+        } catch (QueryException $e) {
+            \Log::error('Database query error in filterByBarcode', ['error' => $e->getMessage()]);
+            return response()->json([
+                'error' => 'Database query error',
+                'message' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in filterByBarcode', ['error' => $e->getMessage(), 'request' => $request->all()]);
+            return response()->json([
+                'error' => 'An unexpected error occurred',
+                'message' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        // Call the shared function for availability & details
-        $productsData = $this->getAvailableProductsDetails(
-            $product->id,
-            null,
-            $companyId,
-            $responseUnitId
-        );
-
-        // Add barcode to each product in data
-        if (!empty($productsData['data'])) {
-            foreach ($productsData['data'] as &$item) {
-                $item['barcode'] = $product->productLists->first()?->barcode;
-            }
-        }
-
-        return response()->json([
-            'message' => !empty($productsData['data']) ? 'Product details retrieved' : 'No matching product found',
-            'data' => $productsData['data'] ?: []
-        ], 200);
-
-    } catch (ModelNotFoundException $e) {
-        \Log::error('Model not found in filterByBarcode', ['error' => $e->getMessage()]);
-        return response()->json(['message' => 'No matching product found', 'data' => []], 200);
-    } catch (QueryException $e) {
-        \Log::error('Database query error in filterByBarcode', ['error' => $e->getMessage()]);
-        return response()->json([
-            'error' => 'Database query error',
-            'message' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
-    } catch (\Exception $e) {
-        \Log::error('Unexpected error in filterByBarcode', ['error' => $e->getMessage(), 'request' => $request->all()]);
-        return response()->json([
-            'error' => 'An unexpected error occurred',
-            'message' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
     }
-}
 
 
 

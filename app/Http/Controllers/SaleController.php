@@ -317,7 +317,7 @@ class SaleController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'nullable|integer|exists:companies,id,deleted_at,NULL',
+                'company_id' => 'nullable|integer',
                 'include_details' => 'nullable|boolean',
                 'purchase_type' => 'nullable|string'
             ]);
@@ -384,7 +384,7 @@ class SaleController extends Controller
             $validator = Validator::make($request->all(), [
                 'product_id' => 'nullable|integer|exists:products,id',
                 'product_name' => 'nullable|string|max:255',
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required|integer',
                 'response_unit_id' => 'nullable|integer|exists:measure_units,id',
             ]);
 

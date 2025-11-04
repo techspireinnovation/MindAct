@@ -524,7 +524,7 @@ class SalesReturnController extends Controller
                 'data' => $saleData,
             ]);
         } catch (QueryException $e) {
-           
+
             Log::error('Database error in getSaleByInvoiceNumber', [
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
@@ -543,31 +543,31 @@ class SalesReturnController extends Controller
 
 
 
-   public function listAvailableInvoiceNumbers(Request $request): JsonResponse
-{
-    try {
-        // Validate company_id
-        $validator = Validator::make($request->all(), [
-            'company_id' => 'required'
-        ]);
+    public function listAvailableInvoiceNumbers(Request $request): JsonResponse
+    {
+        try {
+            // Validate company_id
+            $validator = Validator::make($request->all(), [
+                'company_id' => 'required'
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => $validator->errors()->first(),
-                'errors' => $validator->errors()
-            ], 422);
-        }
+            if ($validator->fails()) {
+                return response()->json([
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
 
             $companyId = $request->input('company_id');
             $branchId = $request->input('branch_id');
 
-        // Fetch all active measure units for the company
-        $measureUnits = MeasureUnit::where('company_id', $companyId)
-            ->where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->select(['id', 'name', 'quantity'])
-            ->get()
-            ->keyBy('id');
+            // Fetch all active measure units for the company
+            $measureUnits = MeasureUnit::where('company_id', $companyId)
+                ->where('is_active', 1)
+                ->whereNull('deleted_at')
+                ->select(['id', 'name', 'quantity'])
+                ->get()
+                ->keyBy('id');
 
             // Get invoice numbers where at least one product has remaining quantity
             $invoiceNumbers = Sale::where('sales.company_id', $companyId)
@@ -602,13 +602,13 @@ class SalesReturnController extends Controller
                             AND srp.deleted_at IS NULL
                         ), 0) > 0.0001
                     ', [
-                        $companyId, // return_mu.company_id
-                        $companyId  // srp.company_id
-                    ]);
-            })
-            ->distinct()
-            ->pluck('sales.invoice_number')
-            ->toArray();
+                            $companyId, // return_mu.company_id
+                            $companyId  // srp.company_id
+                        ]);
+                })
+                ->distinct()
+                ->pluck('sales.invoice_number')
+                ->toArray();
 
             // Log for debugging
             Log::info('Available invoice numbers retrieved', [
@@ -627,7 +627,7 @@ class SalesReturnController extends Controller
                 'data' => $invoiceNumbers
             ], 200);
         } catch (QueryException $e) {
-            
+
             Log::error('Database error in listAvailableInvoiceNumbers', [
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
@@ -833,7 +833,7 @@ class SalesReturnController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
@@ -968,6 +968,7 @@ class SalesReturnController extends Controller
             }
 
             $validated = $validator->validated();
+            $validated['company_id'] = $request->company_id;
             $validated['branch_id'] = $request->branch_id;
 
             Log::debug('Sales return request validated', ['request' => $validated]);
@@ -1526,7 +1527,7 @@ class SalesReturnController extends Controller
 
 
 
-   
+
     public function getSaleProductNames(Request $request): JsonResponse
     {
         try {
@@ -4536,9 +4537,10 @@ class SalesReturnController extends Controller
 
     private function calculateAvailablePieces($saleProduct, int $companyId, int $branchId, $measureUnitsCalc): int
     {
+        $measureUnitQuantity = $measureUnitsCalc[$saleProduct->measure_unit_id]->quantity ?? 1;
 
-        $regularPieces = $this->calculatePieces($saleProduct->quantity ?? 0, $measureUnitsCalc);
-        $freePieces = $this->calculatePieces($saleProduct->free_quantity ?? 0, $measureUnitsCalc);
+        $regularPieces = $this->calculatePieces($saleProduct->quantity ?? 0, $measureUnitQuantity);
+        $freePieces = $this->calculatePieces($saleProduct->free_quantity ?? 0, $measureUnitQuantity);
         $totalSoldPieces = $regularPieces + $freePieces;
 
         $returnedPieces = $saleProduct->saleProductReturns()
@@ -5995,68 +5997,68 @@ class SalesReturnController extends Controller
         }
     }
 
-public function filterByBarcode(Request $request): JsonResponse
-{
-    try {
-        $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id',
-            'barcode' => 'nullable|string|max:255',
-            'product_unique_id' => 'nullable|string|max:255',
-            'sale_id' => 'nullable|integer|exists:sales,id'
-        ]);
+    public function filterByBarcode(Request $request): JsonResponse
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'company_id' => 'required|integer|exists:companies,id',
+                'barcode' => 'nullable|string|max:255',
+                'product_unique_id' => 'nullable|string|max:255',
+                'sale_id' => 'nullable|integer|exists:sales,id'
+            ]);
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
-        if (!$request->filled('barcode') && !$request->filled('product_unique_id')) {
-            return response()->json(['error' => 'At least barcode or product_unique_id is required'], 422);
-        }
-
-        $companyId = $request->input('company_id');
-        $barcode = $request->input('barcode');
-        $productUniqueId = $request->input('product_unique_id');
-        $saleId = $request->input('sale_id');
-
-        // resolve product id + product model
-        if ($barcode) {
-            $productList = ProductList::where('company_id', $companyId)
-                ->where('barcode', $barcode)
-                ->whereNull('deleted_at')
-                ->first();
-            if (!$productList) {
-                return response()->json(['error' => 'No product found for this barcode', 'searched_value' => $barcode], 404);
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
             }
-            $productId = $productList->product_id;
-            $productModel = Product::where('id', $productId)->where('company_id', $companyId)->first();
-        } else {
-            $productModel = Product::where('company_id', $companyId)
-                ->where('product_unique_id', $productUniqueId)
-                ->whereNull('deleted_at')
-                ->first();
-            if (!$productModel) {
-                return response()->json(['error' => 'No product found for this product_unique_id', 'searched_value' => $productUniqueId], 404);
+
+            if (!$request->filled('barcode') && !$request->filled('product_unique_id')) {
+                return response()->json(['error' => 'At least barcode or product_unique_id is required'], 422);
             }
-            $productId = $productModel->id;
-        }
 
-        // fetch measure units for calculations
-        $measureUnits = MeasureUnit::where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->get()
-            ->keyBy('id');
+            $companyId = $request->input('company_id');
+            $barcode = $request->input('barcode');
+            $productUniqueId = $request->input('product_unique_id');
+            $saleId = $request->input('sale_id');
 
-        // Build sales query (sales that have saleProducts of this product)
-        $salesQuery = Sale::where('company_id', $companyId)
-            ->whereNull('deleted_at');
+            // resolve product id + product model
+            if ($barcode) {
+                $productList = ProductList::where('company_id', $companyId)
+                    ->where('barcode', $barcode)
+                    ->whereNull('deleted_at')
+                    ->first();
+                if (!$productList) {
+                    return response()->json(['error' => 'No product found for this barcode', 'searched_value' => $barcode], 404);
+                }
+                $productId = $productList->product_id;
+                $productModel = Product::where('id', $productId)->where('company_id', $companyId)->first();
+            } else {
+                $productModel = Product::where('company_id', $companyId)
+                    ->where('product_unique_id', $productUniqueId)
+                    ->whereNull('deleted_at')
+                    ->first();
+                if (!$productModel) {
+                    return response()->json(['error' => 'No product found for this product_unique_id', 'searched_value' => $productUniqueId], 404);
+                }
+                $productId = $productModel->id;
+            }
 
-        if ($saleId) {
-            $salesQuery->where('id', $saleId);
-        }
+            // fetch measure units for calculations
+            $measureUnits = MeasureUnit::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->get()
+                ->keyBy('id');
 
-        $sales = $salesQuery->with([
-            'saleProducts' => function ($q) use ($companyId, $productId) {
-                $q->select([
+            // Build sales query (sales that have saleProducts of this product)
+            $salesQuery = Sale::where('company_id', $companyId)
+                ->whereNull('deleted_at');
+
+            if ($saleId) {
+                $salesQuery->where('id', $saleId);
+            }
+
+            $sales = $salesQuery->with([
+                'saleProducts' => function ($q) use ($companyId, $productId) {
+                    $q->select([
                         'sale_products.id',
                         'sale_products.sale_id',
                         'sale_products.product_id',
@@ -6071,310 +6073,316 @@ public function filterByBarcode(Request $request): JsonResponse
                         'products.name as product_name',
                         'products.product_unique_id as product_code',
                     ])
-                    ->join('products', 'sale_products.product_id', '=', 'products.id')
-                    ->where('sale_products.company_id', $companyId)
-                    ->whereNull('sale_products.deleted_at')
-                    ->whereNull('products.deleted_at')
-                    ->where('sale_products.product_id', $productId);
-            },
-            'saleProducts.fieldValues' => function ($q) use ($companyId) {
-                $q->select([
+                        ->join('products', 'sale_products.product_id', '=', 'products.id')
+                        ->where('sale_products.company_id', $companyId)
+                        ->whereNull('sale_products.deleted_at')
+                        ->whereNull('products.deleted_at')
+                        ->where('sale_products.product_id', $productId);
+                },
+                'saleProducts.fieldValues' => function ($q) use ($companyId) {
+                    $q->select([
                         'sales_product_field_values.sale_product_id',
                         'sales_product_field_values.product_field_id',
                         'sales_product_field_values.quantity_index',
                         'sales_product_field_values.value',
                         'product_fields.name',
                     ])
-                    ->join('product_fields', 'sales_product_field_values.product_field_id', '=', 'product_fields.id')
-                    ->where('sales_product_field_values.company_id', $companyId)
-                    ->whereNull('sales_product_field_values.deleted_at')
-                    ->whereNull('product_fields.deleted_at');
-            }
-        ])->select([
-            'id', 'company_id', 'customer_id', 'customer_name',
-            'invoice_number', 'invoice_date', 'total_amount', 'is_vatable'
-        ])->get();
+                        ->join('product_fields', 'sales_product_field_values.product_field_id', '=', 'product_fields.id')
+                        ->where('sales_product_field_values.company_id', $companyId)
+                        ->whereNull('sales_product_field_values.deleted_at')
+                        ->whereNull('product_fields.deleted_at');
+                }
+            ])->select([
+                        'id',
+                        'company_id',
+                        'customer_id',
+                        'customer_name',
+                        'invoice_number',
+                        'invoice_date',
+                        'total_amount',
+                        'is_vatable'
+                    ])->get();
 
-        if ($sales->isEmpty()) {
-            return response()->json(['message' => 'No sale found for this product', 'data' => []], 404);
-        }
-
-        // collect sale product ids for returns and return field values
-        $saleProductIds = $sales->pluck('saleProducts')->flatten()->pluck('id')->unique()->toArray();
-
-        $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->get();
-
-        $returnFieldValues = DB::table('sale_return_product_field_values')
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->whereIn('sale_product_id', $saleProductIds)
-            ->select(['sale_product_id', 'product_field_id', 'quantity_index', 'value'])
-            ->get()
-            ->groupBy('sale_product_id');
-
-        // Aggregate products across sales (only the single productId in scope, but keep general)
-        $products = [];
-
-        foreach ($sales as $sale) {
-            if ($sale->saleProducts->isEmpty()) {
-                continue;
+            if ($sales->isEmpty()) {
+                return response()->json(['message' => 'No sale found for this product', 'data' => []], 404);
             }
 
-            foreach ($sale->saleProducts as $saleProduct) {
-                $pid = $saleProduct->product_id;
+            // collect sale product ids for returns and return field values
+            $saleProductIds = $sales->pluck('saleProducts')->flatten()->pluck('id')->unique()->toArray();
 
-                // primary measure unit from product_lists
-                $primaryMeasureUnit = ProductList::where('product_id', $pid)
-                    ->where('is_primary', 1)
-                    ->where('company_id', $companyId)
-                    ->whereNull('deleted_at')
-                    ->pluck('measure_unit_id')
-                    ->first();
+            $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->get();
 
-                if (!$primaryMeasureUnit) {
+            $returnFieldValues = DB::table('sale_return_product_field_values')
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->whereIn('sale_product_id', $saleProductIds)
+                ->select(['sale_product_id', 'product_field_id', 'quantity_index', 'value'])
+                ->get()
+                ->groupBy('sale_product_id');
+
+            // Aggregate products across sales (only the single productId in scope, but keep general)
+            $products = [];
+
+            foreach ($sales as $sale) {
+                if ($sale->saleProducts->isEmpty()) {
+                    continue;
+                }
+
+                foreach ($sale->saleProducts as $saleProduct) {
+                    $pid = $saleProduct->product_id;
+
+                    // primary measure unit from product_lists
                     $primaryMeasureUnit = ProductList::where('product_id', $pid)
+                        ->where('is_primary', 1)
                         ->where('company_id', $companyId)
                         ->whereNull('deleted_at')
-                        ->orderBy('created_at', 'asc')
                         ->pluck('measure_unit_id')
                         ->first();
-                }
 
-                $primaryMeasureUnitQuantity = MeasureUnit::where('id', $primaryMeasureUnit)
-                    ->where('company_id', $companyId)
-                    ->whereNull('deleted_at')
-                    ->pluck('quantity')
-                    ->first() ?? 1;
+                    if (!$primaryMeasureUnit) {
+                        $primaryMeasureUnit = ProductList::where('product_id', $pid)
+                            ->where('company_id', $companyId)
+                            ->whereNull('deleted_at')
+                            ->orderBy('created_at', 'asc')
+                            ->pluck('measure_unit_id')
+                            ->first();
+                    }
 
-                // gather used measure units (product.measure_unit_id + productLists)
-                $productMeasureUnitIds = Product::where('id', $pid)->pluck('measure_unit_id')->toArray();
-                $productListMeasureUnitIds = ProductList::where('product_id', $pid)->pluck('measure_unit_id')->toArray();
-                $allMeasureUnitIds = collect(array_merge($productMeasureUnitIds, $productListMeasureUnitIds))
-                    ->unique()
-                    ->values()
-                    ->toArray();
+                    $primaryMeasureUnitQuantity = MeasureUnit::where('id', $primaryMeasureUnit)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->pluck('quantity')
+                        ->first() ?? 1;
 
-                $usedMeasureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
-                    ->where('company_id', $companyId)
-                    ->whereNull('deleted_at')
-                    ->get(['id', 'name', 'quantity']);
+                    // gather used measure units (product.measure_unit_id + productLists)
+                    $productMeasureUnitIds = Product::where('id', $pid)->pluck('measure_unit_id')->toArray();
+                    $productListMeasureUnitIds = ProductList::where('product_id', $pid)->pluck('measure_unit_id')->toArray();
+                    $allMeasureUnitIds = collect(array_merge($productMeasureUnitIds, $productListMeasureUnitIds))
+                        ->unique()
+                        ->values()
+                        ->toArray();
 
-                // sale product measure unit to compute pieces
-                $measureUnitId = $saleProduct->measure_unit_id ?? null;
-                $measureUnit = isset($measureUnits[$measureUnitId]) ? [
-                    'id' => $measureUnits[$measureUnitId]->id,
-                    'name' => $measureUnits[$measureUnitId]->name,
-                    'quantity' => $measureUnits[$measureUnitId]->quantity ?? 1,
-                ] : ['id' => null, 'name' => 'null', 'quantity' => 1];
+                    $usedMeasureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
+                        ->where('company_id', $companyId)
+                        ->whereNull('deleted_at')
+                        ->get(['id', 'name', 'quantity']);
 
-                $measureUnitQuantity = $measureUnit['quantity'];
+                    // sale product measure unit to compute pieces
+                    $measureUnitId = $saleProduct->measure_unit_id ?? null;
+                    $measureUnit = isset($measureUnits[$measureUnitId]) ? [
+                        'id' => $measureUnits[$measureUnitId]->id,
+                        'name' => $measureUnits[$measureUnitId]->name,
+                        'quantity' => $measureUnits[$measureUnitId]->quantity ?? 1,
+                    ] : ['id' => null, 'name' => 'null', 'quantity' => 1];
 
-                // price stats from sale_products
-                $originalProductPrice = Product::where('id', $pid)->value('purchase_rate');
-                $saleProductsPrice = SaleProduct::where('product_id', $pid)->orderBy('created_at', 'desc')->pluck('price');
-                $latestPrice = $saleProductsPrice->first() ?? null;
-                $minProductPrice = $saleProductsPrice->min() ?? null;
-                $avgProductPrice = $saleProductsPrice->avg() ?? null;
+                    $measureUnitQuantity = $measureUnit['quantity'];
 
-                // init product entry
-                if (!isset($products[$pid])) {
-                    $products[$pid] = [
-                        'product_id' => $pid,
-                        'product_name' => $saleProduct->product_name,
-                        'product_code' => $saleProduct->product_code,
-                         'barcode' => $barcode,
-                        'original_price' => $originalProductPrice ?? 0,
-                        'latest_price' => $latestPrice,
-                        'min_price' => $minProductPrice,
-                        'avg_price' => $avgProductPrice,
-                        'amount' => 0,
-                        'is_vatable' => (bool) $saleProduct->is_vatable,
-                        'used_measure_units' => $usedMeasureUnits->map(fn($u) => [
-                            'id' => $u->id,
-                            'name' => $u->name,
-                            'quantity' => $u->quantity,
-                        ])->values()->toArray(),
-                        'measure_unit_id' => $primaryMeasureUnit,
-                        'measure_unit_quantity' => $primaryMeasureUnitQuantity,
-                        'purchased_quantity' => 0,
-                        'return_quantity' => 0,
-                        'sale_quantity' => 0,
-                        'sales_return_quantity' => 0,
-                        'available_quantity' => 0,
-                        'expiry_dates' => [],
-                        'field_values' => [],
-                        'sale_products' => [],
-                    ];
-                }
+                    // price stats from sale_products
+                    $originalProductPrice = Product::where('id', $pid)->value('purchase_rate');
+                    $saleProductsPrice = SaleProduct::where('product_id', $pid)->orderBy('created_at', 'desc')->pluck('price');
+                    $latestPrice = $saleProductsPrice->first() ?? null;
+                    $minProductPrice = $saleProductsPrice->min() ?? null;
+                    $avgProductPrice = $saleProductsPrice->avg() ?? null;
 
-                // ensure min price updated
-                if ($saleProduct->price !== null && ($products[$pid]['min_price'] === null || $saleProduct->price < $products[$pid]['min_price'])) {
-                    $products[$pid]['min_price'] = $saleProduct->price;
-                }
+                    // init product entry
+                    if (!isset($products[$pid])) {
+                        $products[$pid] = [
+                            'product_id' => $pid,
+                            'product_name' => $saleProduct->product_name,
+                            'product_code' => $saleProduct->product_code,
+                            'barcode' => $barcode,
+                            'original_price' => $originalProductPrice ?? 0,
+                            'latest_price' => $latestPrice,
+                            'min_price' => $minProductPrice,
+                            'avg_price' => $avgProductPrice,
+                            'amount' => 0,
+                            'is_vatable' => (bool) $saleProduct->is_vatable,
+                            'used_measure_units' => $usedMeasureUnits->map(fn($u) => [
+                                'id' => $u->id,
+                                'name' => $u->name,
+                                'quantity' => $u->quantity,
+                            ])->values()->toArray(),
+                            'measure_unit_id' => $primaryMeasureUnit,
+                            'measure_unit_quantity' => $primaryMeasureUnitQuantity,
+                            'purchased_quantity' => 0,
+                            'return_quantity' => 0,
+                            'sale_quantity' => 0,
+                            'sales_return_quantity' => 0,
+                            'available_quantity' => 0,
+                            'expiry_dates' => [],
+                            'field_values' => [],
+                            'sale_products' => [],
+                        ];
+                    }
 
-                // sale quantity in primary pieces (account for free_quantity)
-                $regularQuantity = $saleProduct->quantity ?? 0;
-                $freeQuantity = $saleProduct->free_quantity ?? 0;
-                // calculatePieces is your helper used in getAvailableProductsForSalesReturn
-                $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
-                $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-                $saleTotal = $saleRegular + $saleFree;
+                    // ensure min price updated
+                    if ($saleProduct->price !== null && ($products[$pid]['min_price'] === null || $saleProduct->price < $products[$pid]['min_price'])) {
+                        $products[$pid]['min_price'] = $saleProduct->price;
+                    }
 
-                // calculate returned quantity for this sale product (using SalesReturnProduct)
-                $returnProductsForSale = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
-                $returned = 0;
-                foreach ($returnProductsForSale as $returnProduct) {
-                    $retUnitQty = isset($measureUnits[$returnProduct->measure_unit_id]) ? $measureUnits[$returnProduct->measure_unit_id]->quantity : 1;
-                    $retReg = $this->calculatePieces($returnProduct->quantity ?? 0, $retUnitQty);
-                    $retFree = $this->calculatePieces($returnProduct->free_quantity ?? 0, $retUnitQty);
-                    $returned += ($retReg + $retFree);
-                }
+                    // sale quantity in primary pieces (account for free_quantity)
+                    $regularQuantity = $saleProduct->quantity ?? 0;
+                    $freeQuantity = $saleProduct->free_quantity ?? 0;
+                    // calculatePieces is your helper used in getAvailableProductsForSalesReturn
+                    $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
+                    $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
+                    $saleTotal = $saleRegular + $saleFree;
 
-                // determine returned indices for field values (to exclude already-returned field items)
-                $returnedIndices = [];
-                $saleProductReturnFieldValues = collect($returnFieldValues[$saleProduct->id] ?? []);
-                if ($saleProduct->fieldValues->isNotEmpty()) {
-                    $quantityIndices = $saleProduct->fieldValues->pluck('quantity_index')->unique();
-                    foreach ($quantityIndices as $qtyIndex) {
-                        $saleFieldValues = $saleProduct->fieldValues->where('quantity_index', $qtyIndex)
-                            ->pluck('value', 'product_field_id')
-                            ->toArray();
+                    // calculate returned quantity for this sale product (using SalesReturnProduct)
+                    $returnProductsForSale = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
+                    $returned = 0;
+                    foreach ($returnProductsForSale as $returnProduct) {
+                        $retUnitQty = isset($measureUnits[$returnProduct->measure_unit_id]) ? $measureUnits[$returnProduct->measure_unit_id]->quantity : 1;
+                        $retReg = $this->calculatePieces($returnProduct->quantity ?? 0, $retUnitQty);
+                        $retFree = $this->calculatePieces($returnProduct->free_quantity ?? 0, $retUnitQty);
+                        $returned += ($retReg + $retFree);
+                    }
 
-                        $isReturned = false;
-                        if ($saleProductReturnFieldValues->isNotEmpty()) {
-                            $isReturned = true;
-                            foreach ($saleFieldValues as $fieldId => $value) {
-                                $returnMatch = $saleProductReturnFieldValues->firstWhere(function ($rfv) use ($fieldId, $value, $qtyIndex) {
-                                    return $rfv->product_field_id == $fieldId
-                                        && $rfv->value == $value
-                                        && $rfv->quantity_index == $qtyIndex;
-                                });
+                    // determine returned indices for field values (to exclude already-returned field items)
+                    $returnedIndices = [];
+                    $saleProductReturnFieldValues = collect($returnFieldValues[$saleProduct->id] ?? []);
+                    if ($saleProduct->fieldValues->isNotEmpty()) {
+                        $quantityIndices = $saleProduct->fieldValues->pluck('quantity_index')->unique();
+                        foreach ($quantityIndices as $qtyIndex) {
+                            $saleFieldValues = $saleProduct->fieldValues->where('quantity_index', $qtyIndex)
+                                ->pluck('value', 'product_field_id')
+                                ->toArray();
 
-                                if (!$returnMatch) {
-                                    $isReturned = false;
-                                    break;
+                            $isReturned = false;
+                            if ($saleProductReturnFieldValues->isNotEmpty()) {
+                                $isReturned = true;
+                                foreach ($saleFieldValues as $fieldId => $value) {
+                                    $returnMatch = $saleProductReturnFieldValues->firstWhere(function ($rfv) use ($fieldId, $value, $qtyIndex) {
+                                        return $rfv->product_field_id == $fieldId
+                                            && $rfv->value == $value
+                                            && $rfv->quantity_index == $qtyIndex;
+                                    });
+
+                                    if (!$returnMatch) {
+                                        $isReturned = false;
+                                        break;
+                                    }
                                 }
                             }
+
+                            if ($isReturned) {
+                                $returnedIndices[] = $qtyIndex;
+                            }
                         }
-
-                        if ($isReturned) {
-                            $returnedIndices[] = $qtyIndex;
-                        }
-                    }
-                } else {
-                    if ($returned > 0) {
-                        $returnedIndices[] = 0;
-                    }
-                }
-
-                $returnTotal = $returned;
-                $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
-
-                // accumulate aggregated totals
-                $products[$pid]['sale_quantity'] += $saleTotal;
-                $products[$pid]['sales_return_quantity'] += $returnTotal;
-                $products[$pid]['return_quantity'] += $returnTotal;
-                $products[$pid]['available_quantity'] += $availableQuantity;
-                $products[$pid]['amount'] += $saleProduct->amount ?? 0;
-
-                if ($saleProduct->expiry_date && !in_array($saleProduct->expiry_date, $products[$pid]['expiry_dates'])) {
-                    $products[$pid]['expiry_dates'][] = $saleProduct->expiry_date;
-                }
-
-                // add non-returned field values
-                if ($saleProduct->fieldValues->isNotEmpty()) {
-                    foreach ($saleProduct->fieldValues as $fv) {
-                        if (!in_array($fv->quantity_index, $returnedIndices)) {
-                            $products[$pid]['field_values'][] = [
-                                'sale_product_id' => $saleProduct->id,
-                                'purchase_product_id' => $saleProduct->purchase_product_id ?? null,
-                                'product_field_id' => $fv->product_field_id,
-                                'name' => $fv->name,
-                                'value' => $fv->value,
-                                'quantity_index' => $fv->quantity_index,
-                            ];
+                    } else {
+                        if ($returned > 0) {
+                            $returnedIndices[] = 0;
                         }
                     }
-                }
 
-                // add sale product entry
-                $products[$pid]['sale_products'][] = [
-                    'sale_product_id' => $saleProduct->id,
-                    'sale_id' => $saleProduct->sale_id,
-                    'invoice_number' => $sale->invoice_number,
-                    'invoice_date' => $sale->invoice_date,
-                    'product_id' => $saleProduct->product_id,
-                     'barcode' => $barcode,
-                    'product_name' => $saleProduct->product_name,
-                    'product_code' => $saleProduct->product_code,
-                    'quantity' => $saleProduct->quantity,
-                    'free_quantity' => $saleProduct->free_quantity ?? 0,
-                    'price' => $saleProduct->price,
-                    'is_vatable' => (bool) $saleProduct->is_vatable,
-                    'measure_unit_id' => $saleProduct->measure_unit_id,
-                    'measure_unit_name' => $measureUnit['name'],
-                    'measure_unit_quantity' => $measureUnitQuantity,
-                    'available_quantity' => $availableQuantity,
-                    'return_quantity' => $returnTotal,
-                    'sale_quantity' => $saleTotal,
-                    'sales_return_quantity' => $returnTotal,
-                    'expiry_date' => $saleProduct->expiry_date ?? null,
-                    'purchase_product_id' => $saleProduct->purchase_product_id ?? null,
-                ];
+                    $returnTotal = $returned;
+                    $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
+
+                    // accumulate aggregated totals
+                    $products[$pid]['sale_quantity'] += $saleTotal;
+                    $products[$pid]['sales_return_quantity'] += $returnTotal;
+                    $products[$pid]['return_quantity'] += $returnTotal;
+                    $products[$pid]['available_quantity'] += $availableQuantity;
+                    $products[$pid]['amount'] += $saleProduct->amount ?? 0;
+
+                    if ($saleProduct->expiry_date && !in_array($saleProduct->expiry_date, $products[$pid]['expiry_dates'])) {
+                        $products[$pid]['expiry_dates'][] = $saleProduct->expiry_date;
+                    }
+
+                    // add non-returned field values
+                    if ($saleProduct->fieldValues->isNotEmpty()) {
+                        foreach ($saleProduct->fieldValues as $fv) {
+                            if (!in_array($fv->quantity_index, $returnedIndices)) {
+                                $products[$pid]['field_values'][] = [
+                                    'sale_product_id' => $saleProduct->id,
+                                    'purchase_product_id' => $saleProduct->purchase_product_id ?? null,
+                                    'product_field_id' => $fv->product_field_id,
+                                    'name' => $fv->name,
+                                    'value' => $fv->value,
+                                    'quantity_index' => $fv->quantity_index,
+                                ];
+                            }
+                        }
+                    }
+
+                    // add sale product entry
+                    $products[$pid]['sale_products'][] = [
+                        'sale_product_id' => $saleProduct->id,
+                        'sale_id' => $saleProduct->sale_id,
+                        'invoice_number' => $sale->invoice_number,
+                        'invoice_date' => $sale->invoice_date,
+                        'product_id' => $saleProduct->product_id,
+                        'barcode' => $barcode,
+                        'product_name' => $saleProduct->product_name,
+                        'product_code' => $saleProduct->product_code,
+                        'quantity' => $saleProduct->quantity,
+                        'free_quantity' => $saleProduct->free_quantity ?? 0,
+                        'price' => $saleProduct->price,
+                        'is_vatable' => (bool) $saleProduct->is_vatable,
+                        'measure_unit_id' => $saleProduct->measure_unit_id,
+                        'measure_unit_name' => $measureUnit['name'],
+                        'measure_unit_quantity' => $measureUnitQuantity,
+                        'available_quantity' => $availableQuantity,
+                        'return_quantity' => $returnTotal,
+                        'sale_quantity' => $saleTotal,
+                        'sales_return_quantity' => $returnTotal,
+                        'expiry_date' => $saleProduct->expiry_date ?? null,
+                        'purchase_product_id' => $saleProduct->purchase_product_id ?? null,
+                    ];
+                }
             }
-        }
 
-        // Compute purchased_quantity for each aggregated product using purchase_products (accurate, uses measure unit quantity multiplier)
-        foreach ($products as $pid => &$prod) {
-            $purchasedTotal = PurchaseProduct::where('product_id', $pid)
-                ->where('purchase_products.company_id', $companyId)
-                ->whereNull('purchase_products.deleted_at')
-                ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
-                ->where('measure_units.company_id', $companyId)
-                ->whereNull('measure_units.deleted_at')
-                ->sum(DB::raw('(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) * measure_units.quantity'));
+            // Compute purchased_quantity for each aggregated product using purchase_products (accurate, uses measure unit quantity multiplier)
+            foreach ($products as $pid => &$prod) {
+                $purchasedTotal = PurchaseProduct::where('product_id', $pid)
+                    ->where('purchase_products.company_id', $companyId)
+                    ->whereNull('purchase_products.deleted_at')
+                    ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
+                    ->where('measure_units.company_id', $companyId)
+                    ->whereNull('measure_units.deleted_at')
+                    ->sum(DB::raw('(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) * measure_units.quantity'));
 
-            $prod['purchased_quantity'] = (int) ($purchasedTotal ?? 0);
-        }
-        unset($prod);
+                $prod['purchased_quantity'] = (int) ($purchasedTotal ?? 0);
+            }
+            unset($prod);
 
-        // keep only products that have available_quantity > 0
-        $products = array_filter($products, function ($p) {
-            return ($p['available_quantity'] ?? 0) > 0;
-        });
+            // keep only products that have available_quantity > 0
+            $products = array_filter($products, function ($p) {
+                return ($p['available_quantity'] ?? 0) > 0;
+            });
 
-        if (empty($products)) {
-            return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
-        }
+            if (empty($products)) {
+                return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
+            }
 
-        // prepare response (match the requested nested format)
-        $response = [
-            'message' => 'Product details retrieved successfully',
-            'data' => [
-                [
-                    'products' => array_values($products),
+            // prepare response (match the requested nested format)
+            $response = [
+                'message' => 'Product details retrieved successfully',
+                'data' => [
+                    [
+                        'products' => array_values($products),
+                    ],
                 ],
-            ],
-        ];
+            ];
 
-        return response()->json($response, 200);
+            return response()->json($response, 200);
 
-    } catch (QueryException $e) {
-        \Log::error('Database query error in filterByBarcode (sales return): ' . $e->getMessage(), [
-            'sql' => $e->getSql(),
-            'bindings' => $e->getBindings()
-        ]);
-        return response()->json(['error' => 'Database query error'], 500);
-    } catch (\Exception $e) {
-        \Log::error('Unexpected error in filterByBarcode (sales return): ' . $e->getMessage(), [
-            'trace' => $e->getTraceAsString()
-        ]);
-        return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
+        } catch (QueryException $e) {
+            \Log::error('Database query error in filterByBarcode (sales return): ' . $e->getMessage(), [
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings()
+            ]);
+            return response()->json(['error' => 'Database query error'], 500);
+        } catch (\Exception $e) {
+            \Log::error('Unexpected error in filterByBarcode (sales return): ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
+        }
     }
-}
 
 
 

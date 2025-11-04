@@ -91,6 +91,7 @@ class StockEntryController extends Controller
 
             foreach ($request->stock_entries as $entry) {
                 $entry['company_id'] = $request->company_id;
+               
                 // $entry['branch_id'] = $request->branch_id;
 
                 // Create stock entry

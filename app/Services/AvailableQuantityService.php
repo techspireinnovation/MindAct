@@ -29,7 +29,7 @@ class AvailableQuantityService
      public function getProductDetailsByInput(Request $request, $productID): JsonResponse
     {
         try {
-            
+
             // Validate input
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer',
@@ -140,7 +140,7 @@ class AvailableQuantityService
             // Fetch related data for calculations
             $purchaseProductIds = $purchaseProducts->pluck('purchase_stock_product_id')->toArray();
 
-            $productId = $purchaseProducts->pluck('product_id')->unique()->toArray();
+            $productId = $productID;
 
 
             $purchaseProductReturns = DB::table('purchase_stock_product_returns')

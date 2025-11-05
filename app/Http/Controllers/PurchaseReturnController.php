@@ -3031,18 +3031,18 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'purchase_return_products.*.expiry_date' => 'nullable|string|max:255',
                 'purchase_return_products.*.field_values' => 'present|array',
-                'purchase_return_products.*.field_values.*' => 'array|min:1',
-                'purchase_return_products.*.field_values.*.*.purchase_stock_product_id' => 'required_if:field_values,array|integer|exists:purchase_stock_products,id',
-                'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.stock_product_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.stock_adjustment_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.stock_reconciliation_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values.' => 'array|min:1',
+                'purchase_return_products..field_values..*.purchase_stock_product_id' => 'required_if:field_values,array|integer|exists:purchase_stock_products,id',
+                'purchase_return_products..field_values..*.purchase_product_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.stock_product_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.stock_adjustment_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.stock_reconciliation_id' => 'required_if:field_values,array',
 
-                'purchase_return_products.*.field_values.*.*.stock_transfer_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
-                'purchase_return_products.*.field_values.*.*.value' => 'required_if:field_values,array|string|max:255',
-                'purchase_return_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
-                'purchase_return_products.*.field_values.*.*.quantity_type' => 'required_if:field_values,array|string|max:255',
+                'purchase_return_products..field_values..*.stock_transfer_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
+                'purchase_return_products..field_values..*.value' => 'required_if:field_values,array|string|max:255',
+                'purchase_return_products..field_values..*.quantity_index' => 'required_if:field_values,array|integer|min:0',
+                'purchase_return_products..field_values..*.quantity_type' => 'required_if:field_values,array|string|max:255',
             ]);
             $validated['purchase_return_products'] = $validated['purchase_return_products'] ?? [];
 
@@ -3451,7 +3451,7 @@ class PurchaseReturnController extends Controller
                                 ->groupBy('quantity_index')
                                 ->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
                             $saleReturnFieldValues = $purchaseProduct->saleProducts->flatMap(function ($sale) {
-                                return $sale->saleReturnProducts->flatMap(function ($return) {
+                                return $sale->saleProductReturns->flatMap(function ($return) {
                                     return $return->fieldValues;
                                 });
                             })->groupBy('quantity_index')

@@ -73,14 +73,14 @@ class PurchaseStockProductReturnFieldValue extends BaseTenantModel
         return $this->belongsTo(Product::class);
     }
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-        static::creating(function ($model) {
-            if (empty($model->company_id)) {
-                $model->company_id = Request::input('company_id');
-            }
-        });
-    }
+    // protected static function booted()
+    // {
+    //     static::addGlobalScope(new CompanyIdScope());
+    //     static::creating(function ($model) {
+    //         if (empty($model->company_id)) {
+    //             $model->company_id = Request::input('company_id');
+    //         }
+    //     });
+    // }
 
 }

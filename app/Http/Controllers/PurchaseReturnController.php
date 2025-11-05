@@ -2945,7 +2945,7 @@ class PurchaseReturnController extends Controller
             $validator = Validator::make($request->all(), rules: [
                 'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
-                'purchase_id' => 'nullable|integer|exists:purchases,id',
+                // 'purchase_id' => 'nullable|integer|exists:purchases,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
                 'invoice_number' => [
@@ -3083,105 +3083,106 @@ class PurchaseReturnController extends Controller
             };
 
             // Handle entire batch return
-            if ($validated['return_entire_batch'] ?? false) {
-                if (!$validated['purchase_id']) {
-                    return response()->json(['error' => 'purchase_id is required when return_entire_batch is true'], 422);
-                }
-                $purchase = Purchase::findOrFail($validated['purchase_id']);
-                if ($validated['purchase_bill_number'] && $validated['purchase_bill_number'] !== $purchase->purchase_bill_number) {
-                    return response()->json(['error' => 'Purchase bill number does not match purchase record'], 422);
-                }
-                $validated['purchase_return_products'] = $purchase->purchaseStockProducts()
-                    ->with(['measureUnit', 'fieldValues'])
-                    ->orderBy('created_at')
-                    ->get()
-                    ->map(function ($product) use ($validated, $branchId, $calculateQuantityInPieces) {
-                        $measureUnitId = $product->measure_unit_id ?? ($validated['purchase_return_products'][0]['measure_unit_id'] ?? null);
-                        if (!$measureUnitId) {
-                            throw new \Exception("No measure unit specified for purchase_stock_product_id {$product->id}");
-                        }
-                        $measureUnit = MeasureUnit::findOrFail($measureUnitId);
-                        $unitQuantity = $measureUnit->quantity ?? 1;
+            // $validated['return_entire_batch'] = false;
+            // if ($validated['return_entire_batch'] ?? false) {
+            //     if (!$validated['purchase_id']) {
+            //         return response()->json(['error' => 'purchase_id is required when return_entire_batch is true'], 422);
+            //     }
+            //     $purchase = Purchase::findOrFail($validated['purchase_id']);
+            //     if ($validated['purchase_bill_number'] && $validated['purchase_bill_number'] !== $purchase->purchase_bill_number) {
+            //         return response()->json(['error' => 'Purchase bill number does not match purchase record'], 422);
+            //     }
+            //     $validated['purchase_return_products'] = $purchase->purchaseStockProducts()
+            //         ->with(['measureUnit', 'fieldValues'])
+            //         ->orderBy('created_at')
+            //         ->get()
+            //         ->map(function ($product) use ($validated, $branchId, $calculateQuantityInPieces) {
+            //             $measureUnitId = $product->measure_unit_id ?? ($validated['purchase_return_products'][0]['measure_unit_id'] ?? null);
+            //             if (!$measureUnitId) {
+            //                 throw new \Exception("No measure unit specified for purchase_stock_product_id {$product->id}");
+            //             }
+            //             $measureUnit = MeasureUnit::findOrFail($measureUnitId);
+            //             $unitQuantity = $measureUnit->quantity ?? 1;
 
-                        // Calculate purchased pieces
-                        $purchasedQuantityInPieces = $calculateQuantityInPieces($product->quantity, $product->free_quantity, $unitQuantity);
+            //             // Calculate purchased pieces
+            //             $purchasedQuantityInPieces = $calculateQuantityInPieces($product->quantity, $product->free_quantity, $unitQuantity);
 
-                        // Calculate returned pieces
-                        $totalReturnedInPieces = PurchaseStockProductReturn::where('purchase_stock_product_id', $product->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->where('branch_id', $branchId)
-                            ->whereNull('deleted_at')
-                            ->sum(function ($return) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                            return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                        });
+            //             // Calculate returned pieces
+            //             $totalReturnedInPieces = PurchaseStockProductReturn::where('purchase_stock_product_id', $product->id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->where('branch_id', $branchId)
+            //                 ->whereNull('deleted_at')
+            //                 ->sum(function ($return) use ($calculateQuantityInPieces) {
+            //                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
+            //                 return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
+            //             });
 
-                        // Calculate sold pieces
-                        $soldQuantityInPieces = SaleProduct::where('purchase_product_id', $product->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(function ($sale) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
-                            return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
-                        });
+            //             // Calculate sold pieces
+            //             $soldQuantityInPieces = SaleProduct::where('purchase_product_id', $product->id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->whereNull('deleted_at')
+            //                 ->sum(function ($sale) use ($calculateQuantityInPieces) {
+            //                 $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
+            //                 return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
+            //             });
 
-                        // Calculate sale-returned pieces
-                        $salesReturnedInPieces = SalesReturnProduct::where('product_id', $product->product_id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(function ($return) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                            return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                        });
+            //             // Calculate sale-returned pieces
+            //             $salesReturnedInPieces = SalesReturnProduct::where('product_id', $product->product_id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->whereNull('deleted_at')
+            //                 ->sum(function ($return) use ($calculateQuantityInPieces) {
+            //                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
+            //                 return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
+            //             });
 
-                        // Available pieces
-                        $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
-                        if ($availableQuantityInPieces <= 0) {
-                            return null;
-                        }
+            //             // Available pieces
+            //             $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
+            //             if ($availableQuantityInPieces <= 0) {
+            //                 return null;
+            //             }
 
-                        $fieldValues = collect($product->fieldValues ?? [])->groupBy('quantity_index')->map(function ($group) {
-                            return $group->map(function ($field) {
-                                return [
-                                    'purchase_stock_product_id' => $field->purchase_stock_product_id,
-                                    'purchase_product_id' => $field->purchase_product_id,
-                                    'stock_product_id' => $field->stock_product_id,
-                                    'stock_reconciliation_id' => $field->stock_reconciliation_id,
-                                    'stock_transfer_id' => $field->stock_transfer_id,
-                                    'stock_adjustment_id' => $field->stock_adjustment_id,
-                                    'product_field_id' => $field->product_field_id,
-                                    'value' => $field->value,
-                                    'quantity_index' => $field->quantity_index,
-                                    'quantity_type' => $field->quantity_type,
-                                ];
-                            })->toArray();
-                        })->values()->take(ceil($availableQuantityInPieces))->toArray();
+            //             $fieldValues = collect($product->fieldValues ?? [])->groupBy('quantity_index')->map(function ($group) {
+            //                 return $group->map(function ($field) {
+            //                     return [
+            //                         'purchase_stock_product_id' => $field->purchase_stock_product_id,
+            //                         'purchase_product_id' => $field->purchase_product_id,
+            //                         'stock_product_id' => $field->stock_product_id,
+            //                         'stock_reconciliation_id' => $field->stock_reconciliation_id,
+            //                         'stock_transfer_id' => $field->stock_transfer_id,
+            //                         'stock_adjustment_id' => $field->stock_adjustment_id,
+            //                         'product_field_id' => $field->product_field_id,
+            //                         'value' => $field->value,
+            //                         'quantity_index' => $field->quantity_index,
+            //                         'quantity_type' => $field->quantity_type,
+            //                     ];
+            //                 })->toArray();
+            //             })->values()->take(ceil($availableQuantityInPieces))->toArray();
 
-                        return [
-                            'purchase_stock_product_id' => $product->id,
-                            'purchase_product_id' => $product->purchase_product_id ?? null,
-                            'stock_product_id' => $product->stock_product_id ?? null,
-                            'stock_reconciliation_id' => $product->stock_reconciliation_id ?? null,
-                            'stock_adjustment_id' => $product->stock_adjustment_id ?? null,
-                            'stock_transfer_id' => $product->stock_transfer_id ?? null,
-                            'product_id' => $product->product_id,
-                            'product_name' => $product->product_name,
-                            'purchase_product_code' => $product->product_code,
-                            'mfd' => $product->mfd,
-                            'customer_id' => $product->customer_id,
-                            'quantity' => $product->quantity,
-                            'free_quantity' => $product->free_quantity,
-                            'price' => $product->price,
-                            'discount_percent' => $product->discount_percent,
-                            'discount_amount' => $product->discount_amount,
-                            'amount' => ($product->quantity * ($product->price ?? 0)) - ($product->discount_amount ?? 0),
-                            'is_vatable' => $product->is_vatable,
-                            'measure_unit_id' => $measureUnit->id,
-                            'expiry_date' => $product->expiry_date,
-                            'field_values' => $fieldValues,
-                        ];
-                    })->filter()->toArray();
-            }
+            //             return [
+            //                 'purchase_stock_product_id' => $product->id,
+            //                 'purchase_product_id' => $product->purchase_product_id ?? null,
+            //                 'stock_product_id' => $product->stock_product_id ?? null,
+            //                 'stock_reconciliation_id' => $product->stock_reconciliation_id ?? null,
+            //                 'stock_adjustment_id' => $product->stock_adjustment_id ?? null,
+            //                 'stock_transfer_id' => $product->stock_transfer_id ?? null,
+            //                 'product_id' => $product->product_id,
+            //                 'product_name' => $product->product_name,
+            //                 'purchase_product_code' => $product->product_code,
+            //                 'mfd' => $product->mfd,
+            //                 'customer_id' => $product->customer_id,
+            //                 'quantity' => $product->quantity,
+            //                 'free_quantity' => $product->free_quantity,
+            //                 'price' => $product->price,
+            //                 'discount_percent' => $product->discount_percent,
+            //                 'discount_amount' => $product->discount_amount,
+            //                 'amount' => ($product->quantity * ($product->price ?? 0)) - ($product->discount_amount ?? 0),
+            //                 'is_vatable' => $product->is_vatable,
+            //                 'measure_unit_id' => $measureUnit->id,
+            //                 'expiry_date' => $product->expiry_date,
+            //                 'field_values' => $fieldValues,
+            //             ];
+            //         })->filter()->toArray();
+            // }
 
             // Process purchase return products
             // Group products by product_id for FIFO allocation

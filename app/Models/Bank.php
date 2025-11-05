@@ -31,7 +31,7 @@ class Bank extends BaseTenantModel
 
     protected static function booted()
     {
-        self::observe(BankObserver::class);
+        // self::observe(BankObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

@@ -142,7 +142,7 @@ class PurchaseReturnHelper
 
             return $productCodes;
         } catch (QueryException $e) {
-            dd($e->getMessage());
+          
             \Log::error('Database error in getPurchaseProductforPurchaseReturnByPrductId: ' . $e->getMessage());
             return ['error' => 'Database error occurred'];
         } catch (\Exception $e) {

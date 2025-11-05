@@ -49,7 +49,8 @@ class IdentifyTenant
         // });
         $request->merge([
             'company_id' => $companyId,
-            'branch_id' => $branchId
+            'branch_id' => $branchId,
+            'user_id' => $user->id,
         ]);
 
         return $next($request);

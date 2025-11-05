@@ -8,6 +8,7 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
 use App\Http\Controllers\CompanyAdminController;
@@ -123,7 +124,6 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
     Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);
 
-
     Route::get('/userList', [UserController::class, 'userList']);
     Route::get('/userDetail/{identifier}', [UserController::class, 'userDetail']);
 
@@ -200,6 +200,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
+    Route::resource('hold-sales', HoldSaleController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
 
 
@@ -256,6 +257,8 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
+     Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
+
     Route::get('main-groups-list', [MainGroupController::class, 'mainGroupList']);
     Route::get('main-group-lists', [MainGroupController::class, 'mainGroupListDetails']);
     Route::post('sub-groups-update-ranking', [MainGroupController::class, 'draggable']);

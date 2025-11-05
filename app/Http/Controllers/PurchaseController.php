@@ -28,7 +28,7 @@ class PurchaseController extends Controller
     {
         // Validate the request
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|integer|exists:companies,id'
+            'company_id' => 'required|integer'
         ]);
 
         if ($validator->fails()) {
@@ -190,7 +190,7 @@ class PurchaseController extends Controller
                 'customer_name' => 'nullable|string|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
-                'company_id' => 'required',
+                'company_id' => 'required|integer',
                 'address' => 'nullable|string|max:255',
                 'customer_contact' => 'nullable|string|max:255',
                 'document_number' => 'nullable|string|max:255',
@@ -686,7 +686,7 @@ class PurchaseController extends Controller
             'store_id' => 'nullable|integer|exists:stores,id',
             'bank_id' => 'nullable|integer|exists:banks,id',
             'location_id' => 'nullable|integer|exists:locations,id',
-            'company_id' => 'required|integer|exists:companies,id',
+            'company_id' => 'required|integer',
             'purchase_products' => 'required|array',
             'purchase_products.*.product_id' => 'required|integer|exists:products,id',
             'purchase_products.*.product_name' => 'nullable|string|max:255',

@@ -9,6 +9,8 @@ use App\Providers\TenancyServiceProvider;
 use App\Models\Tenant;
 use App\Models\User;
 use Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Validator;
@@ -204,12 +206,12 @@ class CompanyAdminController extends Controller
 
             // Switch to tenant database
             // Switch to tenant DB
-         \App\Providers\TenantInitializer::switchTenant($tenant);
+            \App\Providers\TenantInitializer::switchTenant($tenant);
 
             \Log::info("Tenant database switched: {$tenant->database}");
 
             // Fetch branch inside tenant context
-            $branch =Branch::on('tenant')
+            $branch = Branch::on('tenant')
                 ->where('id', $request->branch_id)
                 ->whereNull('deleted_at')
                 ->where('is_active', true)
@@ -305,149 +307,78 @@ class CompanyAdminController extends Controller
     public function profile(Request $request)
     {
         try {
-            $user = Auth::guard('api')->user();
+            // ✅ 1. Extract data from middleware (injected automatically)
+            $userId = $request->user_id;
+            $companyId = $request->company_id;
+            $branchId = $request->branch_id;
 
-            \Log::info('Profile Request', [
-                'user_id' => $user ? $user->id : null,
-                'user_email' => $user ? $user->email : null,
-                'roles' => $user ? $user->roles->pluck('name')->toArray() : [],
-                'request_company_id' => $request->company_id,
-            ]);
+            if (!$userId) {
+                \Log::error('Profile: Missing user_id in request');
+                return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+            }
+
+            // ✅ 2. Fetch user from CENTRAL database (never from tenant)
+            $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
 
             if (!$user) {
-                \Log::error('Profile: User not authenticated');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthenticated.',
-                ], 401);
+                \Log::error('Profile: User not found in central DB', ['user_id' => $userId]);
+                return response()->json(['success' => false, 'message' => 'User not found in central database.'], 404);
             }
 
+            // ✅ 3. Debug log
+            \Log::info('Profile Request', [
+                'user_id' => $user->id,
+                'email' => $user->email,
+                'roles' => $user->roles->pluck('name')->toArray(),
+                'company_id' => $companyId,
+                'branch_id' => $branchId,
+            ]);
+
+            // ✅ 4. Role check
             if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
-                \Log::error('Profile: User lacks required role', [
-                    'user_id' => $user->id,
-                    'roles' => $user->roles->pluck('name')->toArray(),
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized: Not authorized for company access',
-                ], 200);
+                \Log::error('Profile: Unauthorized role', ['user_id' => $user->id]);
+                return response()->json(['success' => false, 'message' => 'Unauthorized role.'], 403);
             }
 
-            $currentToken = $user->currentAccessToken();
-            $abilities = $currentToken ? $currentToken->abilities : [];
+            // ✅ 5. Find tenant database using company_id (from central DB)
+            $tenant = \App\Models\Tenant::on('mysql')->where('data->company_id', $companyId)->first();
 
-            $companyId = null;
-            $branchId = null;
-
-            foreach ($abilities as $ability) {
-                if (strpos($ability, 'company:') === 0) {
-                    $companyId = str_replace('company:', '', $ability);
-                }
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = str_replace('branch:', '', $ability);
-                }
+            if (!$tenant) {
+                \Log::error('Profile: Tenant not found', ['company_id' => $companyId]);
+                return response()->json(['success' => false, 'message' => 'Tenant not found.'], 404);
             }
 
-            if (!$companyId) {
-                \Log::error('Profile: Token missing company ability', [
-                    'user_id' => $user->id,
-                    'abilities' => $abilities,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token does not contain company information',
-                ], 200);
-            }
+            // ✅ 6. Switch connection to tenant database
+            \App\Providers\TenantInitializer::switchTenant($tenant);
+            config(['database.default' => 'tenant']);
 
-            $companyUser = CompanyUser::where('user_id', $user->id)
-                ->where('company_id', $companyId)
-                ->first();
-
-            if (!$companyUser) {
-                \Log::error('Profile: User not associated with company', [
-                    'user_id' => $user->id,
-                    'company_id' => $companyId,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User is not associated with the selected company',
-                ], 200);
-            }
-
-            $company = Company::where('id', $companyId)
-                ->whereNull('deleted_at')
+            // ✅ 7. Fetch company and active branches from tenant DB
+            $company = \App\Models\Company::on('mysql')->where('id', $companyId)
                 ->select('id', 'name', 'is_vatable')
                 ->with([
-                    'branches' => fn($q) => $q->select('branches.id', 'branches.name', 'branches.company_id')
-                        ->where('branches.is_active', true)
-                        ->whereNull('branches.deleted_at')
+                    'branches' => fn($q) => $q->select('id', 'name', 'company_id')
+                        ->where('is_active', true)
+                        ->whereNull('deleted_at')
                 ])
                 ->first();
 
             if (!$company) {
-                \Log::error('Profile: Company not found or soft-deleted', [
-                    'user_id' => $user->id,
-                    'company_id' => $companyId,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Forbidden: Company not found or deleted',
-                ], 200);
+                \Log::error('Profile: Company not found', ['company_id' => $companyId]);
+                return response()->json(['success' => false, 'message' => 'Company not found in tenant DB.'], 404);
             }
 
+            // ✅ 8. Fetch branch (if any)
             $branch = null;
             if ($branchId) {
-                $branch = Branch::where('id', $branchId)
+                $branch = \App\Models\Branch::where('id', $branchId)
                     ->where('company_id', $companyId)
-                    ->whereNull('deleted_at')
                     ->where('is_active', true)
+                    ->whereNull('deleted_at')
                     ->select('id', 'name', 'company_id')
                     ->first();
-
-                if (!$branch && !$user->hasRole('master_user')) {
-                    \Log::error('Profile: Branch not found or invalid', [
-                        'user_id' => $user->id,
-                        'branch_id' => $branchId,
-                        'company_id' => $companyId,
-                    ]);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Selected branch is invalid or not associated with the company',
-                    ], 200);
-                }
-            } elseif (!$user->hasRole('master_user')) {
-                \Log::error('Profile: Branch ID missing for non-master user', [
-                    'user_id' => $user->id,
-                    'company_id' => $companyId,
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Branch not selected',
-                ], 200);
             }
 
-            if ($user->hasRole('company_user') && $branch) {
-                $userBranch = $user->branches()
-                    ->where('branches.id', $branchId)
-                    ->where('branches.company_id', $companyId)
-                    ->whereNull('branches.deleted_at')
-                    ->where('branches.is_active', true)
-                    ->select('branches.id', 'branches.name', 'branches.company_id')
-                    ->first();
-
-                if (!$userBranch) {
-                    \Log::error('Profile: Branch association failed for company_user', [
-                        'user_id' => $user->id,
-                        'branch_id' => $branchId,
-                        'company_id' => $companyId,
-                    ]);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'User is not associated with the selected branch',
-                    ], 200);
-                }
-            }
-
+            // ✅ 9. Send final response
             return response()->json([
                 'success' => true,
                 'message' => 'Profile retrieved successfully',
@@ -456,20 +387,15 @@ class CompanyAdminController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'role' => $user->hasRole('company_admin')
-                            ? 'company_admin'
-                            : ($user->hasRole('master_user')
-                                ? 'master_user'
-                                : 'company_user'),
+                        'role' => $user->roles->pluck('name')->first(),
                     ],
                     'company' => [
-                        'company_id' => $company->id,
+                        'id' => $company->id,
                         'name' => $company->name,
                         'is_vatable' => $company->is_vatable,
                         'branches' => $company->branches->map(fn($b) => [
                             'id' => $b->id,
                             'name' => $b->name,
-                            'company_id' => $b->company_id,
                         ])->toArray(),
                     ],
                     'selected_branch' => $branch ? [
@@ -479,12 +405,14 @@ class CompanyAdminController extends Controller
                     ] : null,
                 ],
             ], 200);
-        } catch (\Exception $e) {
+
+        } catch (\Throwable $e) {
             \Log::error('Profile Error', [
-                'user_id' => $user ? $user->id : null,
+                'user_id' => $request->user_id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve profile.',
@@ -492,6 +420,7 @@ class CompanyAdminController extends Controller
             ], 500);
         }
     }
+
 
 
 
@@ -567,6 +496,7 @@ class CompanyAdminController extends Controller
     public function getUserCompaniesAndBranches($userId)
     {
         try {
+            \Log::info("Fetching user", ['user_id' => $userId]);
             $user = User::find($userId);
 
             if (!$user) {
@@ -576,16 +506,21 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
 
+            // Get all companies related to the user
             $companies = CompanyUser::where('user_id', $user->id)
                 ->with([
-                    'company' => function ($query) {
-                        $query->select('id', 'name', 'is_vatable')->whereNull('deleted_at');
+                    'company' => function ($q) {
+                        $q->select('id', 'name', 'is_vatable');
                     }
                 ])
                 ->get()
                 ->pluck('company')
-                ->filter()
-                ->values();
+                ->filter();
+
+            \Log::info("Companies fetched for user", [
+                'user_id' => $user->id,
+                'companies' => $companies->pluck('name', 'id')
+            ]);
 
             if ($companies->isEmpty()) {
                 return response()->json([
@@ -594,35 +529,60 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
-            $branches = $user->hasRole('company_admin')
-                ? Branch::whereIn('company_id', $companies->pluck('id'))
-                    ->whereNull('deleted_at')
-                    ->where('is_active', true)
+            $companiesWithBranches = [];
+
+            foreach ($companies as $company) {
+                \Log::info("Processing company", ['company_id' => $company->id, 'company_name' => $company->name]);
+
+                // Find tenant by decoding the raw JSON data
+                $tenant = Tenant::all()->first(
+                    fn($t) =>
+                    json_decode($t->getRawOriginal('data'), true)['company_id'] == $company->id
+                );
+
+                if (!$tenant) {
+                    \Log::warning("Tenant not found for company", ['company_id' => $company->id]);
+                    continue;
+                }
+
+                $tenantData = json_decode($tenant->getRawOriginal('data'), true);
+                $tenantDb = $tenantData['database'] ?? null;
+
+                \Log::info("Tenant database found", ['company_id' => $company->id, 'tenant_db' => $tenantDb]);
+
+                if (!$tenantDb) {
+                    \Log::warning("Tenant database name missing", ['company_id' => $company->id]);
+                    continue;
+                }
+
+                // Switch tenant connection
+                DB::purge('tenant');
+                Config::set('database.connections.tenant.database', $tenantDb);
+                DB::reconnect('tenant');
+                \Log::info("Switched tenant connection", ['tenant_db' => $tenantDb]);
+
+                // Fetch branches
+                $branches = Branch::on('tenant')
                     ->select('id', 'name', 'company_id')
-                    ->get()
-                : $user->branches()
-                    ->whereNull('branches.deleted_at')
-                    ->where('branches.is_active', true)
-                    ->select('branches.id', 'branches.name', 'branches.company_id')
+                    ->where('is_active', true)
+                    ->whereNull('deleted_at')
                     ->get();
 
-            $groupedBranches = $branches->groupBy('company_id')->map(function ($branches) {
-                return $branches->map(function ($branch) {
-                    return [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                    ];
-                })->values();
-            });
+                \Log::info("Branches fetched", [
+                    'company_id' => $company->id,
+                    'branches' => $branches->pluck('name', 'id')->toArray()
+                ]);
 
-            $companiesWithBranches = $companies->map(function ($company) use ($groupedBranches) {
-                return [
+                $branchesArray = $branches->map(fn($branch) => ['id' => $branch->id, 'name' => $branch->name]);
+
+                $companiesWithBranches[] = [
                     'id' => $company->id,
                     'name' => $company->name,
                     'is_vatable' => $company->is_vatable,
-                    'branches' => $groupedBranches->get($company->id, collect([]))->toArray(),
+                    'branches' => $branchesArray,
                 ];
-            })->values();
+            }
+
 
             return response()->json([
                 'success' => true,
@@ -632,13 +592,11 @@ class CompanyAdminController extends Controller
                         'id' => $user->id,
                         'name' => $user->name,
                         'email' => $user->email,
-                        'role' => $user->hasRole('company_admin') ? 'company_admin' :
-                            ($user->hasRole('company_user') ? 'company_user' :
-                                ($user->hasRole('master_user') ? 'master_user' : 'none')),
                     ],
                     'companies' => $companiesWithBranches,
                 ],
-            ], 200);
+            ]);
+
         } catch (\Exception $e) {
             \Log::error('getUserCompaniesAndBranches Error', [
                 'user_id' => $userId,
@@ -648,10 +606,13 @@ class CompanyAdminController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve user companies and branches.',
-                // 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
+
+
+
+
     public function tree(Request $request)
     {
         try {

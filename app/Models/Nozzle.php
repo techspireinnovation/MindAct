@@ -12,6 +12,7 @@ class Nozzle extends BaseTenantModel
 
     protected $fillable = [
         'title',
+        'slug',
         'nozzle_number',
         'company_id',
         'fuel_type',

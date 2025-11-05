@@ -6,6 +6,7 @@ use App\Models\BankVoucher;
 use App\Models\JournalVoucher;
 use App\Models\PaymentVoucher;
 use App\Models\Purchase;
+use App\Models\User;
 use App\Models\PurchaseReturn;
 use App\Models\ReceiptVoucher;
 use App\Models\Sale;
@@ -29,62 +30,41 @@ class GenerateCodeController extends Controller
     public function generatePurchaseBillNumber(Request $request)
     {
         try {
-            // Get current BS date
-
-
             $bsDate = NepaliDate::create(Carbon::now())->toBS();
-            $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int) $bsDateParts[0];
-            $currentBsMonth = (int) $bsDateParts[1];
+            [$currentBsYear, $currentBsMonth] = explode('-', $bsDate);
 
-            // Determine fiscal year
+            $currentBsYear = (int) $currentBsYear;
+            $currentBsMonth = (int) $currentBsMonth;
+
             $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
-            // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $branchId = $request->branch_id;
+
+            if (!$userId || !$branchId) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'User or branch not provided'
+                ], 400);
+            }
+
+            $user = User::on('mysql')->with('roles')->find($userId);
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized: User not authenticated'
+                    'message' => 'Unauthorized: User not found'
                 ], 401);
             }
 
-            // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
-
-            // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
-
-            if (!$branchId) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No branch associated with the user'
-                ], 200);
-            }
-
-            // Get last purchase record for the current fiscal year and branch
+            // Get last purchase record for this branch & fiscal year
             $lastPurchase = Purchase::where('purchase_bill_number', 'like', "P{$fiscalYearCode}-{$branchId}-%")
                 ->orderBy('id', 'desc')
                 ->first();
 
-            // Generate sequential number
             $lastNumber = $lastPurchase ? (int) substr($lastPurchase->purchase_bill_number, -6) : 0;
             $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
-            // Generate purchase bill number
             $purchaseBillNumber = "P{$fiscalYearCode}-{$branchId}-{$newNumber}";
 
             return response()->json([
@@ -105,6 +85,7 @@ class GenerateCodeController extends Controller
 
 
 
+
     public function generatePurchaseReturnBillNumber(Request $request)
     {
         try {
@@ -121,31 +102,21 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $branchId = $request->branch_id;
+            $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Unauthorized: User not authenticated'
+                    'message' => 'Unauthorized: User not found'
                 ], 401);
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+
 
             if (!$branchId) {
                 return response()->json([
@@ -199,7 +170,9 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+
+            $user = User::on('mysql')->where('id', $userId)->first();
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -208,22 +181,17 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+
 
             if (!$branchId) {
                 return response()->json([
@@ -277,7 +245,9 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $user = User::on('mysql')->with('roles')->find($userId);
+
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -286,22 +256,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -355,7 +325,8 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $user = User::on('mysql')->with('roles')->find($userId);
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -364,22 +335,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -434,7 +405,7 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $user = $request->user_id;
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -443,22 +414,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -511,7 +482,9 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $user = User::on('mysql')->with('roles')->find($userId);
+
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -520,22 +493,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -589,7 +562,8 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $user = User::on('mysql')->with('roles')->find($userId);
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -598,22 +572,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([
@@ -667,7 +641,8 @@ class GenerateCodeController extends Controller
             $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
             // Get authenticated user
-            $user = Auth::guard('api')->user();
+            $userId = $request->user_id;
+            $user = User::on('mysql')->with('roles')->find($userId);
             if (!$user) {
                 return response()->json([
                     'status' => 'error',
@@ -676,22 +651,22 @@ class GenerateCodeController extends Controller
             }
 
             // Get the current token's abilities
-            $token = $user->currentAccessToken();
-            if (!$token) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No valid token found'
-                ], 200);
-            }
+            // $token = $user->currentAccessToken();
+            // if (!$token) {
+            //     return response()->json([
+            //         'status' => 'error',
+            //         'message' => 'No valid token found'
+            //     ], 200);
+            // }
 
             // Extract branch ID from token abilities
-            $branchId = null;
-            foreach ($token->abilities as $ability) {
-                if (strpos($ability, 'branch:') === 0) {
-                    $branchId = (int) str_replace('branch:', '', $ability);
-                    break;
-                }
-            }
+            $branchId = $request->branch_id;
+            // foreach ($token->abilities as $ability) {
+            //     if (strpos($ability, 'branch:') === 0) {
+            //         $branchId = (int) str_replace('branch:', '', $ability);
+            //         break;
+            //     }
+            // }
 
             if (!$branchId) {
                 return response()->json([

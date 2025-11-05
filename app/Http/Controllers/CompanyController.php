@@ -548,7 +548,9 @@ class CompanyController extends Controller
     public function updatePurchaseMasterKey(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $userId = $request->user_id;
+
+            $user = User::on('mysql')->where('id', $userId)->first();
 
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
@@ -592,7 +594,7 @@ class CompanyController extends Controller
                     ], 403);
                 }
 
-                $company = Company::where('id', $companyId)
+                $company = Company::on('mysql')->where('id', $companyId)
                     ->whereNull('deleted_at')
                     ->first();
 
@@ -603,7 +605,7 @@ class CompanyController extends Controller
                     ], 404);
                 }
 
-                $companyUser = CompanyUser::where('user_id', $user->id)
+                $companyUser = CompanyUser::on('mysql')->where('user_id', $user->id)
                     ->where('company_id', $companyId)
                     ->first();
 
@@ -650,14 +652,14 @@ class CompanyController extends Controller
                 'message' => 'Purchase master key not found',
             ], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+
             Log::error('Purchase master key update failed: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
@@ -672,68 +674,64 @@ class CompanyController extends Controller
     public function getPurchaseMasterKey(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
-            \Log::info('getPurchaseMasterKey: User', ['user_id' => $user ? $user->id : null]);
-            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            $userId = $request->user_id;
+            if (!$userId) {
+                return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
+            }
+
+            // Fetch actual user from CENTRAL DB
+            $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found in central DB.'], 404);
+            }
+
+            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: User lacks required role',
-                ], 200);
+                ], 403);
             }
 
             $companyId = $request->company_id;
-            \Log::info('getPurchaseMasterKey: Company ID', ['company_id' => $companyId]);
             if (!$companyId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'No company ID provided',
-                ], 400);
+                return response()->json(['success' => false, 'message' => 'No company ID provided'], 400);
             }
 
-            $company = \App\Models\Company::where('id', $companyId)
-                ->whereNull('deleted_at')
-                ->first();
-            if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found or deleted',
-                ], 404);
+            // Fetch company from tenant DB
+            $tenant = \App\Models\Tenant::on('mysql')->where('data->company_id', $companyId)->first();
+            if (!$tenant) {
+                return response()->json(['success' => false, 'message' => 'Tenant not found'], 404);
             }
 
-            $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
+            // Switch to tenant
+            \App\Providers\TenantInitializer::switchTenant($tenant);
+            config(['database.default' => 'tenant']);
+
+            $companyUser = \App\Models\CompanyUser::on('mysql')->where('user_id', $user->id)
                 ->where('company_id', $companyId)
                 ->first();
             if (!$companyUser) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User is not associated with this company',
-                ], 200);
+                return response()->json(['success' => false, 'message' => 'User not associated with this company'], 403);
             }
 
             $purchaseMaster = \App\Models\PurchaseMasterKey::where('company_id', $companyId)->first();
-            \Log::info('getPurchaseMasterKey: PurchaseMasterKey', ['found' => $purchaseMaster ? true : false]);
             if (!$purchaseMaster) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Purchase master key not found for this company',
-                ], 404);
+                return response()->json(['success' => false, 'message' => 'Purchase master key not found'], 404);
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => $purchaseMaster,
-            ], 200);
-        } catch (QueryException $e) {
-            \Log::error('getPurchaseMasterKey QueryException', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json([
-                'success' => false,
-                'message' => 'An unexpected error occurred',
-            ], 500);
+            return response()->json(['success' => true, 'data' => $purchaseMaster], 200);
+
         } catch (\Exception $e) {
-            \Log::error('getPurchaseMasterKey Exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            \Log::error('getPurchaseMasterKey Exception', [
+                'user_id' => $request->user_id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
+                'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
@@ -874,13 +872,16 @@ class CompanyController extends Controller
     {
         try {
             // Get the authenticated user
-            $user = $request->user();
-            \Log::info('getSalesMasterKey: User', ['user_id' => $user ? $user->id : null]);
-            if (!$user || !$user->hasRole('company_admin')) {
+            $userId = $request->user_id;
+            $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
+            if (!$user) {
+                return response()->json(['success' => false, 'message' => 'User not found in central DB.'], 404);
+            }
+            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized: Not a company admin',
-                ], 200);
+                    'message' => 'Unauthorized: User lacks required role',
+                ], 403);
             }
 
             // Get company_id from middleware
@@ -894,7 +895,7 @@ class CompanyController extends Controller
             }
 
             // Verify company exists and is not soft-deleted
-            $company = \App\Models\Company::where('id', $companyId)
+            $company = \App\Models\Company::on('mysql')->where('id', $companyId)
                 ->whereNull('deleted_at')
                 ->first();
             if (!$company) {
@@ -905,7 +906,7 @@ class CompanyController extends Controller
             }
 
             // Verify user is associated with the company
-            $companyUser = \App\Models\CompanyUser::where('user_id', $user->id)
+            $companyUser = \App\Models\CompanyUser::on('mysql')->where('user_id', $user->id)
                 ->where('company_id', $companyId)
                 ->first();
             if (!$companyUser) {

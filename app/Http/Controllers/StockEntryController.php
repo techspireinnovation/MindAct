@@ -121,7 +121,7 @@ class StockEntryController extends Controller
                                 'product_id' => $stockEntry->product_id,
                                 'product_field_id' => $fieldValue['product_field_id'],
                                 'value' => $fieldValue['value'],
-                                'quantity_index' => $$quantityIndex,
+                                'quantity_index' => $quantityIndex,
                             ]);
                         }
                     }

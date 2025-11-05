@@ -26,8 +26,9 @@ use Illuminate\Validation\Rule;
 class AvailableQuantityService
 {
 
-     public function getProductDetailsByInput(Request $request, $productID): JsonResponse
+     public static function getAvailableQuantityByPurchaseStockReturnId(Request $request, $returnID): JsonResponse
     {
+       
         try {
 
             // Validate input
@@ -140,7 +141,7 @@ class AvailableQuantityService
             // Fetch related data for calculations
             $purchaseProductIds = $purchaseProducts->pluck('purchase_stock_product_id')->toArray();
 
-            $productId = $productID;
+            $productId = $returnID;
 
 
             $purchaseProductReturns = DB::table('purchase_stock_product_returns')

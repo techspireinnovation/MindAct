@@ -253,6 +253,8 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
+     Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
+
     Route::get('main-groups-list', [MainGroupController::class, 'mainGroupList']);
     Route::get('main-group-lists', [MainGroupController::class, 'mainGroupListDetails']);
     Route::post('sub-groups-update-ranking', [MainGroupController::class, 'draggable']);

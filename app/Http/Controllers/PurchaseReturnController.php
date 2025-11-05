@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
+
 use App\Models\MeasureUnit;
 use App\Models\ProductList;
 use App\Models\Product;
@@ -24,6 +25,7 @@ use App\Models\SaleProduct;
 use App\Models\SaleReturnProductFieldValue;
 use App\Models\SalesProductFieldValue;
 use App\Models\SalesReturnProduct;
+use App\Services\AvailableQuantityService;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -5665,6 +5667,17 @@ class PurchaseReturnController extends Controller
     //         return response()->json(['error' => 'An unexpected error occurred'], 500);
     //     }
     // }
+
+    public function showQuantity(Request $request,$id): JsonResponse
+    {
+        
+        $avaialable = AvailableQuantityService::getAvailableQuantityByPurchaseStockReturnId($request,$id);
+        return response()->json([
+            "message" => "Successful!!",
+            "data" => $avaialable
+        ]);
+       
+    }
 
     public function show(Request $request, $id): JsonResponse
     {

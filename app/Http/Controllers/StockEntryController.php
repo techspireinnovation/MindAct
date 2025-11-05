@@ -77,7 +77,7 @@ class StockEntryController extends Controller
 
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
-                'stock_entries.*.field_values.*.*.quantity_index' => 'required|numeric|min:1',
+                // 'stock_entries.*.field_values.*.*.quantity_index' => '|numeric|min:1',
             ]);
 
             if ($validator->fails()) {
@@ -103,7 +103,7 @@ class StockEntryController extends Controller
 
                 // If there are field values, save them
                 if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
-                    foreach ($entry['field_values'] as $fieldGroup) {
+                    foreach ($entry['field_values'] as $quantityIndex =>$fieldGroup) {
                         foreach ($fieldGroup as $fieldValue) {
                             StockProductFieldValue::create([
                                 'stock_product_id' => $stockEntry->id,
@@ -111,7 +111,7 @@ class StockEntryController extends Controller
                                 'product_id' => $stockEntry->product_id,
                                 'product_field_id' => $fieldValue['product_field_id'],
                                 'value' => $fieldValue['value'],
-                                'quantity_index' => $fieldValue['quantity_index'],
+                                'quantity_index' => $quantityIndex,
                             ]);
 
                             PurchaseStockProductFieldValue::create([
@@ -121,7 +121,7 @@ class StockEntryController extends Controller
                                 'product_id' => $stockEntry->product_id,
                                 'product_field_id' => $fieldValue['product_field_id'],
                                 'value' => $fieldValue['value'],
-                                'quantity_index' => $fieldValue['quantity_index'],
+                                'quantity_index' => $$quantityIndex,
                             ]);
                         }
                     }

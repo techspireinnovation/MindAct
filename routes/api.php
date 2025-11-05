@@ -140,6 +140,8 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/generateReceiptVoucherBillNumber', [GenerateCodeController::class, 'generateReceiptVoucherBillNumber']);
     Route::get('/generateBankVoucherBillNumber', [GenerateCodeController::class, 'generateBankVoucherBillNumber']);
     Route::get('/generateStockAdjustmentBillNumber', [GenerateCodeController::class, 'generateStockAdjustmentBillNumber']);
+    Route::get('/generateStockEntryBillNumber', [GenerateCodeController::class, 'generateStockEntryBillNumber']);
+
 
 
 

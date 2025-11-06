@@ -10,6 +10,7 @@ use Anuzpandey\LaravelNepaliDate\LaravelNepaliDate;
 use Pratiksh\Nepalidate\Services\EnglishDate;
 
 use NepaliCalendar;
+use App\Services\AvailableQuantityService;
 use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
@@ -2740,10 +2741,59 @@ class SaleController extends Controller
     }
 
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
             $item = Sale::with('saleProducts.fieldValues')->findOrFail($id);
+            $productIds = $item->saleProducts->pluck('product_id')->unique();
+
+            // Step 3: Load measure units
+            $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+                ->where('company_id', $request->company_id)
+                ->with(['measureUnit:id,name,quantity'])
+                ->get()
+                ->groupBy('product_id');
+
+            $request->merge([
+
+                'company_id' => $request->company_id ?? null,
+                'branch_id' => $request->branch_id ?? null,
+            ]);
+
+            // $response = AvailableQuantityService::getAvailableProductDetailsById($request, $id);
+            // $responseData = $response->getData(true);
+
+            // $availableMap = collect($responseData['data']['sale_products'] ?? [])
+            //     ->mapWithKeys(function ($item) {
+            //         return [$item['product_id'] => $item['available_quantity']];
+            //     });
+            foreach ($item->saleProducts as $saleProducts) {
+                // measure units (unchanged)
+                $units = $productMeasureUnits->get($saleProducts->product_id, collect())
+                    ->pluck('measureUnit');
+                $saleProducts->setRelation('measure_units', $units);
+                $productID = $saleProducts->product_id;
+                $response = AvailableQuantityService::getAvailableProductDetailsById($request, $productID);
+                $responseData = $response->getData(true);
+               
+
+                $availableMap = collect($responseData['data'] ?? [])
+                    ->mapWithKeys(function ($item) {
+                        return [$item['product_id'] => $item['available_quantity']];
+                    });
+
+                // field_values (add field name)
+                $saleProducts->setRelation(
+                    'field_values',
+                    $saleProducts->fieldValues->map(function ($fv) {
+                        $fv->name = $fv->productField->name ?? null;
+                        return $fv;
+                    })
+                );
+
+                // inject remaining quantity
+                $saleProducts->remaining_quantity = $availableMap[$saleProducts->product_id] ?? 0;
+            }
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

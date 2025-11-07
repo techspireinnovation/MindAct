@@ -8,6 +8,8 @@ use App\Models\Product;
 use App\Models\ProductList;
 use App\Models\PurchaseProduct;
 use App\Models\PurchaseStockProduct;
+use App\Services\AvailableQuantityService;
+
 use App\Models\PurchaseProductFieldValue;
 use App\Models\Sale;
 use App\Models\SaleProduct;
@@ -844,6 +846,7 @@ class SalesReturnController extends Controller
                 'document_number' => 'nullable|string|max:255',
                 'ref_bill_no' => 'nullable|string|max:255',
                 'return_bill_no' => 'nullable|string|max:255',
+                'sales_bill_number' => 'required|string|max:255',
                 'batch_no' => 'nullable|string|max:255|unique:sales_returns,batch_no',
                 'balance' => 'nullable|numeric|min:0',
                 'invoice_date' => 'nullable|date',
@@ -2947,7 +2950,7 @@ class SalesReturnController extends Controller
         try {
             // Define validation rules
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'customer_id' => 'nullable|exists:customers,id',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'sale_id' => 'nullable|exists:sales,id',
@@ -4748,6 +4751,12 @@ class SalesReturnController extends Controller
                 'document_number' => 'nullable|string|max:255',
                 'ref_bill_no' => 'nullable|string|max:255',
                 'return_bill_no' => 'nullable|string|max:255',
+                'sales_bill_number' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('sales_returns', 'sales_bill_number')->ignore($id),
+                ],
                 'batch_no' => [
                     'nullable',
                     'string',
@@ -5804,23 +5813,87 @@ class SalesReturnController extends Controller
 
 
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
-            $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues')->findOrFail($id);
+            $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues.productField')
+                ->findOrFail($id);
+
+            $productIds = $salesReturn->salesReturnProducts->pluck('product_id')->unique();
+
+            // Load measure units
+            $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+                ->where('company_id', $request->company_id)
+                ->with(['measureUnit:id,name,quantity'])
+                ->get()
+                ->groupBy('product_id');
+
+            $request->merge([
+                'company_id' => $request->company_id ?? null,
+                'branch_id' => $request->branch_id ?? null,
+            ]);
+
+            $salesBillNumber = $salesReturn->sales_bill_number;
+
+            // Master map: product_id => available_quantity
+            $availableMap = [];
+
+            if ($salesBillNumber) {
+                // Bill-wise: one call
+                $response = AvailableQuantityService::getSaleByInvoiceNumber($request, $salesBillNumber);
+                $responseData = $response->getData(true);
+
+                $products = $responseData['data'][0]['products'] ?? ($responseData['data'] ?? []);
+                foreach ($products as $p) {
+                    $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
+                }
+            } else {
+                // Item-wise: call per product
+                foreach ($salesReturn->salesReturnProducts as $item) {
+                    $productID = $item->product_id;
+
+                    $response = AvailableQuantityService::getAvailableProductsForSalesReturn($request, $productID, $salesBillNumber);
+                    $resp = $response->getData(true);
+
+                    // CORRECT PATH: 'products'
+                    $products = $resp['data'][0]['products'] ?? ($resp['data'] ?? []);
+
+                    foreach ($products as $p) {
+                        $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
+                    }
+                }
+            }
+
+            // Now attach everything
+            foreach ($salesReturn->salesReturnProducts as $saleReturn) {
+                // Measure units
+                $units = $productMeasureUnits->get($saleReturn->product_id, collect())
+                    ->pluck('measureUnit');
+                $saleReturn->setRelation('measure_units', $units);
+
+                // Field values + name
+                $saleReturn->setRelation(
+                    'field_values',
+                    $saleReturn->fieldValues->map(function ($fv) {
+                        $fv->name = $fv->productField->name ?? null;
+                        return $fv;
+                    })
+                );
+
+                // NOW IT WILL BE CORRECT
+                $saleReturn->remaining_quantity = $availableMap[$saleReturn->product_id] ?? 0;
+            }
+
             return response()->json($salesReturn);
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json(['error' => 'Sales Return not found'], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json(['error' => 'Database error'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Unexpected error'], 500);
+            return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
     }
-
 
     public function destroy($id): JsonResponse
     {
@@ -5847,7 +5920,7 @@ class SalesReturnController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'product_id' => 'required|integer|exists:products,id',
-                'company_id' => 'nullable|integer|exists:companies,id',
+                'company_id' => 'nullable|integer',
             ]);
 
             if ($validator->fails()) {

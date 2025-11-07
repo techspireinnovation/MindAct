@@ -1281,12 +1281,12 @@ class SaleController extends Controller
         int $branchId,
         ?int $ignoreSaleId = null
     ): float {
-        // 1) pieces that entered via purchase
+     
         $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQty);
         $freePieces = $this->calculatePieces($purchaseProduct->free_quantity ?? 0, $measureUnitQty);
         $purchasedPieces = $regularPieces + $freePieces;
 
-        // 2) pieces already returned to supplier
+       
         $purchaseReturnedPieces = $purchaseProduct->purchaseStockProductReturns()
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
@@ -1301,7 +1301,7 @@ class SaleController extends Controller
                 0
             );
 
-        // 3) pieces already sold (ignore the sale we are editing)
+      
         $soldPieces = $purchaseProduct->saleProducts()
             ->where('company_id', $companyId)
             ->when($ignoreSaleId, fn($q, $id) => $q->where('sale_id', '!=', $id))
@@ -1317,7 +1317,7 @@ class SaleController extends Controller
                 0
             );
 
-        // 4) pieces returned by customers (adds back to stock)
+       
         $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->whereHas(
                 'saleProduct',
@@ -1328,7 +1328,7 @@ class SaleController extends Controller
             ->when(
                 $ignoreSaleId,
                 fn($q, $id) =>
-                // ignore returns that belong to the sale we are editing
+               
                 $q->whereHas('saleProduct.sale', fn($sq) => $sq->where('id', '!=', $id))
             )
             ->where('company_id', $companyId)
@@ -1357,8 +1357,6 @@ class SaleController extends Controller
 
         return $available;
     }
-
-
 
 
 
@@ -2760,15 +2758,9 @@ class SaleController extends Controller
                 'branch_id' => $request->branch_id ?? null,
             ]);
 
-            // $response = AvailableQuantityService::getAvailableProductDetailsById($request, $id);
-            // $responseData = $response->getData(true);
-
-            // $availableMap = collect($responseData['data']['sale_products'] ?? [])
-            //     ->mapWithKeys(function ($item) {
-            //         return [$item['product_id'] => $item['available_quantity']];
-            //     });
+          
             foreach ($item->saleProducts as $saleProducts) {
-                // measure units (unchanged)
+                
                 $units = $productMeasureUnits->get($saleProducts->product_id, collect())
                     ->pluck('measureUnit');
                 $saleProducts->setRelation('measure_units', $units);

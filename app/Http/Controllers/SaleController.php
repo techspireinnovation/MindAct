@@ -2765,6 +2765,7 @@ class SaleController extends Controller
                     ->pluck('measureUnit');
                 $saleProducts->setRelation('measure_units', $units);
                 $productID = $saleProducts->product_id;
+                $productCode  = Product::where('id',$productID)->value('product_unique_id');
                 $response = AvailableQuantityService::getAvailableProductDetailsById($request, $productID);
                 $responseData = $response->getData(true);
                
@@ -2784,12 +2785,15 @@ class SaleController extends Controller
                 );
 
                 // inject remaining quantity
+                $saleProducts->product_code  = $productCode;
                 $saleProducts->remaining_quantity = $availableMap[$saleProducts->product_id] ?? 0;
             }
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+             \Log::error($e->getMessage());
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+             \Log::error($e->getMessage());
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }

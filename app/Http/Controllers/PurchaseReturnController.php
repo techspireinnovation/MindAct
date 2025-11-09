@@ -5726,9 +5726,9 @@ class PurchaseReturnController extends Controller
                             return [$productData['product_id'] => $productData['available_quantity']];
                         });
                 }
+                $productReturn->product_code = $productReturn->purchase_product_code;
+                unset($productReturn->purchase_product_code);
 
-
-                
 
                 // field_values (add field name)
                 $productReturn->setRelation(

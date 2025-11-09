@@ -5870,6 +5870,8 @@ class SalesReturnController extends Controller
                 $units = $productMeasureUnits->get($saleReturn->product_id, collect())
                     ->pluck('measureUnit');
                 $saleReturn->setRelation('measure_units', $units);
+                $productId = $saleReturn->product_id;
+                $productCode = Product::where('id', $productId)->value('product_unique_id');
 
                 // Field values + name
                 $saleReturn->setRelation(
@@ -5881,6 +5883,7 @@ class SalesReturnController extends Controller
                 );
 
                 // NOW IT WILL BE CORRECT
+                $saleReturn->product_code = $productCode;
                 $saleReturn->remaining_quantity = $availableMap[$saleReturn->product_id] ?? 0;
             }
 

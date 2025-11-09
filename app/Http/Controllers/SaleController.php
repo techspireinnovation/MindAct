@@ -2766,6 +2766,7 @@ class SaleController extends Controller
                 $saleProducts->setRelation('measure_units', $units);
                 $productID = $saleProducts->product_id;
                 $productCode  = Product::where('id',$productID)->value('product_unique_id');
+                $productName  = Product::where('id',$productID)->value('name');
                 $response = AvailableQuantityService::getAvailableProductDetailsById($request, $productID);
                 $responseData = $response->getData(true);
                
@@ -2785,6 +2786,8 @@ class SaleController extends Controller
                 );
 
                 // inject remaining quantity
+                  $saleProducts->product_name  = $productName;
+                  unset($saleProducts->name);
                 $saleProducts->product_code  = $productCode;
                 $saleProducts->remaining_quantity = $availableMap[$saleProducts->product_id] ?? 0;
             }

@@ -5629,46 +5629,6 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    // public function show(Request $request, $id): JsonResponse
-    // {
-    //     try {
-    //         $item = PurchaseStockReturn::with([
-    //             'purchaseStockProductReturns.fieldValues'
-    //         ])->findOrFail($id);
-
-
-    //         $productIds = $item->purchaseStockProductReturns->pluck('product_id')->unique();
-
-
-    //         $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
-    //             ->where('company_id', $request->company_id)
-    //             ->with(['measureUnit:id,name,quantity'])
-    //             ->get()
-    //             ->groupBy('product_id');
-
-
-    //         foreach ($item->purchaseStockProductReturns as $productReturn) {
-    //             $units = $productMeasureUnits->get($productReturn->product_id, collect())
-    //                 ->pluck('measureUnit');
-    //             $productReturn->measure_units = $units;
-    //         }
-
-    //         return response()->json([
-    //             "message" => "Successful!!",
-    //             "data" => $item
-    //         ]);
-
-    //     } catch (ModelNotFoundException $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'Item not found'], 404);
-    //     } catch (QueryException $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An unexpected query error occurred'], 500);
-    //     } catch (\Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
-    //     }
-    // }
 
     public function showQuantity(Request $request, $id): JsonResponse
     {
@@ -5736,29 +5696,39 @@ class PurchaseReturnController extends Controller
                 ->get()
                 ->groupBy('product_id');
 
-            // Step 4: Get available quantity (reuse service)
-            $purchaseBillNumber = $item->purchase_bill_number;
-            $request->merge([
-                'purchase_bill_number' => $purchaseBillNumber,
-                'company_id' => $request->company_id ?? null,
-                'branch_id' => $request->branch_id ?? null,
-            ]);
 
-            $response = AvailableQuantityService::getPurchaseAvailableByBillNumber($request, $purchaseBillNumber);
-            $responseData = $response->getData(true);
-
-            // Step 5: Map product_id → remaining_quantity
-            $availableMap = collect($responseData['data']['purchase_stock_products'] ?? [])
-                ->mapWithKeys(function ($item) {
-                    return [$item['product_id'] => $item['remaining_quantity']];
-                });
-
-            // Step 6: Inject measure units, field names, and remaining quantity
             foreach ($item->purchaseStockProductReturns as $productReturn) {
-                // measure units (unchanged)
+
                 $units = $productMeasureUnits->get($productReturn->product_id, collect())
                     ->pluck('measureUnit');
                 $productReturn->setRelation('measure_units', $units);
+                $productID = $productReturn->product_id;
+
+                $purchaseBillNumber = $item->purchase_bill_number;
+                if ($purchaseBillNumber) {
+                    $response = AvailableQuantityService::getPurchaseAvailableByBillNumber($request, $purchaseBillNumber);
+                    $responseData = $response->getData(true);
+
+                    // Step 5: Map product_id → remaining_quantity
+                    $availableMap = collect($responseData['data']['purchase_stock_products'] ?? [])
+                        ->mapWithKeys(function ($item) {
+                            return [$item['product_id'] => $item['remaining_quantity']];
+                        });
+                } else {
+                    $response = AvailableQuantityService::getProductDetailsByInput($request, $productID);
+                    $responseData = $response->getData(true);
+
+                    // Step 5: Map product_id → remaining_quantity
+                    // BEST FIX: Sum remaining_quantity_in_pieces per product
+                    $availableMap = collect($responseData['data'] ?? [])
+                        ->keyBy('product_id')
+                        ->mapWithKeys(function ($productData) {
+                            return [$productData['product_id'] => $productData['available_quantity']];
+                        });
+                }
+
+
+                
 
                 // field_values (add field name)
                 $productReturn->setRelation(

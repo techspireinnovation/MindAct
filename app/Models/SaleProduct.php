@@ -75,6 +75,17 @@ class SaleProduct extends BaseTenantModel
         return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
     }
 
+    public function saleReturnProducts()
+    {
+        return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
+    }
+
+    /** The stock line that was sold */
+    public function purchaseStockProduct()
+    {
+        return $this->belongsTo(PurchaseStockProduct::class, 'purchase_stock_product_id');
+    }
+
     public function getSaleQuantityAttribute()
     {
         return (Helper::convertToPrimaryUnitQuantity($this->product_id, $this->measure_unit_id ?? 0, $this->quantity));

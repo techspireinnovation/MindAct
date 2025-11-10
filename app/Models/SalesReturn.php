@@ -37,6 +37,7 @@ class SalesReturn extends BaseTenantModel
         'return_bill_no',
         'ref_bill_no',
         'invoice_number',
+        'sales_bill_number',
         'document_number',
         'batch_no',
         'balance',

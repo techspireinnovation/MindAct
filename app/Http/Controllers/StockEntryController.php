@@ -94,7 +94,7 @@ class StockEntryController extends Controller
 
             foreach ($request->stock_entries as $entry) {
                 $entry['company_id'] = $request->company_id;
-               
+
                 // $entry['branch_id'] = $request->branch_id;
 
                 // Create stock entry
@@ -106,7 +106,7 @@ class StockEntryController extends Controller
 
                 // If there are field values, save them
                 if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
-                    foreach ($entry['field_values'] as $quantityIndex =>$fieldGroup) {
+                    foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
                         foreach ($fieldGroup as $fieldValue) {
                             StockProductFieldValue::create([
                                 'stock_product_id' => $stockEntry->id,
@@ -144,7 +144,7 @@ class StockEntryController extends Controller
             \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-          
+
             \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
@@ -176,7 +176,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.field_values' => 'nullable|array',
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
-                
+
             ]);
 
             if ($validator->fails()) {
@@ -310,7 +310,7 @@ class StockEntryController extends Controller
 
                     // Save field values
                     if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
-                        foreach ($entry['field_values'] as $quantityIndex =>$fieldGroup) {
+                        foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
                             foreach ($fieldGroup as $fieldValue) {
                                 StockProductFieldValue::create([
                                     'stock_product_id' => $stockEntry->id,
@@ -323,7 +323,7 @@ class StockEntryController extends Controller
 
                                 PurchaseStockProductFieldValue::create([
                                     'stock_product_id' => $stockEntry->id,
-                                    
+
                                     'purchase_stock_product_id' => $purchaseStock->id,
                                     'company_id' => $entry['company_id'],
                                     'product_id' => $stockEntry->product_id,

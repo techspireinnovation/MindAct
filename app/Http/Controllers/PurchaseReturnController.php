@@ -2945,7 +2945,7 @@ class PurchaseReturnController extends Controller
             $validator = Validator::make($request->all(), rules: [
                 'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
-                'purchase_id' => 'nullable|integer|exists:purchases,id',
+                // 'purchase_id' => 'nullable|integer|exists:purchases,id',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
                 'invoice_number' => [
@@ -3031,18 +3031,18 @@ class PurchaseReturnController extends Controller
                 'purchase_return_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
                 'purchase_return_products.*.expiry_date' => 'nullable|string|max:255',
                 'purchase_return_products.*.field_values' => 'present|array',
-                'purchase_return_products.*.field_values.*' => 'array|min:1',
-                'purchase_return_products.*.field_values.*.*.purchase_stock_product_id' => 'required_if:field_values,array|integer|exists:purchase_stock_products,id',
-                'purchase_return_products.*.field_values.*.*.purchase_product_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.stock_product_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.stock_adjustment_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.stock_reconciliation_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values.' => 'array|min:1',
+                'purchase_return_products..field_values..*.purchase_stock_product_id' => 'required_if:field_values,array|integer|exists:purchase_stock_products,id',
+                'purchase_return_products..field_values..*.purchase_product_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.stock_product_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.stock_adjustment_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.stock_reconciliation_id' => 'required_if:field_values,array',
 
-                'purchase_return_products.*.field_values.*.*.stock_transfer_id' => 'required_if:field_values,array',
-                'purchase_return_products.*.field_values.*.*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
-                'purchase_return_products.*.field_values.*.*.value' => 'required_if:field_values,array|string|max:255',
-                'purchase_return_products.*.field_values.*.*.quantity_index' => 'required_if:field_values,array|integer|min:0',
-                'purchase_return_products.*.field_values.*.*.quantity_type' => 'required_if:field_values,array|string|max:255',
+                'purchase_return_products..field_values..*.stock_transfer_id' => 'required_if:field_values,array',
+                'purchase_return_products..field_values..*.product_field_id' => 'required_if:field_values,array|integer|exists:product_fields,id',
+                'purchase_return_products..field_values..*.value' => 'required_if:field_values,array|string|max:255',
+                'purchase_return_products..field_values..*.quantity_index' => 'required_if:field_values,array|integer|min:0',
+                'purchase_return_products..field_values..*.quantity_type' => 'required_if:field_values,array|string|max:255',
             ]);
             $validated['purchase_return_products'] = $validated['purchase_return_products'] ?? [];
 
@@ -3083,105 +3083,106 @@ class PurchaseReturnController extends Controller
             };
 
             // Handle entire batch return
-            if ($validated['return_entire_batch'] ?? false) {
-                if (!$validated['purchase_id']) {
-                    return response()->json(['error' => 'purchase_id is required when return_entire_batch is true'], 422);
-                }
-                $purchase = Purchase::findOrFail($validated['purchase_id']);
-                if ($validated['purchase_bill_number'] && $validated['purchase_bill_number'] !== $purchase->purchase_bill_number) {
-                    return response()->json(['error' => 'Purchase bill number does not match purchase record'], 422);
-                }
-                $validated['purchase_return_products'] = $purchase->purchaseStockProducts()
-                    ->with(['measureUnit', 'fieldValues'])
-                    ->orderBy('created_at')
-                    ->get()
-                    ->map(function ($product) use ($validated, $branchId, $calculateQuantityInPieces) {
-                        $measureUnitId = $product->measure_unit_id ?? ($validated['purchase_return_products'][0]['measure_unit_id'] ?? null);
-                        if (!$measureUnitId) {
-                            throw new \Exception("No measure unit specified for purchase_stock_product_id {$product->id}");
-                        }
-                        $measureUnit = MeasureUnit::findOrFail($measureUnitId);
-                        $unitQuantity = $measureUnit->quantity ?? 1;
+            // $validated['return_entire_batch'] = false;
+            // if ($validated['return_entire_batch'] ?? false) {
+            //     if (!$validated['purchase_id']) {
+            //         return response()->json(['error' => 'purchase_id is required when return_entire_batch is true'], 422);
+            //     }
+            //     $purchase = Purchase::findOrFail($validated['purchase_id']);
+            //     if ($validated['purchase_bill_number'] && $validated['purchase_bill_number'] !== $purchase->purchase_bill_number) {
+            //         return response()->json(['error' => 'Purchase bill number does not match purchase record'], 422);
+            //     }
+            //     $validated['purchase_return_products'] = $purchase->purchaseStockProducts()
+            //         ->with(['measureUnit', 'fieldValues'])
+            //         ->orderBy('created_at')
+            //         ->get()
+            //         ->map(function ($product) use ($validated, $branchId, $calculateQuantityInPieces) {
+            //             $measureUnitId = $product->measure_unit_id ?? ($validated['purchase_return_products'][0]['measure_unit_id'] ?? null);
+            //             if (!$measureUnitId) {
+            //                 throw new \Exception("No measure unit specified for purchase_stock_product_id {$product->id}");
+            //             }
+            //             $measureUnit = MeasureUnit::findOrFail($measureUnitId);
+            //             $unitQuantity = $measureUnit->quantity ?? 1;
 
-                        // Calculate purchased pieces
-                        $purchasedQuantityInPieces = $calculateQuantityInPieces($product->quantity, $product->free_quantity, $unitQuantity);
+            //             // Calculate purchased pieces
+            //             $purchasedQuantityInPieces = $calculateQuantityInPieces($product->quantity, $product->free_quantity, $unitQuantity);
 
-                        // Calculate returned pieces
-                        $totalReturnedInPieces = PurchaseStockProductReturn::where('purchase_stock_product_id', $product->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->where('branch_id', $branchId)
-                            ->whereNull('deleted_at')
-                            ->sum(function ($return) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                            return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                        });
+            //             // Calculate returned pieces
+            //             $totalReturnedInPieces = PurchaseStockProductReturn::where('purchase_stock_product_id', $product->id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->where('branch_id', $branchId)
+            //                 ->whereNull('deleted_at')
+            //                 ->sum(function ($return) use ($calculateQuantityInPieces) {
+            //                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
+            //                 return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
+            //             });
 
-                        // Calculate sold pieces
-                        $soldQuantityInPieces = SaleProduct::where('purchase_product_id', $product->id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(function ($sale) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
-                            return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
-                        });
+            //             // Calculate sold pieces
+            //             $soldQuantityInPieces = SaleProduct::where('purchase_product_id', $product->id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->whereNull('deleted_at')
+            //                 ->sum(function ($sale) use ($calculateQuantityInPieces) {
+            //                 $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
+            //                 return $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
+            //             });
 
-                        // Calculate sale-returned pieces
-                        $salesReturnedInPieces = SalesReturnProduct::where('product_id', $product->product_id)
-                            ->where('company_id', $validated['company_id'])
-                            ->whereNull('deleted_at')
-                            ->sum(function ($return) use ($calculateQuantityInPieces) {
-                            $mu = MeasureUnit::findOrFail($return->measure_unit_id);
-                            return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                        });
+            //             // Calculate sale-returned pieces
+            //             $salesReturnedInPieces = SalesReturnProduct::where('product_id', $product->product_id)
+            //                 ->where('company_id', $validated['company_id'])
+            //                 ->whereNull('deleted_at')
+            //                 ->sum(function ($return) use ($calculateQuantityInPieces) {
+            //                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
+            //                 return $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
+            //             });
 
-                        // Available pieces
-                        $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
-                        if ($availableQuantityInPieces <= 0) {
-                            return null;
-                        }
+            //             // Available pieces
+            //             $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
+            //             if ($availableQuantityInPieces <= 0) {
+            //                 return null;
+            //             }
 
-                        $fieldValues = collect($product->fieldValues ?? [])->groupBy('quantity_index')->map(function ($group) {
-                            return $group->map(function ($field) {
-                                return [
-                                    'purchase_stock_product_id' => $field->purchase_stock_product_id,
-                                    'purchase_product_id' => $field->purchase_product_id,
-                                    'stock_product_id' => $field->stock_product_id,
-                                    'stock_reconciliation_id' => $field->stock_reconciliation_id,
-                                    'stock_transfer_id' => $field->stock_transfer_id,
-                                    'stock_adjustment_id' => $field->stock_adjustment_id,
-                                    'product_field_id' => $field->product_field_id,
-                                    'value' => $field->value,
-                                    'quantity_index' => $field->quantity_index,
-                                    'quantity_type' => $field->quantity_type,
-                                ];
-                            })->toArray();
-                        })->values()->take(ceil($availableQuantityInPieces))->toArray();
+            //             $fieldValues = collect($product->fieldValues ?? [])->groupBy('quantity_index')->map(function ($group) {
+            //                 return $group->map(function ($field) {
+            //                     return [
+            //                         'purchase_stock_product_id' => $field->purchase_stock_product_id,
+            //                         'purchase_product_id' => $field->purchase_product_id,
+            //                         'stock_product_id' => $field->stock_product_id,
+            //                         'stock_reconciliation_id' => $field->stock_reconciliation_id,
+            //                         'stock_transfer_id' => $field->stock_transfer_id,
+            //                         'stock_adjustment_id' => $field->stock_adjustment_id,
+            //                         'product_field_id' => $field->product_field_id,
+            //                         'value' => $field->value,
+            //                         'quantity_index' => $field->quantity_index,
+            //                         'quantity_type' => $field->quantity_type,
+            //                     ];
+            //                 })->toArray();
+            //             })->values()->take(ceil($availableQuantityInPieces))->toArray();
 
-                        return [
-                            'purchase_stock_product_id' => $product->id,
-                            'purchase_product_id' => $product->purchase_product_id ?? null,
-                            'stock_product_id' => $product->stock_product_id ?? null,
-                            'stock_reconciliation_id' => $product->stock_reconciliation_id ?? null,
-                            'stock_adjustment_id' => $product->stock_adjustment_id ?? null,
-                            'stock_transfer_id' => $product->stock_transfer_id ?? null,
-                            'product_id' => $product->product_id,
-                            'product_name' => $product->product_name,
-                            'purchase_product_code' => $product->product_code,
-                            'mfd' => $product->mfd,
-                            'customer_id' => $product->customer_id,
-                            'quantity' => $product->quantity,
-                            'free_quantity' => $product->free_quantity,
-                            'price' => $product->price,
-                            'discount_percent' => $product->discount_percent,
-                            'discount_amount' => $product->discount_amount,
-                            'amount' => ($product->quantity * ($product->price ?? 0)) - ($product->discount_amount ?? 0),
-                            'is_vatable' => $product->is_vatable,
-                            'measure_unit_id' => $measureUnit->id,
-                            'expiry_date' => $product->expiry_date,
-                            'field_values' => $fieldValues,
-                        ];
-                    })->filter()->toArray();
-            }
+            //             return [
+            //                 'purchase_stock_product_id' => $product->id,
+            //                 'purchase_product_id' => $product->purchase_product_id ?? null,
+            //                 'stock_product_id' => $product->stock_product_id ?? null,
+            //                 'stock_reconciliation_id' => $product->stock_reconciliation_id ?? null,
+            //                 'stock_adjustment_id' => $product->stock_adjustment_id ?? null,
+            //                 'stock_transfer_id' => $product->stock_transfer_id ?? null,
+            //                 'product_id' => $product->product_id,
+            //                 'product_name' => $product->product_name,
+            //                 'purchase_product_code' => $product->product_code,
+            //                 'mfd' => $product->mfd,
+            //                 'customer_id' => $product->customer_id,
+            //                 'quantity' => $product->quantity,
+            //                 'free_quantity' => $product->free_quantity,
+            //                 'price' => $product->price,
+            //                 'discount_percent' => $product->discount_percent,
+            //                 'discount_amount' => $product->discount_amount,
+            //                 'amount' => ($product->quantity * ($product->price ?? 0)) - ($product->discount_amount ?? 0),
+            //                 'is_vatable' => $product->is_vatable,
+            //                 'measure_unit_id' => $measureUnit->id,
+            //                 'expiry_date' => $product->expiry_date,
+            //                 'field_values' => $fieldValues,
+            //             ];
+            //         })->filter()->toArray();
+            // }
 
             // Process purchase return products
             // Group products by product_id for FIFO allocation
@@ -3450,7 +3451,7 @@ class PurchaseReturnController extends Controller
                                 ->groupBy('quantity_index')
                                 ->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
                             $saleReturnFieldValues = $purchaseProduct->saleProducts->flatMap(function ($sale) {
-                                return $sale->saleReturnProducts->flatMap(function ($return) {
+                                return $sale->saleProductReturns->flatMap(function ($return) {
                                     return $return->fieldValues;
                                 });
                             })->groupBy('quantity_index')
@@ -5628,46 +5629,6 @@ class PurchaseReturnController extends Controller
         }
     }
 
-    // public function show(Request $request, $id): JsonResponse
-    // {
-    //     try {
-    //         $item = PurchaseStockReturn::with([
-    //             'purchaseStockProductReturns.fieldValues'
-    //         ])->findOrFail($id);
-
-
-    //         $productIds = $item->purchaseStockProductReturns->pluck('product_id')->unique();
-
-
-    //         $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
-    //             ->where('company_id', $request->company_id)
-    //             ->with(['measureUnit:id,name,quantity'])
-    //             ->get()
-    //             ->groupBy('product_id');
-
-
-    //         foreach ($item->purchaseStockProductReturns as $productReturn) {
-    //             $units = $productMeasureUnits->get($productReturn->product_id, collect())
-    //                 ->pluck('measureUnit');
-    //             $productReturn->measure_units = $units;
-    //         }
-
-    //         return response()->json([
-    //             "message" => "Successful!!",
-    //             "data" => $item
-    //         ]);
-
-    //     } catch (ModelNotFoundException $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'Item not found'], 404);
-    //     } catch (QueryException $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An unexpected query error occurred'], 500);
-    //     } catch (\Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
-    //     }
-    // }
 
     public function showQuantity(Request $request, $id): JsonResponse
     {
@@ -5735,29 +5696,39 @@ class PurchaseReturnController extends Controller
                 ->get()
                 ->groupBy('product_id');
 
-            // Step 4: Get available quantity (reuse service)
-            $purchaseBillNumber = $item->purchase_bill_number;
-            $request->merge([
-                'purchase_bill_number' => $purchaseBillNumber,
-                'company_id' => $request->company_id ?? null,
-                'branch_id' => $request->branch_id ?? null,
-            ]);
 
-            $response = AvailableQuantityService::getPurchaseAvailableByBillNumber($request, $purchaseBillNumber);
-            $responseData = $response->getData(true);
-
-            // Step 5: Map product_id → remaining_quantity
-            $availableMap = collect($responseData['data']['purchase_stock_products'] ?? [])
-                ->mapWithKeys(function ($item) {
-                    return [$item['product_id'] => $item['remaining_quantity']];
-                });
-
-            // Step 6: Inject measure units, field names, and remaining quantity
             foreach ($item->purchaseStockProductReturns as $productReturn) {
-                // measure units (unchanged)
+
                 $units = $productMeasureUnits->get($productReturn->product_id, collect())
                     ->pluck('measureUnit');
                 $productReturn->setRelation('measure_units', $units);
+                $productID = $productReturn->product_id;
+
+                $purchaseBillNumber = $item->purchase_bill_number;
+                if ($purchaseBillNumber) {
+                    $response = AvailableQuantityService::getPurchaseAvailableByBillNumber($request, $purchaseBillNumber);
+                    $responseData = $response->getData(true);
+
+                    // Step 5: Map product_id → remaining_quantity
+                    $availableMap = collect($responseData['data']['purchase_stock_products'] ?? [])
+                        ->mapWithKeys(function ($item) {
+                            return [$item['product_id'] => $item['remaining_quantity']];
+                        });
+                } else {
+                    $response = AvailableQuantityService::getProductDetailsByInput($request, $productID);
+                    $responseData = $response->getData(true);
+
+                    // Step 5: Map product_id → remaining_quantity
+                    // BEST FIX: Sum remaining_quantity_in_pieces per product
+                    $availableMap = collect($responseData['data'] ?? [])
+                        ->keyBy('product_id')
+                        ->mapWithKeys(function ($productData) {
+                            return [$productData['product_id'] => $productData['available_quantity']];
+                        });
+                }
+                $productReturn->product_code = $productReturn->purchase_product_code;
+                unset($productReturn->purchase_product_code);
+
 
                 // field_values (add field name)
                 $productReturn->setRelation(

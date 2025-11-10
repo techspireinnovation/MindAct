@@ -10,6 +10,7 @@ use Anuzpandey\LaravelNepaliDate\LaravelNepaliDate;
 use Pratiksh\Nepalidate\Services\EnglishDate;
 
 use NepaliCalendar;
+use App\Services\AvailableQuantityService;
 use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
@@ -1280,12 +1281,12 @@ class SaleController extends Controller
         int $branchId,
         ?int $ignoreSaleId = null
     ): float {
-        // 1) pieces that entered via purchase
+
         $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQty);
         $freePieces = $this->calculatePieces($purchaseProduct->free_quantity ?? 0, $measureUnitQty);
         $purchasedPieces = $regularPieces + $freePieces;
 
-        // 2) pieces already returned to supplier
+
         $purchaseReturnedPieces = $purchaseProduct->purchaseStockProductReturns()
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
@@ -1300,7 +1301,7 @@ class SaleController extends Controller
                 0
             );
 
-        // 3) pieces already sold (ignore the sale we are editing)
+
         $soldPieces = $purchaseProduct->saleProducts()
             ->where('company_id', $companyId)
             ->when($ignoreSaleId, fn($q, $id) => $q->where('sale_id', '!=', $id))
@@ -1316,7 +1317,7 @@ class SaleController extends Controller
                 0
             );
 
-        // 4) pieces returned by customers (adds back to stock)
+
         $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->whereHas(
                 'saleProduct',
@@ -1327,7 +1328,7 @@ class SaleController extends Controller
             ->when(
                 $ignoreSaleId,
                 fn($q, $id) =>
-                // ignore returns that belong to the sale we are editing
+
                 $q->whereHas('saleProduct.sale', fn($sq) => $sq->where('id', '!=', $id))
             )
             ->where('company_id', $companyId)
@@ -1356,8 +1357,6 @@ class SaleController extends Controller
 
         return $available;
     }
-
-
 
 
 
@@ -2142,10 +2141,11 @@ class SaleController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('sales')
+                        ->ignore($id)
                         ->where(function ($query) use ($request, $id) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at')
-                                ->where('id', '!=', $id);
+                                ->whereNull('deleted_at');
+
                         }),
                 ],
                 'invoice_date' => 'nullable|date',
@@ -2740,14 +2740,64 @@ class SaleController extends Controller
     }
 
 
-    public function show($id): JsonResponse
+    public function show(Request $request, $id): JsonResponse
     {
         try {
             $item = Sale::with('saleProducts.fieldValues')->findOrFail($id);
+            $productIds = $item->saleProducts->pluck('product_id')->unique();
+
+            // Step 3: Load measure units
+            $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+                ->where('company_id', $request->company_id)
+                ->with(['measureUnit:id,name,quantity'])
+                ->get()
+                ->groupBy('product_id');
+
+            $request->merge([
+
+                'company_id' => $request->company_id ?? null,
+                'branch_id' => $request->branch_id ?? null,
+            ]);
+
+
+            foreach ($item->saleProducts as $saleProducts) {
+
+                $units = $productMeasureUnits->get($saleProducts->product_id, collect())
+                    ->pluck('measureUnit');
+                $saleProducts->setRelation('measure_units', $units);
+                $productID = $saleProducts->product_id;
+                $productCode = Product::where('id', $productID)->value('product_unique_id');
+                $productName = Product::where('id', $productID)->value('name');
+                $response = AvailableQuantityService::getAvailableProductDetailsById($request, $productID);
+                $responseData = $response->getData(true);
+
+
+                $availableMap = collect($responseData['data'] ?? [])
+                    ->mapWithKeys(function ($item) {
+                        return [$item['product_id'] => $item['available_quantity']];
+                    });
+
+                // field_values (add field name)
+                $saleProducts->setRelation(
+                    'field_values',
+                    $saleProducts->fieldValues->map(function ($fv) {
+                        $fv->name = $fv->productField->name ?? null;
+                        return $fv;
+                    })
+                );
+
+                // inject remaining quantity
+                $saleProducts->product_name = $productName;
+                unset($saleProducts->name);
+                $saleProducts->product_code = $productCode;
+                $saleProducts->remaining_quantity = $availableMap[$saleProducts->product_id] ?? 0;
+            }
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            \Log::error($e->getMessage());
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            \Log::error($e->getMessage());
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
@@ -3190,11 +3240,6 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-
-
-
-
 
 
 

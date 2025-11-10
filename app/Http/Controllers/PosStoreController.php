@@ -52,7 +52,7 @@ class PosStoreController extends SaleController
         try {
 
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer',
+
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'salesman_id' => 'nullable|integer|exists:salesmen,id',
                 'customer_name' => 'required|string|max:255',
@@ -87,6 +87,14 @@ class PosStoreController extends SaleController
                 'health_insurance' => 'nullable|numeric|min:0',
                 'balance' => 'nullable|numeric|min:0',
                 'taxable_amount' => 'nullable|numeric|min:0',
+                'promo_disc' => 'nullable',
+                'bill_amount' => 'nullable|numeric|min:0',
+                'hold_discount' => 'nullable|numeric|min:0',
+                'final_amount' => 'nullable|numeric|min:0',
+                'ic_amount' => 'nullable|numeric|min:0',
+                'tender' => 'nullable|numeric|min:0',
+                'return' => 'nullable|numeric|min:0',
+
                 'non_taxable_amount' => 'nullable|numeric|min:0',
                 'ref_bill_number' => [
                     'nullable',
@@ -168,6 +176,7 @@ class PosStoreController extends SaleController
 
             $validated = $validator->validated();
             $validated['branch_id'] = $request->branch_id;
+            $validated['company_id'] = $request->company_id;
 
             Log::debug('Sale request validated', ['sale_products' => $validated['sale_products']]);
 
@@ -199,6 +208,13 @@ class PosStoreController extends SaleController
                     'balance' => $validated['balance'] ?? 0,
                     'payment' => $validated['payment'] ?? "",
                     'taxable_amount' => $validated['taxable_amount'] ?? 0,
+                    'promo_disc' => $validated['promo_disc'],
+                    'bill_amount' => $validated['bill_amount'] ?? 0,
+                    'hold_discount' => $validated['hold_discount'] ?? 0,
+                    'final_amount' => $validated['final_amount'] ?? 0,
+                    'ic_amount' => $validated['ic_amount'] ?? 0,
+                    'tender' => $validated['tender'] ?? 0,
+                    'return' => $validated['return'] ?? 0,
                     'non_taxable_amount' => $validated['non_taxable_amount'] ?? 0,
                     'ref_bill_number' => $validated['ref_bill_number'] ?? null,
                     'round_off_amount' => $validated['round_off_amount'] ?? 0,

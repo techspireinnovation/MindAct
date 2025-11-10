@@ -844,7 +844,7 @@ class SalesReturnController extends Controller
                 'document_number' => 'nullable|string|max:255',
                 'ref_bill_no' => 'nullable|string|max:255',
                 'return_bill_no' => 'nullable|string|max:255',
-               
+
                 'batch_no' => 'nullable|string|max:255|unique:sales_returns,batch_no',
                 'balance' => 'nullable|numeric|min:0',
                 'invoice_date' => 'nullable|date',
@@ -4750,12 +4750,7 @@ class SalesReturnController extends Controller
                 'document_number' => 'nullable|string|max:255',
                 'ref_bill_no' => 'nullable|string|max:255',
                 'return_bill_no' => 'nullable|string|max:255',
-                'sales_bill_number' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('sales_returns', 'sales_bill_number')->ignore($id),
-                ],
+
                 'batch_no' => [
                     'nullable',
                     'string',
@@ -5555,6 +5550,7 @@ class SalesReturnController extends Controller
                     'customer_contact' => $validated['customer_contact'] ?? null,
                     'salesman_id' => $validated['salesman_id'] ?? null,
                     'invoice_number' => $validated['invoice_number'] ?? null,
+                    'sales_bill_number,' => $validated['sale_invoice_number'] ?? null,
                     'document_number' => $validated['document_number'] ?? null,
                     'batch_no' => $validated['batch_no'] ?? null,
                     'balance' => $validated['balance'] ?? null,

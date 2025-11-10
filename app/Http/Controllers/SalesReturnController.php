@@ -379,8 +379,13 @@ class SalesReturnController extends Controller
 
                 // Add field values only if not present in sale_return_product_field_values
                 if ($saleProduct->fieldValues->isNotEmpty()) {
-                    foreach ($saleProduct->fieldValues as $fv) {
+                    $sortedFieldValues = $saleProduct->fieldValues->sortBy(function ($fv) {
+                        return [$fv->purchase_stock_product_id, $fv->quantity_index];
+                    });
+
+                    foreach ($sortedFieldValues as $fv) {
                         $key = $saleProduct->id . '-' . $fv->quantity_index . '-' . $fv->product_field_id;
+
                         if (!isset($returnedFieldValues[$key])) {
                             $products[$productId]['field_values'][] = [
                                 'sale_product_id' => $saleProduct->id,
@@ -396,13 +401,6 @@ class SalesReturnController extends Controller
                                 'quantity_index' => $fv->quantity_index,
                                 'quantity_type' => $fv->quantity_type,
                             ];
-                            Log::info('Added eligible field value', [
-                                'sale_product_id' => $saleProduct->id,
-                                'quantity_index' => $fv->quantity_index,
-                                'product_field_id' => $fv->product_field_id,
-                                'value' => $fv->value,
-                                'quantity_type' => $fv->quantity_type,
-                            ]);
                         } else {
                             Log::info('Excluded returned field value', [
                                 'sale_product_id' => $saleProduct->id,

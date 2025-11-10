@@ -1281,12 +1281,12 @@ class SaleController extends Controller
         int $branchId,
         ?int $ignoreSaleId = null
     ): float {
-     
+
         $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQty);
         $freePieces = $this->calculatePieces($purchaseProduct->free_quantity ?? 0, $measureUnitQty);
         $purchasedPieces = $regularPieces + $freePieces;
 
-       
+
         $purchaseReturnedPieces = $purchaseProduct->purchaseStockProductReturns()
             ->where('company_id', $companyId)
             ->whereNull('deleted_at')
@@ -1301,7 +1301,7 @@ class SaleController extends Controller
                 0
             );
 
-      
+
         $soldPieces = $purchaseProduct->saleProducts()
             ->where('company_id', $companyId)
             ->when($ignoreSaleId, fn($q, $id) => $q->where('sale_id', '!=', $id))
@@ -1317,7 +1317,7 @@ class SaleController extends Controller
                 0
             );
 
-       
+
         $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->whereHas(
                 'saleProduct',
@@ -1328,7 +1328,7 @@ class SaleController extends Controller
             ->when(
                 $ignoreSaleId,
                 fn($q, $id) =>
-               
+
                 $q->whereHas('saleProduct.sale', fn($sq) => $sq->where('id', '!=', $id))
             )
             ->where('company_id', $companyId)
@@ -2141,10 +2141,11 @@ class SaleController extends Controller
                     'string',
                     'max:255',
                     Rule::unique('sales')
+                        ->ignore($id)
                         ->where(function ($query) use ($request, $id) {
                             return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at')
-                                ->where('id', '!=', $id);
+                                ->whereNull('deleted_at');
+
                         }),
                 ],
                 'invoice_date' => 'nullable|date',
@@ -2758,18 +2759,18 @@ class SaleController extends Controller
                 'branch_id' => $request->branch_id ?? null,
             ]);
 
-          
+
             foreach ($item->saleProducts as $saleProducts) {
-                
+
                 $units = $productMeasureUnits->get($saleProducts->product_id, collect())
                     ->pluck('measureUnit');
                 $saleProducts->setRelation('measure_units', $units);
                 $productID = $saleProducts->product_id;
-                $productCode  = Product::where('id',$productID)->value('product_unique_id');
-                $productName  = Product::where('id',$productID)->value('name');
+                $productCode = Product::where('id', $productID)->value('product_unique_id');
+                $productName = Product::where('id', $productID)->value('name');
                 $response = AvailableQuantityService::getAvailableProductDetailsById($request, $productID);
                 $responseData = $response->getData(true);
-               
+
 
                 $availableMap = collect($responseData['data'] ?? [])
                     ->mapWithKeys(function ($item) {
@@ -2786,17 +2787,17 @@ class SaleController extends Controller
                 );
 
                 // inject remaining quantity
-                  $saleProducts->product_name  = $productName;
-                  unset($saleProducts->name);
-                $saleProducts->product_code  = $productCode;
+                $saleProducts->product_name = $productName;
+                unset($saleProducts->name);
+                $saleProducts->product_code = $productCode;
                 $saleProducts->remaining_quantity = $availableMap[$saleProducts->product_id] ?? 0;
             }
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-             \Log::error($e->getMessage());
+            \Log::error($e->getMessage());
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-             \Log::error($e->getMessage());
+            \Log::error($e->getMessage());
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
@@ -3239,11 +3240,6 @@ class SaleController extends Controller
             ], 500);
         }
     }
-
-
-
-
-
 
 
 

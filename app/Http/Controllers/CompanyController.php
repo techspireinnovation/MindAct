@@ -741,7 +741,9 @@ class CompanyController extends Controller
     public function updateSaleMasterKey(Request $request): JsonResponse
     {
         try {
-            $user = $request->user();
+            $userId = $request->user_id;
+
+            $user = User::on('mysql')->where('id', $userId)->first();
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
                 return response()->json([
@@ -794,7 +796,7 @@ class CompanyController extends Controller
                 }
 
                 // Verify company exists and is not soft-deleted
-                $company = Company::where('id', $companyId)
+                $company = Company::on('mysql')->where('id', $companyId)
                     ->whereNull('deleted_at')
                     ->first();
 
@@ -805,7 +807,7 @@ class CompanyController extends Controller
                     ], 404);
                 }
 
-                $companyUser = CompanyUser::where('user_id', $user->id)
+                $companyUser = CompanyUser::on('mysql')->where('user_id', $user->id)
                     ->where('company_id', $companyId)
                     ->first();
 

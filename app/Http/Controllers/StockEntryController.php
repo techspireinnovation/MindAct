@@ -29,6 +29,7 @@ class StockEntryController extends Controller
         $transformed = $stockEntries->getCollection()->map(function ($stockEntry) {
             return [
                 'id' => $stockEntry->id,
+                'entry_code' => $stockEntry->entry_code,
                 'name' => $stockEntry->name,
                 'product_id' => $stockEntry->product_id,
                 'branch_id' => $stockEntry->branch_id,
@@ -41,6 +42,7 @@ class StockEntryController extends Controller
                 'rate' => $stockEntry->rate,
                 'amount' => $stockEntry->amount,
                 'location_id' => $stockEntry->location_id,
+                
 
                 'location_name' => optional($stockEntry->location)->name,
 
@@ -60,6 +62,7 @@ class StockEntryController extends Controller
         try {
             $validator = Validator::make($request->all(), [
                 'stock_entries' => 'required|array',
+                'entry_code' => 'required|string|unique:stock_entries,entry_code',
 
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',

@@ -12,6 +12,7 @@ class StockEntry extends BaseTenantModel
     use softDeletes, HasFactory;
 
     protected $fillable = [
+        'entry_code',
         'product_code',
         'product_name',
         'company_id',

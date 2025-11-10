@@ -67,10 +67,10 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
 use App\Http\Middleware\SuperAdminMiddleware;
- use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
- use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
- use App\Http\Controllers\CompanyDashboard\QuickActionController;
- use App\Http\Controllers\CompanyDashboard\OverallInformationController;
+use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
+use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
+use App\Http\Controllers\CompanyDashboard\QuickActionController;
+use App\Http\Controllers\CompanyDashboard\OverallInformationController;
 use App\Http\Controllers\CompanyDashboard\TopSellingProductsController;
 use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
 use App\Http\Controllers\CompanyDashboard\RecentSalesController;
@@ -107,8 +107,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
 
     Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
-   
-    
+
+
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
@@ -257,7 +257,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
-     Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
+    Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
 
     Route::get('main-groups-list', [MainGroupController::class, 'mainGroupList']);
     Route::get('main-group-lists', [MainGroupController::class, 'mainGroupListDetails']);
@@ -372,6 +372,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
     Route::get('categories-active-list', [ProductCategoryController::class, 'activeCategoryList']);/////
     Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
+    Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
     Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
@@ -499,7 +500,6 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
 
-    Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
     Route::middleware(['company.access'])->group(function () {

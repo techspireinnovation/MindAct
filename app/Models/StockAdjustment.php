@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockAdjustment extends Model
+class StockAdjustment extends BaseTenantModel
 {
     use softDeletes,HasFactory;
 
@@ -31,8 +31,8 @@ class StockAdjustment extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function stockProductDetails(): HasMany {
-        return $this->hasMany(StockProductDetails::class, 'stock_adjustment_id');
+    public function StockAdjustmentProduct(): HasMany {
+        return $this->hasMany(StockAdjustmentProduct::class, 'stock_adjustment_id');
     }
     public function stockProductDetailsUse(): HasMany {
         return $this->hasMany(StockProductDetails::class , 'stock_adjustment_id');

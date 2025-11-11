@@ -115,7 +115,7 @@ class AreaController extends Controller
                         }),
                 ],
 
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'is_primary' => 'boolean',
                 'is_active' => 'boolean|nullable',
             ]);
@@ -165,7 +165,7 @@ class AreaController extends Controller
 
                 ],
 
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'is_primary' => 'boolean',
                 'is_active' => 'boolean|nullable',
             ]);

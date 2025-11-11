@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class AccountGroup extends Model
+class AccountGroup extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 
@@ -58,14 +58,17 @@ class AccountGroup extends Model
         return $this->hasMany(VoucherSummary::class, 'account_group_id');
 
     }
-    public function fixedAssetGroup(){
-        return $this->hasMany(FixedAssetGroup::class,'account_group_id');
+    public function fixedAssetGroup()
+    {
+        return $this->hasMany(FixedAssetGroup::class, 'account_group_id');
     }
 
-    public function journalVoucherTransactions(){
-        return $this->hasMany(JournalVoucherTransaction::class,'account_group_id');
+    public function journalVoucherTransactions()
+    {
+        return $this->hasMany(JournalVoucherTransaction::class, 'account_group_id');
     }
-    public function voucherSummaryDetails(){
-        return $this->hasMany(VoucherSummaryDetail::class,'account_group_id');
+    public function voucherSummaryDetails()
+    {
+        return $this->hasMany(VoucherSummaryDetail::class, 'account_group_id');
     }
 }

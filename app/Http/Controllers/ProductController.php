@@ -534,7 +534,7 @@ class ProductController extends Controller
                         }),
                 ],
                 'minimum_stock' => 'nullable|integer',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'category_id' => 'integer|nullable|',
                 'sub_category_id' => 'integer|nullable|',
                 'is_fixed_amount' => 'boolean|nullable',
@@ -757,7 +757,7 @@ class ProductController extends Controller
             'product_list.*.discount' => 'nullable|numeric',
             'product_list.*.final_price' => 'nullable|numeric',
             'product_list.*.primary_measure_unit_id' => 'nullable||integer|exists:measure_units,id',
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'integer'
         ]);
 
 

@@ -23,7 +23,7 @@ class SaleAdditionalController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'company_id' => 'required|exists:companies,id',
+            'company_id' => 'required',
             'sale_id' => 'required|exists:sales,id',
             'place' => 'nullable|string|max:255',
             'transport' => 'nullable|string|max:255',
@@ -79,7 +79,7 @@ class SaleAdditionalController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'sale_id' => 'required|exists:sales,id',
                 'place' => 'nullable|string|max:255',
                 'transport' => 'nullable|string|max:255',

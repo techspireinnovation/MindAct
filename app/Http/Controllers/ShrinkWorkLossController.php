@@ -68,7 +68,7 @@ class ShrinkWorkLossController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id'              => 'required|exists:companies,id',
+                'company_id'              => 'required',
                 'branch_id'               => 'required|exists:branches,id',
                 'shrinking_loss_percent'  => 'nullable|numeric|min:0',
                 'working_loss_percent'    => 'nullable|numeric|min:0',

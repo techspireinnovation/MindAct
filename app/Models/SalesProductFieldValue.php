@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class SalesProductFieldValue extends Model
+class SalesProductFieldValue extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 
@@ -21,7 +21,13 @@ class SalesProductFieldValue extends Model
         'product_field_id',
         'product_id',
         'sale_product_id',
-        'quantity_index', 
+        'purchase_stock_product_id',
+        'purchase_product_id',
+        'stock_product_id',
+        'stock_reconciliation_id',
+        'stock_transfer_id',
+        'stock_adjustment_id',
+        'quantity_index',
         'value',
         'deleted_at',
         'quantity_type'

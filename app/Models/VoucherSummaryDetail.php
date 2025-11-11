@@ -6,7 +6,7 @@ use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class VoucherSummaryDetail extends Model
+class VoucherSummaryDetail extends BaseTenantModel
 {
     use SoftDeletes;
     protected $fillable = [

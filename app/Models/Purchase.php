@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Purchase extends Model
+class Purchase extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -25,6 +25,7 @@ class Purchase extends Model
         'customer_name',
         'pan_number',
         'company_id',
+        'branch_id',
         'bank_id',
         'purchase_type',
         'address',
@@ -61,7 +62,7 @@ class Purchase extends Model
 
     protected static function booted()
     {
-        // self::observe(PurchaseObserver::class);
+        self::observe(PurchaseObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 
@@ -80,9 +81,19 @@ class Purchase extends Model
         return $this->hasMany(PurchaseReturn::class, 'purchase_id');
     }
 
+    public function purchaseStockReturns()
+    {
+        return $this->hasMany(PurchaseStockReturn::class, 'purchase_id');
+    }
+
     public function purchaseProducts(): HasMany
     {
         return $this->hasMany(PurchaseProduct::class);
+    }
+
+    public function purchaseStockProducts(): HasMany
+    {
+        return $this->hasMany(PurchaseStockProduct::class);
     }
 
     public function getPurchaseProductQuantityAttribute(): int
@@ -101,13 +112,16 @@ class Purchase extends Model
     }
 
 
-    public function purchaseProductsUse(){
-        return $this->hasMany(PurchaseProduct::class,'purchase_id');
+    public function purchaseProductsUse()
+    {
+        return $this->hasMany(PurchaseProduct::class, 'purchase_id');
     }
-    public function purchaseReturnProductsUse(){
-        return $this->hasMany(PurchaseReturnProductDetails::class,'purchase_id');
+    public function purchaseReturnProductsUse()
+    {
+        return $this->hasMany(PurchaseReturnProductDetails::class, 'purchase_id');
     }
-    public function purchaseReturnsUse(){
-        return $this->hasMany(PurchaseReturn::class,'purchase_id');
+    public function purchaseReturnsUse()
+    {
+        return $this->hasMany(PurchaseReturn::class, 'purchase_id');
     }
 }

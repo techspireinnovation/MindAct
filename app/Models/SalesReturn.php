@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class SalesReturn extends Model
+class SalesReturn extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -25,6 +25,7 @@ class SalesReturn extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'customer_id',
         'salesman_id',
         'sale_id',
@@ -36,6 +37,7 @@ class SalesReturn extends Model
         'return_bill_no',
         'ref_bill_no',
         'invoice_number',
+        'sales_bill_number',
         'document_number',
         'batch_no',
         'balance',

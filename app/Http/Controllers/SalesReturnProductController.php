@@ -19,7 +19,7 @@ class SalesReturnProductController extends Controller
     {
         try {
             $validated = $request->validate([
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required|',
                 'sale_rate_type' => 'required|in:retail,wholesale',
                 'return_invoice_number' => 'required|string|max:255',
                 'expiry_date' => 'nullable|date',

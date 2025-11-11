@@ -7,15 +7,19 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockEntry extends Model
+class StockEntry extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 
     protected $fillable = [
+        'stock_main_id',
+        'entry_code',
         'product_code',
         'product_name',
         'company_id',
+        'branch_id',
         'product_id',
+        'purchase_type',
         'uom',
         'batch_no',
         'expiry_date',
@@ -32,6 +36,12 @@ class StockEntry extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
+    public function stock()
+{
+    return $this->belongsTo(StockMain::class);
+}
+
+
 
     public function product()
     {
@@ -41,6 +51,12 @@ class StockEntry extends Model
     public function location()
     {
         return $this->hasOne(Location::class, 'id', 'location_id');
+    }
+
+
+    public function fieldValues()
+    {
+        return $this->hasMany(StockProductFieldValue::class, 'stock_product_id');
     }
 
 

@@ -9,15 +9,17 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 use Request;
 
-class PurchaseProduct extends Model
+class PurchaseProduct extends BaseTenantModel
 {
 
     protected $fillable = [
         'customer_id',
         'company_id',
         'purchase_id',
+        'branch_id',
         'product_id',
         'product_name',
+        'purchase_type',
         'product_code',
         'expiry_date',
         'quantity',

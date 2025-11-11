@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class PurchaseReturn extends Model
+class PurchaseReturn extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -65,7 +65,7 @@ class PurchaseReturn extends Model
 
     protected static function booted()
     {
-        self::observe(PurchaseReturnObserver::class);
+        // self::observe(PurchaseReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 

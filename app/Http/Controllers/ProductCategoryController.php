@@ -122,7 +122,7 @@ class ProductCategoryController extends Controller
                             ->whereNull('deleted_at');
                     }),
                 ],
-                'company_id' => 'required|integer|exists:companies,id',
+                'company_id' => 'required',
                 'is_primary' => 'boolean',
                 'is_active' => 'boolean'
             ]);
@@ -153,8 +153,10 @@ class ProductCategoryController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Company not found'], 404);
         } catch (QueryException $e) {
+          
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -191,7 +193,7 @@ class ProductCategoryController extends Controller
 
                         }),
                 ],
-                'company_id' => 'sometimes|required|integer|exists:companies,id',
+                'company_id' => 'sometimes|required|integer',
                 'is_active' => 'sometimes|boolean',
                 'is_primary' => 'sometimes|boolean',
             ]);
@@ -285,40 +287,40 @@ class ProductCategoryController extends Controller
     }
 
 
- public function activeCategoryList(Request $request): JsonResponse
-{
-    try {
-        $companyId = $request->company_id;
+    public function activeCategoryList(Request $request): JsonResponse
+    {
+        try {
+            $companyId = $request->company_id;
 
-        if (!$companyId) {
-            return response()->json(["error" => "No Associated company Found !!"], 404);
+            if (!$companyId) {
+                return response()->json(["error" => "No Associated company Found !!"], 404);
+            }
+
+            $categories = ProductCategory::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->where('is_active', true) // ✅ only active categories
+                ->get(['id', 'name', 'is_primary']) // ✅ also fetch is_primary
+                ->map(fn($category) => [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'is_primary' => $category->is_primary, // ✅ add to response
+                ])
+                ->values()
+                ->toArray();
+
+            return response()->json([
+                "message" => "Active Category List Received !!",
+                "data" => $categories
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Category Not Found !!"], 404);
+        } catch (QueryException $e) {
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
-
-        $categories = ProductCategory::where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->where('is_active', true) // ✅ only active categories
-            ->get(['id', 'name', 'is_primary']) // ✅ also fetch is_primary
-            ->map(fn($category) => [
-                'id' => $category->id,
-                'name' => $category->name,
-                'is_primary' => $category->is_primary, // ✅ add to response
-            ])
-            ->values()
-            ->toArray();
-
-        return response()->json([
-            "message" => "Active Category List Received !!",
-            "data" => $categories
-        ], 200);
-
-    } catch (ModelNotFoundException $e) {
-        return response()->json(["error" => "Category Not Found !!"], 404);
-    } catch (QueryException $e) {
-        return response()->json(["error" => "Database error occurred !!"], 500);
-    } catch (\Exception $e) {
-        return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
-}
 
 
 }

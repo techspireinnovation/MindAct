@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 
-class PaymentVoucher extends Model
+class PaymentVoucher extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 
-class ProductSubCategory extends Model
+class ProductSubCategory extends BaseTenantModel
 {
 
     use softDeletes, HasFactory;
@@ -18,7 +18,7 @@ class ProductSubCategory extends Model
         'is_active' => 'boolean',
     ];
 
-    protected $fillable=[
+    protected $fillable = [
         'name',
         'company_id',
         'category_id',
@@ -34,10 +34,12 @@ class ProductSubCategory extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function category(){
+    public function category()
+    {
         return $this->belongsTo(ProductCategory::class, 'category_id');
     }
-    public function productscategory(){
+    public function productscategory()
+    {
         return $this->hasMany(Product::class, 'sub_category_id');
     }
 }

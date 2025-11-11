@@ -129,6 +129,7 @@ return [
         App\Providers\AppServiceProvider::class,
         App\Providers\BroadcastServiceProvider::class,
         Rollbar\Laravel\RollbarServiceProvider::class,
+        App\Providers\TenancyServiceProvider::class,
     ])->toArray(),
 
 ];

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 
-class PaymentVoucherDetail extends Model
+class PaymentVoucherDetail extends BaseTenantModel
 {
     use HasFactory;
 

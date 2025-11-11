@@ -3,11 +3,14 @@
 namespace App\Http\Middleware;
 
 use App\Models\Branch;
+
+use App\Models\Tenant;
 use App\Models\Company;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
+use App\Providers\TenancyServiceProvider;
 use Illuminate\Support\Facades\Auth;
 use App\Models\CompanyUser;
 
@@ -92,6 +95,36 @@ class CompanyAccessMiddleware
                 'success' => false,
                 'message' => 'Forbidden: No associated company found for user.',
             ], 403);
+        }
+
+        $tenant = Tenant::where('data->company_id', $companyId)->first();
+
+        if ($tenant && !empty($tenant->database)) {
+            try {
+                \App\Providers\TenantInitializer::switchTenant($tenant); // 👈 This connects to tenant DB
+                Log::info('Tenant database switched in middleware', [
+                    'tenant_id' => $tenant->id,
+                    'database' => $tenant->database,
+                ]);
+            } catch (\Throwable $e) {
+                Log::error('Tenant DB switch failed', [
+                    'error' => $e->getMessage(),
+                    'tenant_id' => $tenant->id ?? null,
+                    'company_id' => $companyId,
+                ]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to connect to tenant database.',
+                ], 500);
+            }
+        } else {
+            Log::error('Tenant not found or invalid database', [
+                'company_id' => $companyId,
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Tenant not found or has no database assigned.',
+            ], 404);
         }
 
         $branchId = $request->input('branch_id');

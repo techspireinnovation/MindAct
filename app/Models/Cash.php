@@ -9,23 +9,23 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Validator;
 
-class Cash extends Model
+class Cash extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 
 
     protected $casts = [
-       
+
         'is_active' => 'boolean'
     ];
-   protected $fillable = [
+    protected $fillable = [
         'company_id',
         'name',
         'is_primary',
         'is_active',
     ];
 
-  
+
 
     protected $dates = ['deleted_at'];
 

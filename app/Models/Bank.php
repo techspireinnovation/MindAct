@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Bank extends Model
+class Bank extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 
@@ -31,7 +31,7 @@ class Bank extends Model
 
     protected static function booted()
     {
-        self::observe(BankObserver::class);
+        // self::observe(BankObserver::class);
         static::addGlobalScope(new CompanyIdScope());
     }
 
@@ -52,5 +52,5 @@ class Bank extends Model
         return $this->hasMany(Customer::class, 'bank_id');
     }
 
-   
+
 }

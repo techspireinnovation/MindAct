@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class StockReconciliation extends Model
+class StockReconciliation extends BaseTenantModel
 {
   use softDeletes,HasFactory;
 
@@ -18,7 +18,9 @@ class StockReconciliation extends Model
     ];
 
     protected $fillable = [
+
         'company_id',
+        'branch_id',
         'date_ad',
         'date_bs',
         'reconciliation_no',

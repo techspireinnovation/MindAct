@@ -30,7 +30,7 @@ class StockEntryController extends Controller
         $transformed = $stockMains->getCollection()->map(function ($stockMain) {
             return [
                 'id' => $stockMain->id,
-                'code' => $stockMain->entry_code,
+                'code' => $stockMain->code,
                 'name' => $stockMain->name,
 
 

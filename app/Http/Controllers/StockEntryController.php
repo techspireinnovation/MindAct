@@ -265,41 +265,39 @@ class StockEntryController extends Controller
         }
     }
 
-   public function show(Request $request): JsonResponse
-{
-    try {
-        $companyId = $request->company_id;
-        $branchId = $request->branch_id;
+    public function show(Request $request, $id): JsonResponse
+    {
+        try {
+            $companyId = $request->company_id;
+            $branchId = $request->branch_id;
 
-        $branchData = Branch::where('id', $branchId)->firstOrFail();
+            $branchData = Branch::where('id', $branchId)->firstOrFail();
 
-        // Check if the branch is main
-        $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
+            // Check if the branch is main
+            $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
-        if ($isMainBranch) {
-            $items = StockMain::where('company_id', $companyId)
-                ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit')
-                ->get();
-        } else {
-            $items = StockMain::where('company_id', $companyId)
-                ->where('branch_id', $branchId)
-                ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit')
-                ->get();
-        }
+            // Fetch only the requested StockMain
+            $query = StockMain::where('id', $id)
+                ->where('company_id', $companyId)
+                ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit');
 
-        // Collect all product IDs from stock entries
-        $productIds = $items->flatMap(fn($stockMain) => $stockMain->stockEntries->pluck('product_id'))->unique();
+            if (!$isMainBranch) {
+                $query->where('branch_id', $branchId);
+            }
 
-        // Load measure units from ProductList
-        $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
-            ->where('company_id', $companyId)
-            ->with(['measureUnit:id,name,quantity'])
-            ->get()
-            ->groupBy('product_id');
+            $stockMain = $query->firstOrFail();
 
-        foreach ($items as $stockMain) {
+            // Collect all product IDs from stock entries
+            $productIds = $stockMain->stockEntries->pluck('product_id')->unique();
+
+            // Load measure units from ProductList
+            $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+                ->where('company_id', $companyId)
+                ->with(['measureUnit:id,name,quantity'])
+                ->get()
+                ->groupBy('product_id');
+
             foreach ($stockMain->stockEntries as $stockEntry) {
-
                 // Measure units from ProductList
                 $listUnits = $productMeasureUnits->get($stockEntry->product_id, collect())
                     ->pluck('measureUnit')
@@ -344,24 +342,24 @@ class StockEntryController extends Controller
                 // Remove product object
                 unset($stockEntry->product);
             }
+
+            return response()->json([
+                "message" => "Successful!!",
+                "data" => $stockMain
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Item not found'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected query error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
-        return response()->json([
-            "message" => "Successful!!",
-            "data" => $items
-        ]);
-
-    } catch (ModelNotFoundException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Item not found'], 404);
-    } catch (QueryException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'An unexpected query error occurred'], 500);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
-}
+
 
 
 

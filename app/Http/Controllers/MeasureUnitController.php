@@ -105,7 +105,7 @@ class MeasureUnitController extends Controller
                 'is_primary' => 'boolean',
                 'quantity' => 'integer',
                 'symbol' => 'string|max:255',
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'nullable|integer'
             ]);
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 MeasureUnit::where('company_id', $item->company_id)
@@ -150,7 +150,7 @@ class MeasureUnitController extends Controller
             'is_primary' => 'boolean',
             'quantity' => 'integer',
             'symbol' => 'string|max:255',
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'nullable|integer'
         ]);
         if (!empty($validated['is_primary'])) {
             MeasureUnit::where('company_id', $validated['company_id'])
@@ -252,7 +252,7 @@ class MeasureUnitController extends Controller
             $units = MeasureUnit::where('company_id', $request->company_id)
                 ->where('is_active', 1)
                 ->whereNull('deleted_at')
-                ->get(['id', 'name', 'symbol', 'quantity']); // ✅ include symbol & quantity
+                ->get(['id', 'name', 'symbol', 'quantity']); 
 
             if ($units->isEmpty()) {
                 return response()->json([

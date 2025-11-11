@@ -8,6 +8,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Models\PurchaseProduct;
+use App\Models\PurchaseStockProduct;
 use App\Models\ProductList;
 use App\Models\Product;
 
@@ -16,33 +17,39 @@ class PurchaseReturnHelper
 
 
 
-    public static function getPurchaseProductforPurchaseReturn(array $productIds, int $companyId, ?string $purchaseType = null): array
+    public static function getPurchaseProductforPurchaseReturn(array $productIds, int $companyId, int $branchId, ?string $purchaseType = null): array
     {
         try {
-            $query = PurchaseProduct::whereIn('product_id', $productIds)
-                ->where('purchase_products.company_id', $companyId)
-                ->whereNull('purchase_products.deleted_at')
-                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                ->whereNull('purchases.deleted_at');
+            $query = PurchaseStockProduct::whereIn('product_id', $productIds)
+                ->where('purchase_stock_products.company_id', $companyId)
+                ->where('purchase_stock_products.branch_id', $branchId)
+
+                ->where('purchase_stock_products.purchase_type', $purchaseType)
+                ->whereNull('purchase_stock_products.deleted_at');
+            // ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
+            // ->whereNull('purchases.deleted_at');
+
 
             // Add purchase_type filter if provided
             if ($purchaseType !== null) {
-                $query->where('purchases.purchase_type', $purchaseType);
+                $query->where('purchase_stock_products.purchase_type', $purchaseType);
             }
+
+            // dd($companyId,$branchId,$purchaseType);
 
             $productIds = $query->whereRaw('
                 (
-                    (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                    (purchase_stock_products.quantity + COALESCE(purchase_stock_products.free_quantity, 0)) - 
                     COALESCE((
-                        SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
-                        FROM purchase_product_returns
-                        WHERE purchase_product_returns.purchase_product_id = purchase_products.id
-                        AND purchase_product_returns.deleted_at IS NULL
+                        SELECT SUM(purchase_stock_product_returns.quantity + COALESCE(purchase_stock_product_returns.free_quantity, 0))
+                        FROM purchase_stock_product_returns
+                        WHERE purchase_stock_product_returns.purchase_stock_product_id = purchase_stock_products.id
+                        AND purchase_stock_product_returns.deleted_at IS NULL
                     ), 0) - 
                     COALESCE((
                         SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
                         FROM sale_products
-                        WHERE sale_products.purchase_product_id = purchase_products.id
+                        WHERE sale_products.purchase_product_id = purchase_stock_products.id
                         AND sale_products.deleted_at IS NULL
                     ), 0) + 
                     COALESCE((
@@ -50,7 +57,7 @@ class PurchaseReturnHelper
                         FROM sales_return_products
                         WHERE sales_return_products.sale_product_id IN (
                             SELECT id FROM sale_products
-                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            WHERE sale_products.purchase_product_id = purchase_stock_products.id
                             AND sale_products.deleted_at IS NULL
                         )
                         AND sales_return_products.deleted_at IS NULL
@@ -79,34 +86,30 @@ class PurchaseReturnHelper
         }
     }
 
-    public static function getPurchaseProductforPurchaseReturnByPrductId(array $productCodes, int $companyId, ?string $purchaseType = null): array
+    public static function getPurchaseProductforPurchaseReturnByPrductId(array $productCodes, int $companyId, int $branchId, ?string $purchaseType = null): array
     {
         try {
-            
-            $query = PurchaseProduct::whereIn('product_code', $productCodes)
-                ->where('purchase_products.company_id', $companyId)
-                ->whereNull('purchase_products.deleted_at')
-                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                ->whereNull('purchases.deleted_at');
 
+            $query = PurchaseStockProduct::whereIn('product_code', $productCodes)
+                ->where('purchase_stock_products.company_id', $companyId)
+                ->where('purchase_stock_products.branch_id', $branchId)
+                ->where('purchase_stock_products.purchase_type', $purchaseType)
+                ->whereNull('purchase_stock_products.deleted_at');
 
-            if ($purchaseType !== null) {
-                $query->where('purchases.purchase_type', $purchaseType);
-            }
 
             $productCodes = $query->whereRaw('
                 (
-                    (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                    (purchase_stock_products.quantity + COALESCE(purchase_stock_products.free_quantity, 0)) - 
                     COALESCE((
-                        SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
-                        FROM purchase_product_returns
-                        WHERE purchase_product_returns.purchase_product_id = purchase_products.id
-                        AND purchase_product_returns.deleted_at IS NULL
+                        SELECT SUM(purchase_stock_product_returns.quantity + COALESCE(purchase_stock_product_returns.free_quantity, 0))
+                        FROM purchase_stock_product_returns
+                        WHERE purchase_stock_product_returns.purchase_stock_product_id = purchase_stock_products.id
+                        AND purchase_stock_product_returns.deleted_at IS NULL
                     ), 0) - 
                     COALESCE((
                         SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
                         FROM sale_products
-                        WHERE sale_products.purchase_product_id = purchase_products.id
+                        WHERE sale_products.purchase_product_id = purchase_stock_products.id
                         AND sale_products.deleted_at IS NULL
                     ), 0) + 
                     COALESCE((
@@ -114,7 +117,7 @@ class PurchaseReturnHelper
                         FROM sales_return_products
                         WHERE sales_return_products.sale_product_id IN (
                             SELECT id FROM sale_products
-                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            WHERE sale_products.purchase_product_id = purchase_stock_products.id
                             AND sale_products.deleted_at IS NULL
                         )
                         AND sales_return_products.deleted_at IS NULL
@@ -131,7 +134,7 @@ class PurchaseReturnHelper
             }
 
             // Get product codes for the filtered product IDs
-            $productCodes = PurchaseProduct::whereIn('product_code', $productCodes)
+            $productCodes = PurchaseStockProduct::whereIn('product_code', $productCodes)
                 ->pluck('product_code')
                 ->unique()
                 ->values()
@@ -139,6 +142,7 @@ class PurchaseReturnHelper
 
             return $productCodes;
         } catch (QueryException $e) {
+          
             \Log::error('Database error in getPurchaseProductforPurchaseReturnByPrductId: ' . $e->getMessage());
             return ['error' => 'Database error occurred'];
         } catch (\Exception $e) {
@@ -148,7 +152,7 @@ class PurchaseReturnHelper
     }
 
 
-    public static function getPurchaseProductforPurchaseReturnByBarcode(array $productIds, int $companyId, ?string $purchaseType = null): array
+    public static function getPurchaseProductforPurchaseReturnByBarcode(array $productIds, int $companyId,int $branchId,  ?string $purchaseType = null): array
     {
         try {
             if (empty($productIds)) {
@@ -156,30 +160,30 @@ class PurchaseReturnHelper
             }
 
             // Get product IDs with available quantities
-            $query = PurchaseProduct::whereIn('purchase_products.product_id', $productIds)
-                ->where('purchase_products.company_id', $companyId)
-                ->whereNull('purchase_products.deleted_at')
-                ->join('purchases', 'purchase_products.purchase_id', '=', 'purchases.id')
-                ->whereNull('purchases.deleted_at');
+            $query = PurchaseStockProduct::whereIn('purchase_stock_products.product_id', $productIds)
+                ->where('purchase_stock_products.company_id', $companyId)
+                ->where('purchase_stock_products.branch_id', $branchId)
+                 ->where('purchase_stock_products.purchase_type', $purchaseType)
+                ->whereNull('purchase_stock_products.deleted_at');
 
-            // Add purchase_type filter if provided
-            if ($purchaseType !== null) {
-                $query->where('purchases.purchase_type', $purchaseType);
-            }
+            
+                
+
+           
 
             $availableProductIds = $query->whereRaw('
                 (
-                    (purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) - 
+                    (purchase_stock_products.quantity + COALESCE(purchase_stock_products.free_quantity, 0)) - 
                     COALESCE((
-                        SELECT SUM(purchase_product_returns.quantity + COALESCE(purchase_product_returns.free_quantity, 0))
-                        FROM purchase_product_returns
-                        WHERE purchase_product_returns.purchase_product_id = purchase_products.id
-                        AND purchase_product_returns.deleted_at IS NULL
+                        SELECT SUM(purchase_stock_product_returns.quantity + COALESCE(purchase_stock_product_returns.free_quantity, 0))
+                        FROM purchase_stock_product_returns
+                        WHERE purchase_stock_product_returns.purchase_product_id = purchase_stock_products.id
+                        AND purchase_stock_product_returns.deleted_at IS NULL
                     ), 0) - 
                     COALESCE((
                         SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
                         FROM sale_products
-                        WHERE sale_products.purchase_product_id = purchase_products.id
+                        WHERE sale_products.purchase_product_id = purchase_stock_products.id
                         AND sale_products.deleted_at IS NULL
                     ), 0) + 
                     COALESCE((
@@ -187,22 +191,24 @@ class PurchaseReturnHelper
                         FROM sales_return_products
                         WHERE sales_return_products.sale_product_id IN (
                             SELECT id FROM sale_products
-                            WHERE sale_products.purchase_product_id = purchase_products.id
+                            WHERE sale_products.purchase_product_id = purchase_stock_products.id
                             AND sale_products.deleted_at IS NULL
                         )
                         AND sales_return_products.deleted_at IS NULL
                     ), 0)
                 ) > 0
             ')
-                ->groupBy('purchase_products.product_id')
-                ->pluck('purchase_products.product_id')
+                ->groupBy('purchase_stock_products.product_id')
+                ->pluck('purchase_stock_products.product_id')
                 ->unique()
                 ->toArray();
+
+             
 
             if (empty($availableProductIds)) {
                 return ['error' => 'No products with available quantities found'];
             }
-          
+
 
             // Get barcodes for the filtered product IDs
             $barcodes = ProductList::whereIn('product_id', $availableProductIds)
@@ -211,7 +217,9 @@ class PurchaseReturnHelper
                 ->unique()
                 ->values()
                 ->toArray();
-             
+
+          
+
 
 
             if (empty($barcodes)) {

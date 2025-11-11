@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class Sale extends Model
+class Sale extends BaseTenantModel
 {
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
@@ -31,6 +31,7 @@ class Sale extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'customer_id',
         'bank_id',
         'customer_name',
@@ -60,8 +61,16 @@ class Sale extends Model
         'discount_after_vat',
         'round_off_amount',
         'roundoff_type',
+        'pos_type',
         'total_amount',
         'payment',
+        'promo_disc',
+        'bill_amount',
+        'hold_discount',
+        'final_amount',
+        'ic_amount',
+        'tender',
+        'return',
         'note',
         'is_mail_notify',
         'is_vatable',
@@ -91,14 +100,17 @@ class Sale extends Model
         return $this->belongsTo(Customer::class, 'customer_id');
     }
 
-    
-    public function salesReturnUse(){
-        return $this->hasMany(SalesReturn::class,'sale_id');
+
+    public function salesReturnUse()
+    {
+        return $this->hasMany(SalesReturn::class, 'sale_id');
     }
-    public function saleProductUse(){
-        return $this->hasMany(SaleProduct::class,'sale_id');
+    public function saleProductUse()
+    {
+        return $this->hasMany(SaleProduct::class, 'sale_id');
     }
-    public function saleAdditionalUse(){
-        return $this->hasMany(SaleAdditional::class,'sale_id');
+    public function saleAdditionalUse()
+    {
+        return $this->hasMany(SaleAdditional::class, 'sale_id');
     }
 }

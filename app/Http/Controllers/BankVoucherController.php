@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Validator;
 use App\Models\VoucherSummary;
 
-
 class BankVoucherController extends Controller
 {
 
@@ -148,6 +147,9 @@ public function getTotals(Request $request): JsonResponse
         ]
     ]);
 }
+
+
+
 
 
 

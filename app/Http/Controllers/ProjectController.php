@@ -103,7 +103,7 @@ class ProjectController extends Controller
                 'budget' => 'nullable|numeric',
                 'manager_name' => 'nullable|string|max:255',
                 'contact_number' => 'nullable|string|max:255',
-                'company_id' => 'required|integer|exists:companies,id'
+                'company_id' => 'required|integer'
             ]);
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
@@ -163,7 +163,7 @@ class ProjectController extends Controller
             'budget' => 'nullable|numeric',
             'manager_name' => 'nullable|string|max:255',
             'contact_number' => 'nullable|string|max:255',
-            'company_id' => 'required|integer|exists:companies,id'
+            'company_id' => 'required|integer'
         ]);
 
         if (!empty($validated['is_primary'])) {

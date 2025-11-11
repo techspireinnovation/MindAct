@@ -41,7 +41,7 @@ class BranchController extends Controller
             'is_primary' => 'boolean',
 
             'is_active' => 'boolean|required',
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'integer'
         ]);
         if (!empty($validated['is_primary'])) {
             Branch::where('company_id', $validated['company_id'])
@@ -132,7 +132,7 @@ class BranchController extends Controller
                 ],
                 'is_primary' => 'sometimes|boolean',
                 'is_active' => 'boolean|required',
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'integer'
             ]);
             if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
                 Branch::where('company_id', $item->company_id)
@@ -231,5 +231,30 @@ class BranchController extends Controller
             ], 500);
         }
     }
+
+    public function activeBranchList(Request $request)
+{
+    try {
+        $branches = Branch::where('is_active', 1)
+            ->whereNull('deleted_at')
+            ->get(['id', 'name', 'is_active']);
+
+        return response()->json([
+            'message' => 'Active Branch List Retrieved Successfully!',
+            'data' => $branches
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'No Active Branch Found!'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Database Error Occurred!'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Unexpected Error Occurred!'], 500);
+    }
+}
+
 
 }

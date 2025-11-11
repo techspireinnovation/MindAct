@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class ProductCategory extends Model
+class ProductCategory extends BaseTenantModel
 {
     use HasFactory;
     use softDeletes;
+    // protected $connection = 'tenant';
 
     protected $casts = [
         'is_active' => 'boolean',

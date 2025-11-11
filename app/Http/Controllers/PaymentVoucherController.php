@@ -27,7 +27,7 @@ class PaymentVoucherController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'date_ad' => 'nullable|date',
                 'date_bs' => 'nullable|date',
                 'reference_number' => [
@@ -54,7 +54,7 @@ class PaymentVoucherController extends Controller
                 ],
                 'payment_voucher_list' => 'nullable|array',
                 'payment_voucher_list.*.id' => 'nullable|integer|exists:payment_voucher_details,id',
-                'payment_voucher_list.*.company_id' => 'nullable|integer|exists:companies,id',
+                'payment_voucher_list.*.company_id' => 'nullable|integer',
                 'payment_voucher_list.*.customer_id' => 'nullable|integer|exists:customers,id',
                 'payment_voucher_list.*.party_name' => 'nullable|string',
                 'payment_voucher_list.*.amount' => 'nullable|numeric',
@@ -126,7 +126,7 @@ class PaymentVoucherController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'date_ad' => 'nullable|date',
                 'date_bs' => 'nullable|date',
                 'reference_number' => [
@@ -155,7 +155,7 @@ class PaymentVoucherController extends Controller
                 ],
                 'payment_voucher_list' => 'nullable|array',
                 'payment_voucher_list.*.id' => 'nullable',
-                'payment_voucher_list.*.company_id' => 'nullable|integer|exists:companies,id',
+                'payment_voucher_list.*.company_id' => 'nullable|integer',
                 'payment_voucher_list.*.customer_id' => 'nullable|integer|exists:customers,id',
                 'payment_voucher_list.*.party_name' => 'nullable|string',
                 'payment_voucher_list.*.amount' => 'nullable|numeric',

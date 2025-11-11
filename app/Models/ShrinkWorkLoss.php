@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
-class ShrinkWorkLoss extends Model
+class ShrinkWorkLoss extends BaseTenantModel
 {
     use HasFactory;
 

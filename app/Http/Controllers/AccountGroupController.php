@@ -98,7 +98,7 @@ class AccountGroupController extends Controller
                 ],
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id',
                 'code' => [
@@ -159,7 +159,7 @@ class AccountGroupController extends Controller
                 ],
                 'is_active' => 'boolean|required',
                 'is_primary' => 'boolean',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
                 'main_group_id' => 'integer|exists:main_groups,id',
                 'sub_group_id' => 'integer|exists:sub_groups,id'
             ]);

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 
-class SaleProduct extends Model
+class SaleProduct extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 
@@ -20,9 +20,15 @@ class SaleProduct extends Model
 
     protected $fillable = [
         'company_id',
+        'branch_id',
         'sale_id',
         'product_id',
+        'purchase_stock_product_id',
         'purchase_product_id',
+        'stock_product_id',
+        'stock_reconciliation_id',
+        'stock_transfer_id',
+        'stock_adjustment_id',
         'expiry_date',
         'code',
         'product_name',
@@ -67,6 +73,17 @@ class SaleProduct extends Model
     public function saleProductReturns()
     {
         return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
+    }
+
+    public function saleReturnProducts()
+    {
+        return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');
+    }
+
+    /** The stock line that was sold */
+    public function purchaseStockProduct()
+    {
+        return $this->belongsTo(PurchaseStockProduct::class, 'purchase_stock_product_id');
     }
 
     public function getSaleQuantityAttribute()
@@ -134,7 +151,7 @@ class SaleProduct extends Model
 
     }
 
- 
+
     public function salesReturnProductsUse()
     {
         return $this->hasMany(SalesReturnProduct::class, 'sale_product_id');

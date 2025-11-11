@@ -8,11 +8,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ProductionSettingDetail extends Model
+class ProductionSettingDetail extends BaseTenantModel
 {
-       use softDeletes,HasFactory;
+    use softDeletes, HasFactory;
 
-   protected $casts = [
+    protected $casts = [
         'product_details' => 'array',
     ];
 
@@ -26,7 +26,7 @@ class ProductionSettingDetail extends Model
         'amount',
         'price',
         'deleted_at',
-               
+
     ];
 
     protected $dates = ['deleted_at'];
@@ -36,10 +36,11 @@ class ProductionSettingDetail extends Model
         static::addGlobalScope(new CompanyIdScope());
     }
 
-    public function settingDetail():HasMany{
-        return $this->hasMany(ProductionSettingDetail::class); 
+    public function settingDetail(): HasMany
+    {
+        return $this->hasMany(ProductionSettingDetail::class);
     }
 
-    
+
 
 }

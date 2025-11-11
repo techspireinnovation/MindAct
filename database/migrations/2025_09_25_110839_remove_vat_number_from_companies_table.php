@@ -10,8 +10,8 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::table('companies', function (Blueprint $table) {
-            $table->dropColumn('vat_number'); // remove only vat_number
+       Schema::table('companies', function (Blueprint $table) {
+            $table->dropColumn('vat_number'); 
         });
     }
 
@@ -21,7 +21,7 @@ return new class extends Migration {
     public function down(): void
     {
         Schema::table('companies', function (Blueprint $table) {
-            $table->string('vat_number')->nullable()->after('url_link'); // restore if rollback
+            $table->string('vat_number')->nullable()->after('url_link');
         });
     }
 };

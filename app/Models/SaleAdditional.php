@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Scopes\CompanyIdScope;
 use Illuminate\Database\Eloquent\Model;
 
-class SaleAdditional extends Model
+class SaleAdditional extends BaseTenantModel
 {
     use HasFactory, SoftDeletes;
 

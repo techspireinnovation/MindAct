@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Request;
 
-class JournalVoucherTransaction extends Model
+class JournalVoucherTransaction extends BaseTenantModel
 {
     use SoftDeletes, HasFactory;
 

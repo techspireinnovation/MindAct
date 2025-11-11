@@ -66,7 +66,7 @@ class MeterReadingController extends Controller
             \Log::error('Database error occured', ['Query Exception' => $e]);
             return response()->json(['error' => 'Database error occured'], 500);
         } catch (\Exception $e) {
-             dd($e->getMessage());
+          
             \Log::error('Unexpected error', ['exception' => $e]);
             return response()->json(['error' => 'An unexpected error occured'], 500);
 
@@ -89,7 +89,7 @@ class MeterReadingController extends Controller
                 'sale_litres' => 'nullable|string|max:255',
                 'due_sale_litre' => 'nullable|string|max:255',
                 'is_active' => 'boolean|nullable'
-               
+
 
             ]);
             if ($validator->fails()) {
@@ -180,35 +180,66 @@ class MeterReadingController extends Controller
         }
     }
 
-public function getLastClosingReading(Request $request): JsonResponse
-{
-    try {
-        $request->validate([
-            'nozzle_id' => 'required|numeric',
-        ]);
+    // public function getLastClosingReading(Request $request): JsonResponse
+// {
+//     try {
+//         $request->validate([
+//             'nozzle_id' => 'required|numeric',
+//         ]);
 
-        // Get the last closing reading for the given nozzle_id
-        $lastClosingReading = MeterReading::where('nozzle_id', $request->nozzle_id)
-            ->orderByDesc('id')
-            ->value('closing_reading');
+    //         // Get the last closing reading for the given nozzle_id
+//         $lastClosingReading = MeterReading::where('nozzle_id', $request->nozzle_id)
+//             ->orderByDesc('id')
+//             ->value('closing_reading');
 
-        if (is_null($lastClosingReading)) {
+    //         if (is_null($lastClosingReading)) {
+//             return response()->json([
+//                 'message' => 'No closing reading found for this nozzle',
+//                 'closing_reading' => null
+//             ], 404);
+//         }
+
+    //         return response()->json([
+//             'message' => 'Last closing reading retrieved successfully!',
+//             'closing_reading' => $lastClosingReading
+//         ]);
+
+    //     } catch (\Exception $e) {
+//         \Log::error('Error fetching last closing reading', ['error' => $e->getMessage()]);
+//         return response()->json(['error' => 'An unexpected error occurred'], 500);
+//     }
+// }
+
+    public function getLastClosingReading(Request $request): JsonResponse
+    {
+        try {
+            $request->validate([
+                'nozzle_id' => 'required|numeric',
+            ]);
+
+            // Get the last closing reading for the given nozzle_id
+            $lastClosingReading = MeterReading::where('nozzle_id', $request->query('nozzle_id'))
+                ->orderByDesc('id')
+                ->value('closing_reading');
+
+            if (is_null($lastClosingReading)) {
+                return response()->json([
+                    'message' => 'No closing reading found for this nozzle',
+                    'closing_reading' => null
+                ], 404);
+            }
+
             return response()->json([
-                'message' => 'No closing reading found for this nozzle',
-                'closing_reading' => null
-            ], 404);
+                'message' => 'Last closing reading retrieved successfully!',
+                'closing_reading' => $lastClosingReading
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error fetching last closing reading', ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
-
-        return response()->json([
-            'message' => 'Last closing reading retrieved successfully!',
-            'closing_reading' => $lastClosingReading
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Error fetching last closing reading', ['error' => $e->getMessage()]);
-        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
-}
+
 
 
 }

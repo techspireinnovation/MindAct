@@ -125,7 +125,7 @@ class ProductSubCategoryController extends Controller
                     'integer',
                     Rule::exists('product_categories', 'id')->whereNull('deleted_at')
                 ],
-                'company_id' => 'integer|exists:companies,id'
+                'company_id' => 'integer'
             ]);
             if ($validator->fails()) {
                 return response()->json($validator->errors(), 422);
@@ -163,7 +163,7 @@ class ProductSubCategoryController extends Controller
                 'integer',
                 Rule::exists('product_categories', 'id')->whereNull('deleted_at')
             ],
-            'company_id' => 'integer|exists:companies,id'
+            'company_id' => 'integer'
         ]);
 
         $item = ProductSubCategory::create($validated);
@@ -244,12 +244,12 @@ class ProductSubCategoryController extends Controller
 
         $subCategories = ProductSubCategory::where('company_id', $companyId)
             ->whereNull('deleted_at')
-            ->where('is_active', true) // ✅ only active subcategories
-            ->get(['id', 'name', 'category_id']) // ✅ include category_id
+            ->where('is_active', true) 
+            ->get(['id', 'name', 'category_id']) 
             ->map(fn($subCategory) => [
                 'id' => $subCategory->id,
                 'name' => $subCategory->name,
-                'category_id' => $subCategory->category_id // ✅ add to response
+                'category_id' => $subCategory->category_id 
             ])
             ->values()
             ->toArray();

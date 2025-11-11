@@ -24,7 +24,7 @@ class SaleProductController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'sale_id' => 'required|exists:sales,id',
                 'code' => 'nullable|string|max:255',
                 'name' => 'required|string|max:255|unique:sale_products,name',
@@ -84,7 +84,7 @@ class SaleProductController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|exists:companies,id',
+                'company_id' => 'required',
                 'sale_id' => 'required|exists:sales,id',
                 'code' => 'nullable|string|max:255',
                 'name' => 'required|string|max:255|unique:sale_products,name,' . $id,

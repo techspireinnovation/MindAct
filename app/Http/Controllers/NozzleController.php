@@ -50,7 +50,7 @@ class NozzleController extends Controller
                 'fuel_type' => 'nullable|string|max:255',
                 'is_active' => 'boolean|nullable',
                 'is_primary' => 'boolean|nullable',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
             ]);
 
             if ($validator->fails()) {
@@ -111,7 +111,7 @@ class NozzleController extends Controller
                 'fuel_type' => 'nullable|string|max:255',
                 'is_active' => 'boolean|nullable',
                 'is_primary' => 'boolean|nullable',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
             ]);
 
             if ($validator->fails()) {

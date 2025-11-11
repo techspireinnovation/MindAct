@@ -6,9 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class ProductType extends Model
+class ProductType extends BaseTenantModel
 {
     use HasFactory, SoftDeletes;
+    protected $connection = 'tenant';
 
     protected $casts = [
         'is_active' => 'boolean',
@@ -23,14 +24,14 @@ class ProductType extends Model
         'deleted_at',
         'company_id',
     ];
-    
+
     protected $dates = ['deleted_at'];
 
     protected static function booted()
     {
         static::addGlobalScope(new CompanyIdScope());
     }
-   
+
 
     public function products()
     {

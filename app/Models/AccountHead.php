@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\softDeletes;
 
-class AccountHead extends Model
+class AccountHead extends BaseTenantModel
 {
     use softDeletes, HasFactory;
 
@@ -49,7 +49,8 @@ class AccountHead extends Model
         return $this->hasMany(VoucherSummaryDetail::class, 'account_head_id');
 
     }
-    public function journalVoucherTransactions(){
-        return $this->hasMany(JournalVoucherTransaction::class,'account_head_id');
+    public function journalVoucherTransactions()
+    {
+        return $this->hasMany(JournalVoucherTransaction::class, 'account_head_id');
     }
 }

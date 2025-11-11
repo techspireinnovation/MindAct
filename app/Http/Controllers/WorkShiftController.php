@@ -44,7 +44,7 @@ class WorkShiftController extends Controller
                 'time_to' => 'nullable|string',
                 'is_active' => 'boolean|nullable',
                 'is_primary' => 'boolean|nullable',
-                'company_id' => 'integer|exists:companies,id',
+                'company_id' => 'integer',
             ]);
 
             if ($validator->fails()) {
@@ -139,7 +139,7 @@ public function update(Request $request, $id): JsonResponse
             'time_to' => 'nullable|string',
             'is_active' => 'boolean|nullable',
             'is_primary' => 'boolean|nullable',
-            'company_id' => 'integer|exists:companies,id',
+            'company_id' => 'integer',
         ]);
 
         if ($validator->fails()) {

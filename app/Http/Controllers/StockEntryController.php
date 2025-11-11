@@ -103,6 +103,7 @@ class StockEntryController extends Controller
                 $stockEntry = StockEntry::create($entry);
 
                 $entry['stock_product_id'] = $stockEntry->id;
+                $entry['measure_unit_id'] = $entry['uom'];
 
                 $purchaseStock = PurchaseStockProduct::create($entry);
 
@@ -218,6 +219,7 @@ class StockEntryController extends Controller
 
                 $stockEntry = StockEntry::create($entry);
                 $entry['stock_product_id'] = $stockEntry->id;
+                $entry['measure_unit_id'] = $entry['uom'];
 
                 $purchaseStock = PurchaseStockProduct::create($entry);
 

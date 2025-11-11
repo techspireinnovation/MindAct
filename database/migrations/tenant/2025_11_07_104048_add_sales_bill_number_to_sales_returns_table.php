@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sales_returns', function (Blueprint $table) {
+        Schema::connection('tenant')->table('sales_returns', function (Blueprint $table) {
              $table->string('sales_bill_number')->nullable()->after('invoice_number');
         });
     }
@@ -21,7 +21,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sales_returns', function (Blueprint $table) {
+        Schema::connection('tenant')->table('sales_returns', function (Blueprint $table) {
                $table->dropColumn('sales_bill_number');
         });
     }

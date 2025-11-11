@@ -43,10 +43,9 @@ class StockEntryController extends Controller
     }
 
 
+
     public function store(Request $request): JsonResponse
     {
-
-
         try {
             $validator = Validator::make($request->all(), [
                 'name' => 'nullable|string|max:255',
@@ -74,7 +73,6 @@ class StockEntryController extends Controller
 
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
-                // 'stock_entries.*.field_values.*.*.quantity_index' => '|numeric|min:1',
             ]);
 
             if ($validator->fails()) {
@@ -84,57 +82,59 @@ class StockEntryController extends Controller
                 ], 422);
             }
 
-            $stockMain = StockMain::create([
-                'name' => $request->name,
-                'code' => $request->code,
-                'company_id' => $request->company_id,
-
-            ]);
-
-
-
             $createdEntries = [];
 
-            foreach ($request->stock_entries as $entry) {
-                $entry['company_id'] = $request->company_id;
-                $entry['stock_main_id'] = $stockMain->id;
+            DB::transaction(function () use ($request, &$createdEntries) {
+                // Create StockMain
+                $stockMain = StockMain::create([
+                    'name' => $request->name,
+                    'code' => $request->code,
+                    'company_id' => $request->company_id,
+                ]);
 
+                foreach ($request->stock_entries as $entry) {
+                    $entry['company_id'] = $request->company_id;
+                    $entry['stock_main_id'] = $stockMain->id;
 
-                $stockEntry = StockEntry::create($entry);
+                    // Create StockEntry
+                    $stockEntry = StockEntry::create($entry);
 
-                $entry['stock_product_id'] = $stockEntry->id;
-                $entry['measure_unit_id'] = $entry['uom'];
+                    // Map uom to measure_unit_id for PurchaseStockProduct
+                    $entry['stock_product_id'] = $stockEntry->id;
+                    $entry['measure_unit_id'] = $entry['uom'];
 
-                $purchaseStock = PurchaseStockProduct::create($entry);
+                    // Create PurchaseStockProduct
+                    $purchaseStock = PurchaseStockProduct::create($entry);
 
-                // If there are field values, save them
-                if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
-                    foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
-                        foreach ($fieldGroup as $fieldValue) {
-                            StockProductFieldValue::create([
-                                'stock_product_id' => $stockEntry->id,
-                                'company_id' => $entry['company_id'],
-                                'product_id' => $stockEntry->product_id,
-                                'product_field_id' => $fieldValue['product_field_id'],
-                                'value' => $fieldValue['value'],
-                                'quantity_index' => $quantityIndex,
-                            ]);
+                    // Save field values
+                    if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
+                        foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
+                            foreach ($fieldGroup as $fieldValue) {
+                                StockProductFieldValue::create([
+                                    'stock_product_id' => $stockEntry->id,
+                                    'company_id' => $entry['company_id'],
+                                    'product_id' => $stockEntry->product_id,
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'value' => $fieldValue['value'],
+                                    'quantity_index' => $quantityIndex,
+                                ]);
 
-                            PurchaseStockProductFieldValue::create([
-                                'stock_product_id' => $stockEntry->id,
-                                'purchase_stock_product_id' => $purchaseStock->id,
-                                'company_id' => $entry['company_id'],
-                                'product_id' => $stockEntry->product_id,
-                                'product_field_id' => $fieldValue['product_field_id'],
-                                'value' => $fieldValue['value'],
-                                'quantity_index' => $quantityIndex,
-                            ]);
+                                PurchaseStockProductFieldValue::create([
+                                    'stock_product_id' => $stockEntry->id,
+                                    'purchase_stock_product_id' => $purchaseStock->id,
+                                    'company_id' => $entry['company_id'],
+                                    'product_id' => $stockEntry->product_id,
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'value' => $fieldValue['value'],
+                                    'quantity_index' => $quantityIndex,
+                                ]);
+                            }
                         }
                     }
-                }
 
-                $createdEntries[] = $stockEntry->load('fieldValues'); // Optional: load relationship
-            }
+                    $createdEntries[] = $stockEntry->load('fieldValues');
+                }
+            });
 
             return response()->json([
                 'message' => 'Stock entries created successfully',
@@ -142,16 +142,16 @@ class StockEntryController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
-
-
             \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-
             \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
+
+
+
 
 
     public function update(Request $request, $id): JsonResponse
@@ -162,13 +162,10 @@ class StockEntryController extends Controller
                 'code' => [
                     'required',
                     'string',
-                    Rule::unique('stock_mains')
-                        ->ignore($id) // ignore current record
-                        ->whereNull('deleted_at'), // exclude soft deleted ones
+                    Rule::unique('stock_mains')->ignore($id)->whereNull('deleted_at'),
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,
-
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
@@ -193,65 +190,65 @@ class StockEntryController extends Controller
                 ], 422);
             }
 
-            DB::beginTransaction();
-
-            $stockMain = StockMain::findOrFail($id);
-            $stockMain->update([
-                'name' => $request->name,
-                'code' => $request->code,
-                'company_id' => $request->company_id,
-            ]);
-
-            // Delete old stock entries and their relationships to prevent duplication
-            $oldEntries = StockEntry::where('stock_main_id', $stockMain->id)->pluck('id')->toArray();
-            if (!empty($oldEntries)) {
-                StockProductFieldValue::whereIn('stock_product_id', $oldEntries)->delete();
-                PurchaseStockProductFieldValue::whereIn('stock_product_id', $oldEntries)->delete();
-                PurchaseStockProduct::whereIn('stock_product_id', $oldEntries)->delete();
-                StockEntry::whereIn('id', $oldEntries)->delete();
-            }
-
             $createdEntries = [];
 
-            foreach ($request->stock_entries as $entry) {
-                $entry['company_id'] = $request->company_id;
-                $entry['stock_main_id'] = $stockMain->id;
+            DB::transaction(function () use ($request, $id, &$createdEntries) {
+                $stockMain = StockMain::findOrFail($id);
+                $stockMain->update([
+                    'name' => $request->name,
+                    'code' => $request->code,
+                    'company_id' => $request->company_id,
+                ]);
 
-                $stockEntry = StockEntry::create($entry);
-                $entry['stock_product_id'] = $stockEntry->id;
-                $entry['measure_unit_id'] = $entry['uom'];
-
-                $purchaseStock = PurchaseStockProduct::create($entry);
-
-                if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
-                    foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
-                        foreach ($fieldGroup as $fieldValue) {
-                            StockProductFieldValue::create([
-                                'stock_product_id' => $stockEntry->id,
-                                'company_id' => $entry['company_id'],
-                                'product_id' => $stockEntry->product_id,
-                                'product_field_id' => $fieldValue['product_field_id'],
-                                'value' => $fieldValue['value'],
-                                'quantity_index' => $quantityIndex,
-                            ]);
-
-                            PurchaseStockProductFieldValue::create([
-                                'stock_product_id' => $stockEntry->id,
-                                'purchase_stock_product_id' => $purchaseStock->id,
-                                'company_id' => $entry['company_id'],
-                                'product_id' => $stockEntry->product_id,
-                                'product_field_id' => $fieldValue['product_field_id'],
-                                'value' => $fieldValue['value'],
-                                'quantity_index' => $quantityIndex,
-                            ]);
-                        }
-                    }
+                // Delete old entries and their related data
+                $oldEntries = StockEntry::where('stock_main_id', $stockMain->id)->pluck('id')->toArray();
+                if (!empty($oldEntries)) {
+                    StockProductFieldValue::whereIn('stock_product_id', $oldEntries)->delete();
+                    PurchaseStockProductFieldValue::whereIn('stock_product_id', $oldEntries)->delete();
+                    PurchaseStockProduct::whereIn('stock_product_id', $oldEntries)->delete();
+                    StockEntry::whereIn('id', $oldEntries)->delete();
                 }
 
-                $createdEntries[] = $stockEntry->load('fieldValues');
-            }
+                foreach ($request->stock_entries as $entry) {
+                    $entry['company_id'] = $request->company_id;
+                    $entry['stock_main_id'] = $stockMain->id;
 
-            DB::commit();
+                    $stockEntry = StockEntry::create($entry);
+
+                    $entry['stock_product_id'] = $stockEntry->id;
+                    $entry['measure_unit_id'] = $entry['uom']; // for PurchaseStockProduct
+
+                    $purchaseStock = PurchaseStockProduct::create($entry);
+
+                    // Save field values
+                    if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
+                        foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
+                            foreach ($fieldGroup as $fieldValue) {
+                                StockProductFieldValue::create([
+                                    'stock_product_id' => $stockEntry->id,
+                                    'company_id' => $entry['company_id'],
+                                    'product_id' => $stockEntry->product_id,
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'value' => $fieldValue['value'],
+                                    'quantity_index' => $quantityIndex,
+                                ]);
+
+                                PurchaseStockProductFieldValue::create([
+                                    'stock_product_id' => $stockEntry->id,
+                                    'purchase_stock_product_id' => $purchaseStock->id,
+                                    'company_id' => $entry['company_id'],
+                                    'product_id' => $stockEntry->product_id,
+                                    'product_field_id' => $fieldValue['product_field_id'],
+                                    'value' => $fieldValue['value'],
+                                    'quantity_index' => $quantityIndex,
+                                ]);
+                            }
+                        }
+                    }
+
+                    $createdEntries[] = $stockEntry->load('fieldValues');
+                }
+            });
 
             return response()->json([
                 'message' => 'Stock entries updated successfully',
@@ -259,11 +256,9 @@ class StockEntryController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            DB::rollBack();
             \Log::error('Database error in StockEntry update', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            DB::rollBack();
             \Log::error('Unexpected error in StockEntry update', ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
@@ -275,15 +270,15 @@ class StockEntryController extends Controller
             $companyId = $request->company_id;
             $branchId = $request->branch_id;
 
-            $branchData = Branch::where('id', $branchId)->firstOrFail();
+            $branchData = Branch::on('mysql')->where('id', $branchId)->firstOrFail();
 
             // Check if the branch is main
             $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
             if ($isMainBranch) {
-                $item = StockEntry::where('company_id', $companyId)->with('fieldValues')->get();
+                $item = StockMain::where('company_id', $companyId)->with('fieldValues')->get();
             } else {
-                $item = StockEntry::where('company_id', $companyId)
+                $item = StockMain::where('company_id', $companyId)
                     ->where('branch_id', $branchId)
                     ->with('fieldValues')
                     ->get();

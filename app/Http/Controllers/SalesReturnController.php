@@ -5895,114 +5895,114 @@ class SalesReturnController extends Controller
 
 
 
-public function show(Request $request, $id): JsonResponse
-{
-    try {
-        // Step 1: Load Sales Return with relations
-        $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues.productField')
-            ->findOrFail($id);
+    public function show(Request $request, $id): JsonResponse
+    {
+        try {
+            // Step 1: Load Sales Return with relations
+            $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues.productField')
+                ->findOrFail($id);
 
-        $productIds = $salesReturn->salesReturnProducts->pluck('product_id')->unique();
+            $productIds = $salesReturn->salesReturnProducts->pluck('product_id')->unique();
 
-        // Step 2: Load measure units
-        $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
-            ->where('company_id', $request->company_id)
-            ->with(['measureUnit:id,name,quantity'])
-            ->get()
-            ->groupBy('product_id');
+            // Step 2: Load measure units
+            $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+                ->where('company_id', $request->company_id)
+                ->with(['measureUnit:id,name,quantity'])
+                ->get()
+                ->groupBy('product_id');
 
-        $request->merge([
-            'company_id' => $request->company_id ?? null,
-            'branch_id' => $request->branch_id ?? null,
-        ]);
+            $request->merge([
+                'company_id' => $request->company_id ?? null,
+                'branch_id' => $request->branch_id ?? null,
+            ]);
 
-        $salesBillNumber = $salesReturn->sales_bill_number;
+            $salesBillNumber = $salesReturn->sales_bill_number;
 
-        // Step 3: Get available quantities
-        $availableMap = [];
+            // Step 3: Get available quantities
+            $availableMap = [];
 
-        if ($salesBillNumber) {
-            // Bill-wise
-            $response = AvailableQuantityService::getSaleByInvoiceNumber($request, $salesBillNumber);
-            $responseData = $response->getData(true);
-            $products = $responseData['data'][0]['products'] ?? ($responseData['data'] ?? []);
-            foreach ($products as $p) {
-                $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
-            }
-        } else {
-            // Product-wise
-            foreach ($salesReturn->salesReturnProducts as $item) {
-                $productID = $item->product_id;
-                $response = AvailableQuantityService::getAvailableProductsForSalesReturn($request, $productID, $salesBillNumber);
-                $resp = $response->getData(true);
-                $products = $resp['data'][0]['products'] ?? ($resp['data'] ?? []);
+            if ($salesBillNumber) {
+                // Bill-wise
+                $response = AvailableQuantityService::getSaleByInvoiceNumber($request, $salesBillNumber);
+                $responseData = $response->getData(true);
+                $products = $responseData['data'][0]['products'] ?? ($responseData['data'] ?? []);
                 foreach ($products as $p) {
                     $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
                 }
+            } else {
+                // Product-wise
+                foreach ($salesReturn->salesReturnProducts as $item) {
+                    $productID = $item->product_id;
+                    $response = AvailableQuantityService::getAvailableProductsForSalesReturn($request, $productID, $salesBillNumber);
+                    $resp = $response->getData(true);
+                    $products = $resp['data'][0]['products'] ?? ($resp['data'] ?? []);
+                    foreach ($products as $p) {
+                        $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
+                    }
+                }
             }
+
+            // Step 4: Merge products with same (sales_return_id, product_id, measureunit_id)
+            $mergedProducts = $salesReturn->salesReturnProducts
+                ->groupBy(function ($item) {
+                    return $item->sales_return_id . '-' . $item->product_id . '-' . $item->measureunit_id;
+                })
+                ->map(function ($group) {
+                    $first = $group->first();
+                    $first->quantity = $group->sum('quantity');
+
+                    // Merge all field values together
+                    $allFieldValues = $group->flatMap(function ($item) {
+                        return $item->fieldValues;
+                    })->unique('id')->values();
+
+                    // Sort field values by purchase_stock_product_id, then by quantity_index
+                    $sortedFieldValues = $allFieldValues->sortBy([
+                        ['purchase_stock_product_id', 'asc'],
+                        ['quantity_index', 'asc']
+                    ])->values();
+
+                    $first->setRelation('fieldValues', $sortedFieldValues);
+
+                    return $first;
+                })
+                ->values();
+
+            // Step 5: Attach measure units, field names, codes, and available qty
+            foreach ($mergedProducts as $saleReturn) {
+                $units = $productMeasureUnits->get($saleReturn->product_id, collect())
+                    ->pluck('measureUnit');
+                $saleReturn->setRelation('measure_units', $units);
+
+                $productId = $saleReturn->product_id;
+                $productCode = Product::where('id', $productId)->value('product_unique_id');
+
+                // Map fieldValues with their field names
+                $saleReturn->setRelation(
+                    'field_values',
+                    $saleReturn->fieldValues->map(function ($fv) {
+                        $fv->name = $fv->productField->name ?? null;
+                        return $fv;
+                    })->values()
+                );
+
+                $saleReturn->product_code = $productCode;
+                $saleReturn->remaining_quantity = $availableMap[$saleReturn->product_id] ?? 0;
+            }
+
+            // Step 6: Replace salesReturnProducts with merged ones
+            $salesReturn->setRelation('salesReturnProducts', $mergedProducts);
+
+            return response()->json($salesReturn);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Sales Return not found'], 404);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
-
-        // Step 4: Merge products with same (sales_return_id, product_id, measureunit_id)
-        $mergedProducts = $salesReturn->salesReturnProducts
-            ->groupBy(function ($item) {
-                return $item->sales_return_id . '-' . $item->product_id . '-' . $item->measureunit_id;
-            })
-            ->map(function ($group) {
-                $first = $group->first();
-                $first->quantity = $group->sum('quantity');
-
-                // Merge all field values together
-                $allFieldValues = $group->flatMap(function ($item) {
-                    return $item->fieldValues;
-                })->unique('id')->values();
-
-                // Sort field values by purchase_stock_product_id, then by quantity_index
-                $sortedFieldValues = $allFieldValues->sortBy([
-                    ['purchase_stock_product_id', 'asc'],
-                    ['quantity_index', 'asc']
-                ])->values();
-
-                $first->setRelation('fieldValues', $sortedFieldValues);
-
-                return $first;
-            })
-            ->values();
-
-        // Step 5: Attach measure units, field names, codes, and available qty
-        foreach ($mergedProducts as $saleReturn) {
-            $units = $productMeasureUnits->get($saleReturn->product_id, collect())
-                ->pluck('measureUnit');
-            $saleReturn->setRelation('measure_units', $units);
-
-            $productId = $saleReturn->product_id;
-            $productCode = Product::where('id', $productId)->value('product_unique_id');
-
-            // Map fieldValues with their field names
-            $saleReturn->setRelation(
-                'field_values',
-                $saleReturn->fieldValues->map(function ($fv) {
-                    $fv->name = $fv->productField->name ?? null;
-                    return $fv;
-                })->values()
-            );
-
-            $saleReturn->product_code = $productCode;
-            $saleReturn->remaining_quantity = $availableMap[$saleReturn->product_id] ?? 0;
-        }
-
-        // Step 6: Replace salesReturnProducts with merged ones
-        $salesReturn->setRelation('salesReturnProducts', $mergedProducts);
-
-        return response()->json($salesReturn);
-
-    } catch (ModelNotFoundException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Sales Return not found'], 404);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
     }
-}
 
 
 

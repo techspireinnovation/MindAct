@@ -8,6 +8,7 @@ use DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\PurchaseStockProduct;
 use App\Models\StockEntry;
+use App\Models\ProductList;
 use App\Models\StockMain;
 use App\Models\Branch;
 use App\Models\StockProductFieldValue;
@@ -264,35 +265,104 @@ class StockEntryController extends Controller
         }
     }
 
-    public function show(Request $request): JsonResponse
-    {
-        try {
-            $companyId = $request->company_id;
-            $branchId = $request->branch_id;
+   public function show(Request $request): JsonResponse
+{
+    try {
+        $companyId = $request->company_id;
+        $branchId = $request->branch_id;
 
-            $branchData = Branch::where('id', $branchId)->firstOrFail();
+        $branchData = Branch::where('id', $branchId)->firstOrFail();
 
-            // Check if the branch is main
-            $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
+        // Check if the branch is main
+        $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
-            if ($isMainBranch) {
-                $item = StockMain::where('company_id', $companyId)->with('stockEntries.fieldValues')->get();
-            } else {
-                $item = StockMain::where('company_id', $companyId)
-                    ->where('branch_id', $branchId)
-                    ->with('stockEntries.fieldValues')
-                    ->get();
-            }
-
-
-
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+        if ($isMainBranch) {
+            $items = StockMain::where('company_id', $companyId)
+                ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit')
+                ->get();
+        } else {
+            $items = StockMain::where('company_id', $companyId)
+                ->where('branch_id', $branchId)
+                ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit')
+                ->get();
         }
+
+        // Collect all product IDs from stock entries
+        $productIds = $items->flatMap(fn($stockMain) => $stockMain->stockEntries->pluck('product_id'))->unique();
+
+        // Load measure units from ProductList
+        $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
+            ->where('company_id', $companyId)
+            ->with(['measureUnit:id,name,quantity'])
+            ->get()
+            ->groupBy('product_id');
+
+        foreach ($items as $stockMain) {
+            foreach ($stockMain->stockEntries as $stockEntry) {
+
+                // Measure units from ProductList
+                $listUnits = $productMeasureUnits->get($stockEntry->product_id, collect())
+                    ->pluck('measureUnit')
+                    ->filter();
+
+                // Measure unit from Product itself
+                $productUnit = $stockEntry->product->measureUnit ?? null;
+
+                // Merge product unit with list units
+                $allUnits = $listUnits;
+                if ($productUnit && !$listUnits->contains('id', $productUnit->id)) {
+                    $allUnits->push($productUnit);
+                }
+
+                // Keep only id, name, quantity
+                $allUnits = $allUnits->map(fn($unit) => [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'quantity' => $unit->quantity,
+                ]);
+
+                $stockEntry->setRelation('measure_units', $allUnits);
+
+                // Attach field values with field name
+                $stockEntry->setRelation(
+                    'field_values',
+                    $stockEntry->fieldValues->map(fn($fv) => [
+                        'id' => $fv->id,
+                        'company_id' => $fv->company_id,
+                        'product_field_id' => $fv->product_field_id,
+                        'quantity_index' => $fv->quantity_index,
+                        'product_id' => $fv->product_id,
+                        'stock_product_id' => $fv->stock_product_id,
+                        'value' => $fv->value,
+                        'deleted_at' => $fv->deleted_at,
+                        'created_at' => $fv->created_at,
+                        'updated_at' => $fv->updated_at,
+                        'name' => $fv->productField->name ?? null,
+                    ])
+                );
+
+                // Remove product object
+                unset($stockEntry->product);
+            }
+        }
+
+        return response()->json([
+            "message" => "Successful!!",
+            "data" => $items
+        ]);
+
+    } catch (ModelNotFoundException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected query error occurred'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
+}
+
 
 
 

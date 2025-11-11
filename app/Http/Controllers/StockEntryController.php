@@ -60,7 +60,7 @@ class StockEntryController extends Controller
 
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
-                'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
+                'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
                 'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
@@ -169,7 +169,7 @@ class StockEntryController extends Controller
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
-                'stock_entries.*.product_id' => 'nullable|string|exists:products,id',
+                'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
                 'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',

@@ -327,6 +327,7 @@ class StockEntryController extends Controller
                     $stockEntry->fieldValues->map(fn($fv) => [
                         'id' => $fv->id,
                         'company_id' => $fv->company_id,
+                       
                         'product_field_id' => $fv->product_field_id,
                         'quantity_index' => $fv->quantity_index,
                         'product_id' => $fv->product_id,
@@ -336,6 +337,8 @@ class StockEntryController extends Controller
                         'created_at' => $fv->created_at,
                         'updated_at' => $fv->updated_at,
                         'name' => $fv->productField->name ?? null,
+                        'type' => $fv->productField->type ?? null,
+                        'values' => $fv->productField->values ?? null,
                     ])
                 );
 

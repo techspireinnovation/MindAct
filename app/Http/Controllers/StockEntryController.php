@@ -270,17 +270,17 @@ class StockEntryController extends Controller
             $companyId = $request->company_id;
             $branchId = $request->branch_id;
 
-            $branchData = Branch::on('mysql')->where('id', $branchId)->firstOrFail();
+            $branchData = Branch::where('id', $branchId)->firstOrFail();
 
             // Check if the branch is main
             $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
             if ($isMainBranch) {
-                $item = StockMain::where('company_id', $companyId)->with('fieldValues')->get();
+                $item = StockMain::where('company_id', $companyId)->with('stockEntries.fieldValues')->get();
             } else {
                 $item = StockMain::where('company_id', $companyId)
                     ->where('branch_id', $branchId)
-                    ->with('fieldValues')
+                    ->with('stockEntries.fieldValues')
                     ->get();
             }
 

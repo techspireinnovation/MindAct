@@ -163,7 +163,7 @@ class StockEntryController extends Controller
                     'string',
                     Rule::unique('stock_mains')
                         ->ignore($id) // ignore current record
-                        ->whereNull('deleted_at'), // exclude soft-deleted ones
+                        ->whereNull('deleted_at'), // exclude soft deleted ones
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,

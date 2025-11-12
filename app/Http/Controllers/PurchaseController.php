@@ -970,7 +970,7 @@ class PurchaseController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+            
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

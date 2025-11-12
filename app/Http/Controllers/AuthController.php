@@ -73,6 +73,7 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
+        try{
         \Log::info('AuthController::login Request', [
             'payload' => $request->all(),
         ]);
@@ -132,7 +133,17 @@ class AuthController extends Controller
                 ],
             ],
         ], 200);
+    }catch (Exception $e) {
+        \Log::error('AuthController::login Exception', [
+            'error' => $e->getMessage(),
+        ]);
+        return response()->json([
+            'success' => false,
+            'message' => 'An unexpected error occurred',
+            'error' => $e->getMessage(),
+        ], 500);
     }
+}
 
     /**
      * Get the authenticated super_admin profile

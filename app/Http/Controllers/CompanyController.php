@@ -165,16 +165,7 @@ class CompanyController extends Controller
                 'tenancy_slug' => $tenancySlug,
             ]);
 
-            // $tenant->data = [
-            //     'company_id' => $company->id,
-            //     'company_name' => $company->name,
-            //     'tenancy_slug' => $tenancySlug,
-            // ];
-            // $tenant->save();
-
-
-
-
+       
 
             Log::info('Tenant created successfully', ['tenant_id' => $tenant->id]);
 

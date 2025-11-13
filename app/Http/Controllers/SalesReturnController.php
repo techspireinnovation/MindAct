@@ -619,7 +619,7 @@ class SalesReturnController extends Controller
             ]);
 
             if (empty($invoiceNumbers)) {
-                return response()->json(['error' => 'No sales with available products found'], 404);
+                return response()->json(['error' => 'No sales with available products found'], 200);
             }
 
             return response()->json([
@@ -1741,7 +1741,7 @@ class SalesReturnController extends Controller
 
             if (empty($products)) {
                 Log::warning('No available products after processing', ['company_id' => $companyId]);
-                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 200);
             }
 
             // Prepare response

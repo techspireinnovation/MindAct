@@ -160,6 +160,34 @@ class CompanyController extends Controller
             ]);
 
             SetupTenantJob::dispatch($tenant, $databaseName, $validated, $company);
+            if ($validated['admin_selection'] === 'existing') {
+                $companyAdmin = User::findOrFail($validated['existing_admin_id']);
+            } else {
+                $companyAdmin = User::withTrashed()->firstOrCreate(
+                    ['email' => $validated['admin_email']],
+                    [
+                        'name' => $validated['admin_name'],
+                        'password' => Hash::make($validated['password']),
+                    ]
+                );
+
+                if ($companyAdmin->trashed()) {
+                    $companyAdmin->restore();
+                    Log::info('Restored trashed admin', ['admin_id' => $companyAdmin->id]);
+                }
+            }
+
+            $role = Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
+            if (!$companyAdmin->hasRole('company_admin')) {
+                $companyAdmin->assignRole($role);
+                Log::info('Assigned company_admin role', ['admin_id' => $companyAdmin->id]);
+            }
+
+            CompanyUser::create([
+                'company_id' => $company->id,
+                'user_id' => $companyAdmin->id,
+            ]);
+
 
             return response()->json([
                 'success' => true,

@@ -232,6 +232,11 @@ class BranchController extends Controller
         }
     }
 
+
+
+
+
+
     public function activeBranchList(Request $request)
 {
     try {

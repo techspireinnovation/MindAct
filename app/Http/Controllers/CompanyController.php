@@ -7,6 +7,9 @@ use Illuminate\Support\Facades\Artisan;
 use App\Providers\TenancyServiceProvider;
 use App\Jobs\InitializeTenant;
 use App\Models\Branch;
+use Illuminate\Support\Facades\Config;
+
+use App\Jobs\SetupTenantJob;
 use App\Models\Company;
 use App\Models\CompanyUser;
 use App\Models\ProductType;
@@ -54,6 +57,23 @@ class CompanyController extends Controller
     }
 
 
+    public function generateUniqueDatabaseName($sluggedName, $companyId)
+    {
+        $baseName = $sluggedName . '_' . $companyId;
+        $databaseName = $baseName;
+        $counter = 1;
+
+        // Check if the database name already exists in the `data` table
+        while (Tenant::where('data->database', $databaseName)->exists()) {
+            $databaseName = $baseName . '_' . $counter;
+            $counter++;
+        }
+
+        return $databaseName;
+    }
+
+
+
     public function store(Request $request): JsonResponse
     {
         $user = Auth::user();
@@ -64,14 +84,6 @@ class CompanyController extends Controller
                 'message' => 'Unauthorized: Super admin required',
             ], 403);
         }
-
-        // Set higher execution time limit
-        set_time_limit(300); // 5 minutes
-
-        $company = null;
-        $tenant = null;
-        $companyAdmin = null;
-        $databaseName = null;
 
         try {
             $validated = $request->validate([
@@ -133,129 +145,29 @@ class CompanyController extends Controller
                 'activation_key' => $validated['activation_key'] ?? '',
                 'url_link' => $validated['url_link'] ?? '',
             ]);
-            Log::info('Company created successfully', ['company_id' => $company->id]);
+
+            Log::info('Company created successfully, dispatching tenant setup job', ['company_id' => $company->id]);
+
 
             $sluggedName = Str::slug($company->name);
+            $databaseName = $this->generateUniqueDatabaseName($sluggedName, $company->id);
 
-            // Generate base database name
-            $baseDatabaseName = $sluggedName . '_' . $company->id;
-            $databaseName = $baseDatabaseName;
-            $counter = 1;
-
-            // Ensure unique database name
-            while (Tenant::where('database', $databaseName)->exists()) {
-                $databaseName = $baseDatabaseName . '_' . $counter++;
-            }
-
-
-            // Base tenancy slug
-            $baseSlug = 'tenant_company_' . Str::slug($company->name);
-            $tenancySlug = $baseSlug;
-            $slugCounter = 1;
-
-            // Ensure unique tenancy slug
-            while (Tenant::where('data->tenancy_slug', $tenancySlug)->exists()) {
-                $tenancySlug = $baseSlug . '_' . $slugCounter;
-                $slugCounter++;
-            }
             $tenant = Tenant::create([
                 'id' => (string) Str::uuid(),
                 'database' => $databaseName,
                 'company_id' => $company->id,
-                'tenancy_slug' => $tenancySlug,
+                'tenancy_slug' => 'tenant_company_' . $sluggedName,
             ]);
 
-       
-
-            Log::info('Tenant created successfully', ['tenant_id' => $tenant->id]);
-
-            // 3️⃣ Initialize tenant (drop, create, and migrate)
-            $this->tenantInitializer->initializeTenant($tenant, $databaseName);
-
-            // 4️⃣ Create domain if provided
-            if (!empty($validated['url_link'])) {
-                Domain::create([
-                    'tenant_id' => $tenant->id,
-                    'domain' => $validated['url_link'],
-                ]);
-                Log::info('Domain created successfully', ['tenant_id' => $tenant->id]);
-            }
-
-            // 5️⃣ Insert tenant-specific data
-            $tenant->run(function () use ($validated, $company, $tenant) {
-                Branch::create([
-                    'name' => $validated['name'],
-                    'company_id' => $company->id,
-                    'branch_type' => 'Main',
-                    'is_active' => true,
-                    'is_primary' => true,
-                ]);
-
-                PurchaseMasterKey::create(['company_id' => $company->id]);
-                SalesMasterKey::create(['company_id' => $company->id]);
-
-                ProductType::insert([
-                    ['name' => 'Inventory', 'delete_status' => 0, 'company_id' => $company->id],
-                    ['name' => 'Assets', 'delete_status' => 0, 'company_id' => $company->id],
-                    ['name' => 'Service', 'delete_status' => 0, 'company_id' => $company->id],
-                    ['name' => 'Raw Materials', 'delete_status' => 0, 'company_id' => $company->id],
-                ]);
-
-                MeasureUnit::create([
-                    'name' => 'Piece',
-                    'symbol' => 'Pcs',
-                    'quantity' => 1,
-                    'company_id' => $company->id,
-                ]);
-
-                Role::firstOrCreate([
-                    'name' => 'company_admin',
-                    'guard_name' => 'api',
-                ]);
-
-                Log::info('Tenant data setup completed', ['tenant_id' => $tenant->id]);
-            });
-
-            // 6️⃣ Handle admin (in central database)
-            $companyAdmin = $validated['admin_selection'] === 'existing'
-                ? User::findOrFail($validated['existing_admin_id'])
-                : User::withTrashed()->firstOrCreate(
-                    ['email' => $validated['admin_email']],
-                    [
-                        'name' => $validated['admin_name'],
-                        'password' => Hash::make($validated['password']),
-                    ]
-                );
-
-            if ($companyAdmin->trashed()) {
-                $companyAdmin->restore();
-                Log::info('Restored trashed admin', ['admin_id' => $companyAdmin->id]);
-            }
-
-            $role = Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
-            if (!$companyAdmin->hasRole('company_admin')) {
-                $companyAdmin->assignRole($role);
-                Log::info('Assigned company_admin role', ['admin_id' => $companyAdmin->id]);
-            }
-
-            CompanyUser::create([
-                'company_id' => $company->id,
-                'user_id' => $companyAdmin->id,
-            ]);
-
-            Log::info('Company and tenant setup complete', [
-                'company_id' => $company->id,
-                'tenant_id' => $tenant->id,
-                'admin_id' => $companyAdmin->id,
-            ]);
+            SetupTenantJob::dispatch($tenant, $databaseName, $validated, $company);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company, tenant database, branch, and admin setup successfully',
+                'message' => 'Company created successfully. Tenant setup is running in the background.',
                 'data' => [
                     'company' => $company,
-                    'admin' => $companyAdmin,
-                ],
+                    'tenant' => $tenant,
+                ]
             ], 201);
 
         } catch (ValidationException $e) {
@@ -266,32 +178,18 @@ class CompanyController extends Controller
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            // Clean up tenant database
-            if ($databaseName) {
-                $this->tenantInitializer->cleanupTenant($databaseName);
-            }
-
-            // Delete tenant and company records
-            if ($tenant) {
-                $tenant->delete();
-            }
-            if ($company) {
-                $company->delete();
-            }
-
-            Log::error('Failed to create company or tenant', [
+            Log::error('Failed to create company', [
                 'error' => $e->getMessage(),
-                'tenant_id' => isset($tenant) ? $tenant->id : null,
-                'company_id' => isset($company) ? $company->id : null,
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create company or tenant',
+                'message' => 'Failed to create company',
                 'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
+
 
 
     public function index(Request $request): JsonResponse

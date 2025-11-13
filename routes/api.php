@@ -362,7 +362,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
     Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
 
-    //List and Details
+    //List and Detailss
     Route::get('change-test', [SaleController::class, 'changeDate']);
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
@@ -378,6 +378,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
 
     Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+    Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
     Route::get('product-types-active-list', [ProductTypeController::class, 'activeProductTypeList']);////

@@ -11,6 +11,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\PosStoreController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
@@ -201,7 +202,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
     Route::resource('hold-sales', HoldSaleController::class);
-    // Route::post('pos-store',[PosStoreController::class]);
+    Route::post('pos-store', PosStoreController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
 
 
@@ -361,7 +362,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
     Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
 
-    //List and Details
+    //List and Detailss
     Route::get('change-test', [SaleController::class, 'changeDate']);
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
@@ -377,6 +378,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
 
     Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+    Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
     Route::get('product-types-active-list', [ProductTypeController::class, 'activeProductTypeList']);////

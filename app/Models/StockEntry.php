@@ -12,6 +12,7 @@ class StockEntry extends BaseTenantModel
     use softDeletes, HasFactory;
 
     protected $fillable = [
+        'stock_main_id',
         'entry_code',
         'product_code',
         'product_name',
@@ -34,6 +35,12 @@ class StockEntry extends BaseTenantModel
     {
         static::addGlobalScope(new CompanyIdScope());
     }
+
+    public function stock()
+{
+    return $this->belongsTo(StockMain::class);
+}
+
 
 
     public function product()

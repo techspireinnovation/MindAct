@@ -11,6 +11,7 @@ use App\Http\Controllers\BrandController;
 use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
+use App\Http\Controllers\PosStoreController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\CustomerController;
@@ -67,10 +68,10 @@ use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
 use App\Http\Middleware\SuperAdminMiddleware;
- use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
- use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
- use App\Http\Controllers\CompanyDashboard\QuickActionController;
- use App\Http\Controllers\CompanyDashboard\OverallInformationController;
+use App\Http\Controllers\CompanyDashboard\TransactionSummaryController;
+use App\Http\Controllers\CompanyDashboard\SalesPurchaseController;
+use App\Http\Controllers\CompanyDashboard\QuickActionController;
+use App\Http\Controllers\CompanyDashboard\OverallInformationController;
 use App\Http\Controllers\CompanyDashboard\TopSellingProductsController;
 use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
 use App\Http\Controllers\CompanyDashboard\RecentSalesController;
@@ -107,8 +108,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
     Route::get('/dashboard', [DashboardController::class, 'dashboardStat']);
 
     Route::get('companies/branch-list', [CompanyController::class, 'companyBranchList'])->name('companies.branch-list');
-   
-    
+
+
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
@@ -201,6 +202,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
     Route::resource('hold-sales', HoldSaleController::class);
+    Route::post('pos-store', PosStoreController::class);
     Route::resource('fixed-asset-group', FixedAssetGroupController::class);
 
 
@@ -257,7 +259,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);
     Route::get('product-details-by-names-purchases', [PurchaseController::class, 'getProductDetailsByName']);
     Route::get('purchase-returns/get-by-bill-number/{billNumber}', action: [PurchaseReturnController::class, 'getItemByBillNumber']);
-     Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
+    Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
 
     Route::get('main-groups-list', [MainGroupController::class, 'mainGroupList']);
     Route::get('main-group-lists', [MainGroupController::class, 'mainGroupListDetails']);
@@ -317,7 +319,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::apiResource('stock-entries', StockEntryController::class);
     Route::get('get-available-stock', ([SaleController::class, 'listAvailableProducts']));
     // Route::get('get-available-stock-details', ([StockTransferController::class, 'getProductDetails']));
-    Route::post('stock-entries-update', [StockEntryController::class, 'update']);
+    Route::post('/stock-entries-update/{id}', [StockEntryController::class, 'update']);
     Route::get('stock-entries-details', [StockEntryController::class, 'show']);
     Route::resource('stock-adjustments', StockAdjustmentController::class);
     Route::resource('stock-transfers', StockTransferController::class);
@@ -372,6 +374,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
     Route::get('categories-active-list', [ProductCategoryController::class, 'activeCategoryList']);/////
     Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
+    Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
     Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);

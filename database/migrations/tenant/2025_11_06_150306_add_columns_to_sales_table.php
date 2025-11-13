@@ -11,8 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('sales', function (Blueprint $table) {
-            $table->string('promo_disc')->nullable()->after('payment');
+        Schema::connection('tenant')->table('sales', function (Blueprint $table) {
+            $table->boolean('pos_type')->default(0)->after('payment');
+            $table->string('promo_disc')->nullable()->after('pos_type');
             $table->double('bill_amount')->nullable()->after('promo_disc');
             $table->double('hold_discount')->nullable()->after('bill_amount');
             $table->double('final_amount')->nullable()->after('hold_discount');
@@ -27,8 +28,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('sales', function (Blueprint $table) {
+        Schema::connection('tenant')->table('sales', function (Blueprint $table) {
                $table->dropColumn([
+                'pos_type',
                 'promo_disc',
                 'bill_amount',
                 'hold_discount',

@@ -117,7 +117,7 @@ public function getTotals(Request $request): JsonResponse
     $validator = Validator::make($request->all(), [
         'from_date' => 'required|string',
         'to_date' => 'required|string',
-        'company_id' => 'required|integer|exists:companies,id',
+        'company_id' => 'required|integer',
         'account_head_id' => 'nullable|integer',
         'account_group_id' => 'nullable|integer',
         'payment_type' => 'nullable|string|in:cash,bank',

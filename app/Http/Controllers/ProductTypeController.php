@@ -7,6 +7,7 @@ use App\Models\Product;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -174,8 +175,10 @@ class ProductTypeController extends Controller
             $item = ProductType::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
+            Log::error($e);
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
+            Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

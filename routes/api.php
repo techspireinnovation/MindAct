@@ -378,6 +378,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
 
     Route::get('product-type-list', [ProductTypeController::class, 'productTypeList']);
+    Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
     Route::get('product-types-active-list', [ProductTypeController::class, 'activeProductTypeList']);////

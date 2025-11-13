@@ -503,6 +503,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
 
+    
 
 
     Route::middleware(['company.access'])->group(function () {

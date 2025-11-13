@@ -1507,7 +1507,7 @@ class PurchaseReturnController extends Controller
                 ->toArray();
 
             if (empty($productIds)) {
-                return response()->json(['error' => 'No products with available quantities found'], 404);
+                return response()->json(['error' => 'No products with available quantities found'], 200);
             }
 
             // Get product names using the helper function

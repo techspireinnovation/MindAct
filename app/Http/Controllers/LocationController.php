@@ -275,14 +275,14 @@ class LocationController extends Controller
     public function activeLocations(Request $request): JsonResponse
     {
         try {
-            $locations = Location::where('company_id', $request->company_id) // filter by company
+            $locations = Location::where('company_id', $request->company_id) 
                 ->where('is_active', 1) // only active
                 ->whereNull('deleted_at') // ignore deleted
-                ->get(['id', 'name', 'is_primary']) // ✅ include is_primary
+                ->get(['id', 'name', 'is_primary'])
                 ->map(fn($location) => [
                     'id' => $location->id,
                     'name' => $location->name,
-                    'is_primary' => $location->is_primary, // ✅ add in response
+                    'is_primary' => $location->is_primary, 
                 ])
                 ->values()
                 ->toArray();
@@ -291,7 +291,7 @@ class LocationController extends Controller
                 return response()->json([
                     'message' => 'No active locations found',
                     'data' => []
-                ], 404);
+                ], 200);
             }
 
             return response()->json([

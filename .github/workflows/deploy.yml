@@ -24,15 +24,15 @@ jobs:
           script: |
             cd ${{ secrets.PROJECT_PATH }}
 
-            sudo chown -R $(whoami):$(whoami) storage bootstrap/cache
+            
             chmod -R 775 storage bootstrap/cache
             git stash
             git pull origin main
             # Add any build or restart commands here, e.g.:
             composer install --no-interaction --prefer-dist --optimize-autoloader
-            php artisan migrate --force
+           
             
-           #php artisan migrate --database=mysql
-            php artisan app:migrate-tenants 
+            php artisan migrate --force --database=mysql
+            php artisan app:migrate-tenants --force
             php artisan optimize
             # sudo systemctl restart nginx

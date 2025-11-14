@@ -637,7 +637,7 @@ class PurchaseController extends Controller
             'customer_id' => 'required|exists:customers,id',
 
             'customer_name' => 'nullable|string|max:255',
-            'pan_number' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|digits:10',
             'address' => 'nullable|string|max:255',
             'customer_contact' => 'nullable|string|max:255',
             'document_number' => 'nullable|string|max:255',

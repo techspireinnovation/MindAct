@@ -2230,7 +2230,7 @@ class PurchaseReturnController extends Controller
                 'company_id' => 'required|integer',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
-                'pan_number' => 'nullable|numeric|digits:10',
+                'pan_number' => 'nullable|numeric|digits:9',
                 'invoice_number' => [
                     'nullable',
                     'string',
@@ -3819,7 +3819,7 @@ class PurchaseReturnController extends Controller
                 'company_id' => 'required|integer',
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
-                'pan_number' => 'nullable|numeric|digits:10',
+                'pan_number' => 'nullable|numeric|digits:9',
                 'invoice_number' => [
                     'nullable',
                     'string',

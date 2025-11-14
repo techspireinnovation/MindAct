@@ -2,6 +2,8 @@
 
 namespace App\Stubs;
 
+
+use Illuminate\Support\Facades\Log;
 use App\Models\AccountGroup;
 use App\Models\AccountHead;
 use App\Models\MainGroup;
@@ -13,6 +15,8 @@ class MainGroupStub
 
     public static function createMainGroups(int $companyId)
     {
+       
+        Log::info('Starting chart of accounts creation', ['company_id' => $companyId]);
         $chartOfAccounts = [
             'Assets' => [
                 'Non-Current Asset' => [
@@ -454,5 +458,6 @@ class MainGroupStub
             }
 
         }
+        Log::info('Chart of accounts seeding completed', ['company_id' => $companyId]);
     }
 }

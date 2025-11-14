@@ -9,6 +9,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class BranchController extends Controller
 {
@@ -179,58 +180,137 @@ class BranchController extends Controller
     //     }
     // }
 
-    public function destroy($id): JsonResponse
-    {
-        try {
-            $branch = Branch::findOrFail($id);
+    // public function destroy($id): JsonResponse
+    // {
+    //     try {
+    //         $branch = Branch::findOrFail($id);
 
-            // Track where it's being used
-            $usedIn = [];
+    //         // Track where it's being used
+    //         $usedIn = [];
 
-            if ($branch->users()->exists()) {
-                $usedIn[] = 'users';
+    //         if ($branch->users()->exists()) {
+    //             $usedIn[] = 'users';
+    //         }
+    //         if ($branch->shrinkWorkLoss()->exists()) {
+    //             $usedIn[] = 'shrink_work_loss';
+    //         }
+    //         if ($branch->stockReconciliation()->exists()) {
+    //             $usedIn[] = 'stock_reconciliation';
+    //         }
+
+    //         if (!empty($usedIn)) {
+    //             return response()->json([
+    //                 'error' => 'in_use',
+    //                 'message' => 'Branch cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
+    //                 'used_in' => $usedIn
+    //             ], 400);
+    //         }
+
+    //         $branch->delete(); // soft delete
+
+    //         return response()->json([
+    //             'success' => true,
+    //             'message' => 'Branch deleted successfully!'
+    //         ]);
+    //     } catch (ModelNotFoundException $e) {
+    //         \Log::error($e);
+    //         return response()->json([
+    //             'error' => 'not_found',
+    //             'message' => 'Branch not found!'
+    //         ], 404);
+    //     } catch (QueryException $e) {
+    //         \Log::error($e);
+    //         return response()->json([
+    //             'error' => 'query_error',
+    //             'message' => 'A database error occurred while deleting the branch.'
+    //         ], 500);
+    //     } catch (\Exception $e) {
+    //         \Log::error($e);
+    //         return response()->json([
+    //             'error' => 'unexpected_error',
+    //             'message' => 'An unexpected error occurred while deleting the branch.'
+    //         ], 500);
+    //     }
+    // }
+
+public function destroy($id): JsonResponse
+{
+    try {
+       
+        $branch = Branch::on('tenant')->findOrFail($id);
+
+        $usedIn = [];
+
+       
+        if (Schema::hasTable('branch_user') && Schema::hasTable('users')) {
+            $existsInCentral = DB::table('branch_user')
+                ->join('users', 'branch_user.user_id', '=', 'users.id')
+                ->where('branch_user.branch_id', $branch->id)
+                ->exists();
+
+            if ($existsInCentral) {
+                $usedIn[] = 'users (central)';
             }
-            if ($branch->shrinkWorkLoss()->exists()) {
-                $usedIn[] = 'shrink_work_loss';
-            }
-            if ($branch->stockReconciliation()->exists()) {
-                $usedIn[] = 'stock_reconciliation';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'in_use',
-                    'message' => 'Branch cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $branch->delete(); // soft delete
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Branch deleted successfully!'
-            ]);
-        } catch (ModelNotFoundException $e) {
-            \Log::error($e);
-            return response()->json([
-                'error' => 'not_found',
-                'message' => 'Branch not found!'
-            ], 404);
-        } catch (QueryException $e) {
-            \Log::error($e);
-            return response()->json([
-                'error' => 'query_error',
-                'message' => 'A database error occurred while deleting the branch.'
-            ], 500);
-        } catch (\Exception $e) {
-            \Log::error($e);
-            return response()->json([
-                'error' => 'unexpected_error',
-                'message' => 'An unexpected error occurred while deleting the branch.'
-            ], 500);
         }
+
+       
+        $tenantConnection = $branch->getConnectionName(); 
+
+        if (Schema::connection($tenantConnection)->hasTable('shrink_work_losses')) {
+            if ($branch->shrinkWorkLoss()->exists()) {
+                $usedIn[] = 'shrink_work_loss (tenant)';
+            }
+        }
+
+        if (Schema::connection($tenantConnection)->hasTable('stock_reconciliations')) {
+            if ($branch->stockReconciliation()->exists()) {
+                $usedIn[] = 'stock_reconciliation (tenant)';
+            }
+        }
+
+      
+        if (!empty($usedIn)) {
+            return response()->json([
+                'error' => 'in_use',
+                'message' => 'Branch cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
+                'used_in' => $usedIn
+            ], 422);
+        }
+
+       
+        $branch->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Branch deleted successfully.'
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            'error' => 'not_found',
+            'message' => 'Branch not found.'
+        ], 404);
+
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json([
+            'error' => 'query_error',
+            'message' => $e->getMessage(),
+        ], 422);
+
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json([
+            'error' => 'unexpected_error',
+            'message' => $e->getMessage(), 
+        ], 500);
     }
+}
+
+
+
+
+
 
 
 

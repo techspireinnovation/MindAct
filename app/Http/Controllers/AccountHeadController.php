@@ -41,7 +41,7 @@ class AccountHeadController extends Controller
 
         }catch(ModelNotFoundException $e){
             \Log::error($e);
-            return response()->json(["error"=>"Account Head not Found !!"],404);
+            return response()->json(["error"=>"Account Head not Found !"],404);
         }catch(QueryException $e){
             \Log::error($e);
             return response()->json(["error"=>"Database error occurred !!"],500);

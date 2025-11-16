@@ -1186,7 +1186,7 @@ class PurchaseReturnController extends Controller
                     'company_id' => $companyId,
                     'query_log' => DB::getQueryLog(),
                 ]);
-                return response()->json(['error' => 'No products with available quantity found'], 404);
+                return response()->json(['error' => 'No products with available quantity found !'], 404);
             }
 
             $purchaseData['purchase_stock_products'] = $purchaseProducts;

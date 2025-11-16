@@ -76,6 +76,8 @@ use App\Http\Controllers\CompanyDashboard\TopSellingProductsController;
 use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
 use App\Http\Controllers\CompanyDashboard\RecentSalesController;
 use App\Http\Controllers\CompanyDashboard\LowStockProductsController;
+use Illuminate\Support\Facades\Route;
+
 
 
 
@@ -142,6 +144,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/generateBankVoucherBillNumber', [GenerateCodeController::class, 'generateBankVoucherBillNumber']);
     Route::get('/generateStockAdjustmentBillNumber', [GenerateCodeController::class, 'generateStockAdjustmentBillNumber']);
     Route::get('/generateStockEntryBillNumber', [GenerateCodeController::class, 'generateStockEntryBillNumber']);
+    Route::get('/generatestockreconciliationnumber', [GenerateCodeController::class, 'generateStockReconciliationNumber']);
 
 
 

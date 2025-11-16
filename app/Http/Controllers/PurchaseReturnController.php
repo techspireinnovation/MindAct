@@ -215,7 +215,7 @@ class PurchaseReturnController extends Controller
                 ])
                 ->select(['id', 'company_id', 'purchase_bill_number'])
                 ->get();
-            // dd($purchases);    
+         
 
             if ($purchases->isEmpty()) {
                 Log::warning('No purchases found', ['company_id' => $companyId]);
@@ -247,7 +247,7 @@ class PurchaseReturnController extends Controller
                 ->whereNull('deleted_at')
                 ->select([
                     'id',
-                    'purchase_product_id',
+                    'purchase_stock_product_id',
                     'quantity',
                     'free_quantity',
                     'measure_unit_id',
@@ -1524,7 +1524,7 @@ class PurchaseReturnController extends Controller
 
             return response()->json($productNames);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+           
             \Log::error('Database error in getPurchaseProductNames: ' . $e->getMessage());
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {

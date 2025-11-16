@@ -46,13 +46,13 @@ class PurchaseStockProduct extends BaseTenantModel
     protected $appends = ['created_at_bs'];
 
     // PurchaseStockProduct.php
-    protected static function booted()
-    {
-        static::addGlobalScope('tenant', function ($builder) {
-            $builder->where('company_id', tenant('id') ?? auth()->user()->company_id)
-                ->where('branch_id', auth()->user()->branch_id ?? 1);
-        });
-    }
+    // protected static function booted()
+    // {
+    //     static::addGlobalScope('tenant', function ($builder) {
+    //         $builder->where('company_id', tenant('id') ?? auth()->user()->company_id)
+    //             ->where('branch_id', auth()->user()->branch_id ?? 1);
+    //     });
+    // }
     public function measureUnit()
     {
         return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');

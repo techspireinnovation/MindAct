@@ -368,7 +368,7 @@ class PurchaseReturnController extends Controller
                         ]);
                     }
 
-                    $saleProductsForPurchase = $saleProducts->where('purchase_stock_product_id', $purchaseProduct->id);
+                    $saleProductsForPurchase = $saleProducts->where('purchase_product_id', $purchaseProduct->id);
                     $netSales = 0;
                     foreach ($saleProductsForPurchase as $saleProduct) {
                         $saleMeasureUnitId = $saleProduct->measure_unit_id ?? null;
@@ -507,8 +507,8 @@ class PurchaseReturnController extends Controller
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
-           
-            Log::error('Database query error in Purchase Bill Number', [
+            dd($e->getMessage());
+            Log::error('Database query error in getPurchaseBillNumber', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),

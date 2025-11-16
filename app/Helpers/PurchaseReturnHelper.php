@@ -49,7 +49,7 @@ class PurchaseReturnHelper
                     COALESCE((
                         SELECT SUM(sale_products.quantity + COALESCE(sale_products.free_quantity, 0))
                         FROM sale_products
-                        WHERE sale_products.purchase_product_id = purchase_stock_products.id
+                        WHERE sale_products.purchase_stock_product_id = purchase_stock_products.id
                         AND sale_products.deleted_at IS NULL
                     ), 0) + 
                     COALESCE((
@@ -57,7 +57,7 @@ class PurchaseReturnHelper
                         FROM sales_return_products
                         WHERE sales_return_products.sale_product_id IN (
                             SELECT id FROM sale_products
-                            WHERE sale_products.purchase_product_id = purchase_stock_products.id
+                            WHERE sale_products.purchase_stock_product_id = purchase_stock_products.id
                             AND sale_products.deleted_at IS NULL
                         )
                         AND sales_return_products.deleted_at IS NULL

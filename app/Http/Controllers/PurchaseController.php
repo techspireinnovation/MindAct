@@ -136,7 +136,7 @@ class PurchaseController extends Controller
 
         $company = $request->company_id;
         $names = Helper::getProductNames($company);
-     
+
 
         return response()->json($names);
     }
@@ -637,7 +637,7 @@ class PurchaseController extends Controller
             'customer_id' => 'required|exists:customers,id',
 
             'customer_name' => 'nullable|string|max:255',
-            'pan_number' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|digits:10',
             'address' => 'nullable|string|max:255',
             'customer_contact' => 'nullable|string|max:255',
             'document_number' => 'nullable|string|max:255',
@@ -970,61 +970,61 @@ class PurchaseController extends Controller
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            
+
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
 
-  
-    
+
+
     public function destroy($id): JsonResponse
     {
         try {
             $purchase = Purchase::findOrFail($id);
-    
+
             if (
                 $purchase->purchaseProductsUse()->exists() ||
                 $purchase->purchaseReturnProductsUse()->exists() ||
                 $purchase->purchaseReturnsUse()->exists()
             ) {
                 return response()->json([
-                    'error'   => 'in_use',
+                    'error' => 'in_use',
                     'message' => 'Purchase cannot be deleted because it has related products or return records.'
                 ], 400);
             }
-    
+
             $purchase->delete();
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'Purchase deleted successfully!'
             ]);
-    
+
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
             return response()->json([
-                'error'   => 'not_found',
+                'error' => 'not_found',
                 'message' => 'Purchase not found!'
             ], 404);
-    
+
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json([
-                'error'   => 'query_error',
+                'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the purchase.'
             ], 500);
-    
+
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json([
-                'error'   => 'unexpected_error',
+                'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the purchase.'
             ], 500);
         }
     }
-    
-// public function filterbyBarcode(Request $request): JsonResponse
+
+    // public function filterbyBarcode(Request $request): JsonResponse
 // {
 //     try {
 //         // Validate request: either barcode or product_id must be provided
@@ -1033,11 +1033,11 @@ class PurchaseController extends Controller
 //             'product_id' => 'required_without:barcode|exists:products,id',
 //         ]);
 
-//         if ($validator->fails()) {
+    //         if ($validator->fails()) {
 //             return response()->json(['errors' => $validator->errors()], 422);
 //         }
 
-//         if ($request->filled('barcode')) {
+    //         if ($request->filled('barcode')) {
 //             $productList = ProductList::with([
 //                 'product.category',
 //                 'product.subCategory',
@@ -1061,13 +1061,13 @@ class PurchaseController extends Controller
 //             ])->where('product_id', $request->product_id)->first();
 //         }
 
-//         if (!$productList) {
+    //         if (!$productList) {
 //             return response()->json(['error' => 'No products found'], 404);
 //         }
 
-//         $product = $productList->product;
+    //         $product = $productList->product;
 
-//         // --- Transform data ---
+    //         // --- Transform data ---
 //         $data = [
 //             "id" => $product->id,
 //             "name" => $product->name,
@@ -1087,7 +1087,7 @@ class PurchaseController extends Controller
 //             "updated_at" => $product->updated_at,
 //             "deleted_at" => $product->deleted_at,
 
-//             "primary_measure_unit" => $product->measureUnit ? [
+    //             "primary_measure_unit" => $product->measureUnit ? [
 //                 "id" => $product->measureUnit->id,
 //                 "name" => $product->measureUnit->name,
 //                 "symbol" => $product->measureUnit->symbol,
@@ -1100,7 +1100,7 @@ class PurchaseController extends Controller
 //                 "deleted_at" => $product->measureUnit->deleted_at,
 //             ] : null,
 
-//             "product_lists" => $product->productLists->map(function ($pl) {
+    //             "product_lists" => $product->productLists->map(function ($pl) {
 //                 return [
 //                     "id" => $pl->id,
 //                     "product_id" => $pl->product_id,
@@ -1119,9 +1119,9 @@ class PurchaseController extends Controller
 //                 ];
 //             }),
 
-//             "product_field_values" => $product->productFieldValues ?? [],
+    //             "product_field_values" => $product->productFieldValues ?? [],
 
-//             "measure_units" => $product->productLists->map(function ($pl) {
+    //             "measure_units" => $product->productLists->map(function ($pl) {
 //                 return [
 //                     "id" => $pl->measureUnit->id,
 //                     "name" => $pl->measureUnit->name,
@@ -1129,17 +1129,17 @@ class PurchaseController extends Controller
 //                 ];
 //             })->unique("id")->values(),
 
-//             "average_price" => $product->purchase_rate,
+    //             "average_price" => $product->purchase_rate,
 //             "min_price" => $product->purchase_rate,
 //             "last_purchase_price" => $product->purchase_rate,
 //         ];
 
-//         return response()->json([
+    //         return response()->json([
 //             "message" => "Successful!!",
 //             "data" => $data
 //         ]);
 
-//     } catch (QueryException $e) {
+    //     } catch (QueryException $e) {
 //         \Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
 //         return response()->json(['error' => 'Database error'], 500);
 //     } catch (\Exception $e) {
@@ -1149,60 +1149,47 @@ class PurchaseController extends Controller
 // }
 
 
-public function filterbyBarcode(Request $request): JsonResponse
-{
-    try {
-        \Log::info('Filter by barcode request: ', $request->all());
-        
-        // Validate request
-        $validator = Validator::make($request->all(), [
-            'barcode' => 'required_without:product_unique_id',
-            'product_unique_id' => 'required_without:barcode',
-        ]);
+    public function filterbyBarcode(Request $request): JsonResponse
+    {
+        try {
+            \Log::info('Filter by barcode request: ', $request->all());
 
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'barcode' => 'required_without:product_unique_id',
+                'product_unique_id' => 'required_without:barcode',
+            ]);
 
-        $productList = null;
-        $product = null;
-
-        // Search logic
-        if ($request->filled('barcode')) {
-            \Log::info('Searching by barcode: ' . $request->barcode);
-            
-            // Find product list by barcode
-            $productList = ProductList::with([
-                'product.category',
-                'product.subCategory',
-                'product.brand',
-                'product.measureUnit',
-                'product.productType',
-                'product.location',
-                'product.productFieldValues',
-                'product.productLists.measureUnit'
-            ])->where('barcode', $request->barcode)->first();
-            
-            if ($productList) {
-                $product = $productList->product;
+            if ($validator->fails()) {
+                return response()->json(['errors' => $validator->errors()], 422);
             }
-        } else {
-            \Log::info('Searching by product_unique_id: ' . $request->product_unique_id);
-            
-            // Try different approaches to find the product
-            $product = Product::with([
-                'category',
-                'subCategory',
-                'brand',
-                'measureUnit',
-                'productType',
-                'location',
-                'productFieldValues',
-                'productLists.measureUnit'
-            ])->where('product_unique_id', $request->product_unique_id)->first();
-            
-            // If not found, try case-insensitive search
-            if (!$product) {
+
+            $productList = null;
+            $product = null;
+
+            // Search logic
+            if ($request->filled('barcode')) {
+                \Log::info('Searching by barcode: ' . $request->barcode);
+
+                // Find product list by barcode
+                $productList = ProductList::with([
+                    'product.category',
+                    'product.subCategory',
+                    'product.brand',
+                    'product.measureUnit',
+                    'product.productType',
+                    'product.location',
+                    'product.productFieldValues',
+                    'product.productLists.measureUnit'
+                ])->where('barcode', $request->barcode)->first();
+
+                if ($productList) {
+                    $product = $productList->product;
+                }
+            } else {
+                \Log::info('Searching by product_unique_id: ' . $request->product_unique_id);
+
+                // Try different approaches to find the product
                 $product = Product::with([
                     'category',
                     'subCategory',
@@ -1212,127 +1199,136 @@ public function filterbyBarcode(Request $request): JsonResponse
                     'location',
                     'productFieldValues',
                     'productLists.measureUnit'
-                ])->whereRaw('LOWER(product_unique_id) = ?', [strtolower($request->product_unique_id)])->first();
-            }
-            
-            // If still not found, try trimming whitespace
-            if (!$product) {
-                $product = Product::with([
-                    'category',
-                    'subCategory',
-                    'brand',
-                    'measureUnit',
-                    'productType',
-                    'location',
-                    'productFieldValues',
-                    'productLists.measureUnit'
-                ])->where('product_unique_id', 'like', '%' . trim($request->product_unique_id) . '%')->first();
-            }
-            
-            if ($product) {
-                // Get the first product list for this product
-                $productList = $product->productLists()->first();
-            }
-        }
+                ])->where('product_unique_id', $request->product_unique_id)->first();
 
-        if (!$product) {
-            \Log::warning('No products found for search criteria: ' . json_encode($request->all()));
-            
-            // Provide more helpful error message
+                // If not found, try case-insensitive search
+                if (!$product) {
+                    $product = Product::with([
+                        'category',
+                        'subCategory',
+                        'brand',
+                        'measureUnit',
+                        'productType',
+                        'location',
+                        'productFieldValues',
+                        'productLists.measureUnit'
+                    ])->whereRaw('LOWER(product_unique_id) = ?', [strtolower($request->product_unique_id)])->first();
+                }
+
+                // If still not found, try trimming whitespace
+                if (!$product) {
+                    $product = Product::with([
+                        'category',
+                        'subCategory',
+                        'brand',
+                        'measureUnit',
+                        'productType',
+                        'location',
+                        'productFieldValues',
+                        'productLists.measureUnit'
+                    ])->where('product_unique_id', 'like', '%' . trim($request->product_unique_id) . '%')->first();
+                }
+
+                if ($product) {
+                    // Get the first product list for this product
+                    $productList = $product->productLists()->first();
+                }
+            }
+
+            if (!$product) {
+                \Log::warning('No products found for search criteria: ' . json_encode($request->all()));
+
+                // Provide more helpful error message
+                return response()->json([
+                    'error' => 'No products found',
+                    'searched_value' => $request->filled('barcode') ? $request->barcode : $request->product_unique_id,
+                    'search_type' => $request->filled('barcode') ? 'barcode' : 'product_unique_id'
+                ], 404);
+            }
+
+            \Log::info('Product found: ' . $product->id);
+
+            // --- Transform data ---
+            $data = [
+                "id" => $product->id,
+                "name" => $product->name,
+                "product_unique_id" => $product->product_unique_id,
+                "category_id" => $product->category_id ?? 0,
+                "sub_category_id" => $product->sub_category_id ?? 0,
+                "brand_id" => $product->brand_id ?? 0,
+                "measure_unit_id" => $product->measure_unit_id,
+                "purchase_rate" => $product->purchase_rate,
+                "retail_sales_price" => $product->retail_sales_price,
+                "wholesales_price" => $product->wholesales_price,
+                "is_vatable" => $product->is_vatable,
+                "product_type_id" => $product->product_type_id,
+                "location_id" => $product->location_id,
+                "is_active" => (bool) $product->is_active,
+                "created_at" => $product->created_at,
+                "updated_at" => $product->updated_at,
+                "deleted_at" => $product->deleted_at,
+
+                "primary_measure_unit" => $product->measureUnit ? [
+                    "id" => $product->measureUnit->id,
+                    "name" => $product->measureUnit->name,
+                    "symbol" => $product->measureUnit->symbol,
+                    "quantity" => $product->measureUnit->quantity,
+                    "company_id" => $product->measureUnit->company_id,
+                    "is_primary" => (bool) $product->measureUnit->is_primary,
+                    "is_active" => (bool) $product->measureUnit->is_active,
+                    "created_at" => $product->measureUnit->created_at,
+                    "updated_at" => $product->measureUnit->updated_at,
+                    "deleted_at" => $product->measureUnit->deleted_at,
+                ] : null,
+
+                "product_lists" => $product->productLists->map(function ($pl) {
+                    return [
+                        "id" => $pl->id,
+                        "product_id" => $pl->product_id,
+                        "measure_unit_id" => $pl->measure_unit_id,
+                        "company_id" => $pl->company_id,
+                        "quantity" => $pl->quantity,
+                        "barcode" => $pl->barcode,
+                        "price" => $pl->price,
+                        "discount" => $pl->discount,
+                        "final_price" => $pl->final_price,
+                        "is_primary" => (bool) $pl->is_primary,
+                        "primary_measure_unit_id" => $pl->primary_measure_unit_id,
+                        "deleted_at" => $pl->deleted_at,
+                        "created_at" => $pl->created_at,
+                        "updated_at" => $pl->updated_at,
+                    ];
+                }),
+
+                "product_field_values" => $product->productFieldValues ?? [],
+
+                "measure_units" => $product->productLists->map(function ($pl) {
+                    return $pl->measureUnit ? [
+                        "id" => $pl->measureUnit->id,
+                        "name" => $pl->measureUnit->name,
+                        "measure_unit_quantity" => $pl->measureUnit->quantity,
+                    ] : null;
+                })->filter()->unique("id")->values(),
+
+                "average_price" => $product->purchase_rate,
+                "min_price" => $product->purchase_rate,
+                "last_purchase_price" => $product->purchase_rate,
+
+                // Add barcode from the product list if available
+                "barcode" => $productList ? $productList->barcode : null,
+            ];
+
             return response()->json([
-                'error' => 'No products found',
-                'searched_value' => $request->filled('barcode') ? $request->barcode : $request->product_unique_id,
-                'search_type' => $request->filled('barcode') ? 'barcode' : 'product_unique_id'
-            ], 404);
+                "message" => "Successful!!",
+                "data" => $data
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Error in filterbyBarcode: ' . $e->getMessage());
+            \Log::error('Stack trace: ' . $e->getTraceAsString());
+            return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
-
-        \Log::info('Product found: ' . $product->id);
-        
-        // --- Transform data ---
-        $data = [
-            "id" => $product->id,
-            "name" => $product->name,
-            "product_unique_id" => $product->product_unique_id,
-            "category_id" => $product->category_id ?? 0,
-            "sub_category_id" => $product->sub_category_id ?? 0,
-            "brand_id" => $product->brand_id ?? 0,
-            "measure_unit_id" => $product->measure_unit_id,
-            "purchase_rate" => $product->purchase_rate,
-            "retail_sales_price" => $product->retail_sales_price,
-            "wholesales_price" => $product->wholesales_price,
-            "is_vatable" => $product->is_vatable,
-            "product_type_id" => $product->product_type_id,
-            "location_id" => $product->location_id,
-            "is_active" => (bool) $product->is_active,
-            "created_at" => $product->created_at,
-            "updated_at" => $product->updated_at,
-            "deleted_at" => $product->deleted_at,
-
-            "primary_measure_unit" => $product->measureUnit ? [
-                "id" => $product->measureUnit->id,
-                "name" => $product->measureUnit->name,
-                "symbol" => $product->measureUnit->symbol,
-                "quantity" => $product->measureUnit->quantity,
-                "company_id" => $product->measureUnit->company_id,
-                "is_primary" => (bool) $product->measureUnit->is_primary,
-                "is_active" => (bool) $product->measureUnit->is_active,
-                "created_at" => $product->measureUnit->created_at,
-                "updated_at" => $product->measureUnit->updated_at,
-                "deleted_at" => $product->measureUnit->deleted_at,
-            ] : null,
-
-            "product_lists" => $product->productLists->map(function ($pl) {
-                return [
-                    "id" => $pl->id,
-                    "product_id" => $pl->product_id,
-                    "measure_unit_id" => $pl->measure_unit_id,
-                    "company_id" => $pl->company_id,
-                    "quantity" => $pl->quantity,
-                    "barcode" => $pl->barcode,
-                    "price" => $pl->price,
-                    "discount" => $pl->discount,
-                    "final_price" => $pl->final_price,
-                    "is_primary" => (bool) $pl->is_primary,
-                    "primary_measure_unit_id" => $pl->primary_measure_unit_id,
-                    "deleted_at" => $pl->deleted_at,
-                    "created_at" => $pl->created_at,
-                    "updated_at" => $pl->updated_at,
-                ];
-            }),
-
-            "product_field_values" => $product->productFieldValues ?? [],
-
-            "measure_units" => $product->productLists->map(function ($pl) {
-                return $pl->measureUnit ? [
-                    "id" => $pl->measureUnit->id,
-                    "name" => $pl->measureUnit->name,
-                    "measure_unit_quantity" => $pl->measureUnit->quantity,
-                ] : null;
-            })->filter()->unique("id")->values(),
-
-            "average_price" => $product->purchase_rate,
-            "min_price" => $product->purchase_rate,
-            "last_purchase_price" => $product->purchase_rate,
-            
-            // Add barcode from the product list if available
-            "barcode" => $productList ? $productList->barcode : null,
-        ];
-
-        return response()->json([
-            "message" => "Successful!!",
-            "data" => $data
-        ]);
-
-    } catch (\Exception $e) {
-        \Log::error('Error in filterbyBarcode: ' . $e->getMessage());
-        \Log::error('Stack trace: ' . $e->getTraceAsString());
-        return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
     }
-}
-
-
-
-
 
 
 }

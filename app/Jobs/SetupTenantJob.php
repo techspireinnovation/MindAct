@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\PurchaseMasterKey;
 use App\Models\SalesMasterKey;
 use App\Models\ProductType;
+use App\Stubs\MainGroupStub;
 use App\Models\MeasureUnit;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -98,6 +99,9 @@ class SetupTenantJob implements ShouldQueue
                 'quantity' => 1,
                 'company_id' => $this->company->id,
             ]);
+            MainGroupStub::createMainGroups($this->company->id);
+            Log::info('Chart of accounts seeded', ['company_id' => $this->company->id]);
+
 
             Role::firstOrCreate([
                 'name' => 'company_admin',
@@ -108,6 +112,7 @@ class SetupTenantJob implements ShouldQueue
                 'tenant_id' => $this->tenant->id,
                 'execution_time' => microtime(true) - $start . ' seconds',
             ]);
+
 
         } catch (\Exception $e) {
             Log::error('Tenant setup failed', [

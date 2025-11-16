@@ -1848,7 +1848,7 @@ class PurchaseReturnController extends Controller
                 ->where('sales_return_products.branch_id', $branchId)
                 ->whereNull('sales_return_products.deleted_at')
                 ->get()
-                ->groupBy('purchase_product_id');
+                ->groupBy('purchase_stock_product_id');
 
             // Fetch field values and quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')
@@ -4897,7 +4897,7 @@ class PurchaseReturnController extends Controller
                         $totalReturnedInPieces = $purchaseProduct->purchaseStockProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
                             $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                             $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                            Log::debug('Calculating total returned pieces for other returns', [
+                            Log::debug('Calculating total returned pieces for other returns.', [
                                 'purchase_product_id' => $return->purchase_product_id,
                                 'purchase_return_id' => $return->purchase_return_id,
                                 'quantity' => $return->quantity,

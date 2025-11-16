@@ -1811,33 +1811,36 @@ class PurchaseReturnController extends Controller
                 ])
                 ->whereIn('purchase_stock_product_returns.purchase_stock_product_id', $purchaseProductIds)
                 ->where('purchase_stock_product_returns.company_id', $companyId)
+                ->where('purchase_stock_product_returns.branch_id', $branchId)
                 ->whereNull('purchase_stock_product_returns.deleted_at')
                 ->get()
                 ->groupBy('purchase_stock_product_id');
 
             $saleProducts = DB::table('sale_products')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sale_products.quantity',
                     'sale_products.free_quantity',
                     'sale_products.measure_unit_id',
                 ])
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sale_products.company_id', $companyId)
+                ->where('sale_products.branch_id', $branchId)
                 ->whereNull('sale_products.deleted_at')
                 ->get()
-                ->groupBy('purchase_product_id');
+                ->groupBy('purchase_stock_product_id');
 
             $salesReturnProducts = DB::table('sales_return_products')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sales_return_products.quantity',
                     'sales_return_products.free_quantity',
                     'sales_return_products.measure_unit_id',
                 ])
                 ->join('sale_products', 'sales_return_products.sale_product_id', '=', 'sale_products.id')
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sales_return_products.company_id', $companyId)
+                ->where('sales_return_products.branch_id', $branchId)
                 ->whereNull('sales_return_products.deleted_at')
                 ->get()
                 ->groupBy('purchase_product_id');
@@ -1845,16 +1848,17 @@ class PurchaseReturnController extends Controller
             // Fetch field values and quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sales_product_field_values.quantity_index'
                 ])
                 ->join('sale_products', 'sales_product_field_values.sale_product_id', '=', 'sale_products.id')
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sale_products.company_id', $companyId)
+                ->where('sale_products.branch_id', $branchId)
                 ->whereNull('sale_products.deleted_at')
                 ->distinct()
                 ->get()
-                ->groupBy('purchase_product_id')
+                ->groupBy('purchase_stock_product_id')
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
             $returnedQuantityIndexes = DB::table('purchase_stock_product_return_field_values')
@@ -1904,7 +1908,7 @@ class PurchaseReturnController extends Controller
 
             $saleReturnFieldValues = DB::table('sale_return_product_field_values')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sale_return_product_field_values.product_field_id',
                     'product_fields.name as product_field_name',
                     'sale_return_product_field_values.value',
@@ -1914,11 +1918,11 @@ class PurchaseReturnController extends Controller
                 ->join('sale_products', 'sales_return_products.sale_product_id', '=', 'sale_products.id')
                 ->leftJoin('product_fields', fn($join) => $join->on('sale_return_product_field_values.product_field_id', '=', 'product_fields.id')
                     ->where('product_fields.company_id', $companyId))
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sale_return_product_field_values.company_id', $companyId)
                 ->whereNull('sale_return_product_field_values.deleted_at')
                 ->get()
-                ->groupBy('purchase_product_id');
+                ->groupBy('purchase_stock_product_id');
 
             // Process purchase products
             $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts) {
@@ -2453,7 +2457,16 @@ class PurchaseReturnController extends Controller
                         ->with([
                             'purchaseStockProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id'])->with('measureUnit'),
                             'fieldValues' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->where('branch_id', $validated['branch_id']),
-                            'saleProducts' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id'])->with(['saleProductReturns' => fn($q) => $q->whereNull('deleted_at')->where('company_id', $validated['company_id']), 'measureUnit'])
+                            'saleProducts' => fn($q) => $q
+                                ->whereNull('deleted_at')
+                                ->where('company_id', $validated['company_id'])
+                                ->with([
+                                    'saleProductReturns' => fn($q) => $q
+                                        ->whereNull('deleted_at')
+                                        ->where('company_id', $validated['company_id'])
+                                        ->where('branch_id', $validated['branch_id']), // MISSING branch_id
+                                    'measureUnit'
+                                ])
                         ]);
 
                     if ($hasFieldValues) {
@@ -2613,7 +2626,7 @@ class PurchaseReturnController extends Controller
                             $purchaseMeasureUnit = MeasureUnit::findOrFail($purchaseProduct->measure_unit_id);
                             $purchaseMeasureUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
 
-                            $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id']);
+                            $totalAvailablePieces = $this->calculateAvailablePieces($purchaseProduct, $purchaseMeasureUnitQuantity, $validated['company_id'], $validated['branch_id']);
 
                             // Adjust for previously allocated pieces
                             if (isset($totalAllocatedPieces[$purchaseProduct->id])) {
@@ -2766,7 +2779,7 @@ class PurchaseReturnController extends Controller
             Log::error('Database error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+
             Log::error('Unexpected error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return response()->json(['error' => 'Error creating purchase return: ' . $e->getMessage()], 500);
         }
@@ -2820,8 +2833,9 @@ class PurchaseReturnController extends Controller
         return ($integerPart * $measureUnitQuantity) + $decimalPieces;
     }
 
-    private function calculateAvailablePieces($purchaseProduct, float $measureUnitQuantity, int $companyId): float
+    private function calculateAvailablePieces($purchaseProduct, float $measureUnitQuantity, int $companyId, int $branchID = null): float
     {
+
         $regularPieces = $this->calculatePieces($purchaseProduct->quantity ?? 0, $measureUnitQuantity);
 
 
@@ -2829,10 +2843,12 @@ class PurchaseReturnController extends Controller
 
         $purchaseReturnedPieces = $purchaseProduct->purchaseProductReturns->reduce(fn($carry, $return) => $carry + $this->calculatePieces($return->quantity ?? 0, $return->measureUnit->quantity ?? 1) + $this->calculatePieces($return->free_quantity ?? 0, $return->measureUnit->quantity ?? 1), 0);
 
+
         $soldPieces = $purchaseProduct->saleProducts->reduce(fn($carry, $sale) => $carry + $this->calculatePieces($sale->quantity ?? 0, $sale->measureUnit->quantity ?? 1) + $this->calculatePieces($sale->free_quantity ?? 0, $sale->measureUnit->quantity ?? 1), 0);
 
         $salesReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->where('company_id', $companyId)
+            ->where('branch_id', $branchID)
             ->whereNull('deleted_at')
             ->with('measureUnit')
             ->get()
@@ -2841,6 +2857,7 @@ class PurchaseReturnController extends Controller
 
 
         $availablePieces = $regularPieces + $freePieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
+
 
 
         return max(0, ($regularPieces + $freePieces) - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces);

@@ -507,7 +507,7 @@ class PurchaseReturnController extends Controller
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
-
+           
             Log::error('Database query error in Purchase Bill Number', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -960,31 +960,21 @@ class PurchaseReturnController extends Controller
                     return $saleReturnPieces;
                 });
 
-                // === CORRECT REMAINING LOGIC (SELL REGULAR FIRST) ===
-                $availableRegular = max($totalRegularQuantity - $returnedRegularInPieces, 0);
-                $availableFree = max($totalFreeQuantity - $returnedFreeInPieces, 0);
+                // Adjust remaining quantities
+                $remainingRegularQuantity = max($totalRegularQuantity - $returnedRegularInPieces, 0);
+                $remainingFreeQuantity = max($totalFreeQuantity - $returnedFreeInPieces, 0);
+                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces, 0);
+                $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
 
-                $soldFromRegular = min($totalSoldInPieces, $availableRegular);
-                $soldFromFree = $totalSoldInPieces > $availableRegular ? ($totalSoldInPieces - $availableRegular) : 0;
-
-                $remainingRegularQuantity = $availableRegular - $soldFromRegular;
-                $remainingFreeQuantity = $availableFree - $soldFromFree;
-                $remainingQuantityInPieces = $remainingRegularQuantity + $remainingFreeQuantity;
-
-                Log::debug('Corrected remaining calculation', [
-                    'product_id' => $product['id'],
-                    'purchased_regular' => $totalRegularQuantity,
-                    'purchased_free' => $totalFreeQuantity,
-                    'returned_regular' => $returnedRegularInPieces,
-                    'returned_free' => $returnedFreeInPieces,
-                    'sold_total' => $totalSoldInPieces,
-                    'sold_from_regular' => $soldFromRegular,
-                    'sold_from_free' => $soldFromFree,
-                    'remaining_regular' => $remainingRegularQuantity,
-                    'remaining_free' => $remainingFreeQuantity,
-                    'remaining_total' => $remainingQuantityInPieces,
+                Log::debug('Final remaining quantity calculation', [
+                    'product_id' => $product['id'] ?? 'unknown',
+                    'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
+                    'total_returned_in_pieces' => $totalReturnedInPieces,
+                    'total_sold_in_pieces' => $totalSoldInPieces,
+                    'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
+                    'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
+                    'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                 ]);
-
 
                 // Process field values
                 $unavailableQuantityIndices = [];
@@ -1163,7 +1153,7 @@ class PurchaseReturnController extends Controller
                     'remaining_quantity' => $remainingQuantityInPieces,
                     'regular_remaining_quantity' => $remainingRegularQuantity,
                     'free_remaining_quantity' => $remainingFreeQuantity,
-
+                    'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                     'price' => $product['price'] ?? 0,
                     'is_vatable' => (bool) ($product['is_vatable'] ?? false),
                     'expiry_date' => $product['expiry_date'] ?? null,
@@ -1186,7 +1176,7 @@ class PurchaseReturnController extends Controller
                     'company_id' => $companyId,
                     'query_log' => DB::getQueryLog(),
                 ]);
-                return response()->json(['error' => 'No products with available quantity found !'], 404);
+                return response()->json(['error' => 'No products with available quantity found'], 404);
             }
 
             $purchaseData['purchase_stock_products'] = $purchaseProducts;

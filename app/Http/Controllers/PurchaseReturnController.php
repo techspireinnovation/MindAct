@@ -368,7 +368,7 @@ class PurchaseReturnController extends Controller
                         ]);
                     }
 
-                    $saleProductsForPurchase = $saleProducts->where('purchase_product_id', $purchaseProduct->id);
+                    $saleProductsForPurchase = $saleProducts->where('purchase_stock_product_id', $purchaseProduct->id);
                     $netSales = 0;
                     foreach ($saleProductsForPurchase as $saleProduct) {
                         $saleMeasureUnitId = $saleProduct->measure_unit_id ?? null;

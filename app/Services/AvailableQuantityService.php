@@ -160,32 +160,34 @@ class AvailableQuantityService
                 ])
                 ->whereIn('purchase_stock_product_returns.purchase_stock_product_id', $purchaseProductIds)
                 ->where('purchase_stock_product_returns.company_id', $companyId)
+                ->where('purchase_stock_product_returns.branch_id', $branchId)
                 ->whereNull('purchase_stock_product_returns.deleted_at')
                 ->get()
                 ->groupBy('purchase_stock_product_id');
 
             $saleProducts = DB::table('sale_products')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sale_products.quantity',
                     'sale_products.free_quantity',
                     'sale_products.measure_unit_id',
                 ])
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sale_products.company_id', $companyId)
+                ->where('sale_products.branch_id', $branchId)
                 ->whereNull('sale_products.deleted_at')
                 ->get()
-                ->groupBy('purchase_product_id');
+                ->groupBy('purchase_stock_product_id');
 
             $salesReturnProducts = DB::table('sales_return_products')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sales_return_products.quantity',
                     'sales_return_products.free_quantity',
                     'sales_return_products.measure_unit_id',
                 ])
                 ->join('sale_products', 'sales_return_products.sale_product_id', '=', 'sale_products.id')
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sales_return_products.company_id', $companyId)
                 ->whereNull('sales_return_products.deleted_at')
                 ->get()
@@ -194,16 +196,16 @@ class AvailableQuantityService
             // Fetch field values and quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sales_product_field_values.quantity_index'
                 ])
                 ->join('sale_products', 'sales_product_field_values.sale_product_id', '=', 'sale_products.id')
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sale_products.company_id', $companyId)
                 ->whereNull('sale_products.deleted_at')
                 ->distinct()
                 ->get()
-                ->groupBy('purchase_product_id')
+                ->groupBy('purchase_stock_product_id')
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
             $returnedQuantityIndexes = DB::table('purchase_stock_product_return_field_values')
@@ -253,7 +255,7 @@ class AvailableQuantityService
 
             $saleReturnFieldValues = DB::table('sale_return_product_field_values')
                 ->select([
-                    'sale_products.purchase_product_id',
+                    'sale_products.purchase_stock_product_id',
                     'sale_return_product_field_values.product_field_id',
                     'product_fields.name as product_field_name',
                     'sale_return_product_field_values.value',
@@ -263,11 +265,11 @@ class AvailableQuantityService
                 ->join('sale_products', 'sales_return_products.sale_product_id', '=', 'sale_products.id')
                 ->leftJoin('product_fields', fn($join) => $join->on('sale_return_product_field_values.product_field_id', '=', 'product_fields.id')
                     ->where('product_fields.company_id', $companyId))
-                ->whereIn('sale_products.purchase_product_id', $purchaseProductIds)
+                ->whereIn('sale_products.purchase_stock_product_id', $purchaseProductIds)
                 ->where('sale_return_product_field_values.company_id', $companyId)
                 ->whereNull('sale_return_product_field_values.deleted_at')
                 ->get()
-                ->groupBy('purchase_product_id');
+                ->groupBy('purchase_stock_product_id');
 
             // Process purchase products
             $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts) {

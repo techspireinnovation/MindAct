@@ -78,7 +78,7 @@ class PurchaseReturnHelper
             return array_values(array_unique($productNames));
         } catch (QueryException $e) {
 
-            \Log::error('Database error in getPurchaseProductforPurchaseReturn: ' . $e->getMessage());
+            \Log::error('Database error in get PurchaseProductforPurchaseReturn: ' . $e->getMessage());
             return ['error' => 'Database error occurred'];
         } catch (\Exception $e) {
             \Log::error('Unexpected error in getPurchaseProductforPurchaseReturn: ' . $e->getMessage());

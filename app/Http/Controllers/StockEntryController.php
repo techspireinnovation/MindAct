@@ -61,7 +61,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
-                'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
+                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
@@ -95,6 +95,7 @@ class StockEntryController extends Controller
 
                 foreach ($request->stock_entries as $entry) {
                     $entry['company_id'] = $request->company_id;
+                  
                     $entry['stock_main_id'] = $stockMain->id;
 
                     // Create StockEntry
@@ -124,6 +125,7 @@ class StockEntryController extends Controller
                                     'stock_product_id' => $stockEntry->id,
                                     'purchase_stock_product_id' => $purchaseStock->id,
                                     'company_id' => $entry['company_id'],
+                                    'branch_id' => $entry['branch_id'],
                                     'product_id' => $stockEntry->product_id,
                                     'product_field_id' => $fieldValue['product_field_id'],
                                     'value' => $fieldValue['value'],
@@ -170,7 +172,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
-                'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
+                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',

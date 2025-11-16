@@ -115,8 +115,10 @@ class BankVoucherController extends Controller
 public function getTotals(Request $request): JsonResponse
 {
     $validator = Validator::make($request->all(), [
+
         'from_date' => 'nullable|string',
         'to_date' => 'nullable|string',
+
         'company_id' => 'required|integer',
         'account_head_id' => 'nullable|integer',
         'account_group_id' => 'nullable|integer',

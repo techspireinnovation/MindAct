@@ -120,7 +120,8 @@ class SalesmanController extends Controller
                 'is_active' => 'boolean',
                 'is_primary' => 'boolean',
                 'area' => 'nullable|string',
-                'mobile' => 'required|string|max:20',
+                'mobile' => 'required|digits:10|unique:salesmen,mobile',
+
                 'email' => [
                     'nullable',
                     'string',
@@ -136,7 +137,8 @@ class SalesmanController extends Controller
                 'joining_date' => 'nullable|date',
                 'designation' => 'nullable|string|max:255',
                 'dob' => 'nullable|date',
-                'citizenship_number' => 'nullable|string|max:255',
+                'citizenship_number' => 'nullable|string|max:255|unique:salesmen,citizenship_number',
+
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',
@@ -225,7 +227,7 @@ class SalesmanController extends Controller
                 'state' => 'nullable|string',
                 'ward_no' => 'nullable|integer',
                 'area' => 'nullable|string',
-                'mobile' => 'required|string|max:20',
+
                 'email' => [
                     'nullable',
                     'string',
@@ -241,7 +243,22 @@ class SalesmanController extends Controller
                 'joining_date' => 'nullable|date',
                 'designation' => 'nullable|string|max:255',
                 'dob' => 'nullable|date',
-                'citizenship_number' => 'nullable|string|max:255',
+                'mobile' => [
+                    'required',
+                    'digits:10',
+                   
+                    Rule::unique('salesmen', 'mobile')->ignore($id)
+                ],
+
+                'citizenship_number' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                    Rule::unique('salesmen', 'citizenship_number')->ignore($id)
+                ],
+
+
+
                 'nationality' => 'nullable|string|max:100',
                 'zone' => 'nullable|string|max:100',
                 'district' => 'nullable|string|max:100',

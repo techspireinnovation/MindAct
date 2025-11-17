@@ -845,7 +845,7 @@ class GenerateCodeController extends Controller
         $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
         // Generate reconciliation number
-        $reconciliationNumber = "Rec{$fiscalYearCode}-{$branchId}-{$newNumber}";
+        $reconciliationNumber = "REC{$fiscalYearCode}-{$branchId}-{$newNumber}";
 
         return response()->json([
             'status'   => 'success',

@@ -69,7 +69,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.quantity' => 'nullable|numeric',
                 'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
-                'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.location_id' => 'nullable',
                 'stock_entries.*.field_values' => 'nullable|array',
 
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
@@ -182,7 +182,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.quantity' => 'nullable|numeric',
                 'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
-                'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.location_id' => 'nullable',
                 'stock_entries.*.field_values' => 'nullable|array',
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
@@ -279,10 +279,10 @@ class StockEntryController extends Controller
 
             $branchData = Branch::where('id', $branchId)->firstOrFail();
 
-            // Check if the branch is main
+            
             $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
-            // Fetch only the requested StockMain
+           
             $query = StockMain::where('id', $id)
                 ->where('company_id', $companyId)
                 ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit');
@@ -348,7 +348,7 @@ class StockEntryController extends Controller
                     ])
                 );
 
-                // Remove product object
+                
                 unset($stockEntry->product);
             }
 

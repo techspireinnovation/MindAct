@@ -61,7 +61,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
-                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
+                'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
@@ -174,7 +174,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
-                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
+                'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',,
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
@@ -258,7 +258,7 @@ class StockEntryController extends Controller
             });
 
             return response()->json([
-                'message' => 'Stock entries updated successfully',
+                'message' => 'Stock entries updated successfully !',
                 'data' => $createdEntries,
             ], 200);
 

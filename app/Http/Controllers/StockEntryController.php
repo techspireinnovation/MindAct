@@ -385,7 +385,7 @@ class StockEntryController extends Controller
             PurchaseStockProduct::whereIn('stock_product_id', $purchaseStockIds)->delete();
             return response()->json(['message' => 'Stock Entry deleted']);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Stock Entry not found'], 404);
+            return response()->json(['error' => 'Stock Entry not found!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

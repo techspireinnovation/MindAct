@@ -57,7 +57,7 @@ class StockEntryController extends Controller
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code',
-                'destination_branch_id' => 'required|inetger|',
+                'destination_branch_id' => 'required|integer|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
@@ -170,7 +170,7 @@ class StockEntryController extends Controller
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,
-                'destination_branch_id' => 'required|inetger|',
+                'destination_branch_id' => 'required|integer|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
@@ -279,10 +279,10 @@ class StockEntryController extends Controller
 
             $branchData = Branch::where('id', $branchId)->firstOrFail();
 
-            
+
             $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
-           
+
             $query = StockMain::where('id', $id)
                 ->where('company_id', $companyId)
                 ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit');
@@ -348,7 +348,7 @@ class StockEntryController extends Controller
                     ])
                 );
 
-                
+
                 unset($stockEntry->product);
             }
 
@@ -378,6 +378,11 @@ class StockEntryController extends Controller
         try {
             $item = StockMain::with('stockEntries.fieldValues')->findOrFail($id);
             $item->delete();
+            $purchaseStockIds = $item->stockEntries->pluck('id')->toArray();
+           
+            PurchaseStockProductFieldValue::whereIn('stock_product_id', $purchaseStockIds)->delete();
+           
+            PurchaseStockProduct::whereIn('stock_product_id', $purchaseStockIds)->delete();
             return response()->json(['message' => 'Stock Entry deleted']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Stock Entry not found'], 404);

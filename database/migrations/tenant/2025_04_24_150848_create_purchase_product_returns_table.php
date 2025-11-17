@@ -1,4 +1,4 @@
-<?php
+`<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -20,8 +20,8 @@ return new class extends Migration {
              $table->string(column: 'product_name')->constrained('products');
             $table->text(column: 'purchase_product_code')->nullable();
             $table->date('expiry_date')->nullable();
-            $table->double('quantity')->nullable();
-            $table->double('free_quantity')->nullable();
+            $table->string('quantity')->nullable();
+            $table->string('free_quantity')->nullable();
             $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();

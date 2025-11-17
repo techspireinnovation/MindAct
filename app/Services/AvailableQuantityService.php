@@ -191,7 +191,7 @@ class AvailableQuantityService
                 ->where('sales_return_products.company_id', $companyId)
                 ->whereNull('sales_return_products.deleted_at')
                 ->get()
-                ->groupBy('purchase_product_id');
+                ->groupBy('purchase_stock_product_id');
 
             // Fetch field values and quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')

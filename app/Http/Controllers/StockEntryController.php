@@ -258,7 +258,7 @@ class StockEntryController extends Controller
             });
 
             return response()->json([
-                'message' => 'Stock entries updated successfully',
+                'message' => 'Stock entries updated successfully !',
                 'data' => $createdEntries,
             ], 200);
 

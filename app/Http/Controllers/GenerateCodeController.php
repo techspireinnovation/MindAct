@@ -799,7 +799,7 @@ class GenerateCodeController extends Controller
         if (!$user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Unauthorized: User not authenticated'
+                'message' => 'Unauthorized: User not authenticated !'
             ], 401);
         }
 

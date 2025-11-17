@@ -25,8 +25,8 @@ return new class extends Migration {
             $table->text('product_code')->constrained('products');
             $table->text(column: 'product_name')->constrained('products');
             $table->date('expiry_date')->nullable();
-            $table->string('quantity')->nullable();
-            $table->string('free_quantity')->nullable();
+            $table->double('quantity')->nullable();
+            $table->double('free_quantity')->nullable();
             $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();

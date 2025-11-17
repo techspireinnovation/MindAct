@@ -46,7 +46,7 @@ class GenerateCodeController extends Controller
             if (!$userId || !$branchId) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'User or branch not provided !'
+                    'message' => 'User or branch not provided.'
                 ], 400);
             }
 

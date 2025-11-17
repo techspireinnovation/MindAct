@@ -571,7 +571,7 @@ class StockAdjustmentController extends Controller
             return response()->json($item->load('StockAdjustmentProduct.fieldValues'), 201);
         } catch (ModelNotFoundException $e) {
             \Log::error('ModelNotFoundException in StockAdjustmentController::store: ' . $e->getMessage());
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json(['error' => 'Item not found !'], 404);
         } catch (QueryException $e) {
             \Log::error('QueryException in StockAdjustmentController::store: ' . $e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);

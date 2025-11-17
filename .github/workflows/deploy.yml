@@ -33,6 +33,6 @@ jobs:
            
             
             php artisan migrate --force --database=mysql
-            php artisan app:migrate-tenants --force
+            php artisan app:migrate-tenants
             php artisan optimize
             # sudo systemctl restart nginx

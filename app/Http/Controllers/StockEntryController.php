@@ -57,7 +57,7 @@ class StockEntryController extends Controller
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code',
-
+                'destination_branch_id' => 'required|inetger|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
@@ -91,11 +91,12 @@ class StockEntryController extends Controller
                     'name' => $request->name,
                     'code' => $request->code,
                     'company_id' => $request->company_id,
+                    'branch_id' => $request->destination_branch_id,
                 ]);
 
                 foreach ($request->stock_entries as $entry) {
                     $entry['company_id'] = $request->company_id;
-                  
+                    $entry['branch_id'] = $request->destination_branch_id;
                     $entry['stock_main_id'] = $stockMain->id;
 
                     // Create StockEntry
@@ -169,6 +170,7 @@ class StockEntryController extends Controller
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,
+                'destination_branch_id' => 'required|inetger|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
@@ -201,6 +203,7 @@ class StockEntryController extends Controller
                     'name' => $request->name,
                     'code' => $request->code,
                     'company_id' => $request->company_id,
+                    'branch_id' => $request->destination_branch_id,
                 ]);
 
                 // Delete old entries and their related data
@@ -215,6 +218,7 @@ class StockEntryController extends Controller
                 foreach ($request->stock_entries as $entry) {
                     $entry['company_id'] = $request->company_id;
                     $entry['stock_main_id'] = $stockMain->id;
+                    $entry['branch_id'] = $request->destination_branch_id;
 
                     $stockEntry = StockEntry::create($entry);
 

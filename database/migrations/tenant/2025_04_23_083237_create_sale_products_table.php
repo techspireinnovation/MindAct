@@ -23,8 +23,8 @@ return new class extends Migration {
 
             $table->string('name');
             $table->foreignID('measure_unit_id')->constrained('measure_units')->nullable();
-            $table->double('quantity')->nullable();
-            $table->double('free_quantity')->nullable();
+            $table->string('quantity')->nullable();
+            $table->string('free_quantity')->nullable();
             $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();

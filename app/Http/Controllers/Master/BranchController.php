@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
 
@@ -233,15 +234,25 @@ class BranchController extends Controller
     //     }
     // }
 
+
+
 public function destroy($id): JsonResponse
 {
     try {
-       
+        // Fetch branch using tenant connection
         $branch = Branch::on('tenant')->findOrFail($id);
+
+        // Prevent deletion if this is main/primary branch
+        if ($branch->is_primary || $branch->branch_type === 'Main') {
+            return response()->json([
+                'error' => 'protected',
+                'message' => 'This branch cannot be deleted because it is a main or primary branch.'
+            ], 422);
+        }
 
         $usedIn = [];
 
-       
+        // Check central users dynamically (default connection)
         if (Schema::hasTable('branch_user') && Schema::hasTable('users')) {
             $existsInCentral = DB::table('branch_user')
                 ->join('users', 'branch_user.user_id', '=', 'users.id')
@@ -253,8 +264,8 @@ public function destroy($id): JsonResponse
             }
         }
 
-       
-        $tenantConnection = $branch->getConnectionName(); 
+        // Check tenant tables dynamically
+        $tenantConnection = $branch->getConnectionName();
 
         if (Schema::connection($tenantConnection)->hasTable('shrink_work_losses')) {
             if ($branch->shrinkWorkLoss()->exists()) {
@@ -268,7 +279,7 @@ public function destroy($id): JsonResponse
             }
         }
 
-      
+        // Stop deletion if branch is in use
         if (!empty($usedIn)) {
             return response()->json([
                 'error' => 'in_use',
@@ -277,7 +288,7 @@ public function destroy($id): JsonResponse
             ], 422);
         }
 
-       
+        // Soft delete
         $branch->delete();
 
         return response()->json([
@@ -302,7 +313,7 @@ public function destroy($id): JsonResponse
         \Log::error($e);
         return response()->json([
             'error' => 'unexpected_error',
-            'message' => $e->getMessage(), 
+            'message' => $e->getMessage(),
         ], 500);
     }
 }

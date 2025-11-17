@@ -13,6 +13,7 @@ use App\Models\Sale;
 use App\Models\SalesReturn;
 use App\Models\StockAdjustment;
 use App\Models\StockEntry;
+use App\Models\StockReconciliation;
 
 use Illuminate\Http\Request;
 use Pratiksh\Nepalidate\Services\NepaliDate;
@@ -776,6 +777,94 @@ class GenerateCodeController extends Controller
             ], 500);
         }
     }
+
+
+    public function generateStockReconciliationNumber(Request $request)
+{
+    try {
+        // Get current BS date
+        $bsDate = NepaliDate::create(Carbon::now())->toBS();
+        $bsDateParts = explode('-', $bsDate);
+        $currentBsYear = (int) $bsDateParts[0];
+        $currentBsMonth = (int) $bsDateParts[1];
+
+        // Determine fiscal year
+        $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
+        $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
+
+        // Get authenticated user
+        $userId = $request->user_id;
+        $user = User::on('mysql')->with('roles')->find($userId);
+
+        if (!$user) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized: User not authenticated !'
+            ], 401);
+        }
+
+        // Get the current token's abilities
+        // $token = $user->currentAccessToken();
+        // if (!$token) {
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'No valid token found'
+        //     ], 200);
+        // }
+
+        // Extract branch ID
+        $branchId = $request->branch_id;
+        // foreach ($token->abilities as $ability) {
+        //     if (strpos($ability, 'branch:') === 0) {
+        //         $branchId = (int) str_replace('branch:', '', $ability);
+        //         break;
+        //     }
+        // }
+
+        if (!$branchId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No branch associated with the user'
+            ], 200);
+        }
+
+        // Find last stock reconciliation number
+        $lastReconciliationNumber = \App\Models\StockReconciliation::where(
+            'reconciliation_no',
+            'like',
+            "Rec{$fiscalYearCode}-{$branchId}-%"
+        )
+            ->orderBy('id', 'desc')
+            ->first();
+
+        // Generate sequential number
+        $lastNumber = $lastReconciliationNumber
+            ? (int) substr($lastReconciliationNumber->reconciliation_no, -6)
+            : 0;
+
+        $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+
+        // Generate reconciliation number
+        $reconciliationNumber = "Rec{$fiscalYearCode}-{$branchId}-{$newNumber}";
+
+        return response()->json([
+            'status'   => 'success',
+            'data'     => [
+                'reconciliation_no' => $reconciliationNumber,
+                'fiscal_year'       => $fiscalYearCode,
+                'branch_id'         => $branchId
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Error generating stock reconciliation number: ' . $e->getMessage()
+        ], 400);
+    }
+}
+
 
     // public function generatePurchaseBillNumber(Request $request)
     // {

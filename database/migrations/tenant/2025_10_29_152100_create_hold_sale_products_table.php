@@ -20,8 +20,8 @@ return new class extends Migration
             $table->date('expiry_date')->nullable();
 
             $table->foreignId('measure_unit_id')->nullable()->constrained('measure_units');
-            $table->double('quantity')->nullable();
-            $table->double('free_quantity')->nullable();
+            $table->string('quantity')->nullable();
+            $table->string('free_quantity')->nullable();
             $table->double('price')->nullable();
             $table->double('discount_percent')->nullable();
             $table->double('discount_amount')->nullable();

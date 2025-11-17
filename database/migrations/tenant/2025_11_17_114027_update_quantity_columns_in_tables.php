@@ -8,17 +8,17 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::connection('tenant')->table('purchase_product_returns', function (Blueprint $table) {
+        Schema::table('purchase_product_returns', function (Blueprint $table) {
             $table->string('quantity')->nullable()->change();
             $table->string('free_quantity')->nullable()->change();
         });
 
-        Schema::connection('tenant')->connection('tenant')->table('purchase_stock_products', function (Blueprint $table) {
+        Schema::connection('tenant')->table('purchase_stock_products', function (Blueprint $table) {
             $table->string('quantity')->nullable()->change();
             $table->string('free_quantity')->nullable()->change();
         });
 
-        Schema::connection('tenant')->table('sale_products', function (Blueprint $table) {
+        Schema::table('sale_products', function (Blueprint $table) {
             $table->string('quantity')->nullable()->change();
             $table->string('free_quantity')->nullable()->change();
         });

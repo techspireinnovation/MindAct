@@ -62,7 +62,7 @@ class StockAdjustmentController extends Controller
                 'invoice_date' => 'nullable|date',
                 'invoice_date_bs' => 'nullable|string',
                 'document_number' => 'nullable|string|max:255',
-                'location_id' => 'required|exists:locations,id',
+                'location_id' => 'nullable',
                 'remarks' => 'nullable|string|max:255',
                 'reasons' => 'nullable|string|max:255',
                 'product_details' => 'required|array',
@@ -107,6 +107,7 @@ class StockAdjustmentController extends Controller
             }
 
             $validated = $validator->validated();
+            $validated['company_id'] = $request->company_id;
 
             $stockAdjustment = DB::transaction(function () use ($validated, $id, $request) {
                 $stockAdjustment = StockAdjustment::findOrFail($id);
@@ -349,7 +350,7 @@ class StockAdjustmentController extends Controller
                 'invoice_date' => 'nullable|date',
                 'invoice_date_bs' => 'nullable|string',
                 'document_number' => 'nullable|string|max:255',
-                'location_id' => 'required|exists:locations,id',
+                'location_id' => 'nullable',
                 'remarks' => 'nullable|string|max:255',
                 'reasons' => 'nullable|string|max:255',
                 'product_details' => 'required|array',
@@ -395,6 +396,7 @@ class StockAdjustmentController extends Controller
             }
 
             $validated = $validator->validated();
+            $validated['company_id'] = $request->company_id;
 
             $item = DB::transaction(function () use ($validated, $request) {
 
@@ -581,64 +583,64 @@ class StockAdjustmentController extends Controller
 
 
     public function show($id): JsonResponse
-{
-    try {
-        // Load the stock adjustment with its related products and field values
-        $item = StockAdjustment::with(['StockAdjustmentProduct.fieldValues.productField'])->findOrFail($id);
-        $itemArray = $item->toArray();
+    {
+        try {
+            // Load the stock adjustment with its related products and field values
+            $item = StockAdjustment::with(['StockAdjustmentProduct.fieldValues.productField'])->findOrFail($id);
+            $itemArray = $item->toArray();
 
-        foreach ($itemArray['stock_adjustment_product'] as &$stockProduct) {
+            foreach ($itemArray['stock_adjustment_product'] as &$stockProduct) {
 
-            $product = Product::find($stockProduct['product_id']);
-            if (!$product) {
-                continue;
-            }
+                $product = Product::find($stockProduct['product_id']);
+                if (!$product) {
+                    continue;
+                }
 
-            $productId = $product->id;
-         
+                $productId = $product->id;
 
-            // Fetch measure unit IDs from both Product and ProductList
-            $productMeasureUnitId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
-            $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
 
-            // Merge and filter duplicates
-            $mergedMeasureUnits = collect(array_merge($productMeasureUnitId, $productListMeasureUnitId))
-                ->unique()
-                ->filter()
-                ->values();
+                // Fetch measure unit IDs from both Product and ProductList
+                $productMeasureUnitId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
+                $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
 
-            // Get all measure units
-            $usedMeasureUnits = MeasureUnit::whereIn('id', $mergedMeasureUnits)
-                ->whereNull('deleted_at')
-                ->get(['id', 'name', 'quantity']);
+                // Merge and filter duplicates
+                $mergedMeasureUnits = collect(array_merge($productMeasureUnitId, $productListMeasureUnitId))
+                    ->unique()
+                    ->filter()
+                    ->values();
 
-            $stockProduct['measure_units'] = $usedMeasureUnits;
-            
+                // Get all measure units
+                $usedMeasureUnits = MeasureUnit::whereIn('id', $mergedMeasureUnits)
+                    ->whereNull('deleted_at')
+                    ->get(['id', 'name', 'quantity']);
 
-            // Clean and restructure field values
-            foreach ($stockProduct['field_values'] as &$fieldValue) {
-                if (isset($fieldValue['product_field'])) {
-                    $fieldValue['name'] = $fieldValue['product_field']['name'];
-                    $fieldValue['type'] = $fieldValue['product_field']['type'];
-                    $fieldValue['values'] = $fieldValue['product_field']['values'];
-                    unset($fieldValue['product_field']);
+                $stockProduct['measure_units'] = $usedMeasureUnits;
+
+
+                // Clean and restructure field values
+                foreach ($stockProduct['field_values'] as &$fieldValue) {
+                    if (isset($fieldValue['product_field'])) {
+                        $fieldValue['name'] = $fieldValue['product_field']['name'];
+                        $fieldValue['type'] = $fieldValue['product_field']['type'];
+                        $fieldValue['values'] = $fieldValue['product_field']['values'];
+                        unset($fieldValue['product_field']);
+                    }
                 }
             }
+
+            return response()->json($itemArray);
+
+        } catch (ModelNotFoundException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'Stock Adjustment not found'], 404);
+        } catch (QueryException $e) {
+            \Log::error($e);
+            return response()->json(['error' => 'A database error occurred'], 500);
+        } catch (\Exception $e) {
+            \Log::error($e);
+            return response()->json(['error' => $e->getMessage()], 500);
         }
-
-        return response()->json($itemArray);
-
-    } catch (ModelNotFoundException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'Stock Adjustment not found'], 404);
-    } catch (QueryException $e) {
-        \Log::error($e);
-        return response()->json(['error' => 'A database error occurred'], 500);
-    } catch (\Exception $e) {
-        \Log::error($e);
-        return response()->json(['error' => $e->getMessage()], 500);
     }
-}
 
 
     public function destroy($id): JsonResponse

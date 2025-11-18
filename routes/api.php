@@ -169,6 +169,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('get-all-sales-expiry-dates', [SaleController::class, 'getAllExpiryDates']);
     Route::get('get-all-sales-by-expiry-dates', [SaleController::class, 'getSalesByExpiryDate']);
     Route::get('available-products-for-sale', [SaleController::class, 'listAvailableProducts']);
+    Route::get('available-products-for-sale-for-stocks', [StockAdjustmentController::class, 'listAvailableProductsforStocks']);
     Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
     Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
     Route::get('customer-sales-fiscal-year-details', [SaleController::class, 'customerTotalSalePriceAmount']);

@@ -87,10 +87,10 @@ class SetupTenantJob implements ShouldQueue
             SalesMasterKey::create(['company_id' => $this->company->id]);
 
             ProductType::insert([
-                ['name' => 'Inventory', 'delete_status' => 0, 'company_id' => $this->company->id],
-                ['name' => 'Assets', 'delete_status' => 0, 'company_id' => $this->company->id],
-                ['name' => 'Service', 'delete_status' => 0, 'company_id' => $this->company->id],
-                ['name' => 'Raw Materials', 'delete_status' => 0, 'company_id' => $this->company->id],
+                ['name' => 'Inventory', 'delete_status' => 0, 'is_primary => true', 'company_id' => $this->company->id],
+                ['name' => 'Assets', 'delete_status' => 0, 'is_primary => false', 'company_id' => $this->company->id],
+                ['name' => 'Service', 'delete_status' => 0, 'is_primary => false', 'company_id' => $this->company->id],
+                ['name' => 'Raw Materials', 'delete_status' => 0, 'is_primary => false', 'company_id' => $this->company->id],
             ]);
 
             MeasureUnit::create([

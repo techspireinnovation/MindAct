@@ -57,19 +57,19 @@ class StockEntryController extends Controller
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code',
-
+                'destination_branch_id' => 'required|integer|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
-                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
+                // 'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
-                'stock_entries.*.quantity' => 'nullable|numeric',
+                'stock_entries.*.quantity' => 'nullable|string',
                 'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
-                'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.location_id' => 'nullable',
                 'stock_entries.*.field_values' => 'nullable|array',
 
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
@@ -91,11 +91,12 @@ class StockEntryController extends Controller
                     'name' => $request->name,
                     'code' => $request->code,
                     'company_id' => $request->company_id,
+                    'branch_id' => $request->destination_branch_id,
                 ]);
 
                 foreach ($request->stock_entries as $entry) {
                     $entry['company_id'] = $request->company_id;
-                  
+                    $entry['branch_id'] = $request->destination_branch_id;
                     $entry['stock_main_id'] = $stockMain->id;
 
                     // Create StockEntry
@@ -169,18 +170,19 @@ class StockEntryController extends Controller
                 ],
                 'stock_entries' => 'required|array',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,
+                'destination_branch_id' => 'required|integer|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
                 'stock_entries.*.product_name' => 'nullable|string|max:255',
                 'stock_entries.*.product_id' => 'nullable|numeric|exists:products,id',
-                'stock_entries.*.branch_id' => 'required|numeric|exists:branches,id',
+                // 'stock_entries.*.branch_id' => 'nullable|numeric|exists:branches,id',
                 'stock_entries.*.purchase_type' => 'required|string',
                 'stock_entries.*.uom' => 'required|numeric|exists:measure_units,id',
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
-                'stock_entries.*.quantity' => 'nullable|numeric',
-                'stock_entries.*.rate' => 'nullable|numeric',
+                'stock_entries.*.quantity' => 'nullable|string',
+                'stock_entries.*.rate' => 'nullable|string',
                 'stock_entries.*.amount' => 'nullable|numeric',
-                'stock_entries.*.location_id' => 'nullable|exists:locations,id',
+                'stock_entries.*.location_id' => 'nullable',
                 'stock_entries.*.field_values' => 'nullable|array',
                 'stock_entries.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'stock_entries.*.field_values.*.*.value' => 'required|string|max:255',
@@ -201,6 +203,7 @@ class StockEntryController extends Controller
                     'name' => $request->name,
                     'code' => $request->code,
                     'company_id' => $request->company_id,
+                    'branch_id' => $request->destination_branch_id,
                 ]);
 
                 // Delete old entries and their related data
@@ -215,6 +218,7 @@ class StockEntryController extends Controller
                 foreach ($request->stock_entries as $entry) {
                     $entry['company_id'] = $request->company_id;
                     $entry['stock_main_id'] = $stockMain->id;
+                    $entry['branch_id'] = $request->destination_branch_id;
 
                     $stockEntry = StockEntry::create($entry);
 
@@ -254,7 +258,7 @@ class StockEntryController extends Controller
             });
 
             return response()->json([
-                'message' => 'Stock entries updated successfully',
+                'message' => 'Stock entries updated successfully !',
                 'data' => $createdEntries,
             ], 200);
 
@@ -275,10 +279,10 @@ class StockEntryController extends Controller
 
             $branchData = Branch::where('id', $branchId)->firstOrFail();
 
-            // Check if the branch is main
+
             $isMainBranch = strtolower($branchData->branch_type ?? '') === 'main';
 
-            // Fetch only the requested StockMain
+
             $query = StockMain::where('id', $id)
                 ->where('company_id', $companyId)
                 ->with('stockEntries.fieldValues.productField', 'stockEntries.product.measureUnit');
@@ -344,7 +348,7 @@ class StockEntryController extends Controller
                     ])
                 );
 
-                // Remove product object
+
                 unset($stockEntry->product);
             }
 
@@ -374,9 +378,14 @@ class StockEntryController extends Controller
         try {
             $item = StockMain::with('stockEntries.fieldValues')->findOrFail($id);
             $item->delete();
+            $purchaseStockIds = $item->stockEntries->pluck('id')->toArray();
+           
+            PurchaseStockProductFieldValue::whereIn('stock_product_id', $purchaseStockIds)->delete();
+           
+            PurchaseStockProduct::whereIn('stock_product_id', $purchaseStockIds)->delete();
             return response()->json(['message' => 'Stock Entry deleted']);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Stock Entry not found'], 404);
+            return response()->json(['error' => 'Stock Entry not found!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

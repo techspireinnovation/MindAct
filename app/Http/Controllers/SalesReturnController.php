@@ -4464,20 +4464,20 @@ class SalesReturnController extends Controller
     }
 
 
-    private function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
 
+        // Split integer and decimal parts WITHOUT float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
 
-        $integerPart = floor($quantity);
-        $decimalPart = $quantity - $integerPart;
-        $decimalStr = (string) $decimalPart;
-        $decimalPieces = $decimalStr > 0 ? (int) str_replace('.', '', (string) $decimalStr) : 0;
+        $integer = (int) $integerPart;
+        $decimalPieces = (int) $decimalPart;
 
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
 
     private function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
@@ -4896,7 +4896,7 @@ class SalesReturnController extends Controller
                     ]);
                     return response()->json(['error' => 'Sales return not found'], 404);
                 }
-                Log::info('Sales return fetched', [
+                Log::info('Sales return fetched :', [
                     'sales_return_id' => $id,
                     'sales_return_data' => $salesReturn->toArray()
                 ]);

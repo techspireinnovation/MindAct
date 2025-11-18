@@ -1146,23 +1146,22 @@ class SaleController extends Controller
 
 
 
-    public function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
 
+        // Split integer and decimal parts WITHOUT float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
 
-        $integerPart = floor($quantity);
+        $integer = (int) $integerPart;
+        $decimalPieces = (int) $decimalPart;
 
-        $decimalPart = $quantity - $integerPart;
-
-        $decimalStr = (string) $decimalPart;
-        $decimalPieces = $decimalStr > 0 ? (int) str_replace('.', '', (string) $decimalStr) : 0;
-
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
+
 
     public function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int
     {

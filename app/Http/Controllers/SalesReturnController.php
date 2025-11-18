@@ -4896,7 +4896,7 @@ class SalesReturnController extends Controller
                     ]);
                     return response()->json(['error' => 'Sales return not found'], 404);
                 }
-                Log::info('Sales return fetched', [
+                Log::info('Sales return fetched :', [
                     'sales_return_id' => $id,
                     'sales_return_data' => $salesReturn->toArray()
                 ]);

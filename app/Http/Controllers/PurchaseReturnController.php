@@ -215,7 +215,7 @@ class PurchaseReturnController extends Controller
                 ])
                 ->select(['id', 'company_id', 'purchase_bill_number'])
                 ->get();
-         
+
 
             if ($purchases->isEmpty()) {
                 Log::warning('No purchases found', ['company_id' => $companyId]);
@@ -1524,7 +1524,7 @@ class PurchaseReturnController extends Controller
 
             return response()->json($productNames);
         } catch (QueryException $e) {
-           
+
             \Log::error('Database error in getPurchaseProductNames: ' . $e->getMessage());
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
@@ -1835,6 +1835,22 @@ class PurchaseReturnController extends Controller
                 ->get()
                 ->groupBy('purchase_stock_product_id');
 
+
+            $adjustedProducts = DB::table('stock_adjusteds')
+                ->select([
+                    'stock_adjusteds.purchase_stock_product_id',
+                    'stock_adjusteds.quantity',
+                    // 'stock_adjusteds.free_quantity',
+                    'stock_adjusteds.measure_unit_id',
+                ])
+                ->whereIn('stock_adjusteds.purchase_stock_product_id', $purchaseProductIds)
+                ->where('stock_adjusteds.company_id', $companyId)
+                ->where('stock_adjusteds.branch_id', $branchId)
+                ->whereNull('stock_adjusteds.deleted_at')
+                ->get()
+                ->groupBy('purchase_stock_product_id');
+
+
             $salesReturnProducts = DB::table('sales_return_products')
                 ->select([
                     'sale_products.purchase_stock_product_id',
@@ -1930,7 +1946,7 @@ class PurchaseReturnController extends Controller
                 ->groupBy('purchase_stock_product_id');
 
             // Process purchase products
-            $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts) {
+            $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts, $adjustedProducts) {
                 $measureUnitId = $pp->measure_unit_id ?? null;
                 $unitData = isset($measureUnitsCalc[$measureUnitId]) ? [
                     'id' => $measureUnitsCalc[$measureUnitId]->id,
@@ -1973,6 +1989,46 @@ class PurchaseReturnController extends Controller
                     return ($saleQtyInt * $unitQty) + $saleQtyDec;
                 });
 
+
+                $totalAdjustedInPieces = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
+                    ->sum(function ($return) use ($measureUnitsCalc) {
+
+                        $unitId = $return->measure_unit_id ?? null;
+                        $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+
+                        $adjustedTotalQty = ($return->quantity ?? 0);
+
+                        // Split decimal
+                        $adjustedDecimalStr = explode('.', (string) $adjustedTotalQty);
+                        $adjustedQtyInt = floor($adjustedTotalQty);
+                        $adjustedQtyDec = isset($adjustedDecimalStr[1]) ? (float) $adjustedDecimalStr[1] : 0;
+
+                        // Convert to pieces
+                        return ($adjustedQtyInt * $unitQty) + $adjustedQtyDec;
+                    });
+
+
+
+                $adjustedAdd = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
+                    ->filter(fn($r) => ($r->adjusted_type ?? null) === 'add')
+                    ->sum(function ($r) use ($measureUnitsCalc) {
+                        $unitQty = $measureUnitsCalc[$r->measure_unit_id ?? 0]->quantity ?? 1;
+                        $adjustedTotalQty = $r->quantity ?? 0;
+                        $parts = explode('.', (string) $adjustedTotalQty);
+                        return floor($adjustedTotalQty) * $unitQty + (isset($parts[1]) ? (float) $parts[1] : 0);
+                    });
+
+                $adjustedSubtract = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
+                    ->filter(fn($r) => ($r->adjusted_type ?? null) === 'subtract')
+                    ->sum(function ($r) use ($measureUnitsCalc) {
+                        $unitQty = $measureUnitsCalc[$r->measure_unit_id ?? 0]->quantity ?? 1;
+                        $adjustedTotalQty = $r->quantity ?? 0;
+                        $parts = explode('.', (string) $adjustedTotalQty);
+                        return floor($adjustedTotalQty) * $unitQty + (isset($parts[1]) ? (float) $parts[1] : 0);
+                    });
+
+
+
                 // Calculate sale returns
                 $totalSaleReturnsInPieces = collect($salesReturnProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
@@ -1984,7 +2040,7 @@ class PurchaseReturnController extends Controller
                     return ($retQtyInt * $unitQty) + $retQtyDec;
                 });
 
-                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces, 0);
+                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces + $adjustedAdd - $adjustedSubtract, 0);
                 $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
 
                 // Log calculations
@@ -1998,6 +2054,8 @@ class PurchaseReturnController extends Controller
                     'total_returned_in_pieces' => $totalReturnedInPieces,
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
+                    'add_adjusted_quantity_in_pieces' => $adjustedAdd,
+                    'subtract_adjusted_quantity_in_pieces' => $adjustedSubtract,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM
                 ]);
@@ -2008,6 +2066,8 @@ class PurchaseReturnController extends Controller
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
+                    'add_adjusted_quantity_in_pieces' => $adjustedAdd,
+                    'subtract_adjusted_quantity_in_pieces' => $adjustedSubtract,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                 ]);
             })->filter(fn($pp) => $pp->remaining_quantity_in_pieces > 0);
@@ -2021,7 +2081,10 @@ class PurchaseReturnController extends Controller
                 $returnQuantity = $group->sum('total_returned_in_pieces');
                 $saleQuantity = $group->sum('total_sold_in_pieces');
                 $salesReturnQuantity = $group->sum('total_sale_returns_in_pieces');
-                $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity, 0);
+                $addAdjustedQuantity = $group->sum('add_adjusted_quantity_in_pieces');
+                $subtractAdjustedQuantity = $group->sum('subtract_adjusted_quantity_in_pieces');
+                $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity + $addAdjustedQuantity - $subtractAdjustedQuantity, 0);
+
 
                 // Fetch product metadata
                 $product = Product::where('id', $first->product_id)
@@ -2830,12 +2893,20 @@ class PurchaseReturnController extends Controller
     }
 
 
-    private function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
-        $integerPart = floor($quantity);
-        $decimalPart = $quantity - $integerPart;
-        $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        if ($measureUnitQuantity <= 0) {
+            Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
+            return 0;
+        }
+
+        // Split integer and decimal parts WITHOUT float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
+
+        $integer = (int) $integerPart;
+        $decimalPieces = (int) $decimalPart;
+
+        return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
 
     private function calculateAvailablePieces($purchaseProduct, float $measureUnitQuantity, int $companyId, int $branchID = null): float

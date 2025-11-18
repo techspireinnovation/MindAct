@@ -33,11 +33,11 @@ use Illuminate\Validation\Rule;
 
 class AvailableQuantityService
 {
-    public static function getProductDetailsByInput(Request $request,$productIds): JsonResponse
+    public static function getProductDetailsByInput(Request $request, $productIds): JsonResponse
     {
         try {
             // Validate input
-           
+
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer',
                 'branch_id' => 'required|integer|exists:branches,id',
@@ -52,14 +52,14 @@ class AvailableQuantityService
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
-          
+
 
             $companyId = $request->input('company_id');
             $branchId = $request->input('branch_id');
             $productCode = $request->input('product_code');
             $productID = $productIds;
-            
-           
+
+
             $productName = trim(strtolower($request->input('product_name')));
             $barcode = $request->input('barcode');
             $purchaseBillNumber = $request->input('purchase_bill_number');
@@ -179,6 +179,22 @@ class AvailableQuantityService
                 ->get()
                 ->groupBy('purchase_stock_product_id');
 
+
+            $adjustedProducts = DB::table('stock_adjusteds')
+                ->select([
+                    'stock_adjusteds.purchase_stock_product_id',
+                    'stock_adjusteds.quantity',
+                    // 'stock_adjusteds.free_quantity',
+                    'stock_adjusteds.measure_unit_id',
+                ])
+                ->whereIn('stock_adjusteds.purchase_stock_product_id', $purchaseProductIds)
+                ->where('stock_adjusteds.company_id', $companyId)
+                ->where('stock_adjusteds.branch_id', $branchId)
+                ->whereNull('stock_adjusteds.deleted_at')
+                ->get()
+                ->groupBy('purchase_stock_product_id');
+
+
             $salesReturnProducts = DB::table('sales_return_products')
                 ->select([
                     'sale_products.purchase_stock_product_id',
@@ -192,6 +208,11 @@ class AvailableQuantityService
                 ->whereNull('sales_return_products.deleted_at')
                 ->get()
                 ->groupBy('purchase_stock_product_id');
+
+
+
+
+
 
             // Fetch field values and quantity indexes
             $soldQuantityIndexes = DB::table('sales_product_field_values')
@@ -272,7 +293,7 @@ class AvailableQuantityService
                 ->groupBy('purchase_stock_product_id');
 
             // Process purchase products
-            $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts) {
+            $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts, $adjustedProducts) {
                 $measureUnitId = $pp->measure_unit_id ?? null;
                 $unitData = isset($measureUnitsCalc[$measureUnitId]) ? [
                     'id' => $measureUnitsCalc[$measureUnitId]->id,
@@ -315,6 +336,45 @@ class AvailableQuantityService
                     return ($saleQtyInt * $unitQty) + $saleQtyDec;
                 });
 
+
+                $totalAdjustedInPieces = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
+                    ->sum(function ($return) use ($measureUnitsCalc) {
+
+                        $unitId = $return->measure_unit_id ?? null;
+                        $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+
+                        $adjustedTotalQty = ($return->quantity ?? 0);
+
+                        // Split decimal
+                        $adjustedDecimalStr = explode('.', (string) $adjustedTotalQty);
+                        $adjustedQtyInt = floor($adjustedTotalQty);
+                        $adjustedQtyDec = isset($adjustedDecimalStr[1]) ? (float) $adjustedDecimalStr[1] : 0;
+
+                        // Convert to pieces
+                        $convertedQty = ($adjustedQtyInt * $unitQty) + $adjustedQtyDec;
+
+                        // Apply add or subtract
+                        if ($return->adjusted_type === 'add') {
+                            return +$convertedQty;
+                        } elseif ($return->adjusted_type === 'subtract') {
+                            return -$convertedQty;
+                        }
+
+                        return 0; // default
+                    });
+
+
+
+                $totalSoldInPieces = collect($saleProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
+                    $unitId = $sale->measure_unit_id ?? null;
+                    $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
+                    $saleTotalQty = ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0);
+                    $saleDecimalStr = explode('.', (string) $saleTotalQty);
+                    $saleQtyInt = floor($saleTotalQty);
+                    $saleQtyDec = isset($saleDecimalStr[1]) ? (float) $saleDecimalStr[1] : 0;
+                    return ($saleQtyInt * $unitQty) + $saleQtyDec;
+                });
+
                 // Calculate sale returns
                 $totalSaleReturnsInPieces = collect($salesReturnProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
@@ -326,7 +386,7 @@ class AvailableQuantityService
                     return ($retQtyInt * $unitQty) + $retQtyDec;
                 });
 
-                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces, 0);
+                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces + $totalAdjustedInPieces, 0);
                 $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
 
                 // Log calculations
@@ -340,6 +400,7 @@ class AvailableQuantityService
                     'total_returned_in_pieces' => $totalReturnedInPieces,
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
+                    'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM
                 ]);
@@ -350,6 +411,7 @@ class AvailableQuantityService
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
+                    'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                 ]);
             })->filter(fn($pp) => $pp->remaining_quantity_in_pieces > 0);
@@ -363,7 +425,9 @@ class AvailableQuantityService
                 $returnQuantity = $group->sum('total_returned_in_pieces');
                 $saleQuantity = $group->sum('total_sold_in_pieces');
                 $salesReturnQuantity = $group->sum('total_sale_returns_in_pieces');
-                $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity, 0);
+                $adjustedQuantity = $group->sum('adjusted_quantity_in_pieces');
+                $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity + $adjustedQuantity, 0);
+                
 
                 // Fetch product metadata
                 $product = Product::where('id', $first->product_id)

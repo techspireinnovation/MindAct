@@ -345,7 +345,8 @@ class PurchaseReturnController extends Controller
                         ]);
                     }
 
-                    $purchaseTotal = ($purchaseProduct->quantity + ($purchaseProduct->free_quantity ?? 0)) * $measureUnitQuantity;
+                    $purchaseTotal = $this->calculatePieces($this->sumQuantityAndFree($purchaseProduct->quantity , ($purchaseProduct->free_quantity ?? 0)) , $measureUnitQuantity);
+                    // dd($purchaseTotal);
 
                     $returnProducts = $purchaseReturnProducts->where('purchase_stock_product_id', $purchaseProduct->id);
                     $purchaseReturned = 0;
@@ -354,7 +355,7 @@ class PurchaseReturnController extends Controller
                     foreach ($returnProducts as $returnProduct) {
                         $returnMeasureUnitId = $returnProduct->measure_unit_id ?? null;
                         $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
-                        $returnQuantity = ($returnProduct->quantity + ($returnProduct->free_quantity ?? 0)) * $returnMeasureUnitQuantity;
+                        $returnQuantity = $this->calculatePieces($this->sumQuantityAndFree($returnProduct->quantity , ($returnProduct->free_quantity ?? 0)) , $returnMeasureUnitQuantity);
                         $purchaseReturned += $returnQuantity;
                         $lastReturnMeasureUnitId = $returnMeasureUnitId;
                         $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
@@ -373,14 +374,14 @@ class PurchaseReturnController extends Controller
                     foreach ($saleProductsForPurchase as $saleProduct) {
                         $saleMeasureUnitId = $saleProduct->measure_unit_id ?? null;
                         $saleMeasureUnitQuantity = isset($measureUnits[$saleMeasureUnitId]) ? $measureUnits[$saleMeasureUnitId]->quantity : 1;
-                        $saleQuantity = ($saleProduct->quantity + ($saleProduct->free_quantity ?? 0)) * $saleMeasureUnitQuantity;
+                        $saleQuantity = $this->calculatePieces($this->sumQuantityAndFree($saleProduct->quantity , ($saleProduct->free_quantity ?? 0)) , $saleMeasureUnitQuantity);
 
                         $salesReturns = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
                         $salesReturned = 0;
                         foreach ($salesReturns as $salesReturn) {
                             $salesReturnMeasureUnitId = $salesReturn->measure_unit_id ?? null;
                             $salesReturnMeasureUnitQuantity = isset($measureUnits[$salesReturnMeasureUnitId]) ? $measureUnits[$salesReturnMeasureUnitId]->quantity : 1;
-                            $salesReturnQuantity = ($salesReturn->quantity + ($salesReturn->free_quantity ?? 0)) * $salesReturnMeasureUnitQuantity;
+                            $salesReturnQuantity = $this->calculatePieces($this->sumQuantityAndFree($salesReturn->quantity , ($salesReturn->free_quantity ?? 0)) , $salesReturnMeasureUnitQuantity);
                             $salesReturned += $salesReturnQuantity;
                         }
 
@@ -507,7 +508,7 @@ class PurchaseReturnController extends Controller
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+           
             Log::error('Database query error in getPurchaseBillNumber', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
@@ -655,12 +656,10 @@ class PurchaseReturnController extends Controller
                 ]);
 
                 // Calculate total quantity in pieces
-                $totalQuantity = ((float) ($product['quantity'] ?? 0)) + ((float) ($product['free_quantity'] ?? 0));
+                $totalQuantity = $this->sumQuantityAndFree(($product['quantity'] ?? 0) ,  ($product['free_quantity'] ?? 0));
                 $unitQuantity = $unitData['quantity'] ?? 1;
-                $decimalStr = explode('.', (string) $totalQuantity);
-                $quantityInt = floor($totalQuantity);
-                $decimalDigits = isset($decimalStr[1]) ? (int) str_replace('.', '', $decimalStr[1]) : 0;
-                $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
+               
+                $totalPurchaseQuantityInPieces = $this->calculatePieces($totalQuantity , $unitQuantity);
 
                 Log::debug('Total purchase quantity calculation', [
                     'product_id' => $product['id'] ?? 'unknown',
@@ -668,8 +667,7 @@ class PurchaseReturnController extends Controller
                     'free_quantity' => $product['free_quantity'] ?? 0,
                     'total_quantity' => $totalQuantity,
                     'unit_quantity' => $unitQuantity,
-                    'quantity_int' => $quantityInt,
-                    'decimal_digits' => $decimalDigits,
+                   
                     'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
                 ]);
 
@@ -677,20 +675,10 @@ class PurchaseReturnController extends Controller
                 $totalReturnedInPieces = collect($product['purchase_stock_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $measureUnitQuantity = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $quantity = (float) ($return['quantity'] ?? 0);
-                    $freeQuantity = (float) ($return['free_quantity'] ?? 0);
-
-                    // Calculate pieces for quantity
-                    $integerPart = floor($quantity);
-                    $decimalPart = $quantity - $integerPart;
-                    $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
-                    $quantityPieces = ($integerPart * $measureUnitQuantity) + $decimalPieces;
-
-                    // Calculate pieces for free_quantity
-                    $freeIntegerPart = floor($freeQuantity);
-                    $freeDecimalPart = $freeQuantity - $freeIntegerPart;
-                    $freeDecimalPieces = $freeDecimalPart > 0 ? (int) str_replace('.', '', (string) $freeDecimalPart) : 0;
-                    $freeQuantityPieces = ($freeIntegerPart * $measureUnitQuantity) + $freeDecimalPieces;
+                    $quantity =  $return['quantity'] ?? 0;
+                    $freeQuantity = $return['free_quantity'] ?? 0;                                  
+                    $quantityPieces = $this->calculatePieces($quantity , $measureUnitQuantity);                    
+                    $freeQuantityPieces = $this->calculatePieces($freeQuantity , $measureUnitQuantity);
 
                     $returnTotal = $quantityPieces + $freeQuantityPieces;
 
@@ -713,11 +701,9 @@ class PurchaseReturnController extends Controller
                 $totalSoldInPieces = collect($product['sale_products'] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = ((float) ($sale['quantity'] ?? 0)) + ((float) ($sale['free_quantity'] ?? 0));
-                    $saleDecimalStr = explode('.', (string) $saleTotalQty);
-                    $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (int) str_replace('.', '', $saleDecimalStr[1]) : 0;
-                    $soldPieces = ($saleQtyInt * $unitQty) + $saleQtyDec;
+                    $saleTotalQty = $this->sumQuantityAndFree ($sale['quantity'] ?? 0 , $sale['free_quantity'] ?? 0);
+                   
+                    $soldPieces = $this->calculatePieces($saleTotalQty , $unitQty);
 
                     Log::debug('Sale quantity calculation', [
                         'sale_id' => $sale['id'] ?? 'unknown',
@@ -725,8 +711,7 @@ class PurchaseReturnController extends Controller
                         'free_quantity' => $sale['free_quantity'] ?? 0,
                         'total_quantity' => $saleTotalQty,
                         'unit_quantity' => $unitQty,
-                        'sale_qty_int' => $saleQtyInt,
-                        'sale_qty_dec' => $saleQtyDec,
+                       
                         'sold_pieces' => $soldPieces,
                     ]);
 
@@ -739,11 +724,9 @@ class PurchaseReturnController extends Controller
                 })->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ((float) ($return['quantity'] ?? 0)) + ((float) ($return['free_quantity'] ?? 0));
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
-                    $saleReturnPieces = ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retTotalQty = $this->sumQuantityAndFree($return['quantity'] ?? 0 , $return['free_quantity'] ?? 0);
+                    
+                    $saleReturnPieces = $this->calculatePieces($retTotalQty , $unitQty);
 
                     Log::debug('Sale return quantity calculation', [
                         'sale_return_id' => $return['id'] ?? 'unknown',
@@ -751,8 +734,7 @@ class PurchaseReturnController extends Controller
                         'free_quantity' => $return['free_quantity'] ?? 0,
                         'total_quantity' => $retTotalQty,
                         'unit_quantity' => $unitQty,
-                        'ret_qty_int' => $retQtyInt,
-                        'ret_qty_dec' => $retQtyDec,
+                        
                         'sale_return_pieces' => $saleReturnPieces,
                     ]);
 
@@ -798,23 +780,16 @@ class PurchaseReturnController extends Controller
 
                 // Calculate quantities
                 $unitQuantity = $unitData['quantity'] ?? 1;
-                $quantity = (float) ($product['quantity'] ?? 0);
-                $decimalStrforRegularQuantity = explode('.', (string) $quantity);
-                $regularQuantityInt = floor($quantity);
-                $regularDecimalDigits = isset($decimalStrforRegularQuantity[1]) ? (int) str_replace('.', '', $decimalStrforRegularQuantity[1]) : 0;
-                $totalRegularQuantity = ($regularQuantityInt * $unitQuantity) + $regularDecimalDigits;
-                $freeQuantity = (float) ($product['free_quantity'] ?? 0);
-                $decimalStrforFreeQuantity = explode('.', (string) $freeQuantity);
-                $freeQuantityInt = floor($freeQuantity);
-                $freeDecimalDigits = isset($decimalStrforFreeQuantity[1]) ? (int) str_replace('.', '', $decimalStrforFreeQuantity[1]) : 0;
-                $totalFreeQuantity = ($freeQuantityInt * $unitQuantity) + $freeDecimalDigits;
+                $quantity = $product['quantity'] ?? 0;
+                $totalRegularQuantity = $this->calculatePieces($quantity , $unitQuantity);
+                $freeQuantity = $product['free_quantity'] ?? 0;
+                
+                $totalFreeQuantity = $this->calculatePieces($freeQuantity , $unitQuantity);
 
                 // For Total Remaining
-                $totalQuantity = $quantity + $freeQuantity;
-                $decimalStr = explode('.', (string) $totalQuantity);
-                $quantityInt = floor($totalQuantity);
-                $decimalDigits = isset($decimalStr[1]) ? (int) str_replace('.', '', $decimalStr[1]) : 0;
-                $totalPurchaseQuantityInPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
+                $totalQuantity = $this->sumQuantityAndFree($quantity , $freeQuantity);
+                
+                $totalPurchaseQuantityInPieces = $this->calculatePieces($totalQuantity , $unitQuantity);
                 $totalPurchaseQuantityInUOM = $totalQuantity;
 
                 Log::debug('Purchase quantity in map', [
@@ -831,22 +806,16 @@ class PurchaseReturnController extends Controller
                 $totalReturnedInPieces = collect($product['purchase_stock_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $quantity = (float) ($return['quantity'] ?? 0);
-                    $freeQuantity = (float) ($return['free_quantity'] ?? 0);
+                    $quantity = $return['quantity'] ?? 0;
+                    $freeQuantity = $return['free_quantity'] ?? 0;
 
-                    // Calculate pieces for quantity
-                    $integerPart = floor($quantity);
-                    $decimalPart = $quantity - $integerPart;
-                    $decimalPieces = $decimalPart > 0 ? (int) str_replace('.', '', (string) $decimalPart) : 0;
-                    $quantityPieces = ($integerPart * $unitQty) + $decimalPieces;
+                    
+                    $quantityPieces = $this->calculatePieces($quantity , $unitQty);
 
-                    // Calculate pieces for free_quantity
-                    $freeIntegerPart = floor($freeQuantity);
-                    $freeDecimalPart = $freeQuantity - $freeIntegerPart;
-                    $freeDecimalPieces = $freeDecimalPart > 0 ? (int) str_replace('.', '', (string) $freeDecimalPart) : 0;
-                    $freeQuantityPieces = ($freeIntegerPart * $unitQty) + $freeDecimalPieces;
+                    
+                    $freeQuantityPieces = $this->calculatePieces($freeQuantity , $unitQty);
 
-                    $totalReturned = $quantityPieces + $freeQuantityPieces;
+                    $totalReturned = $this->sumQuantityAndFree($quantityPieces , $freeQuantityPieces);
 
                     Log::debug('Total returned in map', [
                         'return_id' => $return['id'] ?? 'unknown',
@@ -854,13 +823,9 @@ class PurchaseReturnController extends Controller
                         'free_quantity' => $freeQuantity,
                         'sum_quantity' => $quantity + $freeQuantity,
                         'unit_quantity' => $unitQty,
-                        'quantity_integer_part' => $integerPart,
-                        'quantity_decimal_part' => $decimalPart,
-                        'quantity_decimal_pieces' => $decimalPieces,
+                        
                         'quantity_pieces' => $quantityPieces,
-                        'free_integer_part' => $freeIntegerPart,
-                        'free_decimal_part' => $freeDecimalPart,
-                        'free_decimal_pieces' => $freeDecimalPieces,
+                      
                         'free_quantity_pieces' => $freeQuantityPieces,
                         'total_returned' => $totalReturned,
                     ]);
@@ -871,18 +836,15 @@ class PurchaseReturnController extends Controller
                 $returnedRegularInPieces = collect($product['purchase_stock_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retQty = (float) ($return['quantity'] ?? 0);
-                    $retDecimalStr = explode('.', (string) $retQty);
-                    $retQtyInt = floor($retQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
-                    $returnedPieces = ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retQty = $return['quantity'] ?? 0;
+                    
+                    $returnedPieces = $this->calculatePieces($retQty , $unitQty);
 
                     Log::debug('Returned regular quantity in map', [
                         'return_id' => $return['id'] ?? 'unknown',
                         'quantity' => $retQty,
                         'unit_quantity' => $unitQty,
-                        'ret_qty_int' => $retQtyInt,
-                        'ret_qty_dec' => $retQtyDec,
+                        
                         'returned_pieces' => $returnedPieces,
                     ]);
 
@@ -892,18 +854,15 @@ class PurchaseReturnController extends Controller
                 $returnedFreeInPieces = collect($product['purchase_stock_product_returns'] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retFreeQty = (float) ($return['free_quantity'] ?? 0);
-                    $retDecimalStr = explode('.', (string) $retFreeQty);
-                    $retQtyInt = floor($retFreeQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
-                    $returnedFreePieces = ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retFreeQty = $return['free_quantity'] ?? 0;
+                    
+                    $returnedFreePieces = $this->calculatePieces($retFreeQty , $unitQty);
 
                     Log::debug('Returned free quantity in map', [
                         'return_id' => $return['id'] ?? 'unknown',
                         'free_quantity' => $retFreeQty,
                         'unit_quantity' => $unitQty,
-                        'ret_qty_int' => $retQtyInt,
-                        'ret_qty_dec' => $retQtyDec,
+                        
                         'returned_free_pieces' => $returnedFreePieces,
                     ]);
 
@@ -914,11 +873,8 @@ class PurchaseReturnController extends Controller
                 $totalSoldInPieces = collect($product['sale_products'] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = ((float) ($sale['quantity'] ?? 0)) + ((float) ($sale['free_quantity'] ?? 0));
-                    $saleDecimalStr = explode('.', (string) $saleTotalQty);
-                    $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (int) str_replace('.', '', $saleDecimalStr[1]) : 0;
-                    $soldPieces = ($saleQtyInt * $unitQty) + $saleQtyDec;
+                    $saleTotalQty = $this->sumQuantityAndFree($sale['quantity'] ?? 0 , $sale['free_quantity'] ?? 0);
+                    $soldPieces = $this->calculatePieces($saleTotalQty , $unitQty);
 
                     Log::debug('Sale quantity calculation in map', [
                         'sale_id' => $sale['id'] ?? 'unknown',
@@ -926,8 +882,7 @@ class PurchaseReturnController extends Controller
                         'free_quantity' => $sale['free_quantity'] ?? 0,
                         'total_quantity' => $saleTotalQty,
                         'unit_quantity' => $unitQty,
-                        'sale_qty_int' => $saleQtyInt,
-                        'sale_qty_dec' => $saleQtyDec,
+                      
                         'sold_pieces' => $soldPieces,
                     ]);
 
@@ -940,11 +895,9 @@ class PurchaseReturnController extends Controller
                 })->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return['measure_unit_id'] ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ((float) ($return['quantity'] ?? 0)) + ((float) ($return['free_quantity'] ?? 0));
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (int) str_replace('.', '', $retDecimalStr[1]) : 0;
-                    $saleReturnPieces = ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retTotalQty = $this->sumQuantityAndFree($return['quantity'] ?? 0 , $return['free_quantity'] ?? 0);
+                   
+                    $saleReturnPieces = $this->calculatePieces($retTotalQty , $unitQty);
 
                     Log::debug('Sale return quantity calculation in map', [
                         'sale_return_id' => $return['id'] ?? 'unknown',
@@ -952,8 +905,7 @@ class PurchaseReturnController extends Controller
                         'free_quantity' => $return['free_quantity'] ?? 0,
                         'total_quantity' => $retTotalQty,
                         'unit_quantity' => $unitQty,
-                        'ret_qty_int' => $retQtyInt,
-                        'ret_qty_dec' => $retQtyDec,
+                    
                         'sale_return_pieces' => $saleReturnPieces,
                     ]);
 

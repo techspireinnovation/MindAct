@@ -1790,6 +1790,8 @@ class PurchaseReturnController extends Controller
             // Fetch related data for calculations
             $purchaseProductIds = $purchaseProducts->pluck('purchase_stock_product_id')->toArray();
 
+
+
             $productId = $purchaseProducts->pluck('product_id')->unique()->toArray();
 
 
@@ -1967,14 +1969,23 @@ class PurchaseReturnController extends Controller
                 $quantity = $pp->quantity ?? 0; // e.g., 2.2
                 $freeQuantity = $pp->free_quantity ?? 0; // e.g., 2.3
                 $totalQuantity = $quantity + $freeQuantity; // 4.5
+                $decimalPlaces = max(
+                    strlen(explode('.', $quantity)[1] ?? ''),
+                    strlen(explode('.', $freeQuantity)[1] ?? '')
+                );
+
+                $totalQuantityFormatted = number_format($totalQuantity, $decimalPlaces, '.', '');
 
 
-                [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantity), 2, '0');
+                [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
 
                 $integer = (int) $integerPart;
                 $decimalPieces = (int) $decimalPart;
 
+
+
                 $totalPurchaseQuantityInPieces = ($integer * $unitData['quantity']) + $decimalPieces;
+
 
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($purchaseProductReturns[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
@@ -1982,9 +1993,15 @@ class PurchaseReturnController extends Controller
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
                     $retTotalQty = ($return->quantity ?? 0) + ($return->free_quantity ?? 0);
 
+                    $decimalPlaces = max(
+                        strlen(explode('.', $return->quantity)[1] ?? ''),
+                        strlen(explode('.', $return->free_quantity)[1] ?? '')
+                    );
+
+                    $totalQuantityFormatted = number_format($retTotalQty, $decimalPlaces, '.', '');
 
 
-                    [$integerPart, $decimalPart] = array_pad(explode('.', $retTotalQty), 2, '0');
+                    [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
 
                     $integer = (int) $integerPart;
                     $decimalPieces = (int) $decimalPart;
@@ -1998,7 +2015,16 @@ class PurchaseReturnController extends Controller
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
                     $saleTotalQty = ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0);
 
-                    [$integerPart, $decimalPart] = array_pad(explode('.', $saleTotalQty), 2, '0');
+
+
+                    $decimalPlaces = max(
+                        strlen(explode('.', $sale->quantity)[1] ?? ''),
+                        strlen(explode('.', $sale->free_quantity)[1] ?? '')
+                    );
+
+                    $totalQuantityFormatted = number_format($saleTotalQty, $decimalPlaces, '.', '');
+
+                    [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
 
                     $integer = (int) $integerPart;
                     $decimalPieces = (int) $decimalPart;
@@ -2016,7 +2042,13 @@ class PurchaseReturnController extends Controller
 
                         $adjustedTotalQty = ($return->quantity ?? 0);
 
-                        [$integerPart, $decimalPart] = array_pad(explode('.', $adjustedTotalQty), 2, '0');
+
+                        $decimalPlaces = max([strlen(explode('.', $adjustedTotalQty)[1] ?? '')]);
+
+
+                        $totalQuantityFormatted = number_format($adjustedTotalQty, $decimalPlaces, '.', '');
+
+                        [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
 
                         $integer = (int) $integerPart;
                         $decimalPieces = (int) $decimalPart;
@@ -2041,8 +2073,13 @@ class PurchaseReturnController extends Controller
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
                     $retTotalQty = ($return->quantity ?? 0) + ($return->free_quantity ?? 0);
 
+                    $decimalPlaces = max(
+                        strlen(explode('.', $return->quantity)[1] ?? ''),
+                        strlen(explode('.', $return->free_quantity)[1] ?? '')
+                    );
 
-                    [$integerPart, $decimalPart] = array_pad(explode('.', $retTotalQty), 2, '0');
+                    $totalQuantityFormatted = number_format($retTotalQty, $decimalPlaces, '.', '');
+                    [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
 
                     $integer = (int) $integerPart;
                     $decimalPieces = (int) $decimalPart;

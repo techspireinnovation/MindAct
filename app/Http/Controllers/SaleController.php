@@ -1153,13 +1153,21 @@ class SaleController extends Controller
             return 0;
         }
 
-        // Split integer and decimal parts WITHOUT float
-        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
+
+
+        $decimalPlaces = max([strlen(explode('.', $quantity)[1] ?? '')]);
+
+
+        $totalQuantityFormatted = number_format($quantity, $decimalPlaces, '.', '');
+
+        [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
 
         $integer = (int) $integerPart;
         $decimalPieces = (int) $decimalPart;
 
         return ($integer * $measureUnitQuantity) + $decimalPieces;
+
+        
     }
 
 

@@ -537,7 +537,7 @@ class SalesReturnController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
 

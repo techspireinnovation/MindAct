@@ -15,6 +15,8 @@ use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
+use App\Models\StockAdjusted;
+use App\Models\StockAdjustedFieldValue;
 use App\Models\StockTransferFieldValue;
 use App\Models\StockTransfer;
 use App\Models\StockTransferDetails;
@@ -677,7 +679,35 @@ class SaleController extends Controller
                 return ['message' => 'No available products found', 'data' => []];
             }
 
-            // Fetch quantity indexes
+            $purchaseProductIds = $purchaseProducts->pluck('id')->toArray();
+
+            // ——— FINAL & SIMPLE: Use `quantity` (positive) from stock_adjusteds ———
+            $adjustmentSubtractions = StockAdjusted::whereIn('purchase_stock_product_id', $purchaseProductIds)
+                ->where('company_id', $companyId)
+                ->where('branch_id', $branchId)
+                ->where('adjusted_type', 'subtract')
+                ->whereNull('deleted_at')
+                ->get(['purchase_stock_product_id', 'quantity', 'measure_unit_id'])
+                ->groupBy('purchase_stock_product_id')
+                ->map(fn($items) => $items->sum(
+                    fn($adj) =>
+                    $adj->quantity * ($measureUnitsCalc[$adj->measure_unit_id]->quantity ?? 1)
+                ));
+
+            $adjustmentIndexes = StockAdjustedFieldValue::whereIn('purchase_stock_product_id', $purchaseProductIds)
+                ->where('company_id', $companyId)
+                ->where('branch_id', $branchId)
+                ->whereNull('deleted_at')
+                ->select('purchase_stock_product_id', 'quantity_index')
+                ->get()
+                ->groupBy('purchase_stock_product_id')
+                ->map->pluck('quantity_index')->unique()->values();
+
+            Log::debug('Stock adjustments (subtract) loaded', [
+                'subtracted_pieces_by_batch' => $adjustmentSubtractions->toArray(),
+                'adjustment_indexes_by_batch' => $adjustmentIndexes->toArray(),
+            ]);
+
             $soldQuantityIndexes = SalesProductFieldValue::whereIn('sale_product_id', $purchaseProducts->flatMap(fn($pp) => $pp->saleProducts->pluck('id')))
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
@@ -766,14 +796,16 @@ class SaleController extends Controller
             ]);
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $adjustmentIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $adjustmentIndexes) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
                             $returnedQuantityIndexes[$pp->id]
+                            ?? [],
+                            $adjustmentIndexes[$pp->id]
                             ?? [],
                             $transferQuantityIndexes[$pp->id] ?? []
                         ));
@@ -803,7 +835,7 @@ class SaleController extends Controller
                 ]);
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
+                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $adjustmentIndexes, $companyId, $branchId, $measureUnitsCalc) {
                         // Calculate purchased pieces
                         $purchasedPieces = $this->calculatePieces(
                             ($pp->quantity ?? 0) + ($pp->free_quantity ?? 0),
@@ -837,6 +869,7 @@ class SaleController extends Controller
                         );
 
                         // Calculate available pieces
+                        // $pp->adjustment_subtracted_pieces = $adjustmentSubtractions[$pp->id] ?? 0;
                         $availablePieces = $this->calculateAvailablePieces($pp, $companyId, $branchId, $measureUnitsCalc);
 
                         Log::debug('Purchase stock product quantities calculated', [
@@ -853,7 +886,9 @@ class SaleController extends Controller
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
-                            $returnedQuantityIndexes[$pp->id] ?? []
+                            $returnedQuantityIndexes[$pp->id] ?? [],
+                            $adjustmentIndexes[$pp->id] ?? [],        
+                            $transferQuantityIndexes[$pp->id] ?? []
                         ));
 
                         Log::debug('Field values before filtering', [
@@ -950,7 +985,8 @@ class SaleController extends Controller
                     $productPurchaseProducts
                 ));
 
-                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces;
+                // Use the sum of available pieces from each batch (already includes adjustments!)
+                $availablePieces = array_sum(array_map(fn($pp) => $pp['available_quantity'], $productPurchaseProducts));
 
                 Log::debug('Product totals calculated', [
                     'product_id' => $product->product_id,
@@ -1232,6 +1268,9 @@ class SaleController extends Controller
             0
         );
 
+
+
+
         $salesReturnedPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($companyId, $measureUnitsCalc) {
             return $sale->saleProductReturns->where('company_id', $companyId)->whereNull('deleted_at');
         })->reduce(
@@ -1245,7 +1284,27 @@ class SaleController extends Controller
                 0
             );
 
-        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
+
+        // SUPER SIMPLE: Get pre-calculated subtracted pieces from attribute
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
+
+        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces - $adjustedPieces;
 
         if ($availablePieces < 0) {
             Log::warning('Negative available pieces detected', [
@@ -1316,6 +1375,23 @@ class SaleController extends Controller
             );
 
 
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
         $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->whereHas(
                 'saleProduct',
@@ -1342,7 +1418,7 @@ class SaleController extends Controller
                 0
             );
 
-        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces);
+        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces - $adjustedPieces);
 
         Log::debug('Available pieces for sale update', [
             'purchase_stock_product_id' => $purchaseProduct->id,
@@ -2101,12 +2177,24 @@ class SaleController extends Controller
             ->values()
             ->toArray();
 
-        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices));
+
+
+        $adjustedIndices = StockAdjustedFieldValue::whereIn('stock_adjusted_id', $purchaseProduct->stockAdjusted->pluck('id'))
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->pluck('quantity_index')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices, $adjustedIndices));
 
         Log::debug('Unavailable quantity indices', [
             'purchase_stock_product_id' => $purchaseProduct->id,
             'sold_indices' => $soldIndices,
             'returned_indices' => $returnedIndices,
+            'adjusted_indices' => $adjustedIndices,
             'unavailable_indices' => $unavailableIndices
         ]);
 

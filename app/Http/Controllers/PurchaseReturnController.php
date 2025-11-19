@@ -1832,6 +1832,7 @@ class PurchaseReturnController extends Controller
                 ->whereIn('stock_adjusteds.purchase_stock_product_id', $purchaseProductIds)
                 ->where('stock_adjusteds.company_id', $companyId)
                 ->where('stock_adjusteds.branch_id', $branchId)
+                ->where('stock_adjusteds.adjusted_type', 'subtract')
                 ->whereNull('stock_adjusteds.deleted_at')
                 ->get()
                 ->groupBy('purchase_stock_product_id');
@@ -1931,6 +1932,24 @@ class PurchaseReturnController extends Controller
                 ->get()
                 ->groupBy('purchase_stock_product_id');
 
+
+            $adjustedQuantityIndexes = DB::table('stock_adjusted_field_values')
+                ->select([
+                    'stock_adjusteds.purchase_stock_product_id',
+                    'stock_adjusted_field_values.quantity_index'
+                ])
+                ->join('stock_adjusteds', 'stock_adjusted_field_values.stock_adjusted_id', '=', 'stock_adjusteds.id')
+                ->whereIn('stock_adjusteds.purchase_stock_product_id', $purchaseProductIds)
+                ->where('stock_adjusteds.company_id', $companyId)
+                ->where('stock_adjusteds.branch_id', $branchId)
+                ->where('stock_adjusteds.adjusted_type', 'subtract')
+                ->whereNull('stock_adjusteds.deleted_at')
+                ->distinct()
+                ->get()
+                ->groupBy('purchase_stock_product_id')
+                ->map(fn($group) => $group->pluck('quantity_index')->toArray());
+
+
             // Process purchase products
             $purchaseProducts = $purchaseProducts->map(function ($pp) use ($measureUnitsCalc, $purchaseProductReturns, $saleProducts, $salesReturnProducts, $adjustedProducts) {
                 $measureUnitId = $pp->measure_unit_id ?? null;
@@ -1977,7 +1996,7 @@ class PurchaseReturnController extends Controller
 
 
                 $totalAdjustedInPieces = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
-                    ->filter(fn($return) => ($return->adjusted_type ?? null) == 'subtract') // only subtract type
+
                     ->sum(function ($return) use ($measureUnitsCalc) {
 
                         $unitId = $return->measure_unit_id ?? null;
@@ -1994,12 +2013,12 @@ class PurchaseReturnController extends Controller
                         return ($adjustedQtyInt * $unitQty) + $adjustedQtyDec;
                     });
 
-                 dd($totalAdjustedInPieces);   
 
 
 
 
-                
+
+
 
 
 
@@ -2029,7 +2048,7 @@ class PurchaseReturnController extends Controller
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
                     'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
-                   
+
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM
                 ]);
@@ -2041,13 +2060,13 @@ class PurchaseReturnController extends Controller
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                     'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
-                    
+
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                 ]);
             })->filter(fn($pp) => $pp->remaining_quantity_in_pieces > 0);
 
             // Group by product_id for aggregation
-            $products = $purchaseProducts->groupBy('product_id')->map(function ($group) use ($companyId, $measureUnitsCalc, $fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes) {
+            $products = $purchaseProducts->groupBy('product_id')->map(function ($group) use ($companyId, $measureUnitsCalc, $fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes) {
                 $first = $group->first();
 
                 // Aggregate quantities
@@ -2056,7 +2075,7 @@ class PurchaseReturnController extends Controller
                 $saleQuantity = $group->sum('total_sold_in_pieces');
                 $salesReturnQuantity = $group->sum('total_sale_returns_in_pieces');
                 $adjustedQuantity = $group->sum('adjusted_quantity_in_pieces');
-               
+
                 $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity - $adjustedQuantity, 0);
 
 
@@ -2116,12 +2135,13 @@ class PurchaseReturnController extends Controller
 
 
                 $productFieldValues = collect();
-                $productPurchaseProducts = $group->map(function ($pp) use ($fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, &$productFieldValues) {
+                $productPurchaseProducts = $group->map(function ($pp) use ($fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes, &$productFieldValues) {
                     $availableUnits = (int) $pp->remaining_quantity_in_pieces;
                     if ($availableUnits > 0 && isset($fieldValues[$pp->purchase_stock_product_id])) {
                         $soldIndexes = $soldQuantityIndexes[$pp->purchase_stock_product_id] ?? [];
                         $returnedIndexes = $returnedQuantityIndexes[$pp->purchase_stock_product_id] ?? [];
-                        $excludedIndexes = array_unique(array_merge($soldIndexes, $returnedIndexes));
+                        $adjustedIndexes = $adjustedQuantityIndexes[$pp->purchase_stock_product_id] ?? [];
+                        $excludedIndexes = array_unique(array_merge($soldIndexes, $returnedIndexes, $adjustedIndexes));
 
                         $ppFieldValues = $fieldValues[$pp->purchase_stock_product_id]
                             ->filter(fn($fv) => !in_array($fv->quantity_index, $excludedIndexes))

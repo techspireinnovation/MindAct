@@ -2935,7 +2935,7 @@ class SalesReturnController extends Controller
     public function storeItemWise(Request $request): JsonResponse
     {
         try {
-            // Define validation rules
+            // Define validation rule
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required',
                 'customer_id' => 'nullable|exists:customers,id',

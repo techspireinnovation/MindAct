@@ -891,7 +891,7 @@ class SaleController extends Controller
                             $transferQuantityIndexes[$pp->id] ?? []
                         ));
 
-                        Log::debug('Field values before filtering', [
+                        Log::debug('Field values before filtering :', [
                             'purchase_stock_product_id' => $pp->id,
                             'field_values_count' => $pp->fieldValues->count(),
                             'field_values' => $pp->fieldValues->map(fn($fv) => [

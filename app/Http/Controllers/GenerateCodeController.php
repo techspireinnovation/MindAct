@@ -114,12 +114,12 @@ class GenerateCodeController extends Controller
         if (!$branchId) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'No branch associated with the user'
+                'message' => 'No branch associated with the user !'
             ], 200);
         }
 
         // Get last purchase record for the current fiscal year and branch
-        // ❗ FIXED ONLY THIS LINE: Changed PurchaseReturn → PurchaseStockReturn
+       
         $lastPurchasereturn = \App\Models\PurchaseStockReturn::where('purchase_bill_number', 'like', "PR{$fiscalYearCode}-{$branchId}-%")
             ->orderBy('id', 'desc')
             ->first();

@@ -45,6 +45,50 @@ class StockAdjustmentController extends Controller
         return response()->json($query->paginate(50));
     }
 
+    public function getUnavailableQuantityIndices($purchaseProduct, int $companyId, int $branchId): array
+    {
+        $soldIndices = SalesProductFieldValue::whereIn('sale_product_id', $purchaseProduct->saleProducts->pluck('id'))
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->pluck('quantity_index')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $returnedIndices = PurchaseStockProductReturnFieldValue::whereIn('purchase_stock_product_return_id', $purchaseProduct->purchaseStockProductReturns->pluck('id'))
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->pluck('quantity_index')
+            ->unique()
+            ->values()
+            ->toArray();
+
+
+
+        $adjustedIndices = StockAdjustedFieldValue::whereIn('stock_adjusted_id', $purchaseProduct->stockAdjusted->pluck('id'))
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->pluck('quantity_index')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices, $adjustedIndices));
+
+        Log::debug('Unavailable quantity indices', [
+            'purchase_stock_product_id' => $purchaseProduct->id,
+            'sold_indices' => $soldIndices,
+            'returned_indices' => $returnedIndices,
+            'adjusted_indices' => $adjustedIndices,
+            'unavailable_indices' => $unavailableIndices
+        ]);
+
+        return $unavailableIndices;
+    }
+
 
     public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
@@ -134,6 +178,9 @@ class StockAdjustmentController extends Controller
             0
         );
 
+
+
+
         $salesReturnedPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($companyId, $measureUnitsCalc) {
             return $sale->saleProductReturns->where('company_id', $companyId)->whereNull('deleted_at');
         })->reduce(
@@ -147,7 +194,27 @@ class StockAdjustmentController extends Controller
                 0
             );
 
-        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
+
+        // SUPER SIMPLE: Get pre-calculated subtracted pieces from attribute
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
+
+        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces - $adjustedPieces;
 
         if ($availablePieces < 0) {
             Log::warning('Negative available pieces detected', [
@@ -633,7 +700,7 @@ class StockAdjustmentController extends Controller
                     'branch_id' => $branchId,
                 ]);
 
-               
+
 
                 foreach ($request->product_details as $detail) {
                     $productId = $detail['product_id'];
@@ -753,7 +820,7 @@ class StockAdjustmentController extends Controller
 
                             $takeQty = $takePieces / $piecesPerUnit;
 
-                           $stockAdjusted =  StockAdjusted::create([
+                            $stockAdjusted = StockAdjusted::create([
                                 'stock_adjustment_id' => $stockAdjustment->id,
                                 'purchase_stock_product_id' => $psp->id,
                                 'company_id' => $companyId,
@@ -766,7 +833,7 @@ class StockAdjustmentController extends Controller
                                 'diff_stock' => -$takeQty,
                                 'price' => $psp->price ?? 0,
                                 'amount' => $takeQty * ($psp->price ?? 0),
-                                'measure_unit_id' => $psp->measure_unit_id,
+                                'measure_unit_id' => $measureUnitId,
                             ]);
 
                             $remainingPieces -= $takePieces;

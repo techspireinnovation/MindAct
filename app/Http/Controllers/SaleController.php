@@ -807,15 +807,22 @@ class SaleController extends Controller
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
                         // Calculate purchased pieces
+    
+
+
+                        $totalQuantity = $this->sumQuantityAndFree($pp->quantity, $pp->free_quantity);
                         $purchasedPieces = $this->calculatePieces(
-                            ($pp->quantity ?? 0) + ($pp->free_quantity ?? 0),
+                            $totalQuantity,
                             measureUnitQuantity: isset($measureUnitsCalc[$pp->measure_unit_id]) ? $measureUnitsCalc[$pp->measure_unit_id]->quantity : 1
                         );
+
+
+
 
                         // Calculate return pieces, capped at purchased pieces
                         $returnPieces = $pp->purchaseStockProductReturns->reduce(
                             fn($carry, $return) => $carry + $this->calculatePieces(
-                                ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                                $this->sumQuantityAndFree($return->quantity, $return->free_quantity),
                                 isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1
                             ),
                             0
@@ -825,14 +832,14 @@ class SaleController extends Controller
                         // Calculate sale and sales return pieces
                         $salePieces = $pp->saleProducts->reduce(
                             fn($carry, $sale) => $carry + $this->calculatePieces(
-                                ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0),
+                                $this->sumQuantityAndFree($sale->quantity, $sale->free_quantity),
                                 isset($measureUnitsCalc[$sale->measure_unit_id]) ? $measureUnitsCalc[$sale->measure_unit_id]->quantity : 1
                             ),
                             0
                         );
                         $salesReturnPieces = $pp->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns)->reduce(
                             fn($carry, $return) => $carry + $this->calculatePieces(
-                                ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                                $this->sumQuantityAndFree($return->quantity, $return->free_quantity),
                                 isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1
                             ),
                             0
@@ -933,7 +940,7 @@ class SaleController extends Controller
                 // Aggregate totals in pieces
                 $purchasedPieces = array_sum(array_map(
                     fn($pp) => $this->calculatePieces(
-                        ($pp['quantity'] ?? 0) + ($pp['free_quantity'] ?? 0),
+                        $this->sumQuantityAndFree($pp['quantity'] ?? 0, $pp['free_quantity'] ?? 0),
                         $pp['measure_unit_quantity'] ?? 1
                     ),
                     $productPurchaseProducts
@@ -1153,22 +1160,31 @@ class SaleController extends Controller
             return 0;
         }
 
-
-
-        $decimalPlaces = max([strlen(explode('.', $quantity)[1] ?? '')]);
-
-
-        $totalQuantityFormatted = number_format($quantity, $decimalPlaces, '.', '');
-
-        [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantityFormatted), 2, '0');
+        // Split integer and decimal parts WITHOUT converting to float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
 
         $integer = (int) $integerPart;
         $decimalPieces = (int) $decimalPart;
 
         return ($integer * $measureUnitQuantity) + $decimalPieces;
-
-        
     }
+
+
+    public function sumQuantityAndFree($quantity, $freeQuantity): string
+    {
+        $quantity = (string) ($quantity ?? '0');
+        $freeQuantity = (string) ($freeQuantity ?? '0');
+
+        // Determine max number of decimals
+        $decimals = max(
+            strlen(explode('.', $quantity)[1] ?? ''),
+            strlen(explode('.', $freeQuantity)[1] ?? '')
+        );
+
+        return bcadd($quantity, $freeQuantity, $decimals); // string with preserved decimals
+    }
+
+
 
 
 

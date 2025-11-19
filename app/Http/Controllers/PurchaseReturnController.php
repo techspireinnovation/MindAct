@@ -1093,7 +1093,7 @@ class PurchaseReturnController extends Controller
 
                 $allUnitIds = collect([]);
                 if ($getProductForMeasureUnits) {
-                    // Step 1: Get measure_unit_id from Product
+                    // Step 1: Get measure_unit_id from Products
                     $unitIds = collect([$getProductForMeasureUnits->measure_unit_id]);
 
                     // Step 2: Add all measure_unit_ids from ProductList

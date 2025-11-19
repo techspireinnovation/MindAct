@@ -1144,8 +1144,6 @@ class SaleController extends Controller
 
 
 
-
-
     public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
@@ -1161,6 +1159,7 @@ class SaleController extends Controller
 
         return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
+
 
 
     public function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int

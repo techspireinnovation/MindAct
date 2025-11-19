@@ -51,20 +51,6 @@ class PurchaseReturnController extends Controller
         return response()->json($query->paginate(50));
     }
 
-    // public function getAllPurchaseProductDetailsByName(Request $request): JsonResponse
-    // {
-    //     try {
-
-
-    //     } catch (ModelNotFoundException $e) {
-    //         return response()->json(["error" => "Item not Found!!"], 404);
-    //     } catch (QueryException $e) {
-    //         return response()->json(["error" => "Database error occurred !!"], 500);
-    //     } catch (\Exception $e) {
-    //         return response()->json(["error" => "An unexpected error occurred !!"], 500);
-    //     }
-
-    // }
 
     public function getItemByBillNumber($billNumber): JsonResponse
     {
@@ -1991,6 +1977,7 @@ class PurchaseReturnController extends Controller
 
 
                 $totalAdjustedInPieces = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
+                    ->filter(fn($return) => ($return->adjusted_type ?? null) == 'subtract') // only subtract type
                     ->sum(function ($return) use ($measureUnitsCalc) {
 
                         $unitId = $return->measure_unit_id ?? null;
@@ -2001,31 +1988,18 @@ class PurchaseReturnController extends Controller
                         // Split decimal
                         $adjustedDecimalStr = explode('.', (string) $adjustedTotalQty);
                         $adjustedQtyInt = floor($adjustedTotalQty);
-                        $adjustedQtyDec = isset($adjustedDecimalStr[1]) ? (float) $adjustedDecimalStr[1] : 0;
+                        $adjustedQtyDec = isset($adjustedDecimalStr[1]) ? (float) ('0.' . $adjustedDecimalStr[1]) : 0;
 
                         // Convert to pieces
                         return ($adjustedQtyInt * $unitQty) + $adjustedQtyDec;
                     });
 
+                 dd($totalAdjustedInPieces);   
 
 
-                $adjustedAdd = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
-                    ->filter(fn($r) => ($r->adjusted_type ?? null) === 'add')
-                    ->sum(function ($r) use ($measureUnitsCalc) {
-                        $unitQty = $measureUnitsCalc[$r->measure_unit_id ?? 0]->quantity ?? 1;
-                        $adjustedTotalQty = $r->quantity ?? 0;
-                        $parts = explode('.', (string) $adjustedTotalQty);
-                        return floor($adjustedTotalQty) * $unitQty + (isset($parts[1]) ? (float) $parts[1] : 0);
-                    });
 
-                $adjustedSubtract = collect($adjustedProducts[$pp->purchase_stock_product_id] ?? [])
-                    ->filter(fn($r) => ($r->adjusted_type ?? null) === 'subtract')
-                    ->sum(function ($r) use ($measureUnitsCalc) {
-                        $unitQty = $measureUnitsCalc[$r->measure_unit_id ?? 0]->quantity ?? 1;
-                        $adjustedTotalQty = $r->quantity ?? 0;
-                        $parts = explode('.', (string) $adjustedTotalQty);
-                        return floor($adjustedTotalQty) * $unitQty + (isset($parts[1]) ? (float) $parts[1] : 0);
-                    });
+
+                
 
 
 
@@ -2040,7 +2014,7 @@ class PurchaseReturnController extends Controller
                     return ($retQtyInt * $unitQty) + $retQtyDec;
                 });
 
-                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces + $adjustedAdd - $adjustedSubtract, 0);
+                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces - $totalAdjustedInPieces, 0);
                 $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
 
                 // Log calculations
@@ -2054,8 +2028,8 @@ class PurchaseReturnController extends Controller
                     'total_returned_in_pieces' => $totalReturnedInPieces,
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
-                    'add_adjusted_quantity_in_pieces' => $adjustedAdd,
-                    'subtract_adjusted_quantity_in_pieces' => $adjustedSubtract,
+                    'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
+                   
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM
                 ]);
@@ -2066,8 +2040,8 @@ class PurchaseReturnController extends Controller
                     'total_sold_in_pieces' => $totalSoldInPieces,
                     'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
                     'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
-                    'add_adjusted_quantity_in_pieces' => $adjustedAdd,
-                    'subtract_adjusted_quantity_in_pieces' => $adjustedSubtract,
+                    'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
+                    
                     'remaining_quantity_in_uom' => $remainingQuantityInUOM,
                 ]);
             })->filter(fn($pp) => $pp->remaining_quantity_in_pieces > 0);
@@ -2081,9 +2055,9 @@ class PurchaseReturnController extends Controller
                 $returnQuantity = $group->sum('total_returned_in_pieces');
                 $saleQuantity = $group->sum('total_sold_in_pieces');
                 $salesReturnQuantity = $group->sum('total_sale_returns_in_pieces');
-                $addAdjustedQuantity = $group->sum('add_adjusted_quantity_in_pieces');
-                $subtractAdjustedQuantity = $group->sum('subtract_adjusted_quantity_in_pieces');
-                $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity + $addAdjustedQuantity - $subtractAdjustedQuantity, 0);
+                $adjustedQuantity = $group->sum('adjusted_quantity_in_pieces');
+               
+                $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity - $adjustedQuantity, 0);
 
 
                 // Fetch product metadata

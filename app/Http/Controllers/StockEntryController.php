@@ -180,7 +180,7 @@ class StockEntryController extends Controller
                 'stock_entries.*.batch_no' => 'nullable|string|max:255',
                 'stock_entries.*.expiry_date' => 'nullable|string|max:255',
                 'stock_entries.*.quantity' => 'nullable|string',
-                'stock_entries.*.rate' => 'nullable|string',
+                'stock_entries.*.rate' => 'nullable|numeric',
                 'stock_entries.*.amount' => 'nullable|numeric',
                 'stock_entries.*.location_id' => 'nullable',
                 'stock_entries.*.field_values' => 'nullable|array',

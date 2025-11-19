@@ -806,7 +806,7 @@ class SaleController extends Controller
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
-                        // Calculate purchased pieces
+                        // Calculate purchased piece
     
 
 

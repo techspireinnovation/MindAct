@@ -287,19 +287,13 @@ class SalesReturnController extends Controller
                 $measureUnitQuantity = $measureUnit['quantity'];
 
                 $regularQuantity = $saleProduct->quantity ?? 0;
-                $regularquantityInt = floor($regularQuantity);
-                $decimalRegularQuantity = $regularQuantity - $regularquantityInt;
-                $regularDecimal = (string) $decimalRegularQuantity;
-                $regulardecimalPieces = $regularDecimal > 0 ? (int) str_replace('.', '', (string) $regularDecimal) : 0;
-                $quantityInPieces = ($regularquantityInt * $measureUnitQuantity) + $regulardecimalPieces;
+               
+                $quantityInPieces = $this->calculatePieces($regularQuantity , $measureUnitQuantity);
 
                 $freeQuantity = $saleProduct->free_quantity ?? 0;
-                $freeQuantityInt = floor($freeQuantity);
-                $freequantityDecimal = $freeQuantity - $freeQuantityInt;
-                $freeDecimal = (string) $freequantityDecimal;
-                $freedecimalPieces = $freeDecimal > 0 ? (int) str_replace('.', '', (string) $freeDecimal) : 0;
-                $freeQuantityInPieces = ($freeQuantityInt * $measureUnitQuantity) + $freedecimalPieces;
-                $saleTotal = $quantityInPieces + $freeQuantityInPieces;
+               
+                $freeQuantityInPieces = $this->calculatePieces($freeQuantity , $measureUnitQuantity);
+                $saleTotal = $this->sumQuantityAndFree($quantityInPieces , $freeQuantityInPieces);
 
                 // Calculate return quantities for this sale product
                 $returnQuantityInPieces = 0;
@@ -313,20 +307,14 @@ class SalesReturnController extends Controller
                         $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
 
                         $returnQuantity = $returnProduct->quantity ?? 0;
-                        $returnQuantityInt = floor($returnQuantity);
-                        $returnQuantityDecimal = $returnQuantity - $returnQuantityInt;
-                        $quantityDecimal = (string) $returnQuantityDecimal;
-                        $returnQuantityDecimal = $quantityDecimal > 0 ? (int) str_replace('.', '', (string) $quantityDecimal) : 0;
-                        $returnQuantityInPieces = ($returnQuantityInt * $returnMeasureUnitQuantity) + $returnQuantityDecimal;
+                       
+                        $returnQuantityInPieces = $this->calculatePieces($returnQuantity , $returnMeasureUnitQuantity);
 
                         $returnFreeQuantity = $returnProduct->free_quantity ?? 0;
-                        $returnFreeQuantityInt = floor($returnFreeQuantity);
-                        $returnFreeQuantityDecimal = $returnFreeQuantity - $returnFreeQuantityInt;
-                        $freeDecimal = (string) $returnFreeQuantityDecimal;
-                        $freedecimalPieces = $freeDecimal > 0 ? (int) str_replace('.', '', (string) $freeDecimal) : 0;
-                        $returnFreeQuantityInPieces = ($returnFreeQuantityInt * $returnMeasureUnitQuantity) + $freedecimalPieces;
+                        
+                        $returnFreeQuantityInPieces = $this->calculatePieces($returnFreeQuantity , $returnMeasureUnitQuantity);
 
-                        $returnTotal += $returnQuantityInPieces + $returnFreeQuantityInPieces;
+                        $returnTotal += $this->sumQuantityAndFree($returnQuantityInPieces , $returnFreeQuantityInPieces);
                     }
                     Log::debug('Processing sales return products', [
                         'sale_product_id' => $saleProduct->id,
@@ -1676,7 +1664,7 @@ class SalesReturnController extends Controller
                     $freeQuantity = $saleProduct->free_quantity ?? 0;
                     $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
                     $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-                    $saleTotal = $saleRegular + $saleFree;
+                    $saleTotal = $this->sumQuantityAndFree($saleRegular , $saleFree);
 
                     // Calculate returned quantity
                     $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
@@ -1689,7 +1677,7 @@ class SalesReturnController extends Controller
 
                         $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
                         $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
-                        $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
+                        $returnQuantity = $this->sumQuantityAndFree($returnRegularQuantity , $freeReturnQuantity);
 
                         $returned += $returnQuantity;
 
@@ -2644,7 +2632,7 @@ class SalesReturnController extends Controller
                     $freeQuantity = $saleProduct->free_quantity ?? 0;
                     $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
                     $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-                    $saleTotal = $saleRegular + $saleFree;
+                    $saleTotal = $this->sumQuantityAndFree($saleRegular , $saleFree);
 
                     // Calculate returned quantity
                     $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
@@ -2660,7 +2648,7 @@ class SalesReturnController extends Controller
 
                         $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
                         $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
-                        $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
+                        $returnQuantity = $this->sumQuantityAndFree($returnRegularQuantity , $freeReturnQuantity);
                         $returned += $returnQuantity;
                         $lastReturnMeasureUnitId = $returnMeasureUnitId;
                         $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
@@ -4461,6 +4449,20 @@ class SalesReturnController extends Controller
             Log::error('Unexpected error', ['error' => $e->getMessage()]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
+    }
+
+    public function sumQuantityAndFree($quantity, $freeQuantity): string
+    {
+        $quantity = (string) ($quantity ?? '0');
+        $freeQuantity = (string) ($freeQuantity ?? '0');
+
+        // Determine max number of decimals
+        $decimals = max(
+            strlen(explode('.', $quantity)[1] ?? ''),
+            strlen(explode('.', $freeQuantity)[1] ?? '')
+        );
+
+        return bcadd($quantity, $freeQuantity, $decimals); // string with preserved decimals
     }
 
 

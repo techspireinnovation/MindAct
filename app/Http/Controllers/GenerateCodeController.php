@@ -87,7 +87,8 @@ class GenerateCodeController extends Controller
 
 
 
-   public function generatePurchaseReturnBillNumber(Request $request)
+
+public function generatePurchaseReturnBillNumber(Request $request)
 {
     try {
         // Get current BS date
@@ -96,14 +97,15 @@ class GenerateCodeController extends Controller
         $currentBsYear = (int) $bsDateParts[0];
         $currentBsMonth = (int) $bsDateParts[1];
 
-        // Determine fiscal year
+        // Determine fiscal year code
         $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
         $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
-        // Get authenticated user
+        // Get user and branch
         $userId = $request->user_id;
         $branchId = $request->branch_id;
-        $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
+
+       $user = \App\Models\User::on('mysql')->find($userId);
         if (!$user) {
             return response()->json([
                 'status' => 'error',
@@ -115,26 +117,30 @@ class GenerateCodeController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'No branch associated with the user'
-            ], 200);
+            ], 400);
         }
 
-        // Get last purchase record for the current fiscal year and branch
-        // ❗ FIXED ONLY THIS LINE: Changed PurchaseReturn → PurchaseStockReturn
-        $lastPurchasereturn = \App\Models\PurchaseStockReturn::where('purchase_bill_number', 'like', "PR{$fiscalYearCode}-{$branchId}-%")
+        // Get the last invoice for this branch and fiscal year
+        $lastInvoice = \App\Models\PurchaseStockReturn::where('invoice_number', 'like', "PR{$fiscalYearCode}-{$branchId}-%")
             ->orderBy('id', 'desc')
             ->first();
 
-        // Generate sequential number
-        $lastNumber = $lastPurchasereturn ? (int) substr($lastPurchasereturn->purchase_bill_number, -6) : 0;
+        // Determine next number
+        if ($lastInvoice && $lastInvoice->invoice_number) {
+            $lastNumber = (int) substr($lastInvoice->invoice_number, strrpos($lastInvoice->invoice_number, '-') + 1);
+        } else {
+            $lastNumber = 0;
+        }
+
         $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
 
-        // Generate purchase bill number
-        $purchaseReturnBillNumber = "PR{$fiscalYearCode}-{$branchId}-{$newNumber}";
+        // Generate invoice number
+        $invoiceNumber = "PR{$fiscalYearCode}-{$branchId}-{$newNumber}";
 
         return response()->json([
             'status' => 'success',
             'data' => [
-                'purchase_bill_number' => $purchaseReturnBillNumber,
+                'invoice_number' => $invoiceNumber,
                 'fiscal_year' => $fiscalYearCode,
                 'branch_id' => $branchId
             ]
@@ -143,10 +149,11 @@ class GenerateCodeController extends Controller
     } catch (\Exception $e) {
         return response()->json([
             'status' => 'error',
-            'message' => 'Error generating purchase return bill number: ' . $e->getMessage()
+            'message' => 'Error generating purchase return invoice number: ' . $e->getMessage()
         ], 400);
     }
 }
+
 
 
     public function generateSalesBillNumber(Request $request)

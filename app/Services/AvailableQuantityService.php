@@ -427,7 +427,7 @@ class AvailableQuantityService
                 $salesReturnQuantity = $group->sum('total_sale_returns_in_pieces');
                 $adjustedQuantity = $group->sum('adjusted_quantity_in_pieces');
                 $availableQuantity = max($purchasedQuantity - $returnQuantity - $saleQuantity + $salesReturnQuantity + $adjustedQuantity, 0);
-                
+
 
                 // Fetch product metadata
                 $product = Product::where('id', $first->product_id)
@@ -2503,22 +2503,20 @@ class AvailableQuantityService
             DB::disableQueryLog();
         }
     }
-    public static function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
 
+        // Split integer and decimal parts WITHOUT float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
 
-        $integerPart = floor($quantity);
+        $integer = (int) $integerPart;
+        $decimalPieces = (int) $decimalPart;
 
-        $decimalPart = $quantity - $integerPart;
-
-        $decimalStr = (string) $decimalPart;
-        $decimalPieces = $decimalStr > 0 ? (int) str_replace('.', '', (string) $decimalStr) : 0;
-
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
 
     public static function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int

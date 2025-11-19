@@ -15,6 +15,8 @@ use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
+use App\Models\StockAdjusted;
+use App\Models\StockAdjustedFieldValue;
 use App\Models\StockTransferFieldValue;
 use App\Models\StockTransfer;
 use App\Models\StockTransferDetails;
@@ -1144,8 +1146,6 @@ class SaleController extends Controller
 
 
 
-
-
     public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
@@ -1161,6 +1161,7 @@ class SaleController extends Controller
 
         return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
+
 
 
     public function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int
@@ -1233,6 +1234,9 @@ class SaleController extends Controller
             0
         );
 
+
+
+
         $salesReturnedPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($companyId, $measureUnitsCalc) {
             return $sale->saleProductReturns->where('company_id', $companyId)->whereNull('deleted_at');
         })->reduce(
@@ -1246,7 +1250,27 @@ class SaleController extends Controller
                 0
             );
 
-        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
+
+        // SUPER SIMPLE: Get pre-calculated subtracted pieces from attribute
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
+
+        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces - $adjustedPieces;
 
         if ($availablePieces < 0) {
             Log::warning('Negative available pieces detected', [
@@ -1317,6 +1341,23 @@ class SaleController extends Controller
             );
 
 
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
         $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->whereHas(
                 'saleProduct',
@@ -1343,7 +1384,7 @@ class SaleController extends Controller
                 0
             );
 
-        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces);
+        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces - $adjustedPieces);
 
         Log::debug('Available pieces for sale update', [
             'purchase_stock_product_id' => $purchaseProduct->id,
@@ -2102,12 +2143,24 @@ class SaleController extends Controller
             ->values()
             ->toArray();
 
-        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices));
+
+
+        $adjustedIndices = StockAdjustedFieldValue::whereIn('stock_adjusted_id', $purchaseProduct->stockAdjusted->pluck('id'))
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->pluck('quantity_index')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices, $adjustedIndices));
 
         Log::debug('Unavailable quantity indices', [
             'purchase_stock_product_id' => $purchaseProduct->id,
             'sold_indices' => $soldIndices,
             'returned_indices' => $returnedIndices,
+            'adjusted_indices' => $adjustedIndices,
             'unavailable_indices' => $unavailableIndices
         ]);
 

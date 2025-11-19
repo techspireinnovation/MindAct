@@ -1967,20 +1967,29 @@ class PurchaseReturnController extends Controller
                 $quantity = $pp->quantity ?? 0; // e.g., 2.2
                 $freeQuantity = $pp->free_quantity ?? 0; // e.g., 2.3
                 $totalQuantity = $quantity + $freeQuantity; // 4.5
-                $decimalStr = explode('.', (string) $totalQuantity); // ['4', '5']
-                $quantityInt = floor($totalQuantity); // 4
-                $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0; // 5.0
-                $totalPurchaseQuantityInPieces = ($quantityInt * $unitData['quantity']) + $decimalDigits; // (4 * 2) + 5 = 13
+
+
+                [$integerPart, $decimalPart] = array_pad(explode('.', $totalQuantity), 2, '0');
+
+                $integer = (int) $integerPart;
+                $decimalPieces = (int) $decimalPart;
+
+                $totalPurchaseQuantityInPieces = ($integer * $unitData['quantity']) + $decimalPieces;
 
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($purchaseProductReturns[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
                     $retTotalQty = ($return->quantity ?? 0) + ($return->free_quantity ?? 0);
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+
+
+
+                    [$integerPart, $decimalPart] = array_pad(explode('.', $retTotalQty), 2, '0');
+
+                    $integer = (int) $integerPart;
+                    $decimalPieces = (int) $decimalPart;
+
+                    return ($integer * $unitQty) + $decimalPieces;
                 });
 
                 // Calculate sold quantities
@@ -1988,10 +1997,13 @@ class PurchaseReturnController extends Controller
                     $unitId = $sale->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
                     $saleTotalQty = ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0);
-                    $saleDecimalStr = explode('.', (string) $saleTotalQty);
-                    $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (float) $saleDecimalStr[1] : 0;
-                    return ($saleQtyInt * $unitQty) + $saleQtyDec;
+
+                    [$integerPart, $decimalPart] = array_pad(explode('.', $saleTotalQty), 2, '0');
+
+                    $integer = (int) $integerPart;
+                    $decimalPieces = (int) $decimalPart;
+
+                    return ($integer * $unitQty) + $decimalPieces;
                 });
 
 
@@ -2004,13 +2016,14 @@ class PurchaseReturnController extends Controller
 
                         $adjustedTotalQty = ($return->quantity ?? 0);
 
-                        // Split decimal
-                        $adjustedDecimalStr = explode('.', (string) $adjustedTotalQty);
-                        $adjustedQtyInt = floor($adjustedTotalQty);
-                        $adjustedQtyDec = isset($adjustedDecimalStr[1]) ? (float) ('0.' . $adjustedDecimalStr[1]) : 0;
+                        [$integerPart, $decimalPart] = array_pad(explode('.', $adjustedTotalQty), 2, '0');
 
-                        // Convert to pieces
-                        return ($adjustedQtyInt * $unitQty) + $adjustedQtyDec;
+                        $integer = (int) $integerPart;
+                        $decimalPieces = (int) $decimalPart;
+
+                        return ($integer * $unitQty) + $decimalPieces;
+
+
                     });
 
 
@@ -2027,10 +2040,15 @@ class PurchaseReturnController extends Controller
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
                     $retTotalQty = ($return->quantity ?? 0) + ($return->free_quantity ?? 0);
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+
+
+                    [$integerPart, $decimalPart] = array_pad(explode('.', $retTotalQty), 2, '0');
+
+                    $integer = (int) $integerPart;
+                    $decimalPieces = (int) $decimalPart;
+
+                    return ($integer * $unitQty) + $decimalPieces;
+
                 });
 
                 $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces - $totalAdjustedInPieces, 0);
@@ -2066,7 +2084,7 @@ class PurchaseReturnController extends Controller
             })->filter(fn($pp) => $pp->remaining_quantity_in_pieces > 0);
 
             // Group by product_id for aggregation
-            $products = $purchaseProducts->groupBy('product_id')->map(function ($group) use ($companyId, $measureUnitsCalc, $fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes) {
+            $products = $purchaseProducts->groupBy('product_id')->map(function ($group) use ($companyId, $measureUnitsCalc, $fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes) {
                 $first = $group->first();
 
                 // Aggregate quantities
@@ -2135,7 +2153,7 @@ class PurchaseReturnController extends Controller
 
 
                 $productFieldValues = collect();
-                $productPurchaseProducts = $group->map(function ($pp) use ($fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes, &$productFieldValues) {
+                $productPurchaseProducts = $group->map(function ($pp) use ($fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, &$productFieldValues) {
                     $availableUnits = (int) $pp->remaining_quantity_in_pieces;
                     if ($availableUnits > 0 && isset($fieldValues[$pp->purchase_stock_product_id])) {
                         $soldIndexes = $soldQuantityIndexes[$pp->purchase_stock_product_id] ?? [];

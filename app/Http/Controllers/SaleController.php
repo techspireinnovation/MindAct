@@ -679,35 +679,7 @@ class SaleController extends Controller
                 return ['message' => 'No available products found', 'data' => []];
             }
 
-            $purchaseProductIds = $purchaseProducts->pluck('id')->toArray();
-
-            // ——— FINAL & SIMPLE: Use `quantity` (positive) from stock_adjusteds ———
-            $adjustmentSubtractions = StockAdjusted::whereIn('purchase_stock_product_id', $purchaseProductIds)
-                ->where('company_id', $companyId)
-                ->where('branch_id', $branchId)
-                ->where('adjusted_type', 'subtract')
-                ->whereNull('deleted_at')
-                ->get(['purchase_stock_product_id', 'quantity', 'measure_unit_id'])
-                ->groupBy('purchase_stock_product_id')
-                ->map(fn($items) => $items->sum(
-                    fn($adj) =>
-                    $adj->quantity * ($measureUnitsCalc[$adj->measure_unit_id]->quantity ?? 1)
-                ));
-
-            $adjustmentIndexes = StockAdjustedFieldValue::whereIn('purchase_stock_product_id', $purchaseProductIds)
-                ->where('company_id', $companyId)
-                ->where('branch_id', $branchId)
-                ->whereNull('deleted_at')
-                ->select('purchase_stock_product_id', 'quantity_index')
-                ->get()
-                ->groupBy('purchase_stock_product_id')
-                ->map->pluck('quantity_index')->unique()->values();
-
-            Log::debug('Stock adjustments (subtract) loaded', [
-                'subtracted_pieces_by_batch' => $adjustmentSubtractions->toArray(),
-                'adjustment_indexes_by_batch' => $adjustmentIndexes->toArray(),
-            ]);
-
+            // Fetch quantity indexes
             $soldQuantityIndexes = SalesProductFieldValue::whereIn('sale_product_id', $purchaseProducts->flatMap(fn($pp) => $pp->saleProducts->pluck('id')))
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
@@ -796,16 +768,14 @@ class SaleController extends Controller
             ]);
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $adjustmentIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $adjustmentIndexes) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
                             $returnedQuantityIndexes[$pp->id]
-                            ?? [],
-                            $adjustmentIndexes[$pp->id]
                             ?? [],
                             $transferQuantityIndexes[$pp->id] ?? []
                         ));
@@ -835,7 +805,7 @@ class SaleController extends Controller
                 ]);
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $adjustmentIndexes, $companyId, $branchId, $measureUnitsCalc) {
+                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
                         // Calculate purchased pieces
                         $purchasedPieces = $this->calculatePieces(
                             ($pp->quantity ?? 0) + ($pp->free_quantity ?? 0),
@@ -869,7 +839,6 @@ class SaleController extends Controller
                         );
 
                         // Calculate available pieces
-                        // $pp->adjustment_subtracted_pieces = $adjustmentSubtractions[$pp->id] ?? 0;
                         $availablePieces = $this->calculateAvailablePieces($pp, $companyId, $branchId, $measureUnitsCalc);
 
                         Log::debug('Purchase stock product quantities calculated', [
@@ -886,12 +855,10 @@ class SaleController extends Controller
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
-                            $returnedQuantityIndexes[$pp->id] ?? [],
-                            $adjustmentIndexes[$pp->id] ?? [],        
-                            $transferQuantityIndexes[$pp->id] ?? []
+                            $returnedQuantityIndexes[$pp->id] ?? []
                         ));
 
-                        Log::debug('Field values before filtering :', [
+                        Log::debug('Field values before filtering', [
                             'purchase_stock_product_id' => $pp->id,
                             'field_values_count' => $pp->fieldValues->count(),
                             'field_values' => $pp->fieldValues->map(fn($fv) => [
@@ -985,8 +952,7 @@ class SaleController extends Controller
                     $productPurchaseProducts
                 ));
 
-                // Use the sum of available pieces from each batch (already includes adjustments!)
-                $availablePieces = array_sum(array_map(fn($pp) => $pp['available_quantity'], $productPurchaseProducts));
+                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces;
 
                 Log::debug('Product totals calculated', [
                     'product_id' => $product->product_id,

@@ -18,6 +18,7 @@ class StockMain extends Model
         'code',
         'total_quantity',
         'company_id',
+        'total_amount',
         'branch_id'
     ];
 

@@ -2030,15 +2030,6 @@ class PurchaseReturnController extends Controller
                     });
 
 
-
-
-
-
-
-
-
-
-                // Calculate sale returns
                 $totalSaleReturnsInPieces = collect($salesReturnProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
@@ -2092,7 +2083,7 @@ class PurchaseReturnController extends Controller
             })->filter(fn($pp) => $pp->remaining_quantity_in_pieces > 0);
 
             // Group by product_id for aggregation
-            $products = $purchaseProducts->groupBy('product_id')->map(function ($group) use ($companyId, $measureUnitsCalc, $fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes) {
+            $products = $purchaseProducts->groupBy('product_id')->map(function ($group) use ($companyId,$branchId, $measureUnitsCalc, $fieldValues, $saleReturnFieldValues, $soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes) {
                 $first = $group->first();
 
                 // Aggregate quantities
@@ -2115,7 +2106,7 @@ class PurchaseReturnController extends Controller
 
                 $originalProductPrice = Product::where('id', $first->product_id)->value('purchase_rate');
 
-                $purchaseProductsPrice = PurchaseStockProduct::where('product_id', $first->product_id)->orderBy('created_at', 'desc')->pluck('price');
+                $purchaseProductsPrice = PurchaseStockProduct::where('product_id', $first->product_id)->where('company_id',$companyId)->where('branch_id',$branchId)->orderBy('created_at', 'desc')->pluck('price');
                 $latestPrice = $purchaseProductsPrice->first();
 
                 // Get the minimum price
@@ -2211,9 +2202,7 @@ class PurchaseReturnController extends Controller
 
                     return [
                         'purchase_stock_product_id' => $pp->purchase_stock_product_id,
-                        // 'purchase_id' => $pp->purchase_id,
-                        // 'purchase_bill_number' => $pp->purchase_bill_number,
-                        // 'invoice_date' => $pp->invoice_date,
+                       
                         'product_id' => $pp->product_id,
                         'product_name' => $pp->product_name,
                         'product_code' => $pp->product_code,
@@ -2235,7 +2224,7 @@ class PurchaseReturnController extends Controller
                 })->values()->toArray();
 
                 if (empty($productPurchaseProducts)) {
-                    Log::info('No purchase products found', [
+                    Log::info('No purchase products found !', [
                         'product_id' => $first->product_id,
                         'company_id' => $companyId
                     ]);
@@ -2247,9 +2236,9 @@ class PurchaseReturnController extends Controller
                     'product_name' => $product ? $product->name : $first->product_name,
                     'product_code' => $first->product_code,
                     'original_price' => $originalProductPrice,
-                    'min_price' => $minProductPrice,
-                    'avg_price' => $avgProductPrice,
-                    'latest_price' => $latestPrice,
+                    'min_price' => $minProductPrice ?? 0,
+                    'avg_price' => $avgProductPrice ?? 0,
+                    'latest_price' => $latestPrice ?? 0,
                     'measure_units_for_products' => $measureUnitsForProducts,
                     'is_vatable' => (bool) $group->max('is_vatable'),
                     'measure_unit_id' => $first->measure_unit_id,

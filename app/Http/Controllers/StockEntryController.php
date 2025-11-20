@@ -98,6 +98,8 @@ class StockEntryController extends Controller
                     $entry['company_id'] = $request->company_id;
                     $entry['branch_id'] = $request->destination_branch_id;
                     $entry['stock_main_id'] = $stockMain->id;
+                    $productVatabale = Product::where('id', $entry['product_id'])->value('is_vatable');
+                    $entry['is_vatable'] = $productVatabale;
 
                     // Create StockEntry
                     $stockEntry = StockEntry::create($entry);
@@ -219,11 +221,14 @@ class StockEntryController extends Controller
                     $entry['company_id'] = $request->company_id;
                     $entry['stock_main_id'] = $stockMain->id;
                     $entry['branch_id'] = $request->destination_branch_id;
+                    $productVatabale = Product::where('id', $entry['product_id'])->value('is_vatable');
+                    $entry['is_vatable'] = $productVatabale;
+
 
                     $stockEntry = StockEntry::create($entry);
 
                     $entry['stock_product_id'] = $stockEntry->id;
-                    $entry['measure_unit_id'] = $entry['uom']; // for PurchaseStockProduct
+                    $entry['measure_unit_id'] = $entry['uom']; 
 
                     $purchaseStock = PurchaseStockProduct::create($entry);
 

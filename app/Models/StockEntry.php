@@ -24,6 +24,7 @@ class StockEntry extends BaseTenantModel
         'batch_no',
         'expiry_date',
         'quantity',
+        'is_vatable',
         'rate',
         'amount',
         'location_id'

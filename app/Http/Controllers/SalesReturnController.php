@@ -1615,7 +1615,7 @@ class SalesReturnController extends Controller
                         'quantity',
                         'free_quantity',
                         'measure_unit_id',
-                        0
+                        
                     ]
                 )
                 ->get();

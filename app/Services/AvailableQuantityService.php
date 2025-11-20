@@ -3477,7 +3477,7 @@ class AvailableQuantityService
                         ]);
                     }
 
-                    Log::info('Returned quantity for sale product', [
+                    Log::info('Returned quantity for sale product !', [
                         'sale_product_id' => $saleProduct->id,
                         'returned' => $returned,
                         'measure_unit_id' => $lastReturnMeasureUnitId,

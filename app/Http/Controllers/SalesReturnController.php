@@ -1586,11 +1586,12 @@ class SalesReturnController extends Controller
 
                             ->where('sale_products.company_id', $companyId)
                             ->where('sale_products.branch_id', $branchId)
+                            ->where('sale_products.purchase_type', $purchaseType)
                             ->whereNull('sale_products.deleted_at')
                             ->whereNull('products.deleted_at')
-                            ->whereNull('purchase_stock_products.deleted_at')
+                            ->whereNull('purchase_stock_products.deleted_at');
                             // ->whereNull('purchases.deleted_at')
-                            ->where('purchase_stock_products.purchase_type', $purchaseType);
+                            // ->where('purchase_stock_products.purchase_type', $purchaseType);
                     },
                 ])
                 ->select(['id', 'company_id'])

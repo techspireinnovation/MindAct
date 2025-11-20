@@ -366,7 +366,7 @@ class StockEntryController extends Controller
 
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json(['error' => 'Item not found !'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected query error occurred'], 500);

@@ -610,11 +610,11 @@ class SalesReturnController extends Controller
             ]);
 
             if (empty($invoiceNumbers)) {
-                return response()->json(['error' => 'No sales with available products found'], 200);
+                return response()->json(["data"=> [] ], 200);
             }
 
             return response()->json([
-                'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
+                'message' => 'Available invoice numbers with remaining quantities retrieved successfully !',
                 'data' => $invoiceNumbers
             ], 200);
         } catch (QueryException $e) {

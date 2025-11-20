@@ -2224,7 +2224,7 @@ class PurchaseReturnController extends Controller
                 })->values()->toArray();
 
                 if (empty($productPurchaseProducts)) {
-                    Log::info('No purchase products found', [
+                    Log::info('No purchase products found !', [
                         'product_id' => $first->product_id,
                         'company_id' => $companyId
                     ]);

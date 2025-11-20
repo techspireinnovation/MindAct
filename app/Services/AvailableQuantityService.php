@@ -2503,7 +2503,7 @@ class AvailableQuantityService
             DB::disableQueryLog();
         }
     }
-    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
+    public static function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
@@ -3428,7 +3428,7 @@ class AvailableQuantityService
                     // Calculate sale quantity
                     $regularQuantity = $saleProduct->quantity ?? 0;
                     $freeQuantity = $saleProduct->free_quantity ?? 0;
-                    $saleRegular = static::calculatePieces($regularQuantity, $measureUnitQuantity);
+                    $saleRegular = self::calculatePieces($regularQuantity, $measureUnitQuantity);
                     $saleFree = static::calculatePieces($freeQuantity, $measureUnitQuantity);
                     $saleTotal = $saleRegular + $saleFree;
 

@@ -230,7 +230,7 @@ class StockEntryController extends Controller
                     $stockEntry = StockEntry::create($entry);
 
                     $entry['stock_product_id'] = $stockEntry->id;
-                    $entry['measure_unit_id'] = $entry['uom']; 
+                    $entry['measure_unit_id'] = $entry['uom'];
 
                     $purchaseStock = PurchaseStockProduct::create($entry);
 
@@ -369,7 +369,7 @@ class StockEntryController extends Controller
             return response()->json(['error' => 'Item not found !'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'An unexpected query error occurred'], 500);
+            return response()->json(['error' => 'An unexpected query error occurred !'], 500);
         } catch (\Exception $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected error occurred'], 500);
@@ -386,9 +386,9 @@ class StockEntryController extends Controller
             $item = StockMain::with('stockEntries.fieldValues')->findOrFail($id);
             $item->delete();
             $purchaseStockIds = $item->stockEntries->pluck('id')->toArray();
-           
+
             PurchaseStockProductFieldValue::whereIn('stock_product_id', $purchaseStockIds)->delete();
-           
+
             PurchaseStockProduct::whereIn('stock_product_id', $purchaseStockIds)->delete();
             return response()->json(['message' => 'Stock Entry deleted']);
         } catch (ModelNotFoundException $e) {

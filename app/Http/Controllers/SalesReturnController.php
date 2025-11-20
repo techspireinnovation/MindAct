@@ -1560,7 +1560,7 @@ class SalesReturnController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            Log::info('Measure units fetched', [
+            Log::info('Measure units fetched !', [
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'measure_units' => $measureUnits->toArray(),
@@ -1615,7 +1615,7 @@ class SalesReturnController extends Controller
                         'quantity',
                         'free_quantity',
                         'measure_unit_id',
-                        0
+                        
                     ]
                 )
                 ->get();

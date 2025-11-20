@@ -563,7 +563,7 @@ class SalesReturnController extends Controller
                 ->where('sales.branch_id', $branchId)
                 ->whereNotNull('sales.invoice_number')
                 ->where('sales.invoice_number', '!=', '')
-                ->where('sales.purchase_type',$purchaseType)
+                ->where('sales.purchase_type', $purchaseType)
                 ->whereHas('saleProducts', function ($query) use ($companyId, $branchId, $measureUnits, $purchaseType) {
                     $query->leftJoin('measure_units as sale_mu', function ($join) use ($companyId, $branchId) {
                         $join->on('sale_products.measure_unit_id', '=', 'sale_mu.id')
@@ -610,7 +610,7 @@ class SalesReturnController extends Controller
             ]);
 
             if (empty($invoiceNumbers)) {
-                return response()->json(["data"=> [] ], 200);
+                return response()->json(["data" => []], 200);
             }
 
             return response()->json([
@@ -1590,8 +1590,8 @@ class SalesReturnController extends Controller
                             ->whereNull('sale_products.deleted_at')
                             ->whereNull('products.deleted_at')
                             ->whereNull('purchase_stock_products.deleted_at');
-                            // ->whereNull('purchases.deleted_at')
-                            // ->where('purchase_stock_products.purchase_type', $purchaseType);
+                        // ->whereNull('purchases.deleted_at')
+                        // ->where('purchase_stock_products.purchase_type', $purchaseType);
                     },
                 ])
                 ->select(['id', 'company_id'])
@@ -1608,13 +1608,16 @@ class SalesReturnController extends Controller
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
-                ->select([
-                    'id',
-                    'sale_product_id',
-                    'quantity',
-                    'free_quantity',
-                    'measure_unit_id',
-                ])
+                ->select(
+                    [
+                        'id',
+                        'sale_product_id',
+                        'quantity',
+                        'free_quantity',
+                        'measure_unit_id',
+                        0
+                    ]
+                )
                 ->get();
 
             Log::info('Sales return products fetched', [
@@ -1775,7 +1778,7 @@ class SalesReturnController extends Controller
         }
     }
 
-    
+
 
     public function getAvailableProductsForSalesReturn(Request $request): JsonResponse
     {
@@ -2563,7 +2566,7 @@ class SalesReturnController extends Controller
             $validated['sale_id'] = $sale->id;
 
             // Generate unique invoice number
-            
+
             // Handle return modes
             $returnEntireAll = $validated['return_entire_all'];
             $useSaleProductIds = !empty($validated['sale_product_ids']);

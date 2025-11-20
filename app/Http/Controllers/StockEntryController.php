@@ -56,6 +56,7 @@ class StockEntryController extends Controller
                     Rule::unique('stock_mains')->whereNull('deleted_at'),
                 ],
                 'stock_entries' => 'required|array',
+                'total_amount' => 'required|numeric',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code',
                 'destination_branch_id' => 'required|integer|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
@@ -171,6 +172,7 @@ class StockEntryController extends Controller
                     Rule::unique('stock_mains')->ignore($id)->whereNull('deleted_at'),
                 ],
                 'stock_entries' => 'required|array',
+                'total_amount' => 'required|numeric',
                 'entry_code' => 'nullable|string|unique:stock_entries,entry_code,' . $id,
                 'destination_branch_id' => 'required|integer|',
                 'stock_entries.*.product_code' => 'required|string|max:255',
@@ -364,7 +366,7 @@ class StockEntryController extends Controller
 
         } catch (ModelNotFoundException $e) {
             \Log::error($e);
-            return response()->json(['error' => 'Item not found'], 404);
+            return response()->json(['error' => 'Item not found !'], 404);
         } catch (QueryException $e) {
             \Log::error($e);
             return response()->json(['error' => 'An unexpected query error occurred'], 500);

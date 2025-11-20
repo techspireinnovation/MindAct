@@ -614,7 +614,7 @@ class SalesReturnController extends Controller
             }
 
             return response()->json([
-                'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
+                'message' => 'Available invoice numbers with remaining quantities retrieved successfully !',
                 'data' => $invoiceNumbers
             ], 200);
         } catch (QueryException $e) {

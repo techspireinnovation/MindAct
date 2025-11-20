@@ -2910,7 +2910,7 @@ class SaleController extends Controller
             }
 
             return response()->json([
-                'message' => 'Sales retrieved successfully',
+                'message' => 'Sales retrieved successfully !',
                 'data' => $sales
             ], 200);
 

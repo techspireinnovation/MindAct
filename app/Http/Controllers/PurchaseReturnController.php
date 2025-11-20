@@ -155,6 +155,8 @@ class PurchaseReturnController extends Controller
             $companyId = $request->company_id;
             $branchId = $request->branch_id;
 
+            $purchaseType = $request->input('purchase_type'); 
+
 
 
             Log::debug('Input parameters for purchase bill numbers', [
@@ -180,9 +182,10 @@ class PurchaseReturnController extends Controller
 
             $purchases = Purchase::where('company_id', $companyId)
                 ->where('branch_id', $branchId)
+                ->where('purchase_type', $purchaseType)
                 ->whereNull('deleted_at')
                 ->with([
-                    'purchaseStockProducts' => function ($query) use ($companyId, $branchId) {
+                    'purchaseStockProducts' => function ($query) use ($companyId, $branchId, $purchaseType) {
                         $query->select([
                             'purchase_stock_products.id',
                             'purchase_stock_products.purchase_id',
@@ -195,6 +198,7 @@ class PurchaseReturnController extends Controller
                             ->join('products', 'purchase_stock_products.product_id', '=', 'products.id')
                             ->where('purchase_stock_products.company_id', $companyId)
                             ->where('purchase_stock_products.branch_id', $branchId)
+                            ->where('purchase_stock_products.purchase_type', $purchaseType)
                             ->whereNull('purchase_stock_products.deleted_at')
                             ->whereNull('products.deleted_at');
                     },
@@ -509,7 +513,7 @@ class PurchaseReturnController extends Controller
             return response()->json($billNumbers);
         } catch (QueryException $e) {
            
-            Log::error('Database query error in getPurchaseBillNumber', [
+            Log::error('Database query error in getPurchaseBillNumber !', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),
@@ -1432,7 +1436,7 @@ class PurchaseReturnController extends Controller
                 ->whereNull('purchase_stock_products.deleted_at')
                 // ->join('purchases', 'purchases.id', '=', 'purchase_products.purchase_id')
                 // ->whereNull('purchases.deleted_at')
-                ->where('purchase_stock_products.purchase_type', $request->purchase_type)
+                ->where('purchase_stock_products.purchase_type', $purchaseType)
                 ->whereRaw('
                     (
                         (purchase_stock_products.quantity + COALESCE(purchase_stock_products.free_quantity, 0)) - 

@@ -23,6 +23,7 @@ class SaleProduct extends BaseTenantModel
         'branch_id',
         'sale_id',
         'product_id',
+        'purchase_type',
         'purchase_stock_product_id',
         'purchase_product_id',
         'stock_product_id',

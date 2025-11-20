@@ -513,7 +513,7 @@ class PurchaseReturnController extends Controller
             return response()->json($billNumbers);
         } catch (QueryException $e) {
            
-            Log::error('Database query error in getPurchaseBillNumber', [
+            Log::error('Database query error in getPurchaseBillNumber !', [
                 'company_id' => $companyId,
                 'error' => $e->getMessage(),
                 'sql' => $e->getSql(),

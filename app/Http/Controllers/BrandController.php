@@ -12,6 +12,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 
 
+
 class BrandController extends Controller
 {
     public function index(Request $request): JsonResponse
@@ -253,12 +254,12 @@ class BrandController extends Controller
         try {
             $brands = Brand::where('company_id', $request->company_id)
                 ->whereNull('deleted_at')
-                ->where('is_active', true) // ✅ only active brands
-                ->get(['id', 'name', 'is_primary']) // ✅ fetch is_primary
+                ->where('is_active', true) 
+                ->get(['id', 'name', 'is_primary']) 
                 ->map(fn($brand) => [
                     'id' => $brand->id,
                     'name' => $brand->name,
-                    'is_primary' => $brand->is_primary, // ✅ include in response
+                    'is_primary' => $brand->is_primary, 
                 ])
                 ->values()
                 ->toArray();
@@ -272,10 +273,10 @@ class BrandController extends Controller
             Log::error($e);
             return response()->json(["error" => "Brand not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }

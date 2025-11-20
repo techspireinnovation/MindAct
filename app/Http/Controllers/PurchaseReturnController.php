@@ -2108,7 +2108,7 @@ class PurchaseReturnController extends Controller
 
                 $purchaseProductsPrice = PurchaseStockProduct::where('product_id', $first->product_id)->where('company_id',$companyId)->where('branch_id',$branchId)->orderBy('created_at', 'desc')->pluck('price');
                 $latestPrice = $purchaseProductsPrice->first();
-
+              
                 // Get the minimum price
                 $minProductPrice = $purchaseProductsPrice->min();
 
@@ -2166,8 +2166,7 @@ class PurchaseReturnController extends Controller
                             ->take($availableUnits)
                             ->flatten(1)
                             ->map(fn($fv) => [
-                                // 'purchase_id' => $fv->purchase_id,
-                                // 'purchase_bill_number' => $fv->purchase_bill_number ?? '',
+                               
                                 'purchase_stock_product_id' => $fv->purchase_stock_product_id,
                                 'purchase_product_id' => $fv->purchase_product_id ?? null,
 

@@ -1615,7 +1615,7 @@ class SalesReturnController extends Controller
                         'quantity',
                         'free_quantity',
                         'measure_unit_id',
-                        
+
                     ]
                 )
                 ->get();
@@ -5245,6 +5245,9 @@ class SalesReturnController extends Controller
             $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues.productField')
                 ->findOrFail($id);
 
+
+
+
             $productIds = $salesReturn->salesReturnProducts->pluck('product_id')->unique();
 
             // Step 2: Load measure units
@@ -5335,6 +5338,7 @@ class SalesReturnController extends Controller
 
             // Step 6: Replace salesReturnProducts with merged ones
             $salesReturn->setRelation('salesReturnProducts', $mergedProducts);
+           
 
             return response()->json($salesReturn);
 

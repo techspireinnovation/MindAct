@@ -17,8 +17,8 @@ class SalesReturn extends BaseTenantModel
 
     protected $casts = [
         'payment' => 'array',
-        'invoice_date' => 'date',
-        'invoice_date_bs' => 'date',
+        'invoice_date' => 'date:Y-m-d',
+        'invoice_date_bs' => 'date:Y-m-d',
     ];
 
     protected $dates = ['deleted_at'];

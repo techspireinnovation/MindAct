@@ -18,6 +18,8 @@ class Purchase extends BaseTenantModel
 
     protected $casts = [
         'payment' => 'array',
+        'invoice_date' => 'date:Y-m-d',
+        'invoice_date_bs' => 'date:Y-m-d',
     ];
 
     protected $fillable = [

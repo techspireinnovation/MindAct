@@ -2563,34 +2563,7 @@ class SalesReturnController extends Controller
             $validated['sale_id'] = $sale->id;
 
             // Generate unique invoice number
-            $date = $validated['invoice_date'] ? Carbon::parse($validated['invoice_date']) : now();
-            $fiscalYearStart = Carbon::create($date->year, 7, 1);
-            $fiscalYear = $date->lessThan($fiscalYearStart)
-                ? ($date->year - 1) . '-' . substr($date->year, 2, 2)
-                : $date->year . '-' . substr($date->year + 1, 2, 2);
-            $prefix = 'RET';
-            $currentYear = explode('-', $fiscalYear)[0];
-            $maxAttempts = 100;
-            $attempt = 0;
-            do {
-                $latestReturn = SalesReturn::where('invoice_number', 'like', "{$prefix}-{$currentYear}%")
-                    ->orderByDesc('created_at')
-                    ->lockForUpdate()
-                    ->first();
-                $nextSequence = '000001';
-                if ($latestReturn && preg_match("/^RET-\d{4}-(\d{6})$/", $latestReturn->invoice_number, $matches)) {
-                    $nextSequence = str_pad((int) $matches[1] + 1, 6, '0', STR_PAD_LEFT);
-                }
-                $invoiceNumber = "{$prefix}-{$currentYear}-{$nextSequence}";
-                $existingInvoice = SalesReturn::where('invoice_number', $invoiceNumber)->exists();
-                $attempt++;
-            } while ($existingInvoice && $attempt < $maxAttempts);
-
-            if ($existingInvoice) {
-                return response()->json(['error' => 'Unable to generate a unique invoice number'], 500);
-            }
-            $validated['invoice_number'] = $invoiceNumber;
-
+            
             // Handle return modes
             $returnEntireAll = $validated['return_entire_all'];
             $useSaleProductIds = !empty($validated['sale_product_ids']);

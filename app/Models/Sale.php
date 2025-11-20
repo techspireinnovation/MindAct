@@ -51,6 +51,7 @@ class Sale extends BaseTenantModel
         'store_id',
         'location_id',
         'salesman_id',
+        'purchase_type',
         'sub_total_before_discount',
         'discount',
         'non_taxable_amount',

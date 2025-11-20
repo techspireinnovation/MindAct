@@ -27,6 +27,7 @@ class SalesReturn extends BaseTenantModel
         'company_id',
         'branch_id',
         'customer_id',
+        'purchase_type',
         'salesman_id',
         'sale_id',
         'pan_number',

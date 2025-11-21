@@ -549,7 +549,7 @@ class PurchaseController extends Controller
                         // Delete field values first
                         PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $unprocessedStockProductIds)->delete();
 
-                        Log::debug('Deleting unprocessed purchase stock products', [
+                        Log::debug('Deleting unprocessed purchase stock products !', [
                             'purchase_id' => $item->id,
                             'ids' => $unprocessedStockProductIds,
                         ]);

@@ -24,15 +24,17 @@ jobs:
           script: |
             cd ${{ secrets.PROJECT_PATH }}
 
-            
             chmod -R 775 storage bootstrap/cache
-            git stash
-            git pull origin main1
-            # Add any build or restart commands here, e.g.:
+            git fetch origin
+            git reset --hard origin/main1
             composer install --no-interaction --prefer-dist --optimize-autoloader
-           
-            
             php artisan migrate --force --database=mysql
             php artisan app:migrate-tenants
             php artisan optimize
-            # sudo systemctl restart nginx
+            php artisan config:cache
+            php artisan route:cache
+            php artisan view:cache
+            
+
+            
+            

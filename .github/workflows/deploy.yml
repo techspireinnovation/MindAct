@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [main] # or your deployment branch
+    branches: [main1] # or your deployment branch
 
 jobs:
   deploy:
@@ -27,7 +27,7 @@ jobs:
             
             chmod -R 775 storage bootstrap/cache
             git stash
-            git pull origin main
+            git pull origin main1
             # Add any build or restart commands here, e.g.:
             composer install --no-interaction --prefer-dist --optimize-autoloader
            

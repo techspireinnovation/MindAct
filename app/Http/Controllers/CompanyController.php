@@ -1312,7 +1312,7 @@ class CompanyController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Company, associated records, and exclusive users deleted successfully'
+                'message' => 'Company, associated records, and exclusive users deleted successfully !'
             ], 200);
 
         } catch (\Exception $e) {

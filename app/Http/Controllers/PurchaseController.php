@@ -136,7 +136,7 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
             \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected error occurred !'], 500);
         }
     }
 

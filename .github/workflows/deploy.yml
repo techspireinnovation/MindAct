@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [main1] # or your deployment branch
+    branches: [main] # or your deployment branch
 
 jobs:
   deploy:
@@ -25,8 +25,8 @@ jobs:
             cd ${{ secrets.PROJECT_PATH }}
 
             chmod -R 775 storage bootstrap/cache
-            git fetch origin
-            git reset --hard origin/main1
+            
+            git pull origin main
             composer install --no-interaction --prefer-dist --optimize-autoloader
             php artisan migrate --force --database=mysql
             php artisan app:migrate-tenants

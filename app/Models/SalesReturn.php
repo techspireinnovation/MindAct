@@ -21,6 +21,8 @@ class SalesReturn extends BaseTenantModel
         'invoice_date_bs' => 'date:Y-m-d',
     ];
 
+    protected $appends = ['customer_name'];
+
     protected $dates = ['deleted_at'];
 
     protected $fillable = [
@@ -67,6 +69,11 @@ class SalesReturn extends BaseTenantModel
     {
         // self::observe(SaleReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function getCustomerNameAttribute()
+    {
+        return $this->customer->party_name ?? null;
     }
 
     // Relationships

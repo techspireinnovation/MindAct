@@ -1240,7 +1240,7 @@ class SaleController extends Controller
             function ($carry, $return) use ($measureUnitsCalc) {
                 $returnMeasureUnitQuantity = isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1;
                 return $carry + $this->calculatePieces(
-                    $this->sumQuantityAndFree($return->quantity ?? 0 , $return->free_quantity ?? 0),
+                    $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0),
                     $returnMeasureUnitQuantity
                 );
             },
@@ -1251,7 +1251,7 @@ class SaleController extends Controller
             function ($carry, $sale) use ($measureUnitsCalc) {
                 $saleMeasureUnitQuantity = isset($measureUnitsCalc[$sale->measure_unit_id]) ? $measureUnitsCalc[$sale->measure_unit_id]->quantity : 1;
                 return $carry + $this->calculatePieces(
-                    $this->sumQuantityAndFree($sale->quantity ?? 0 , $sale->free_quantity ?? 0),
+                    $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0),
                     $saleMeasureUnitQuantity
                 );
             },
@@ -1267,7 +1267,7 @@ class SaleController extends Controller
                 function ($carry, $return) use ($measureUnitsCalc) {
                     $returnMeasureUnitQuantity = isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1;
                     return $carry + $this->calculatePieces(
-                        $this->sumQuantityAndFree($return->quantity ?? 0 , $return->free_quantity ?? 0),
+                        $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0),
                         $returnMeasureUnitQuantity
                     );
                 },

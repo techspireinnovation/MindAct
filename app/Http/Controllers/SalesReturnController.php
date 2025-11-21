@@ -31,15 +31,20 @@ use Illuminate\Validation\Rule;
 class SalesReturnController extends Controller
 {
 
+   
+
+
     public function index(Request $request): JsonResponse
     {
         $query = SalesReturn::with("customer:id,party_name");
+
 
         if ($request->has('keywords')) {
             $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('ref_bill_no', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
         return response()->json($query->paginate(100));
+        
     }
 
 
@@ -5338,7 +5343,7 @@ class SalesReturnController extends Controller
 
             // Step 6: Replace salesReturnProducts with merged ones
             $salesReturn->setRelation('salesReturnProducts', $mergedProducts);
-           
+
 
             return response()->json($salesReturn);
 
@@ -5914,11 +5919,6 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
     }
-
-
-
-
-
 
 
 }

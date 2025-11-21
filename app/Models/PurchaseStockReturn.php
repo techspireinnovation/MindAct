@@ -18,7 +18,9 @@ class PurchaseStockReturn extends BaseTenantModel
     use SoftDeletes, HasFactory, ConvertsAdToBsDate;
 
     protected $casts = [
-        'payment' => 'array'
+        'payment' => 'array',
+        'invoice_date' => 'date:Y-m-d',
+        'invoice_date_bs' => 'date:Y-m-d',
     ];
     protected $fillable = [
         'purchase_id',

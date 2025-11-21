@@ -90,14 +90,25 @@ class PurchaseController extends Controller
     {
         $query = Purchase::query();
 
+        // Filter by branch_id
+        if ($request->has('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        // Optional: filter by keywordss
         if ($request->has('keywords')) {
-            $query->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('purchase_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {
-                $query->where('party_name', 'LIKE', "%" . $request->input('keywords') . "%");
+            $query->where(function ($q) use ($request) {
+                $q->where('ref_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')
+                    ->orWhere('purchase_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')
+                    ->orWhereHas('customer', function ($q2) use ($request) {
+                        $q2->where('party_name', 'LIKE', '%' . $request->input('keywords') . '%');
+                    });
             });
         }
 
         return response()->json($query->paginate(50));
     }
+
 
     public function getRefBillNumber(Request $request)
     {

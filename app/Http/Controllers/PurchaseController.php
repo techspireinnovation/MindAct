@@ -185,6 +185,8 @@ class PurchaseController extends Controller
         try {
             $item = Purchase::findOrFail($id);
 
+      
+
             $validator = Validator::make($request->all(), [
                 'ref_bill_number' => [
                     'required',
@@ -332,6 +334,9 @@ class PurchaseController extends Controller
                 $processedStockProductIds = [];
                 $fieldValuesToDelete = [];
 
+                $item->purchaseProducts()->delete();
+                $item->purchaseStockProducts()->delete();
+
                 if (isset($validated['purchase_products'])) {
                     foreach ($validated['purchase_products'] as $purchaseProductData) {
                         $purchasedProduct = PurchaseProduct::where('product_id', $purchaseProductData['product_id'])
@@ -363,7 +368,7 @@ class PurchaseController extends Controller
                         }, ARRAY_FILTER_USE_KEY);
 
                         // Handle PurchaseProduct
-                        if (!isset($purchaseProductData['id']) || empty($purchaseProductData['id'])) {
+                      
                             $purchaseProduct = PurchaseProduct::create(
                                 array_merge($purchaseProductDataFiltered, [
                                     'purchase_id' => $item->id,
@@ -377,24 +382,7 @@ class PurchaseController extends Controller
                                 'purchase_product_id' => $purchaseProduct->id,
                                 'product_id' => $purchaseProductData['product_id'],
                             ]);
-                        } else {
-                            $purchaseProduct = PurchaseProduct::where('id', $purchaseProductData['id'])
-                                ->where('purchase_id', $item->id)
-                                ->firstOrFail();
-                            $purchaseProduct->update(
-                                array_merge($purchaseProductDataFiltered, [
-                                    'purchase_id' => $item->id,
-                                    'company_id' => $validated['company_id'],
-                                    'customer_id' => $validated['customer_id'],
-                                    'branch_id' => $branchId,
-                                    'purchase_type' => $validated['purchase_type'] ?? null,
-                                ])
-                            );
-                            Log::debug('Updated existing purchase product', [
-                                'purchase_product_id' => $purchaseProduct->id,
-                                'product_id' => $purchaseProductData['product_id'],
-                            ]);
-                        }
+                       
                         $processedPurchaseProductIds[] = $purchaseProduct->id;
 
                         // Handle PurchaseStockProduct
@@ -415,23 +403,7 @@ class PurchaseController extends Controller
                                 'purchase_stock_product_id' => $purchaseStockProduct->id,
                                 'product_id' => $purchaseProductData['product_id'],
                             ]);
-                        } else {
-                            $existingStockProduct->update(
-                                array_merge($purchaseProductDataFiltered, [
-                                    'purchase_id' => $item->id,
-                                    'purchase_product_id' => $purchaseProduct->id,
-                                    'company_id' => $validated['company_id'],
-                                    'customer_id' => $validated['customer_id'],
-                                    'branch_id' => $branchId,
-                                    'purchase_type' => $validated['purchase_type'] ?? null,
-                                ])
-                            );
-                            Log::debug('Updated existing purchase stock product', [
-                                'purchase_stock_product_id' => $existingStockProduct->id,
-                                'product_id' => $purchaseProductData['product_id'],
-                            ]);
-                            $purchaseStockProduct = $existingStockProduct;
-                        }
+                        } 
                         $processedStockProductIds[] = $purchaseStockProduct->id;
 
                         // Handle PurchaseProductFieldValues

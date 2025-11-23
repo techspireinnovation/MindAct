@@ -251,6 +251,7 @@ class StockEntryController extends Controller
                                     'stock_product_id' => $stockEntry->id,
                                     'purchase_stock_product_id' => $purchaseStock->id,
                                     'company_id' => $entry['company_id'],
+                                    'branch_id' => $entry['branch_id'],
                                     'product_id' => $stockEntry->product_id,
                                     'product_field_id' => $fieldValue['product_field_id'],
                                     'value' => $fieldValue['value'],

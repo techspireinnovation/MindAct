@@ -445,7 +445,7 @@ class SaleController extends Controller
                 'request' => $request->all()
             ]);
             return response()->json([
-                'error' => 'An unexpected error occurred',
+                'error' => 'An unexpected error occurred !!',
                 'message' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }

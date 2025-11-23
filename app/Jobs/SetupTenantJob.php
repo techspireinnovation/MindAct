@@ -93,6 +93,7 @@ class SetupTenantJob implements ShouldQueue
                 ['name' => 'Raw Materials', 'delete_status' => 0, 'is_primary' => false, 'company_id' => $this->company->id],
             ]);
 
+
             MeasureUnit::create([
                 'name' => 'Piece',
                 'symbol' => 'Pcs',

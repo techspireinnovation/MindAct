@@ -514,7 +514,7 @@ class PurchaseController extends Controller
                         // Delete field values first
                         PurchaseProductFieldValue::whereIn('purchase_product_id', $unprocessedPurchaseProductIds)->delete();
 
-                        Log::debug('Deleting unprocessed purchase products', [
+                        Log::debug('Deleting unprocessed purchase products !', [
                             'purchase_id' => $item->id,
                             'ids' => $unprocessedPurchaseProductIds,
                         ]);

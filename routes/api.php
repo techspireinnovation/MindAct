@@ -123,6 +123,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group(function () {
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('products-import-excel', [ProductController::class, 'importExcel']);////
+    
 
     Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
     Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);

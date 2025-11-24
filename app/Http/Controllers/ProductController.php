@@ -22,6 +22,14 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
+
+use App\Models\ProductCategory;
+use App\Models\ProductSubCategory;
+use App\Models\Brand;
+use Maatwebsite\Excel\Facades\Excel;
+
+
+
 class ProductController extends Controller
 {
     public function generateProductID(Request $request): JsonResponse
@@ -265,13 +273,13 @@ class ProductController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(["error" => "Product Name not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            Log::error($e);
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -494,12 +502,12 @@ class ProductController extends Controller
             return response()->json(['data' => $products]);
 
         } catch (QueryException $e) {
-            \Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
+            Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
 
             return response()->json(['error' => 'Database error'], 500);
         } catch (\Exception $e) {
 
-            \Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
+            Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -1067,8 +1075,151 @@ class ProductController extends Controller
             return response()->json(["error" => "Unexpected error occurred !!"], 500);
         }
     }
+ 
+
+
+
+
+public function importExcel(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,xls,csv',
+        'company_id' => 'required|integer',
+    ]);
+
+    $companyId = $request->company_id;
+
+    Log::info('Import started', ['company_id' => $companyId]);
+
+    // Read Excel
+    $rows = Excel::toCollection(null, $request->file('file'))->first();
+    if (!$rows) {
+        return response()->json(['message' => 'No data found'], 400);
+    }
+
+    // Existing products for this company
+    $existingProducts = Product::where('company_id', $companyId)
+        ->get(['barcode', 'name'])
+        ->mapWithKeys(fn($p) => [strtolower($p->barcode . '|' . strtolower($p->name)) => true])
+        ->toArray();
+
+    // Categories, SubCategories, Brands for this company
+    $categories = ProductCategory::where('company_id', $companyId)->pluck('id', 'name')->toArray();
+    $subCategories = ProductSubCategory::where('company_id', $companyId)->pluck('id', 'name')->toArray();
+    $brands = Brand::where('company_id', $companyId)->pluck('id', 'name')->toArray();
+
+    $insertData = [];
+
+    foreach ($rows as $index => $row) {
+        $rowNumber = $index + 2; // Excel row number
+
+        // Trim and lowercase header keys
+        $row = collect($row)
+            ->mapWithKeys(fn($v, $k) => [strtolower(trim($k)) => $v])
+            ->toArray();
+
+        $validator = Validator::make($row, [
+            'name' => 'required|string|max:255',
+            'barcode' => 'required|string|max:255',
+            'category' => 'required|string|max:255',
+            'sub-cat' => 'required|string|max:255',
+            'brand' => 'required|string|max:255',
+            'vat type' => 'required|string',
+            'retail excl vat' => 'required|numeric',
+            'retail incl vat' => 'required|numeric',
+            'retail profit' => 'required|numeric',
+            'wholesale excl vat' => 'required|numeric',
+            'wholesale incl vat' => 'required|numeric',
+            'wholesale profit' => 'required|numeric',
+            'uom' => 'required|string|max:50',
+        ]);
+
+        $key = strtolower($row['barcode'] . '|' . strtolower($row['name']));
+        if (isset($existingProducts[$key])) continue; // skip existing
+
+        if ($validator->fails()) {
+            // Stop import immediately on first error
+            return response()->json([
+                'message' => 'Validation failed. Fix the errors and try again.',
+                'errors' => [
+                    [
+                        'row_number' => $rowNumber,
+                        'errors' => $validator->errors()->all()
+                    ]
+                ]
+            ], 422);
+        }
+
+        // Create missing categories, subcategories, brands
+        if (!isset($categories[$row['category']])) {
+            $categories[$row['category']] = ProductCategory::create([
+                'name' => $row['category'],
+                'company_id' => $companyId,
+                'is_active' => true
+            ])->id;
+        }
+
+        if (!isset($subCategories[$row['sub-cat']])) {
+            $subCategories[$row['sub-cat']] = ProductSubCategory::create([
+                'name' => $row['sub-cat'],
+                'category_id' => $categories[$row['category']],
+                'company_id' => $companyId,
+                'is_active' => true
+            ])->id;
+        }
+
+        if (!isset($brands[$row['brand']])) {
+            $brands[$row['brand']] = Brand::create([
+                'name' => $row['brand'],
+                'company_id' => $companyId,
+                'is_active' => true
+            ])->id;
+        }
+
+        $insertData[] = [
+            'name' => $row['name'],
+            'barcode' => $row['barcode'],
+            'category_id' => $categories[$row['category']],
+            'sub_category_id' => $subCategories[$row['sub-cat']],
+            'brand_id' => $brands[$row['brand']],
+            'vat_type' => $row['vat type'],
+            'retail_excl_vat' => $row['retail excl vat'],
+            'retail_incl_vat' => $row['retail incl vat'],
+            'retail_profit' => $row['retail profit'],
+            'wholesale_excl_vat' => $row['wholesale excl vat'],
+            'wholesale_incl_vat' => $row['wholesale incl vat'],
+            'wholesale_profit' => $row['wholesale profit'],
+            'uom' => $row['uom'],
+            'company_id' => $companyId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $existingProducts[$key] = true;
+    }
+
+    if (!empty($insertData)) {
+        foreach (array_chunk($insertData, 500) as $chunk) {
+            Product::insert($chunk);
+        }
+    }
+
+    Log::info('Import completed', ['company_id' => $companyId, 'inserted_count' => count($insertData)]);
+
+    return response()->json([
+        'message' => 'Import completed!',
+        'inserted_count' => count($insertData)
+    ]);
+}
 
 
 
 
 }
+
+
+    
+
+
+
+

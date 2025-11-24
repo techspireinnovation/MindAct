@@ -17,9 +17,11 @@ class SalesReturn extends BaseTenantModel
 
     protected $casts = [
         'payment' => 'array',
-        'invoice_date' => 'date',
-        'invoice_date_bs' => 'date',
+        'invoice_date' => 'date:Y-m-d',
+        'invoice_date_bs' => 'date:Y-m-d',
     ];
+
+    protected $appends = ['customer_name'];
 
     protected $dates = ['deleted_at'];
 
@@ -27,6 +29,7 @@ class SalesReturn extends BaseTenantModel
         'company_id',
         'branch_id',
         'customer_id',
+        'purchase_type',
         'salesman_id',
         'sale_id',
         'pan_number',
@@ -66,6 +69,11 @@ class SalesReturn extends BaseTenantModel
     {
         // self::observe(SaleReturnObserver::class);
         static::addGlobalScope(new CompanyIdScope());
+    }
+
+    public function getCustomerNameAttribute()
+    {
+        return $this->customer->party_name ?? null;
     }
 
     // Relationships

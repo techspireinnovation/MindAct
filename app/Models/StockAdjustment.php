@@ -17,6 +17,7 @@ class StockAdjustment extends BaseTenantModel
         'invoice_date',
         'invoice_date_bs',
         'location_id',
+        'branch_id',
         'remarks',
         'reasons',
         'company_id',

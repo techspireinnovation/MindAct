@@ -76,6 +76,8 @@ use App\Http\Controllers\CompanyDashboard\TopSellingProductsController;
 use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
 use App\Http\Controllers\CompanyDashboard\RecentSalesController;
 use App\Http\Controllers\CompanyDashboard\LowStockProductsController;
+use Illuminate\Support\Facades\Route;
+
 
 
 
@@ -142,6 +144,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/generateBankVoucherBillNumber', [GenerateCodeController::class, 'generateBankVoucherBillNumber']);
     Route::get('/generateStockAdjustmentBillNumber', [GenerateCodeController::class, 'generateStockAdjustmentBillNumber']);
     Route::get('/generateStockEntryBillNumber', [GenerateCodeController::class, 'generateStockEntryBillNumber']);
+    Route::get('/generatestockreconciliationnumber', [GenerateCodeController::class, 'generateStockReconciliationNumber']);////
 
 
 
@@ -166,6 +169,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('get-all-sales-expiry-dates', [SaleController::class, 'getAllExpiryDates']);
     Route::get('get-all-sales-by-expiry-dates', [SaleController::class, 'getSalesByExpiryDate']);
     Route::get('available-products-for-sale', [SaleController::class, 'listAvailableProducts']);
+    Route::get('available-products-for-sale-for-stocks', [StockAdjustmentController::class, 'listAvailableProductsforStocks']);
     Route::get('available-products-details-for-sale', [SaleController::class, 'listAvailableProductDetails']);
     Route::get('available-product-details-for-sale-by-name-id', [SaleController::class, 'getAvailableProductByIdOrName']);
     Route::get('customer-sales-fiscal-year-details', [SaleController::class, 'customerTotalSalePriceAmount']);
@@ -362,7 +366,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::post('sales-return-itemwise', [SalesReturnController::class, 'storeItemWise']);
     Route::put('/sales-return-update-itemwise/{id}', [SalesReturnController::class, 'updateItemWise']);
 
-    //List and Details
+    //List and Detailss
     Route::get('change-test', [SaleController::class, 'changeDate']);
     Route::get('get-all-customers', [CustomerController::class, 'customerList']);
     Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
@@ -503,6 +507,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
 
+    
 
 
     Route::middleware(['company.access'])->group(function () {

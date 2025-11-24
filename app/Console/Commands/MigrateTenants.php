@@ -36,7 +36,7 @@ class MigrateTenants extends Command
 
         foreach ($tenants as $tenant) {
             try {
-                $tenantData = json_decode($tenant->data, true);
+                $tenantData = json_decode($tenant->data ?? '{}', true) ?? [];
                 $databaseName = $tenantData['database'] ?? $tenant->database;
 
                 if (!$databaseName) {
@@ -46,7 +46,7 @@ class MigrateTenants extends Command
 
                 $this->info("Migrating tenant: {$tenant->id} ({$databaseName})");
 
-                // Ensure the database exists
+                // Ensure DB exists
                 $dbExists = DB::connection('mysql')->selectOne(
                     "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?",
                     [$databaseName]
@@ -57,20 +57,12 @@ class MigrateTenants extends Command
                     continue;
                 }
 
-                // Switch connection to tenant
+                // Switch connection
                 config(['database.connections.tenant.database' => $databaseName]);
                 DB::purge('tenant');
                 DB::reconnect('tenant');
 
-                // Optional: check if tenant tables exist, skip central ones
-                $centralTables = ['permissions', 'roles', 'model_has_permissions', 'model_has_roles', 'role_has_permissions'];
-                foreach ($centralTables as $table) {
-                    if (Schema::connection('tenant')->hasTable($table)) {
-                        $this->info("Skipping central table '$table' for tenant {$tenant->id}");
-                    }
-                }
-
-                // Run tenant-specific migrations only
+                // Run tenant-specific migrations
                 Artisan::call('migrate', [
                     '--database' => 'tenant',
                     '--path' => 'database/migrations/tenant',
@@ -81,10 +73,14 @@ class MigrateTenants extends Command
 
             } catch (\Exception $e) {
                 $this->error("Failed migrating tenant {$tenant->id}: " . $e->getMessage());
-                Log::error("Tenant migration error", ['tenant_id' => $tenant->id, 'error' => $e->getMessage()]);
+                Log::error("Tenant migration error", [
+                    'tenant_id' => $tenant->id,
+                    'error' => $e->getMessage()
+                ]);
             }
         }
 
-        $this->info('All tenant migrations completed (skipped errors logged).');
+        $this->info('All tenant migrations completed.');
     }
+
 }

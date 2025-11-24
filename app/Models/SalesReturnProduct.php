@@ -31,6 +31,7 @@ class SalesReturnProduct extends BaseTenantModel
         'stock_transfer_id',
         'stock_reconciliation_id',
         'stock_adjustment_id',
+        'purchase_type',
         'product_id',
         'product_code',
         'product_name',

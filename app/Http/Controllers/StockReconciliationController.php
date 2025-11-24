@@ -10,6 +10,10 @@ use App\Models\StockReconciliatedFieldValue;
 use App\Models\StockReconciliation;
 use App\Models\StockReconciliationDetail;
 use App\Models\StockReconciliationFieldValue;
+use App\Models\Product;
+use App\Models\ProductList;
+use App\Models\MeasureUnit;
+
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -257,17 +261,88 @@ class StockReconciliationController extends Controller
 
 
 
+    // public function show($id): JsonResponse
+    // {
+    //     try {
+    //         $item = StockReconciliation::with('stockReconciliationDetails.fieldValues')->findOrFail($id);
+    //         return response()->json($item);
+    //     } catch (ModelNotFoundException $e) {
+    //         return response()->json(['error' => 'Item not found'], 404);
+    //     } catch (QueryException $e) {
+    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
+    //     }
+    // }
+
     public function show($id): JsonResponse
-    {
-        try {
-            $item = StockReconciliation::with('stockReconciliationDetails.fieldValues')->findOrFail($id);
-            return response()->json($item);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found'], 404);
-        } catch (QueryException $e) {
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+{
+    try {
+        // Load reconciliation with details + field values + productField
+        $item = StockReconciliation::with([
+            'stockReconciliationDetails.fieldValues.productField'
+        ])->findOrFail($id);
+
+        $itemArray = $item->toArray();
+
+        foreach ($itemArray['stock_reconciliation_details'] as &$detail) {
+
+            // Find product
+            $product = Product::find($detail['product_id']);
+            if (!$product) {
+                continue;
+            }
+
+            $productId = $product->id;
+
+            // Get MU from Product table
+            $productMeasureUnitId = Product::where('id', $productId)
+                ->pluck('measure_unit_id')
+                ->toArray();
+
+            // Get MU from ProductList table (if exists)
+            $productListMeasureUnitId = ProductList::where('product_id', $productId)
+                ->pluck('measure_unit_id')
+                ->toArray();
+
+            // Merge MU IDs and remove duplicates
+            $mergedMeasureUnits = collect(array_merge(
+                $productMeasureUnitId,
+                $productListMeasureUnitId
+            ))
+                ->unique()
+                ->filter()
+                ->values();
+
+            // Get actual measure units data
+            $usedMeasureUnits = MeasureUnit::whereIn('id', $mergedMeasureUnits)
+                ->whereNull('deleted_at')
+                ->get(['id', 'name', 'quantity']);
+
+            // Add measure units to response
+            $detail['measure_units'] = $usedMeasureUnits;
+
+
+            // Format field values (add name, type, values)
+            foreach ($detail['field_values'] as &$fieldValue) {
+                if (isset($fieldValue['product_field'])) {
+                    $fieldValue['name'] = $fieldValue['product_field']['name'];
+                    $fieldValue['type'] = $fieldValue['product_field']['type'];
+                    $fieldValue['values'] = $fieldValue['product_field']['values'];
+                    unset($fieldValue['product_field']);
+                }
+            }
         }
+
+        return response()->json($itemArray);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json(['error' => 'Item not found'], 404);
+    } catch (QueryException $e) {
+        return response()->json(['error' => 'A database error occurred'], 500);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
     }
+}
+
 
 
     public function update(Request $request, $id): JsonResponse

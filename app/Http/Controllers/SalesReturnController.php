@@ -31,15 +31,20 @@ use Illuminate\Validation\Rule;
 class SalesReturnController extends Controller
 {
 
+   
+
+
     public function index(Request $request): JsonResponse
     {
         $query = SalesReturn::with("customer:id,party_name");
+
 
         if ($request->has('keywords')) {
             $query->where('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('ref_bill_no', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
         return response()->json($query->paginate(100));
+        
     }
 
 
@@ -287,19 +292,13 @@ class SalesReturnController extends Controller
                 $measureUnitQuantity = $measureUnit['quantity'];
 
                 $regularQuantity = $saleProduct->quantity ?? 0;
-                $regularquantityInt = floor($regularQuantity);
-                $decimalRegularQuantity = $regularQuantity - $regularquantityInt;
-                $regularDecimal = (string) $decimalRegularQuantity;
-                $regulardecimalPieces = $regularDecimal > 0 ? (int) str_replace('.', '', (string) $regularDecimal) : 0;
-                $quantityInPieces = ($regularquantityInt * $measureUnitQuantity) + $regulardecimalPieces;
+
+                $quantityInPieces = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
 
                 $freeQuantity = $saleProduct->free_quantity ?? 0;
-                $freeQuantityInt = floor($freeQuantity);
-                $freequantityDecimal = $freeQuantity - $freeQuantityInt;
-                $freeDecimal = (string) $freequantityDecimal;
-                $freedecimalPieces = $freeDecimal > 0 ? (int) str_replace('.', '', (string) $freeDecimal) : 0;
-                $freeQuantityInPieces = ($freeQuantityInt * $measureUnitQuantity) + $freedecimalPieces;
-                $saleTotal = $quantityInPieces + $freeQuantityInPieces;
+
+                $freeQuantityInPieces = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
+                $saleTotal = $this->sumQuantityAndFree($quantityInPieces, $freeQuantityInPieces);
 
                 // Calculate return quantities for this sale product
                 $returnQuantityInPieces = 0;
@@ -313,20 +312,14 @@ class SalesReturnController extends Controller
                         $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
 
                         $returnQuantity = $returnProduct->quantity ?? 0;
-                        $returnQuantityInt = floor($returnQuantity);
-                        $returnQuantityDecimal = $returnQuantity - $returnQuantityInt;
-                        $quantityDecimal = (string) $returnQuantityDecimal;
-                        $returnQuantityDecimal = $quantityDecimal > 0 ? (int) str_replace('.', '', (string) $quantityDecimal) : 0;
-                        $returnQuantityInPieces = ($returnQuantityInt * $returnMeasureUnitQuantity) + $returnQuantityDecimal;
+
+                        $returnQuantityInPieces = $this->calculatePieces($returnQuantity, $returnMeasureUnitQuantity);
 
                         $returnFreeQuantity = $returnProduct->free_quantity ?? 0;
-                        $returnFreeQuantityInt = floor($returnFreeQuantity);
-                        $returnFreeQuantityDecimal = $returnFreeQuantity - $returnFreeQuantityInt;
-                        $freeDecimal = (string) $returnFreeQuantityDecimal;
-                        $freedecimalPieces = $freeDecimal > 0 ? (int) str_replace('.', '', (string) $freeDecimal) : 0;
-                        $returnFreeQuantityInPieces = ($returnFreeQuantityInt * $returnMeasureUnitQuantity) + $freedecimalPieces;
 
-                        $returnTotal += $returnQuantityInPieces + $returnFreeQuantityInPieces;
+                        $returnFreeQuantityInPieces = $this->calculatePieces($returnFreeQuantity, $returnMeasureUnitQuantity);
+
+                        $returnTotal += $this->sumQuantityAndFree($returnQuantityInPieces, $returnFreeQuantityInPieces);
                     }
                     Log::debug('Processing sales return products', [
                         'sale_product_id' => $saleProduct->id,
@@ -560,6 +553,7 @@ class SalesReturnController extends Controller
 
             $companyId = $request->input('company_id');
             $branchId = $request->input('branch_id');
+            $purchaseType = $request->purchase_type;
 
             // Fetch all active measure units for the company
             $measureUnits = MeasureUnit::where('company_id', $companyId)
@@ -574,7 +568,8 @@ class SalesReturnController extends Controller
                 ->where('sales.branch_id', $branchId)
                 ->whereNotNull('sales.invoice_number')
                 ->where('sales.invoice_number', '!=', '')
-                ->whereHas('saleProducts', function ($query) use ($companyId, $branchId, $measureUnits) {
+                ->where('sales.purchase_type', $purchaseType)
+                ->whereHas('saleProducts', function ($query) use ($companyId, $branchId, $measureUnits, $purchaseType) {
                     $query->leftJoin('measure_units as sale_mu', function ($join) use ($companyId, $branchId) {
                         $join->on('sale_products.measure_unit_id', '=', 'sale_mu.id')
                             ->where('sale_mu.company_id', $companyId)
@@ -584,6 +579,7 @@ class SalesReturnController extends Controller
                     })
                         ->where('sale_products.company_id', $companyId)
                         ->where('sale_products.branch_id', $branchId)
+                        ->where('sale_products.purchase_type', $purchaseType)
                         ->whereNull('sale_products.deleted_at')
                         ->whereRaw('
                         (
@@ -619,11 +615,11 @@ class SalesReturnController extends Controller
             ]);
 
             if (empty($invoiceNumbers)) {
-                return response()->json(['error' => 'No sales with available products found'], 404);
+                return response()->json(["data" => []], 200);
             }
 
             return response()->json([
-                'message' => 'Available invoice numbers with remaining quantities retrieved successfully',
+                'message' => 'Available invoice numbers with remaining quantities retrieved successfully !',
                 'data' => $invoiceNumbers
             ], 200);
         } catch (QueryException $e) {
@@ -639,7 +635,7 @@ class SalesReturnController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'An unexpected error occurred !'], 500);
         }
     }
 
@@ -836,6 +832,7 @@ class SalesReturnController extends Controller
                 'company_id' => 'required',
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
+                'purchase_type' => 'nulllable|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'customer_contact' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
@@ -1368,6 +1365,7 @@ class SalesReturnController extends Controller
                     'company_id' => $validated['company_id'],
                     'branch_id' => $validated['branch_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
+                    'purchase_type' => $validated['purchase_type'] ?? null,
                     'customer_address' => $validated['customer_address'] ?? null,
                     'customer_name' => $validated['customer_name'] ?? null,
                     'salesman_id' => $validated['salesman_id'] ?? null,
@@ -1444,6 +1442,7 @@ class SalesReturnController extends Controller
                         'branch_id' => $validated['branch_id'],
                         'sale_id' => $validated['sale_id'],
                         'sale_product_id' => $product['sale_product_id'],
+                        'purchase_type' => $validated['purchase_type'] ?? null,
                         'purchase_stock_product_id' => $saleProduct->purchase_stock_product_id,
                         'product_id' => $product['product_id'],
                         'product_code' => $product['product_code'],
@@ -1566,7 +1565,7 @@ class SalesReturnController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            Log::info('Measure units fetched', [
+            Log::info('Measure units fetched !', [
                 'company_id' => $companyId,
                 'branch_id' => $branchId,
                 'measure_units' => $measureUnits->toArray(),
@@ -1592,11 +1591,12 @@ class SalesReturnController extends Controller
 
                             ->where('sale_products.company_id', $companyId)
                             ->where('sale_products.branch_id', $branchId)
+                            ->where('sale_products.purchase_type', $purchaseType)
                             ->whereNull('sale_products.deleted_at')
                             ->whereNull('products.deleted_at')
-                            ->whereNull('purchase_stock_products.deleted_at')
-                            // ->whereNull('purchases.deleted_at')
-                            ->where('purchase_stock_products.purchase_type', $purchaseType);
+                            ->whereNull('purchase_stock_products.deleted_at');
+                        // ->whereNull('purchases.deleted_at')
+                        // ->where('purchase_stock_products.purchase_type', $purchaseType);
                     },
                 ])
                 ->select(['id', 'company_id'])
@@ -1613,13 +1613,16 @@ class SalesReturnController extends Controller
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
-                ->select([
-                    'id',
-                    'sale_product_id',
-                    'quantity',
-                    'free_quantity',
-                    'measure_unit_id',
-                ])
+                ->select(
+                    [
+                        'id',
+                        'sale_product_id',
+                        'quantity',
+                        'free_quantity',
+                        'measure_unit_id',
+
+                    ]
+                )
                 ->get();
 
             Log::info('Sales return products fetched', [
@@ -1676,7 +1679,7 @@ class SalesReturnController extends Controller
                     $freeQuantity = $saleProduct->free_quantity ?? 0;
                     $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
                     $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-                    $saleTotal = $saleRegular + $saleFree;
+                    $saleTotal = $this->sumQuantityAndFree($saleRegular, $saleFree);
 
                     // Calculate returned quantity
                     $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
@@ -1689,7 +1692,7 @@ class SalesReturnController extends Controller
 
                         $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
                         $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
-                        $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
+                        $returnQuantity = $this->sumQuantityAndFree($returnRegularQuantity, $freeReturnQuantity);
 
                         $returned += $returnQuantity;
 
@@ -1741,7 +1744,7 @@ class SalesReturnController extends Controller
 
             if (empty($products)) {
                 Log::warning('No available products after processing', ['company_id' => $companyId]);
-                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 404);
+                return response()->json(['message' => 'No sale products with available quantities found', 'data' => []], 200);
             }
 
             // Prepare response
@@ -1779,568 +1782,6 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
-
-    // public function getAvailableProductsForSalesReturn(Request $request): JsonResponse
-    // {
-    //     try {
-    //         // Validate inputs
-    //         $validator = Validator::make($request->all(), [
-    //             'product_id' => 'nullable|integer|exists:products,id',
-    //             'product_name' => 'nullable|string|max:255',
-    //             'company_id' => 'required|integer|exists:companies,id',
-    //             'sale_id' => 'nullable|integer|exists:sales,id',
-    //         ]);
-
-    //         if ($validator->fails()) {
-    //             return response()->json(['errors' => $validator->errors()], 422);
-    //         }
-
-    //         $productId = $request->input('product_id');
-    //         $productCode = $request->input('product_code');
-    //         $productName = trim(strtolower($request->input('product_name')));
-    //         $companyId = $request->input('company_id');
-    //         $saleId = $request->input('sale_id');
-
-    //         Log::debug('Input parameters for sales return', [
-    //             'product_id' => $productId,
-    //             'product_name' => $productName,
-    //             'product_code' => $productCode,
-    //             'company_id' => $companyId,
-    //             'sale_id' => $saleId,
-    //         ]);
-
-    //         if (!$productId && !$productCode && !$productName && !$saleId) {
-    //             return response()->json(['error' => 'At least one of product_id, product_name, or sale_id is required'], 422);
-    //         }
-
-    //         // Authentication and authorization
-    //         if (!auth()->check()) {
-    //             return response()->json(['message' => 'Unauthenticated'], 401);
-    //         }
-
-    //         $user = auth()->user();
-    //         $userCompanyId = optional($user->company)->company_id;
-    //         if ($userCompanyId != $companyId) {
-    //             return response()->json(['error' => 'Unauthorized access to company resources'], 200);
-    //         }
-
-    //         // Fetch measure units
-    //         $measureUnits = MeasureUnit::where('company_id', $companyId)
-    //             ->where('is_active', 1)
-    //             ->whereNull('deleted_at')
-    //             ->select(['id', 'name', 'quantity'])
-    //             ->get()
-    //             ->keyBy('id');
-
-    //         Log::info('Measure units fetched', [
-    //             'company_id' => $companyId,
-    //             'measure_units' => $measureUnits->toArray(),
-    //         ]);
-
-    //         // Fetch sales with products and field values
-    //         $salesQuery = Sale::where('company_id', $companyId)
-    //             ->whereNull('deleted_at');
-
-    //         if ($saleId) {
-    //             $salesQuery->where('id', $saleId);
-    //         }
-
-    //         $sales = $salesQuery->with([
-    //             'saleProducts' => function ($query) use ($companyId, $productId, $productName, $productCode) {
-    //                 $query->select([
-    //                     'sale_products.id',
-    //                     'sale_products.sale_id',
-    //                     'sale_products.product_id',
-    //                     'sale_products.measure_unit_id',
-    //                     'sale_products.quantity',
-    //                     'sale_products.amount',
-    //                     'sale_products.free_quantity',
-    //                     'sale_products.purchase_product_id',
-    //                     'sale_products.price',
-    //                     'sale_products.is_vatable',
-    //                     'sale_products.expiry_date',
-    //                     'products.name as product_name',
-    //                     'products.product_unique_id as product_code',
-    //                 ])
-    //                     ->join('products', 'sale_products.product_id', '=', 'products.id')
-    //                     ->where('sale_products.company_id', $companyId)
-    //                     ->whereNull('sale_products.deleted_at')
-    //                     ->whereNull('products.deleted_at');
-
-    //                 if ($productId) {
-    //                     $query->where('sale_products.product_id', $productId);
-    //                 }
-
-    //                 if ($productName) {
-    //                     $query->whereRaw('LOWER(products.name) LIKE ?', ["%{$productName}%"]);
-    //                 }
-
-    //                 if ($productCode) {
-    //                     $query->where('products.product_unique_id', $productCode);
-    //                 }
-    //             },
-    //             'saleProducts.fieldValues' => function ($query) use ($companyId) {
-    //                 $query->select([
-    //                     'sales_product_field_values.sale_product_id',
-    //                     'sales_product_field_values.product_field_id',
-    //                     'sales_product_field_values.quantity_index',
-    //                     'sales_product_field_values.value',
-    //                     'product_fields.name',
-    //                 ])
-    //                     ->join('product_fields', 'sales_product_field_values.product_field_id', '=', 'product_fields.id')
-    //                     ->where('sales_product_field_values.company_id', $companyId)
-    //                     ->whereNull('sales_product_field_values.deleted_at')
-    //                     ->whereNull('product_fields.deleted_at');
-    //             },
-    //         ])
-    //             ->select([
-    //                 'id',
-    //                 'company_id',
-    //                 'customer_id',
-    //                 'customer_name',
-    //                 'invoice_number',
-    //                 'invoice_date',
-    //                 'total_amount',
-    //                 'is_vatable',
-    //             ])
-    //             ->get();
-
-    //         if ($sales->isEmpty()) {
-    //             Log::warning('No sales found', [
-    //                 'product_id' => $productId,
-    //                 'product_name' => $productName,
-    //                 'company_id' => $companyId,
-    //                 'sale_id' => $saleId,
-    //             ]);
-    //             return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
-    //         }
-
-    //         // Fetch sales return products
-    //         $saleProductIds = $sales->pluck('saleProducts.*.id')->flatten()->unique()->toArray();
-    //         $salesReturnProducts = SalesReturnProduct::whereIn('sale_product_id', $saleProductIds)
-    //             ->where('company_id', $companyId)
-    //             ->whereNull('deleted_at')
-    //             ->select([
-    //                 'id',
-    //                 'sale_product_id',
-    //                 'quantity',
-    //                 'free_quantity',
-    //                 'measure_unit_id',
-    //                 'company_id',
-    //             ])
-    //             ->get();
-
-    //         Log::info('Sales return products fetched', [
-    //             'sale_product_ids' => $saleProductIds,
-    //             'sales_return_products' => $salesReturnProducts->toArray(),
-    //         ]);
-
-    //         // Fetch return field values for comparison
-    //         $returnFieldValues = DB::table('sale_return_product_field_values')
-    //             ->where('company_id', $companyId)
-    //             ->whereNull('deleted_at')
-    //             ->whereIn('sale_product_id', $saleProductIds)
-    //             ->select([
-    //                 'sale_product_id',
-    //                 'product_field_id',
-    //                 'quantity_index',
-    //                 'value',
-    //             ])
-    //             ->get()
-    //             ->groupBy('sale_product_id');
-
-    //         Log::info('Return field values fetched', [
-    //             'sale_product_ids' => $saleProductIds,
-    //             'return_field_values' => $returnFieldValues->toArray(),
-    //         ]);
-
-    //         // Aggregate products across all sales
-    //         $products = [];
-
-    //         foreach ($sales as $sale) {
-    //             if ($sale->saleProducts->isEmpty()) {
-    //                 Log::warning('No available products for sale', [
-    //                     'sale_id' => $sale->id,
-    //                     'invoice_number' => $sale->invoice_number,
-    //                     'company_id' => $companyId,
-    //                 ]);
-    //                 continue;
-    //             }
-
-    //             foreach ($sale->saleProducts as $saleProduct) {
-    //                 $productId = $saleProduct->product_id;
-    //                 // Use sale product's measure unit or default if missing
-
-    //                 $primaryMeasureUnit = ProductList::where('product_id', $productId)
-    //                     ->where('is_primary', 1)
-    //                     ->where('company_id', $companyId)
-    //                     ->whereNull('deleted_at')
-    //                     ->pluck('measure_unit_id')->first();
-    //                 if (!$primaryMeasureUnit) {
-    //                     $primaryMeasureUnit = ProductList::where('id', $productId)
-    //                         ->where('company_id', $companyId)
-    //                         ->whereNull('deleted_at')
-    //                         ->orderBy('created_at', 'asc')
-    //                         ->pluck('measure_unit_id')
-    //                         ->first();
-    //                 }
-    //                 $primaryMeasureUnitQuantity = MeasureUnit::where('id', $primaryMeasureUnit)
-    //                     ->where('company_id', $companyId)
-    //                     ->whereNull('deleted_at')
-    //                     ->pluck('quantity')
-    //                     ->first();
-    //                 $productMeasureUniId = Product::where('id', $productId)->pluck('measure_unit_id')->toArray();
-    //                 $productListMeasureUnitId = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
-
-    //                 $allMeasureUnitsId = collect(array_merge($productMeasureUniId, $productListMeasureUnitId))
-    //                     ->unique()
-    //                     ->values()
-    //                     ->toArray();
-
-
-    //                 $usedMeasureUnits = MeasureUnit::whereIn('id', $allMeasureUnitsId)
-    //                     ->where('company_id', $companyId)
-    //                     ->whereNull('deleted_at')
-    //                     ->get(['id', 'name', 'quantity']);
-    //                 $measureUnitId = $saleProduct->measure_unit_id ?? null;
-    //                 $measureUnit = isset($measureUnits[$measureUnitId]) ? [
-    //                     'id' => $measureUnits[$measureUnitId]->id,
-    //                     'name' => $measureUnits[$measureUnitId]->name,
-    //                     'quantity' => $measureUnits[$measureUnitId]->quantity ?? 1,
-    //                 ] : [
-    //                     'id' => null,
-    //                     'name' => 'null',
-    //                     'quantity' => 1,
-    //                 ];
-    //                 $measureUnitQuantity = $measureUnit['quantity'];
-
-    //                 if (!isset($measureUnits[$measureUnitId])) {
-    //                     Log::warning('Measure unit not found for sale product, using default', [
-    //                         'sale_product_id' => $saleProduct->id,
-    //                         'measure_unit_id' => $saleProduct->measure_unit_id,
-    //                     ]);
-    //                 }
-
-    //                 // Fetch product metadata
-    //                 $product = Product::where('id', $productId)
-    //                     ->where('company_id', $companyId)
-    //                     ->whereNull('deleted_at')
-    //                     ->first();
-
-
-
-    //                 $originalProductPrice = Product::where('id', $productId)->value('purchase_rate');
-
-    //                 $saleProductsPrice = SaleProduct::where('product_id', $productId)->orderBy('created_at', 'desc')->pluck('price');
-    //                 $latestPrice = $saleProductsPrice->first();
-
-    //                 // Get the minimum price
-    //                 $minProductPrice = $saleProductsPrice->min();
-
-    //                 // Get the average price
-    //                 $avgProductPrice = $saleProductsPrice->avg();
-
-    //                 // Initialize product entry
-    //                 if (!isset($products[$productId])) {
-    //                     $products[$productId] = [
-    //                         'product_id' => $productId,
-    //                         'product_name' => $saleProduct->product_name,
-    //                         'product_code' => $saleProduct->product_code,
-
-    //                         'original_price' => $originalProductPrice ?? null,
-    //                         'latest_price' => $latestPrice ?? null,
-    //                         'min_price' => $minProductPrice ?? null,
-    //                         'avg_price' => $avgProductPrice ?? null,
-    //                         'amount' => $saleProduct->amount ?? null,
-    //                         'is_vatable' => (bool) $saleProduct->is_vatable,
-    //                         'used_measure_units' => $usedMeasureUnits,
-    //                         'measure_unit_id' => $primaryMeasureUnit,
-
-    //                         'measure_unit_quantity' => $primaryMeasureUnitQuantity,
-    //                         'purchased_quantity' => 0,
-    //                         'return_quantity' => 0,
-    //                         'sale_quantity' => 0,
-    //                         'sales_return_quantity' => 0,
-    //                         'available_quantity' => 0,
-    //                         'expiry_dates' => [],
-    //                         'field_values' => [],
-    //                         'sale_products' => [],
-    //                     ];
-    //                 }
-
-    //                 // Update min_price if lower
-
-    //                 if ($saleProduct->price < $products[$productId]['min_price']) {
-    //                     $products[$productId]['min_price'] = $saleProduct->price;
-    //                 }
-
-    //                 // Calculate sale quantity
-    //                 $regularQuantity = $saleProduct->quantity ?? 0;
-    //                 $freeQuantity = $saleProduct->free_quantity ?? 0;
-    //                 $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
-    //                 $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-    //                 $saleTotal = $saleRegular + $saleFree;
-
-    //                 // Calculate returned quantity
-    //                 $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
-    //                 $returned = 0;
-    //                 $lastReturnMeasureUnitId = null;
-    //                 $lastReturnMeasureUnitQuantity = 1;
-
-    //                 foreach ($returnProducts as $returnProduct) {
-    //                     $returnMeasureUnitId = $returnProduct->measure_unit_id ?? null;
-    //                     $returnMeasureUnitQuantity = isset($measureUnits[$returnMeasureUnitId]) ? $measureUnits[$returnMeasureUnitId]->quantity : 1;
-    //                     $regularQuantity = $returnProduct->quantity ?? 0;
-    //                     $freeQuantity = $returnProduct->free_quantity ?? 0;
-
-    //                     $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
-    //                     $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
-    //                     $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
-    //                     $returned += $returnQuantity; // Accumulate returned quantity
-    //                     $lastReturnMeasureUnitId = $returnMeasureUnitId;
-    //                     $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
-
-    //                     // Check for measure unit mismatch
-    //                     if ($returnMeasureUnitId !== $saleProduct->measure_unit_id) {
-    //                         Log::warning('Measure unit mismatch for return product', [
-    //                             'sale_product_id' => $saleProduct->id,
-    //                             'return_product_id' => $returnProduct->id,
-    //                             'sale_measure_unit_id' => $saleProduct->measure_unit_id,
-    //                             'return_measure_unit_id' => $returnMeasureUnitId,
-    //                         ]);
-    //                     }
-
-    //                     Log::info('Processing return product', [
-    //                         'sale_product_id' => $saleProduct->id,
-    //                         'return_product_id' => $returnProduct->id,
-    //                         'return_quantity' => $returnQuantity,
-    //                         'measure_unit_id' => $returnMeasureUnitId,
-    //                         'measure_unit_quantity' => $returnMeasureUnitQuantity,
-    //                     ]);
-    //                 }
-
-    //                 // Warn if returns exceed sales
-    //                 if ($returned >= $saleTotal) {
-    //                     Log::warning('Return quantity equals or exceeds sale quantity for sale product', [
-    //                         'sale_product_id' => $saleProduct->id,
-    //                         'sale_total' => $saleTotal,
-    //                         'return_total' => $returned,
-    //                     ]);
-    //                 }
-
-    //                 Log::info('Returned quantity for sale product', [
-    //                     'sale_product_id' => $saleProduct->id,
-    //                     'returned' => $returned,
-    //                     'measure_unit_id' => $lastReturnMeasureUnitId,
-    //                     'measure_unit_quantity' => $lastReturnMeasureUnitQuantity,
-    //                     'return_products' => $returnProducts->toArray(),
-    //                 ]);
-
-    //                 // Determine returned quantity indices for field values
-    //                 $returnedIndices = [];
-    //                 $saleProductReturnFieldValues = $returnFieldValues[$saleProduct->id] ?? collect([]);
-    //                 Log::info('Return field values for sale product', [
-    //                     'sale_product_id' => $saleProduct->id,
-    //                     'return_field_values' => $saleProductReturnFieldValues->toArray(),
-    //                 ]);
-
-    //                 if ($saleProduct->fieldValues->isNotEmpty()) {
-    //                     $quantityIndices = $saleProduct->fieldValues->pluck('quantity_index')->unique();
-    //                     foreach ($quantityIndices as $quantityIndex) {
-    //                         $saleFieldValues = $saleProduct->fieldValues->where('quantity_index', $quantityIndex)
-    //                             ->pluck('value', 'product_field_id')
-    //                             ->toArray();
-
-    //                         $isReturned = false; // Default to not returned
-    //                         if ($saleProductReturnFieldValues->isNotEmpty()) {
-    //                             $isReturned = true;
-    //                             foreach ($saleFieldValues as $fieldId => $value) {
-    //                                 $returnMatch = $saleProductReturnFieldValues->firstWhere(function ($rfv) use ($fieldId, $value, $quantityIndex) {
-    //                                     return $rfv->product_field_id == $fieldId &&
-    //                                         $rfv->value == $value &&
-    //                                         $rfv->quantity_index == $quantityIndex;
-    //                                 });
-
-    //                                 if (!$returnMatch) {
-    //                                     $isReturned = false;
-    //                                     break;
-    //                                 }
-    //                             }
-    //                         }
-
-    //                         if ($isReturned) {
-    //                             $returnedIndices[] = $quantityIndex;
-    //                         }
-    //                     }
-    //                 } else {
-    //                     if ($returned > 0) {
-    //                         $returnedIndices[] = 0;
-    //                     }
-    //                 }
-
-    //                 // Calculate available quantity
-    //                 $returnTotal = $returned;
-    //                 $availableQuantity = max(0, round($saleTotal - $returnTotal, 2));
-
-    //                 Log::info('Quantity calculation for sale product', [
-    //                     'sale_product_id' => $saleProduct->id,
-    //                     'sale_total' => $saleTotal,
-    //                     'return_total' => $returnTotal,
-    //                     'available_quantity' => $availableQuantity,
-    //                     'measure_unit_quantity' => $measureUnitQuantity,
-    //                     'sale_product' => $saleProduct->toArray(),
-    //                 ]);
-
-    //                 $products[$productId]['sale_quantity'] += $saleTotal;
-    //                 $products[$productId]['sales_return_quantity'] += $returnTotal;
-    //                 $products[$productId]['return_quantity'] += $returnTotal;
-    //                 $products[$productId]['available_quantity'] += $availableQuantity;
-
-    //                 if ($saleProduct->expiry_date && !in_array($saleProduct->expiry_date, $products[$productId]['expiry_dates'])) {
-    //                     $products[$productId]['expiry_dates'][] = $saleProduct->expiry_date;
-    //                 }
-
-    //                 // Add field values for unreturned quantities
-    //                 if ($saleProduct->fieldValues->isNotEmpty()) {
-    //                     foreach ($saleProduct->fieldValues as $fv) {
-    //                         if (!in_array($fv->quantity_index, $returnedIndices)) {
-    //                             $products[$productId]['field_values'][] = [
-    //                                 'sale_product_id' => $saleProduct->id,
-    //                                 'purchase_product_id' => $saleProduct->purchase_product_id,
-    //                                 'product_field_id' => $fv->product_field_id,
-    //                                 'name' => $fv->name,
-    //                                 'value' => $fv->value,
-    //                                 'quantity_index' => $fv->quantity_index,
-    //                             ];
-    //                             Log::info('Added eligible field value', [
-    //                                 'sale_product_id' => $saleProduct->id,
-    //                                 'quantity_index' => $fv->quantity_index,
-    //                                 'product_field_id' => $fv->product_field_id,
-    //                                 'value' => $fv->value,
-    //                             ]);
-    //                         }
-    //                     }
-    //                 }
-
-    //                 // Add sale product details
-    //                 $products[$productId]['sale_products'][] = [
-    //                     'sale_product_id' => $saleProduct->id,
-    //                     'sale_id' => $saleProduct->sale_id,
-    //                     'invoice_number' => $sale->invoice_number,
-    //                     'invoice_date' => $sale->invoice_date,
-    //                     'product_id' => $saleProduct->product_id,
-    //                     'product_name' => $saleProduct->product_name,
-    //                     'product_code' => $saleProduct->product_code,
-    //                     'quantity' => $saleProduct->quantity,
-    //                     'free_quantity' => $saleProduct->free_quantity ?? 0,
-    //                     'price' => $saleProduct->price,
-    //                     'is_vatable' => (bool) $saleProduct->is_vatable,
-    //                     'measure_unit_id' => $saleProduct->measure_unit_id,
-    //                     'measure_unit_name' => $measureUnit['name'],
-    //                     'measure_unit_quantity' => $measureUnitQuantity,
-    //                     'available_quantity' => $availableQuantity,
-    //                     'return_quantity' => $returnTotal,
-    //                     'sale_quantity' => $saleTotal,
-    //                     'sales_return_quantity' => $returnTotal,
-    //                     'expiry_date' => $saleProduct->expiry_date,
-    //                     'purchase_product_id' => $saleProduct->purchase_product_id,
-    //                 ];
-    //             }
-    //         }
-
-    //         // Calculate purchased quantity
-    //         foreach ($products as $productId => &$product) {
-    //             $purchasedTotal = PurchaseProduct::where('product_id', $productId)
-    //                 ->where('purchase_products.company_id', $companyId)
-    //                 ->whereNull('purchase_products.deleted_at')
-    //                 ->join('measure_units', 'purchase_products.measure_unit_id', '=', 'measure_units.id')
-    //                 ->where('measure_units.company_id', $companyId)
-    //                 ->whereNull('measure_units.deleted_at')
-    //                 ->sum(DB::raw('(purchase_products.quantity + COALESCE(purchase_products.free_quantity, 0)) * measure_units.quantity'));
-
-    //             $product['purchased_quantity'] = (int) ($purchasedTotal ?? 0);
-    //             Log::info('Purchased quantity calculated', [
-    //                 'product_id' => $productId,
-    //                 'purchased_quantity' => $purchasedTotal,
-    //             ]);
-
-    //             Log::info('Total quantities for product', [
-    //                 'product_id' => $productId,
-    //                 'sale_quantity' => $product['sale_quantity'],
-    //                 'sales_return_quantity' => $product['sales_return_quantity'],
-    //                 'return_quantity' => $product['return_quantity'],
-    //                 'available_quantity' => $product['available_quantity'],
-    //                 'sale_products' => array_column($product['sale_products'], 'sale_product_id'),
-    //             ]);
-    //         }
-
-    //         // Filter products with available quantity
-    //         $products = array_filter($products, function ($product) {
-    //             Log::info('Filtering product', [
-    //                 'product_id' => $product['product_id'],
-    //                 'available_quantity' => $product['available_quantity'],
-    //             ]);
-    //             return $product['available_quantity'] > 0;
-    //         });
-
-    //         if (empty($products)) {
-    //             Log::warning('No available products after processing', [
-    //                 'product_id' => $productId,
-    //                 'product_name' => $productName,
-    //                 'company_id' => $companyId,
-    //                 'sale_id' => $saleId,
-    //             ]);
-    //             return response()->json(['message' => 'No products available for sales return', 'data' => []], 404);
-    //         }
-
-
-    //         Log::info('Final products array', ['products' => $products]);
-
-
-    //         $response = [
-    //             'message' => 'Product details retrieved successfully',
-    //             'data' => [
-    //                 [
-    //                     'products' => array_values($products),
-    //                 ],
-    //             ],
-    //         ];
-
-    //         Log::info('Final response prepared', [
-    //             'product_count' => count($products),
-    //             'product_ids' => array_keys($products),
-    //             'sale_product_ids' => array_merge(...array_map(function ($product) {
-    //                 return array_column($product['sale_products'], 'sale_product_id');
-    //             }, $products)),
-    //         ]);
-
-    //         return response()->json($response);
-
-    //     } catch (QueryException $e) {
-
-    //         Log::error('Database query error in getAvailableProductsForSalesReturn', [
-    //             'product_id' => $productId,
-    //             'product_name' => $productName,
-    //             'company_id' => $companyId,
-    //             'sale_id' => $saleId,
-    //             'error' => $e->getMessage(),
-    //             'sql' => $e->getSql(),
-    //             'bindings' => $e->getBindings(),
-    //         ]);
-    //         return response()->json(['error' => 'Database query error'], 500);
-    //     } catch (\Exception $e) {
-
-    //         Log::error('Unexpected error in getAvailableProductsForSalesReturn', [
-    //             'product_id' => $productId,
-    //             'product_name' => $productName,
-    //             'company_id' => $companyId,
-    //             'sale_id' => $saleId,
-    //             'error' => $e->getMessage(),
-    //             'trace' => $e->getTraceAsString(),
-    //         ]);
-    //         return response()->json(['error' => 'An unexpected error occurred'], 500);
-    //     }
-    // }
 
 
 
@@ -2644,7 +2085,7 @@ class SalesReturnController extends Controller
                     $freeQuantity = $saleProduct->free_quantity ?? 0;
                     $saleRegular = $this->calculatePieces($regularQuantity, $measureUnitQuantity);
                     $saleFree = $this->calculatePieces($freeQuantity, $measureUnitQuantity);
-                    $saleTotal = $saleRegular + $saleFree;
+                    $saleTotal = $this->sumQuantityAndFree($saleRegular, $saleFree);
 
                     // Calculate returned quantity
                     $returnProducts = $salesReturnProducts->where('sale_product_id', $saleProduct->id);
@@ -2660,7 +2101,7 @@ class SalesReturnController extends Controller
 
                         $returnRegularQuantity = $this->calculatePieces($regularQuantity, $returnMeasureUnitQuantity);
                         $freeReturnQuantity = $this->calculatePieces($freeQuantity, $returnMeasureUnitQuantity);
-                        $returnQuantity = $returnRegularQuantity + $freeReturnQuantity;
+                        $returnQuantity = $this->sumQuantityAndFree($returnRegularQuantity, $freeReturnQuantity);
                         $returned += $returnQuantity;
                         $lastReturnMeasureUnitId = $returnMeasureUnitId;
                         $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
@@ -2947,10 +2388,11 @@ class SalesReturnController extends Controller
     public function storeItemWise(Request $request): JsonResponse
     {
         try {
-            // Define validation rules
+            // Define validation rule
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required',
                 'customer_id' => 'nullable|exists:customers,id',
+                'purchase_type' => 'nullable|string|max:255',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'sale_id' => 'nullable|exists:sales,id',
                 'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number',
@@ -3129,33 +2571,6 @@ class SalesReturnController extends Controller
             $validated['sale_id'] = $sale->id;
 
             // Generate unique invoice number
-            $date = $validated['invoice_date'] ? Carbon::parse($validated['invoice_date']) : now();
-            $fiscalYearStart = Carbon::create($date->year, 7, 1);
-            $fiscalYear = $date->lessThan($fiscalYearStart)
-                ? ($date->year - 1) . '-' . substr($date->year, 2, 2)
-                : $date->year . '-' . substr($date->year + 1, 2, 2);
-            $prefix = 'RET';
-            $currentYear = explode('-', $fiscalYear)[0];
-            $maxAttempts = 100;
-            $attempt = 0;
-            do {
-                $latestReturn = SalesReturn::where('invoice_number', 'like', "{$prefix}-{$currentYear}%")
-                    ->orderByDesc('created_at')
-                    ->lockForUpdate()
-                    ->first();
-                $nextSequence = '000001';
-                if ($latestReturn && preg_match("/^RET-\d{4}-(\d{6})$/", $latestReturn->invoice_number, $matches)) {
-                    $nextSequence = str_pad((int) $matches[1] + 1, 6, '0', STR_PAD_LEFT);
-                }
-                $invoiceNumber = "{$prefix}-{$currentYear}-{$nextSequence}";
-                $existingInvoice = SalesReturn::where('invoice_number', $invoiceNumber)->exists();
-                $attempt++;
-            } while ($existingInvoice && $attempt < $maxAttempts);
-
-            if ($existingInvoice) {
-                return response()->json(['error' => 'Unable to generate a unique invoice number'], 500);
-            }
-            $validated['invoice_number'] = $invoiceNumber;
 
             // Handle return modes
             $returnEntireAll = $validated['return_entire_all'];
@@ -3703,6 +3118,7 @@ class SalesReturnController extends Controller
 
                     $salesReturnProduct = $salesReturn->salesReturnProducts()->create([
                         'company_id' => $validated['company_id'],
+                        'purchase_type' => $validated['purchase_type'] ?? null,
                         'branch_id' => $validated['branch_id'],
                         'sales_return_id' => $salesReturn->id,
                         'sale_id' => $saleProduct->sale_id,
@@ -3803,6 +3219,7 @@ class SalesReturnController extends Controller
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required',
                 'customer_id' => 'nullable|exists:customers,id',
+                'purchase_type' => 'nullable|string|max:255',
                 'salesman_id' => 'nullable|exists:salesmen,id',
                 'sale_id' => 'nullable|exists:sales,id',
                 'invoice_number' => 'nullable|string|max:255|unique:sales_returns,invoice_number,' . $id,
@@ -4370,6 +3787,7 @@ class SalesReturnController extends Controller
 
                     $salesReturnProduct = $salesReturn->salesReturnProducts()->create([
                         'company_id' => $validated['company_id'],
+                        'purchase_type' => $validated['purchase_type'] ?? null,
                         'branch_id' => $validated['branch_id'],
                         'sales_return_id' => $salesReturn->id,
                         'sale_id' => $saleProduct->sale_id,
@@ -4463,21 +3881,35 @@ class SalesReturnController extends Controller
         }
     }
 
+    public function sumQuantityAndFree($quantity, $freeQuantity): string
+    {
+        $quantity = (string) ($quantity ?? '0');
+        $freeQuantity = (string) ($freeQuantity ?? '0');
 
-    private function calculatePieces(float $quantity, float $measureUnitQuantity): float
+        // Determine max number of decimals
+        $decimals = max(
+            strlen(explode('.', $quantity)[1] ?? ''),
+            strlen(explode('.', $freeQuantity)[1] ?? '')
+        );
+
+        return bcadd($quantity, $freeQuantity, $decimals); // string with preserved decimals
+    }
+
+
+    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
 
+        // Split integer and decimal parts WITHOUT float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
 
-        $integerPart = floor($quantity);
-        $decimalPart = $quantity - $integerPart;
-        $decimalStr = (string) $decimalPart;
-        $decimalPieces = $decimalStr > 0 ? (int) str_replace('.', '', (string) $decimalStr) : 0;
+        $integer = (int) $integerPart;
+        $decimalPieces = (int) $decimalPart;
 
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
 
     private function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
@@ -4737,6 +4169,7 @@ class SalesReturnController extends Controller
                 'company_id' => 'nullable',
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
+                'purchase_type' => 'nullable|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'customer_contact' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
@@ -4896,7 +4329,7 @@ class SalesReturnController extends Controller
                     ]);
                     return response()->json(['error' => 'Sales return not found'], 404);
                 }
-                Log::info('Sales return fetched', [
+                Log::info('Sales return fetched :', [
                     'sales_return_id' => $id,
                     'sales_return_data' => $salesReturn->toArray()
                 ]);
@@ -5543,6 +4976,7 @@ class SalesReturnController extends Controller
 
                 $salesReturn->update([
                     'company_id' => $validated['company_id'],
+                    'purchase_type' => $validated['purchase_type'] ?? null,
                     'branch_id' => $validated['branch_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
                     'customer_name' => $validated['customer_name'],
@@ -5620,6 +5054,7 @@ class SalesReturnController extends Controller
                 foreach ($salesReturnProducts as $index => $row) {
                     $srProduct = $salesReturn->salesReturnProducts()->create([
                         'company_id' => $validated['company_id'],
+                        'purchase_type' => $validated['purchase_type'] ?? null,
                         'branch_id' => $validated['branch_id'],
                         'sale_id' => $validated['sale_id'],
                         'sale_product_id' => $row['sale_product_id'],
@@ -5808,99 +5243,15 @@ class SalesReturnController extends Controller
 
 
 
-    // public function show(Request $request, $id): JsonResponse
-    // {
-    //     try {
-    //         $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues.productField')
-    //             ->findOrFail($id);
-
-    //         $productIds = $salesReturn->salesReturnProducts->pluck('product_id')->unique();
-
-    //         // Load measure units
-    //         $productMeasureUnits = ProductList::whereIn('product_id', $productIds)
-    //             ->where('company_id', $request->company_id)
-    //             ->with(['measureUnit:id,name,quantity'])
-    //             ->get()
-    //             ->groupBy('product_id');
-
-    //         $request->merge([
-    //             'company_id' => $request->company_id ?? null,
-    //             'branch_id' => $request->branch_id ?? null,
-    //         ]);
-
-    //         $salesBillNumber = $salesReturn->sales_bill_number;
-
-    //         // Master map: product_id => available_quantity
-    //         $availableMap = [];
-
-    //         if ($salesBillNumber) {
-    //             // Bill-wise: one call
-    //             $response = AvailableQuantityService::getSaleByInvoiceNumber($request, $salesBillNumber);
-    //             $responseData = $response->getData(true);
-
-    //             $products = $responseData['data'][0]['products'] ?? ($responseData['data'] ?? []);
-    //             foreach ($products as $p) {
-    //                 $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
-    //             }
-    //         } else {
-    //             // Item-wise: call per product
-    //             foreach ($salesReturn->salesReturnProducts as $item) {
-    //                 $productID = $item->product_id;
-
-    //                 $response = AvailableQuantityService::getAvailableProductsForSalesReturn($request, $productID, $salesBillNumber);
-    //                 $resp = $response->getData(true);
-
-    //                 // CORRECT PATH: 'products'
-    //                 $products = $resp['data'][0]['products'] ?? ($resp['data'] ?? []);
-
-    //                 foreach ($products as $p) {
-    //                     $availableMap[$p['product_id']] = $p['available_quantity'] ?? 0;
-    //                 }
-    //             }
-    //         }
-
-    //         // Now attach everything
-    //         foreach ($salesReturn->salesReturnProducts as $saleReturn) {
-    //             // Measure units
-    //             $units = $productMeasureUnits->get($saleReturn->product_id, collect())
-    //                 ->pluck('measureUnit');
-    //             $saleReturn->setRelation('measure_units', $units);
-    //             $productId = $saleReturn->product_id;
-    //             $productCode = Product::where('id', $productId)->value('product_unique_id');
-
-    //             // Field values + name
-    //             $saleReturn->setRelation(
-    //                 'field_values',
-    //                 $saleReturn->fieldValues->map(function ($fv) {
-    //                     $fv->name = $fv->productField->name ?? null;
-    //                     return $fv;
-    //                 })
-    //             );
-
-    //             // NOW IT WILL BE CORRECT
-    //             $saleReturn->product_code = $productCode;
-    //             $saleReturn->remaining_quantity = $availableMap[$saleReturn->product_id] ?? 0;
-    //         }
-
-    //         return response()->json($salesReturn);
-
-    //     } catch (ModelNotFoundException $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'Sales Return not found'], 404);
-    //     } catch (\Exception $e) {
-    //         \Log::error($e);
-    //         return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
-    //     }
-    // }
-
-
-
     public function show(Request $request, $id): JsonResponse
     {
         try {
             // Step 1: Load Sales Return with relations
             $salesReturn = SalesReturn::with('salesReturnProducts.fieldValues.productField')
                 ->findOrFail($id);
+
+
+
 
             $productIds = $salesReturn->salesReturnProducts->pluck('product_id')->unique();
 
@@ -5992,6 +5343,7 @@ class SalesReturnController extends Controller
 
             // Step 6: Replace salesReturnProducts with merged ones
             $salesReturn->setRelation('salesReturnProducts', $mergedProducts);
+
 
             return response()->json($salesReturn);
 
@@ -6567,11 +5919,6 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
     }
-
-
-
-
-
 
 
 }

@@ -35,6 +35,6 @@ class ClearOldFiles extends Command
                 Storage::disk('company')->delete($file);
             }
         }
-        $this->info('Old files deleted.');
+        $this->info('Old files deleted !');
     }
 }

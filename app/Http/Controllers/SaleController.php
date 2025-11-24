@@ -15,6 +15,8 @@ use App\Helpers\Helper;
 use App\Models\MeasureUnit;
 use App\Models\Product;
 use App\Models\ProductList;
+use App\Models\StockAdjusted;
+use App\Models\StockAdjustedFieldValue;
 use App\Models\StockTransferFieldValue;
 use App\Models\StockTransfer;
 use App\Models\StockTransferDetails;
@@ -443,7 +445,7 @@ class SaleController extends Controller
                 'request' => $request->all()
             ]);
             return response()->json([
-                'error' => 'An unexpected error occurred',
+                'error' => 'An unexpected error occurred !!',
                 'message' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
@@ -804,16 +806,23 @@ class SaleController extends Controller
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
-                        // Calculate purchased pieces
+                        // Calculate purchased piece
+    
+
+
+                        $totalQuantity = $this->sumQuantityAndFree($pp->quantity, $pp->free_quantity);
                         $purchasedPieces = $this->calculatePieces(
-                            ($pp->quantity ?? 0) + ($pp->free_quantity ?? 0),
+                            $totalQuantity,
                             measureUnitQuantity: isset($measureUnitsCalc[$pp->measure_unit_id]) ? $measureUnitsCalc[$pp->measure_unit_id]->quantity : 1
                         );
+
+
+
 
                         // Calculate return pieces, capped at purchased pieces
                         $returnPieces = $pp->purchaseStockProductReturns->reduce(
                             fn($carry, $return) => $carry + $this->calculatePieces(
-                                ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                                $this->sumQuantityAndFree($return->quantity, $return->free_quantity),
                                 isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1
                             ),
                             0
@@ -823,14 +832,14 @@ class SaleController extends Controller
                         // Calculate sale and sales return pieces
                         $salePieces = $pp->saleProducts->reduce(
                             fn($carry, $sale) => $carry + $this->calculatePieces(
-                                ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0),
+                                $this->sumQuantityAndFree($sale->quantity, $sale->free_quantity),
                                 isset($measureUnitsCalc[$sale->measure_unit_id]) ? $measureUnitsCalc[$sale->measure_unit_id]->quantity : 1
                             ),
                             0
                         );
                         $salesReturnPieces = $pp->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns)->reduce(
                             fn($carry, $return) => $carry + $this->calculatePieces(
-                                ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                                $this->sumQuantityAndFree($return->quantity, $return->free_quantity),
                                 isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1
                             ),
                             0
@@ -931,7 +940,7 @@ class SaleController extends Controller
                 // Aggregate totals in pieces
                 $purchasedPieces = array_sum(array_map(
                     fn($pp) => $this->calculatePieces(
-                        ($pp['quantity'] ?? 0) + ($pp['free_quantity'] ?? 0),
+                        $this->sumQuantityAndFree($pp['quantity'] ?? 0, $pp['free_quantity'] ?? 0),
                         $pp['measure_unit_quantity'] ?? 1
                     ),
                     $productPurchaseProducts
@@ -1144,25 +1153,40 @@ class SaleController extends Controller
 
 
 
-
-
-    public function calculatePieces(float $quantity, float $measureUnitQuantity): float
+    public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
             Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
             return 0;
         }
 
+        // Split integer and decimal parts WITHOUT converting to float
+        [$integerPart, $decimalPart] = array_pad(explode('.', $quantity), 2, '0');
 
-        $integerPart = floor($quantity);
+        $integer = (int) $integerPart;
+        $decimalPieces = (int) $decimalPart;
 
-        $decimalPart = $quantity - $integerPart;
-
-        $decimalStr = (string) $decimalPart;
-        $decimalPieces = $decimalStr > 0 ? (int) str_replace('.', '', (string) $decimalStr) : 0;
-
-        return ($integerPart * $measureUnitQuantity) + $decimalPieces;
+        return ($integer * $measureUnitQuantity) + $decimalPieces;
     }
+
+
+    public function sumQuantityAndFree($quantity, $freeQuantity): string
+    {
+        $quantity = (string) ($quantity ?? '0');
+        $freeQuantity = (string) ($freeQuantity ?? '0');
+
+        // Determine max number of decimals
+        $decimals = max(
+            strlen(explode('.', $quantity)[1] ?? ''),
+            strlen(explode('.', $freeQuantity)[1] ?? '')
+        );
+
+        return bcadd($quantity, $freeQuantity, $decimals); // string with preserved decimals
+    }
+
+
+
+
 
     public function calculateAvailablePieces($purchaseProduct, int $companyId, int $branchId, $measureUnitsCalc): int
     {
@@ -1216,7 +1240,7 @@ class SaleController extends Controller
             function ($carry, $return) use ($measureUnitsCalc) {
                 $returnMeasureUnitQuantity = isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1;
                 return $carry + $this->calculatePieces(
-                    ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                    $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0),
                     $returnMeasureUnitQuantity
                 );
             },
@@ -1227,12 +1251,15 @@ class SaleController extends Controller
             function ($carry, $sale) use ($measureUnitsCalc) {
                 $saleMeasureUnitQuantity = isset($measureUnitsCalc[$sale->measure_unit_id]) ? $measureUnitsCalc[$sale->measure_unit_id]->quantity : 1;
                 return $carry + $this->calculatePieces(
-                    ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0),
+                    $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0),
                     $saleMeasureUnitQuantity
                 );
             },
             0
         );
+
+
+
 
         $salesReturnedPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($companyId, $measureUnitsCalc) {
             return $sale->saleProductReturns->where('company_id', $companyId)->whereNull('deleted_at');
@@ -1240,14 +1267,34 @@ class SaleController extends Controller
                 function ($carry, $return) use ($measureUnitsCalc) {
                     $returnMeasureUnitQuantity = isset($measureUnitsCalc[$return->measure_unit_id]) ? $measureUnitsCalc[$return->measure_unit_id]->quantity : 1;
                     return $carry + $this->calculatePieces(
-                        ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                        $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0),
                         $returnMeasureUnitQuantity
                     );
                 },
                 0
             );
 
-        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
+
+        // SUPER SIMPLE: Get pre-calculated subtracted pieces from attribute
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
+
+        $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces - $adjustedPieces;
 
         if ($availablePieces < 0) {
             Log::warning('Negative available pieces detected', [
@@ -1318,6 +1365,23 @@ class SaleController extends Controller
             );
 
 
+        $adjustedPieces = $purchaseProduct->stockAdjusted()
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+
+            ->whereNull('deleted_at')
+            ->with('measureUnit')
+            ->get()
+            ->reduce(
+                fn($carry, $adjust) =>
+                $carry
+                + $this->calculatePieces($adjust->quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                + $this->calculatePieces($adjust->free_quantity ?? 0, $adjust->measureUnit->quantity ?? 1)
+                ,
+                0
+            );
+
+
         $customerReturnedPieces = SalesReturnProduct::where('product_id', $purchaseProduct->product_id)
             ->whereHas(
                 'saleProduct',
@@ -1344,7 +1408,7 @@ class SaleController extends Controller
                 0
             );
 
-        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces);
+        $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces - $adjustedPieces);
 
         Log::debug('Available pieces for sale update', [
             'purchase_stock_product_id' => $purchaseProduct->id,
@@ -1378,16 +1442,41 @@ class SaleController extends Controller
     }
 
 
+    // public function index(Request $request): JsonResponse
+    // {
+    //     $query = Sale::query();
+
+    //     if ($request->has('keywords')) {
+    //         $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
+
+    //     }
+    //     return response()->json($query->paginate(100));
+    // }
+
+
     public function index(Request $request): JsonResponse
-    {
-        $query = Sale::query();
+{
+    $query = Sale::query();
 
-        if ($request->has('keywords')) {
-            $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
-
-        }
-        return response()->json($query->paginate(100));
+    // Filter by branch_id
+    if ($request->has('branch_id')) {
+        $query->where('branch_id', $request->branch_id);
     }
+
+    // Filter by keywords
+    if ($request->has('keywords')) {
+        $keywords = $request->input('keywords');
+
+        $query->where(function ($q) use ($keywords) {
+            $q->where('ref_number', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('invoice_number', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('customer_name', 'LIKE', '%' . $keywords . '%');
+        });
+    }
+
+    return response()->json($query->paginate(100));
+}
+
 
 
 
@@ -1404,6 +1493,7 @@ class SaleController extends Controller
                 'contact_number' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
                 'credit_days' => 'nullable|string|max:255',
+                'purchase_type' => 'nullable|string|max:255',
                 'payment' => 'nullable|array',
                 'payment.bank_name' => 'nullable|string',
                 'payment.cash' => 'nullable|numeric|min:0',
@@ -1522,6 +1612,7 @@ class SaleController extends Controller
                     'company_id' => $validated['company_id'],
                     'branch_id' => $validated['branch_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
+                    'purchase_type' => $validated['purchase_type'] ?? null,
                     'salesman_id' => $validated['salesman_id'],
                     'customer_name' => $validated['customer_name'],
                     'customer_address' => $validated['customer_address'] ?? null,
@@ -1939,6 +2030,7 @@ class SaleController extends Controller
                             'branch_id' => $validated['branch_id'],
                             'sale_id' => $sale->id,
                             'product_id' => $productId,
+                            'purchase_type' => $validated['purchase_type'] ?? null,
                             'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
                             'quantity' => $allocation['quantity'],
                             'free_quantity' => $allocation['free_quantity'],
@@ -2103,12 +2195,24 @@ class SaleController extends Controller
             ->values()
             ->toArray();
 
-        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices));
+
+
+        $adjustedIndices = StockAdjustedFieldValue::whereIn('stock_adjusted_id', $purchaseProduct->stockAdjusted->pluck('id'))
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->pluck('quantity_index')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices, $adjustedIndices));
 
         Log::debug('Unavailable quantity indices', [
             'purchase_stock_product_id' => $purchaseProduct->id,
             'sold_indices' => $soldIndices,
             'returned_indices' => $returnedIndices,
+            'adjusted_indices' => $adjustedIndices,
             'unavailable_indices' => $unavailableIndices
         ]);
 
@@ -2127,6 +2231,7 @@ class SaleController extends Controller
                 'customer_id' => 'nullable|integer|exists:customers,id',
                 'salesman_id' => 'nullable|integer|exists:salesmen,id',
                 'customer_name' => 'required|string|max:255',
+                'purchase_type' => 'nullable|string|max:255',
                 'customer_address' => 'nullable|string|max:255',
                 'contact_number' => 'nullable|string|max:255',
                 'pan_number' => 'nullable|string|max:255',
@@ -2263,6 +2368,7 @@ class SaleController extends Controller
                     'company_id' => $validated['company_id'],
                     'branch_id' => $validated['branch_id'],
                     'customer_id' => $validated['customer_id'] ?? null,
+                    'purchase_type' => $validated['purchase_type'] ?? null,
                     'salesman_id' => $validated['salesman_id'],
                     'customer_name' => $validated['customer_name'],
                     'customer_address' => $validated['customer_address'] ?? null,
@@ -2652,6 +2758,7 @@ class SaleController extends Controller
                             'branch_id' => $validated['branch_id'],
                             'sale_id' => $sale->id,
                             'product_id' => $productId,
+                            'purchase_type' => $validated['purchase_type'] ?? null,
                             'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
                             // 'purchase_product_id' => $productData['purchase_product_id'],
                             // 'stock_product_id' => $productData['stock_product_id'],
@@ -2828,7 +2935,7 @@ class SaleController extends Controller
             }
 
             return response()->json([
-                'message' => 'Sales retrieved successfully',
+                'message' => 'Sales retrieved successfully !',
                 'data' => $sales
             ], 200);
 

@@ -45,24 +45,19 @@ class PurchaseStockProduct extends BaseTenantModel
     protected $dates = ['deleted_at', 'created_at_bs'];
     protected $appends = ['created_at_bs'];
 
+    // PurchaseStockProduct.php
     // protected static function booted()
     // {
-    //     // static::addGlobalScope(new CompanyIdScope());
-    //     static::creating(function ($model) {
-    //         // Only set if not already set
-    //         if (empty($model->company_id)) {
-    //             // Get the header value, fallback to 'US'
-    //             $headerValue = Request::input('company_id');
-    //             $model->company_id = $headerValue;
-    //         }
+    //     static::addGlobalScope('tenant', function ($builder) {
+    //         $builder->where('company_id', tenant('id') ?? auth()->user()->company_id)
+    //             ->where('branch_id', auth()->user()->branch_id ?? 1);
     //     });
     // }
-
     public function measureUnit()
     {
         return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
     }
-  
+
 
     public function fieldValues()
     {
@@ -87,6 +82,11 @@ class PurchaseStockProduct extends BaseTenantModel
     public function saleProducts()
     {
         return $this->hasMany(SaleProduct::class, 'purchase_stock_product_id');
+    }
+
+     public function stockAdjusted()
+    {
+        return $this->hasMany(StockAdjusted::class, 'purchase_stock_product_id');
     }
 
 

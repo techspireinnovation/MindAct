@@ -33,6 +33,20 @@ use Illuminate\Validation\Rule;
 
 class AvailableQuantityService
 {
+
+    public function sumQuantityAndFree($quantity, $freeQuantity): string
+    {
+        $quantity = (string) ($quantity ?? '0');
+        $freeQuantity = (string) ($freeQuantity ?? '0');
+
+        // Determine max number of decimals
+        $decimals = max(
+            strlen(explode('.', $quantity)[1] ?? ''),
+            strlen(explode('.', $freeQuantity)[1] ?? '')
+        );
+
+        return bcadd($quantity, $freeQuantity, $decimals); // string with preserved decimals
+    }
     public static function getProductDetailsByInput(Request $request, $productIds): JsonResponse
     {
         try {
@@ -184,12 +198,12 @@ class AvailableQuantityService
                 ->select([
                     'stock_adjusteds.purchase_stock_product_id',
                     'stock_adjusteds.quantity',
-                    // 'stock_adjusteds.free_quantity',
                     'stock_adjusteds.measure_unit_id',
                 ])
                 ->whereIn('stock_adjusteds.purchase_stock_product_id', $purchaseProductIds)
                 ->where('stock_adjusteds.company_id', $companyId)
                 ->where('stock_adjusteds.branch_id', $branchId)
+                ->where('stock_adjusteds.adjusted_type', 'subtract')
                 ->whereNull('stock_adjusteds.deleted_at')
                 ->get()
                 ->groupBy('purchase_stock_product_id');
@@ -308,32 +322,26 @@ class AvailableQuantityService
                 // Calculate total purchase quantity in pieces
                 $quantity = $pp->quantity ?? 0; // e.g., 2.2
                 $freeQuantity = $pp->free_quantity ?? 0; // e.g., 2.3
-                $totalQuantity = $quantity + $freeQuantity; // 4.5
-                $decimalStr = explode('.', (string) $totalQuantity); // ['4', '5']
-                $quantityInt = floor($totalQuantity); // 4
-                $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0; // 5.0
-                $totalPurchaseQuantityInPieces = ($quantityInt * $unitData['quantity']) + $decimalDigits; // (4 * 2) + 5 = 13
+                $totalQuantity = $this->sumQuantityAndFree($quantity, $freeQuantity); // 4.5
+
+                $totalPurchaseQuantityInPieces = $this->calculatePieces($totalQuantity, $unitData['quantity']);
 
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($purchaseProductReturns[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ($return->quantity ?? 0) + ($return->free_quantity ?? 0);
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retTotalQty = $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0);
+                    $TotalQty = $this->calculatePieces($retTotalQty, $unitQty);
+                    return $TotalQty;
                 });
 
                 // Calculate sold quantities
                 $totalSoldInPieces = collect($saleProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0);
-                    $saleDecimalStr = explode('.', (string) $saleTotalQty);
-                    $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (float) $saleDecimalStr[1] : 0;
-                    return ($saleQtyInt * $unitQty) + $saleQtyDec;
+                    $saleTotalQty = $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0);
+                    $totalQty = $this->calculatePieces($saleTotalQty, $unitQty);
+                    return $totalQty;
                 });
 
 
@@ -345,22 +353,11 @@ class AvailableQuantityService
 
                         $adjustedTotalQty = ($return->quantity ?? 0);
 
-                        // Split decimal
-                        $adjustedDecimalStr = explode('.', (string) $adjustedTotalQty);
-                        $adjustedQtyInt = floor($adjustedTotalQty);
-                        $adjustedQtyDec = isset($adjustedDecimalStr[1]) ? (float) $adjustedDecimalStr[1] : 0;
+                        $totalAdjustedQty = $this->calculatePieces($adjustedTotalQty ?? 0, $unitQty);
 
-                        // Convert to pieces
-                        $convertedQty = ($adjustedQtyInt * $unitQty) + $adjustedQtyDec;
 
-                        // Apply add or subtract
-                        if ($return->adjusted_type === 'add') {
-                            return +$convertedQty;
-                        } elseif ($return->adjusted_type === 'subtract') {
-                            return -$convertedQty;
-                        }
 
-                        return 0; // default
+                        return $totalAdjustedQty; // default
                     });
 
 
@@ -368,25 +365,21 @@ class AvailableQuantityService
                 $totalSoldInPieces = collect($saleProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0);
-                    $saleDecimalStr = explode('.', (string) $saleTotalQty);
-                    $saleQtyInt = floor($saleTotalQty);
-                    $saleQtyDec = isset($saleDecimalStr[1]) ? (float) $saleDecimalStr[1] : 0;
-                    return ($saleQtyInt * $unitQty) + $saleQtyDec;
+                    $saleTotalQty = $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0);
+                    $totalQty = $this->calculatePieces($saleTotalQty, $unitQty);
+                    return $totalQty;
                 });
 
                 // Calculate sale returns
                 $totalSaleReturnsInPieces = collect($salesReturnProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = ($return->quantity ?? 0) + ($return->free_quantity ?? 0);
-                    $retDecimalStr = explode('.', (string) $retTotalQty);
-                    $retQtyInt = floor($retTotalQty);
-                    $retQtyDec = isset($retDecimalStr[1]) ? (float) $retDecimalStr[1] : 0;
-                    return ($retQtyInt * $unitQty) + $retQtyDec;
+                    $retTotalQty = $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0);
+                    $totalQty = $this->calculatePieces($retTotalQty, $unitQty);
+                    return $totalQty;
                 });
 
-                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces + $totalAdjustedInPieces, 0);
+                $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces - $totalAdjustedInPieces, 0);
                 $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
 
                 // Log calculations
@@ -534,9 +527,7 @@ class AvailableQuantityService
 
                     return [
                         'purchase_stock_product_id' => $pp->purchase_stock_product_id,
-                        // 'purchase_id' => $pp->purchase_id,
-                        // 'purchase_bill_number' => $pp->purchase_bill_number,
-                        // 'invoice_date' => $pp->invoice_date,
+                      
                         'product_id' => $pp->product_id,
                         'product_name' => $pp->product_name,
                         'product_code' => $pp->product_code,

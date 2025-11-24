@@ -185,7 +185,7 @@ class PurchaseController extends Controller
         try {
             $item = Purchase::findOrFail($id);
 
-      
+
 
             $validator = Validator::make($request->all(), [
                 'ref_bill_number' => [
@@ -202,7 +202,7 @@ class PurchaseController extends Controller
                 'customer_id' => 'required|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
                 'roundoff_type' => 'nullable|string|max:255',
-                'pan_number' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|numeric|digits:9',
                 'company_id' => 'required|integer',
                 'address' => 'nullable|string|max:255',
                 'customer_contact' => 'nullable|string|max:255',
@@ -368,21 +368,21 @@ class PurchaseController extends Controller
                         }, ARRAY_FILTER_USE_KEY);
 
                         // Handle PurchaseProduct
-                      
-                            $purchaseProduct = PurchaseProduct::create(
-                                array_merge($purchaseProductDataFiltered, [
-                                    'purchase_id' => $item->id,
-                                    'company_id' => $validated['company_id'],
-                                    'customer_id' => $validated['customer_id'],
-                                    'branch_id' => $branchId,
-                                    'purchase_type' => $validated['purchase_type'] ?? null,
-                                ])
-                            );
-                            Log::debug('Created new purchase product', [
-                                'purchase_product_id' => $purchaseProduct->id,
-                                'product_id' => $purchaseProductData['product_id'],
-                            ]);
-                       
+
+                        $purchaseProduct = PurchaseProduct::create(
+                            array_merge($purchaseProductDataFiltered, [
+                                'purchase_id' => $item->id,
+                                'company_id' => $validated['company_id'],
+                                'customer_id' => $validated['customer_id'],
+                                'branch_id' => $branchId,
+                                'purchase_type' => $validated['purchase_type'] ?? null,
+                            ])
+                        );
+                        Log::debug('Created new purchase product', [
+                            'purchase_product_id' => $purchaseProduct->id,
+                            'product_id' => $purchaseProductData['product_id'],
+                        ]);
+
                         $processedPurchaseProductIds[] = $purchaseProduct->id;
 
                         // Handle PurchaseStockProduct
@@ -403,7 +403,7 @@ class PurchaseController extends Controller
                                 'purchase_stock_product_id' => $purchaseStockProduct->id,
                                 'product_id' => $purchaseProductData['product_id'],
                             ]);
-                        } 
+                        }
                         $processedStockProductIds[] = $purchaseStockProduct->id;
 
                         // Handle PurchaseProductFieldValues
@@ -620,7 +620,7 @@ class PurchaseController extends Controller
             'customer_id' => 'required|exists:customers,id',
 
             'customer_name' => 'nullable|string|max:255',
-            'pan_number' => 'nullable|digits:10',
+            'pan_number' => 'nullable|numeric|digits:9',
             'address' => 'nullable|string|max:255',
             'customer_contact' => 'nullable|string|max:255',
             'document_number' => 'nullable|string|max:255',

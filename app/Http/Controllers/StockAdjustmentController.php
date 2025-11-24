@@ -342,14 +342,12 @@ class StockAdjustmentController extends Controller
                     'value' => $fv['value'] ?? throw new \Exception("Missing value in field values at index {$index}."),
                     'quantity_index' => $fv['quantity_index'] ?? throw new \Exception("Missing quantity_index in field values at index {$index}."),
                     'quantity_type' => $fv['quantity_type'] ?? 'regular',
+                    'value_type' => $fv['value_type'] ?? 'selected',
                 ];
             }
         }
         return $flat;
     }
-
-
-
 
 
 

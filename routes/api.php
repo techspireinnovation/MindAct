@@ -325,7 +325,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::apiResource('stock-entries', StockEntryController::class);
     Route::get('get-available-stock', ([SaleController::class, 'listAvailableProducts']));
     // Route::get('get-available-stock-details', ([StockTransferController::class, 'getProductDetails']));
-    Route::post('/stock-entries-update/{id}', [StockEntryController::class, 'update']);
+    Route::put('/stock-entries-update/{id}', [StockEntryController::class, 'update']);
     Route::get('stock-entries-details', [StockEntryController::class, 'show']);
     Route::resource('stock-adjustments', StockAdjustmentController::class);
     Route::resource('stock-transfers', StockTransferController::class);

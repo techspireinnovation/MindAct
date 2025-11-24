@@ -88,6 +88,8 @@ class GenerateCodeController extends Controller
 
 
 
+
+
 public function generatePurchaseReturnBillNumber(Request $request)
 {
     try {

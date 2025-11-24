@@ -815,8 +815,7 @@ class PurchaseReturnController extends Controller
                                 'stock_product_id' => $fv->stock_product_id,
                                 'stock_adjustment_id' => $fv->stock_adjustment_id,
                                 'stock_transfer_id' => $fv->pstock_transfer_id,
-                                'values' => $fv->productField->values ?? 'N/A',
-                                
+                                'values' => $fv->productField->values ?? 'N/A',                                
                                 'name' => $fv->productField->name ?? 'N/A',
                                 'value' => $fv->value,
                                 'quantity_index' => $idx,
@@ -3000,7 +2999,7 @@ class PurchaseReturnController extends Controller
                         // Validate field_values structure
                         foreach ($fieldValuesFlat as $fv) {
                             if (!isset($fv['purchase_stock_product_id']) || !is_numeric($fv['purchase_stock_product_id'])) {
-                                return response()->json(['error' => "Invalid or missing purchase_product_id in field_values at index {$index}"], 422);
+                                return response()->json(['error' => "Invalid or missing purchase_stock_product_id in field_values at index {$index}"], 422);
                             }
                             if (!isset($fv['quantity_index']) || !is_numeric($fv['quantity_index']) || $fv['quantity_index'] < 0) {
                                 return response()->json(['error' => "Invalid quantity_index in field_values at index {$index}"], 422);

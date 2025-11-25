@@ -6,28 +6,28 @@ use App\Helpers\Helper;
 use App\Helpers\PurchaseReturnHelper;
 
 use App\Models\MeasureUnit;
-use App\Models\ProductList;
-use App\Models\PurchaseStockReturn;
-use App\Models\StockAdjusted;
 use App\Models\Product;
+use App\Models\ProductList;
 use App\Models\Purchase;
 use App\Models\PurchaseProduct;
-use App\Models\PurchaseStockProduct;
-use App\Models\StockAdjustedFieldValue;
-use App\Models\PurchaseStockProductFieldValue;
-use App\Models\PurhcaseStockReturn;
-use App\Models\PurchaseStockProductReturn;
-use App\Models\PurchaseStockProductReturnFieldValue;
 use App\Models\PurchaseProductFieldValue;
 use App\Models\PurchaseProductReturn;
-use App\Models\StockTransferFieldValue;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnHistory;
 use App\Models\PurchaseReturnProductFieldValue;
+use App\Models\PurchaseStockProduct;
+use App\Models\PurchaseStockProductFieldValue;
+use App\Models\PurchaseStockProductReturn;
+use App\Models\PurchaseStockProductReturnFieldValue;
+use App\Models\PurchaseStockReturn;
+use App\Models\PurhcaseStockReturn;
 use App\Models\SaleProduct;
 use App\Models\SaleReturnProductFieldValue;
 use App\Models\SalesProductFieldValue;
 use App\Models\SalesReturnProduct;
+use App\Models\StockAdjusted;
+use App\Models\StockAdjustedFieldValue;
+use App\Models\StockTransferFieldValue;
 use App\Services\AvailableQuantityService;
 use DB;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -822,6 +822,10 @@ class PurchaseReturnController extends Controller
                     $availableRegularCount = 0;
                     $availableFreeCount = 0;
 
+                    // Track unique quantity index per purchase stock product
+                    $seenRegular = [];
+                    $seenFree = [];
+
                     if ($product->fieldValues->isNotEmpty()) {
                         foreach ($product->fieldValues as $fv) {
                             $idx = $fv->quantity_index;
@@ -831,7 +835,9 @@ class PurchaseReturnController extends Controller
                             }
 
                             $type = $fv->quantity_type ?? 'regular';
+                            $uniqueKey = $fv->purchase_stock_product_id . '-' . $idx;
 
+                            // Add to groupedFieldValues
                             $groupedFieldValues[$idx][] = [
                                 'purchase_stock_product_id' => $fv->purchase_stock_product_id,
                                 'purchase_product_id' => $fv->purchase_product_id ?? null,
@@ -847,14 +853,20 @@ class PurchaseReturnController extends Controller
                                 'quantity_type' => $type,
                             ];
 
-                            if ($type === 'regular')
+                            // Count unique quantity indices per product
+                            if ($type === 'regular' && !isset($seenRegular[$uniqueKey])) {
                                 $availableRegularCount++;
-                            if ($type === 'free')
+                                $seenRegular[$uniqueKey] = true;
+                            }
+
+                            if ($type === 'free' && !isset($seenFree[$uniqueKey])) {
                                 $availableFreeCount++;
+                                $seenFree[$uniqueKey] = true;
+                            }
                         }
                     }
 
-                    // === FINAL BOSS: Regular vs Free ===
+
                     $hasFieldValues = $product->fieldValues->isNotEmpty() && !empty($groupedFieldValues);
 
                     if ($hasFieldValues) {
@@ -877,6 +889,34 @@ class PurchaseReturnController extends Controller
 
                     $remainingTotalPieces = $remainingRegular + $remainingFree;
 
+                    $productID = Product::find($product->product_id);
+                    $purchasedProducts = PurchaseStockProduct::where('product_id', $productID->id)
+                        ->where('company_id', $companyId)
+                        ->where('branch_id', $branchId)
+                        ->whereNull('deleted_at')
+                        ->get();
+
+                    $latestPrice = $purchasedProducts->sortByDesc('created_at')->first()->price ?? 0;
+
+                    $orginialPrice = Product::where('id', $product->product_id)->value('purchase_rate') ?? 0;
+
+
+
+                    $originalPriceInPiece = $orginialPrice / ($measureUnits[$product->measure_unit_id]['quantity'] ?? 1);
+
+                    $latestPriceInPiece = $latestPrice / ($measureUnits[$product->measure_unit_id]['quantity'] ?? 1);
+
+                    $averagePrice = $purchasedProducts->avg(function ($item) use ($measureUnits) {
+                        $unitQty = $measureUnits[$item->measure_unit_id]['quantity'] ?? 1;
+                        return $item->price / $unitQty;
+                    }) ?? 0;
+
+
+                    $minPrice = $purchasedProducts->min(function ($item) use ($measureUnits) {
+                        $unitQty = $measureUnits[$item->measure_unit_id]['quantity'] ?? 1;
+                        return $item->price / $unitQty;
+                    }) ?? 0;
+
                     return [
                         'purchase_stock_product_id' => $product->id,
                         'product_id' => $product->product_id,
@@ -888,8 +928,12 @@ class PurchaseReturnController extends Controller
                         'measure_unit_name' => $unit['name'],
                         'measure_unit_quantity' => $unitQty,
                         'price' => $product->price ?? 0,
+                        'original_price' => $originalPriceInPiece,
+                        'latest_price' => $latestPriceInPiece,
+                        'average_price' => $averagePrice,
+                        'min_price' => $minPrice,
                         'amount' => $product->amount ?? 0,
-                        'original_price' => Product::where('id', $product->product_id)->value('purchase_rate') ?? 0,
+
                         'expiry_date' => $product->expiry_date,
                         'is_vatable' => (bool) ($product->is_vatable ?? false),
 
@@ -933,15 +977,6 @@ class PurchaseReturnController extends Controller
             DB::disableQueryLog();
         }
     }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1804,16 +1839,57 @@ class PurchaseReturnController extends Controller
 
 
 
-                $originalProductPrice = Product::where('id', $first->product_id)->value('purchase_rate');
+                $original = Product::where('id', $first->product_id)
+                    ->select('purchase_rate', 'measure_unit_id')
+                    ->first();
 
-                $purchaseProductsPrice = PurchaseStockProduct::where('product_id', $first->product_id)->where('company_id', $companyId)->where('branch_id', $branchId)->orderBy('created_at', 'desc')->pluck('price');
-                $latestPrice = $purchaseProductsPrice->first();
+                if ($original) {
 
-                // Get the minimum price
-                $minProductPrice = $purchaseProductsPrice->min();
+                    $unitQty = $measureUnitsCalc[$original->measure_unit_id]->quantity ?? 1;
 
-                // Get the average price
-                $avgProductPrice = $purchaseProductsPrice->avg();
+                    if ($unitQty <= 0) {
+                        $unitQty = 1;
+                    }
+
+                    $originalPriceInPieces = $original->purchase_rate / $unitQty;
+
+                } else {
+                    $originalPriceInPieces = 0;
+                }
+
+
+
+
+                $allProducts = PurchaseStockProduct::where('product_id', $first->product_id)
+                    ->where('company_id', $companyId)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->with('measureUnit:id,quantity')
+                    ->orderBy('created_at', 'desc')
+                    ->get(['price', 'measure_unit_id', 'created_at']);
+
+
+                $pricesInPieces = $allProducts->map(function ($item) {
+
+                    $qty = $item->measureUnit->quantity ?? 1;
+
+                    if ($qty <= 0) {
+                        $qty = 1; // avoid division by zero
+                    }
+
+                    return [
+                        'price_piece' => $item->price / $qty,
+                        'created_at' => $item->created_at,
+                    ];
+                });
+
+
+                $latestPriceInPieces = $pricesInPieces->sortByDesc('created_at')->first()['price_piece'] ?? 0;
+                $minPriceInPieces = $pricesInPieces->min('price_piece') ?? 0;
+                $avgPriceInPieces = round($pricesInPieces->avg('price_piece'), 5) ?? 0;
+
+
+
 
 
 
@@ -1908,6 +1984,10 @@ class PurchaseReturnController extends Controller
                         'quantity' => $pp->quantity,
                         'free_quantity' => $pp->free_quantity ?? 0,
                         'price' => $pp->price,
+                        'original_price' => $originalPriceInPieces ?? 0,
+                        'min_price' => $minPriceInPieces ?? 0,
+                        'avg_price' => $avgPriceInPieces ?? 0,
+                        'latest_price' => $latestPriceInPieces ?? 0,
                         'is_vatable' => (bool) $pp->is_vatable,
 
                         'measure_unit_id' => $pp->measure_unit_id,
@@ -1934,10 +2014,12 @@ class PurchaseReturnController extends Controller
                     'product_id' => $first->product_id,
                     'product_name' => $product ? $product->name : $first->product_name,
                     'product_code' => $first->product_code,
-                    'original_price' => $originalProductPrice,
-                    'min_price' => $minProductPrice ?? 0,
-                    'avg_price' => $avgProductPrice ?? 0,
-                    'latest_price' => $latestPrice ?? 0,
+                    'original_price' => $originalPriceInPieces,
+                    'min_price' => $minPriceInPieces ?? 0,
+                    'avg_price' => $avgPriceInPieces ?? 0,
+                    'latest_price' => $latestPriceInPieces ?? 0,
+
+
                     'measure_units_for_products' => $measureUnitsForProducts,
                     'is_vatable' => (bool) $group->max('is_vatable'),
                     'measure_unit_id' => $first->measure_unit_id,

@@ -27,6 +27,9 @@ use App\Models\ProductCategory;
 use App\Models\ProductSubCategory;
 use App\Models\Brand;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\MeasureUnit;
+
+
 
 
 
@@ -1088,131 +1091,239 @@ public function importExcel(Request $request)
     ]);
 
     $companyId = $request->company_id;
-
     Log::info('Import started', ['company_id' => $companyId]);
 
     // Read Excel
-    $rows = Excel::toCollection(null, $request->file('file'))->first();
-    if (!$rows) {
-        return response()->json(['message' => 'No data found'], 400);
+    $rows = Excel::toArray(null, $request->file('file'));
+    
+    if (empty($rows) || empty($rows[0])) {
+        return response()->json(['message' => 'No data found in Excel file'], 400);
+    }
+
+    $data = $rows[0]; // Get first sheet
+    Log::info('Excel data loaded', ['total_rows' => count($data)]);
+
+    // Skip header row (index 0)
+    $dataRows = array_slice($data, 1);
+    Log::info('Data rows after slicing', ['count' => count($dataRows)]);
+
+    if (empty($dataRows)) {
+        return response()->json(['message' => 'No data rows found after skipping header'], 400);
+    }
+
+    // Get the maximum existing product_unique_id for this company
+    $lastProduct = Product::where('company_id', $companyId)
+        ->where('product_unique_id', 'like', 'PID-%')
+        ->orderByRaw('CAST(SUBSTRING(product_unique_id, 5) AS UNSIGNED) DESC')
+        ->first();
+
+    $lastNumber = 0;
+    if ($lastProduct) {
+        Log::info('Last product found', ['last_product' => $lastProduct->product_unique_id]);
+        if (preg_match('/PID-(\d+)/', $lastProduct->product_unique_id, $matches)) {
+            $lastNumber = (int)$matches[1];
+        }
     }
 
     // Existing products for this company
     $existingProducts = Product::where('company_id', $companyId)
-        ->get(['barcode', 'name'])
-        ->mapWithKeys(fn($p) => [strtolower($p->barcode . '|' . strtolower($p->name)) => true])
+        ->pluck('name')
+        ->map(fn($name) => strtolower(trim($name)))
         ->toArray();
 
-    // Categories, SubCategories, Brands for this company
+    // Existing categories, subcategories, brands
     $categories = ProductCategory::where('company_id', $companyId)->pluck('id', 'name')->toArray();
     $subCategories = ProductSubCategory::where('company_id', $companyId)->pluck('id', 'name')->toArray();
     $brands = Brand::where('company_id', $companyId)->pluck('id', 'name')->toArray();
 
-    $insertData = [];
+    // Use default measure unit ID (you can change this to whatever ID you want)
+    $defaultMeasureUnitId = 1;
 
-    foreach ($rows as $index => $row) {
-        $rowNumber = $index + 2; // Excel row number
+    $successCount = 0;
+    $errors = [];
+    $skippedCount = 0;
 
-        // Trim and lowercase header keys
-        $row = collect($row)
-            ->mapWithKeys(fn($v, $k) => [strtolower(trim($k)) => $v])
-            ->toArray();
+    foreach ($dataRows as $index => $row) {
+        $rowNumber = $index + 2; // Excel row number (accounting for header)
 
-        $validator = Validator::make($row, [
-            'name' => 'required|string|max:255',
-            'barcode' => 'required|string|max:255',
-            'category' => 'required|string|max:255',
-            'sub-cat' => 'required|string|max:255',
-            'brand' => 'required|string|max:255',
-            'vat type' => 'required|string',
-            'retail excl vat' => 'required|numeric',
-            'retail incl vat' => 'required|numeric',
-            'retail profit' => 'required|numeric',
-            'wholesale excl vat' => 'required|numeric',
-            'wholesale incl vat' => 'required|numeric',
-            'wholesale profit' => 'required|numeric',
-            'uom' => 'required|string|max:50',
-        ]);
+        try {
+            // Map Excel columns
+            $mappedRow = [
+                'name' => $row[1] ?? null,
+                'category' => $row[2] ?? null,
+                'sub-cat' => $row[3] ?? null,
+                'brand' => $row[4] ?? null,
+                'vat type' => $row[5] ?? null,
+                'product type' => $row[6] ?? null,
+                'location' => $row[7] ?? null,
+                'retail excl vat' => $row[8] ?? null,
+                'retail incl vat' => $row[9] ?? null,
+                'retail profit' => $row[10] ?? null,
+                'wholesale excl vat' => $row[11] ?? null,
+                'wholesale incl vat' => $row[12] ?? null,
+                'wholesale profit' => $row[13] ?? null,
+                'uom' => $row[14] ?? null,
+                'barcode' => $row[15] ?? null,
+                'hs code' => $row[16] ?? null,
+                'price' => $row[17] ?? null,
+                'discount' => $row[18] ?? null,
+                'final price' => $row[19] ?? null,
+            ];
 
-        $key = strtolower($row['barcode'] . '|' . strtolower($row['name']));
-        if (isset($existingProducts[$key])) continue; // skip existing
+            // Skip if product name is empty
+            if (empty(trim($mappedRow['name'] ?? ''))) {
+                $skippedCount++;
+                continue;
+            }
 
-        if ($validator->fails()) {
-            // Stop import immediately on first error
-            return response()->json([
-                'message' => 'Validation failed. Fix the errors and try again.',
-                'errors' => [
-                    [
-                        'row_number' => $rowNumber,
-                        'errors' => $validator->errors()->all()
-                    ]
-                ]
-            ], 422);
-        }
+            $productName = strtolower(trim($mappedRow['name']));
 
-        // Create missing categories, subcategories, brands
-        if (!isset($categories[$row['category']])) {
-            $categories[$row['category']] = ProductCategory::create([
-                'name' => $row['category'],
+            // Skip if product already exists
+            if (in_array($productName, $existingProducts)) {
+                $skippedCount++;
+                continue;
+            }
+
+            // Validation
+            $validator = Validator::make($mappedRow, [
+                'name' => 'required|string|max:255',
+                'barcode' => 'required|string|max:255',
+                'category' => 'required|string|max:255',
+                'sub-cat' => 'required|string|max:255',
+                'brand' => 'required|string|max:255',
+                'vat type' => 'required|string',
+                'retail excl vat' => 'required|numeric',
+                'retail incl vat' => 'required|numeric',
+                'retail profit' => 'required|numeric',
+                'wholesale excl vat' => 'required|numeric',
+                'wholesale incl vat' => 'required|numeric',
+                'wholesale profit' => 'required|numeric',
+                'uom' => 'required|string|max:50',
+            ]);
+
+            if ($validator->fails()) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => $validator->errors()->all(),
+                    'row_data' => $mappedRow
+                ];
+                continue;
+            }
+
+            // Create missing categories
+            if (!isset($categories[$mappedRow['category']])) {
+                $categories[$mappedRow['category']] = ProductCategory::create([
+                    'name' => $mappedRow['category'],
+                    'company_id' => $companyId,
+                    'is_active' => true
+                ])->id;
+            }
+
+            if (!isset($subCategories[$mappedRow['sub-cat']])) {
+                $subCategories[$mappedRow['sub-cat']] = ProductSubCategory::create([
+                    'name' => $mappedRow['sub-cat'],
+                    'category_id' => $categories[$mappedRow['category']],
+                    'company_id' => $companyId,
+                    'is_active' => true
+                ])->id;
+            }
+
+            if (!isset($brands[$mappedRow['brand']])) {
+                $brands[$mappedRow['brand']] = Brand::create([
+                    'name' => $mappedRow['brand'],
+                    'company_id' => $companyId,
+                    'is_active' => true
+                ])->id;
+            }
+
+            // Generate product unique ID
+            $lastNumber++;
+            $productUniqueId = 'PID-' . str_pad($lastNumber, 6, '0', STR_PAD_LEFT);
+
+            // Create Product
+            $product = Product::create([
+                'name' => $mappedRow['name'],
+                'product_unique_id' => $productUniqueId,
+                'category_id' => $categories[$mappedRow['category']],
+                'sub_category_id' => $subCategories[$mappedRow['sub-cat']],
+                'brand_id' => $brands[$mappedRow['brand']],
+                'is_vatable' => strtolower($mappedRow['vat type']) === 'vatable',
+                'retail_sales_price' => $mappedRow['retail excl vat'],
+                'retail_sales_price_vat' => $mappedRow['retail incl vat'],
+                'retail_sales_price_profit_percent' => $mappedRow['retail profit'],
+                'wholesales_price' => $mappedRow['wholesale excl vat'],
+                'wholesales_price_vat' => $mappedRow['wholesale incl vat'],
+                'wholesales_price_profit_percent' => $mappedRow['wholesale profit'],
+                'measure_unit_id' => 1,
                 'company_id' => $companyId,
-                'is_active' => true
-            ])->id;
-        }
+                'is_active' => true,
+            ]);
 
-        if (!isset($subCategories[$row['sub-cat']])) {
-            $subCategories[$row['sub-cat']] = ProductSubCategory::create([
-                'name' => $row['sub-cat'],
-                'category_id' => $categories[$row['category']],
+            // Create ProductList
+            ProductList::create([
+                'product_id' => $product->id,
+                'product_unique_id' => $productUniqueId,
+                'measure_unit_id' => $defaultMeasureUnitId, // Use default ID
+                'primary_measure_unit_id' => $defaultMeasureUnitId, // Use default ID
+                'barcode' => $mappedRow['barcode'],
+                'hs_code' => $mappedRow['hs code'] ?? null,
+                'quantity' => 1,
+                'price' => $mappedRow['price'] ?? $mappedRow['retail excl vat'],
+                'discount' => $mappedRow['discount'] ?? 0,
+                'final_price' => $mappedRow['final price'] ?? $mappedRow['retail excl vat'],
+                'is_primary' => true,
                 'company_id' => $companyId,
-                'is_active' => true
-            ])->id;
+            ]);
+
+            // VERIFY the ProductList was created
+            $productListCount = ProductList::where('product_id', $product->id)->count();
+            if ($productListCount === 0) {
+                throw new \Exception("ProductList creation failed for product ID: {$product->id}");
+            }
+
+            $existingProducts[] = $productName;
+            $successCount++;
+
+        } catch (\Exception $e) {
+            $errors[] = [
+                'row_number' => $rowNumber,
+                'errors' => ['Database error: ' . $e->getMessage()],
+                'row_data' => $mappedRow ?? []
+            ];
         }
-
-        if (!isset($brands[$row['brand']])) {
-            $brands[$row['brand']] = Brand::create([
-                'name' => $row['brand'],
-                'company_id' => $companyId,
-                'is_active' => true
-            ])->id;
-        }
-
-        $insertData[] = [
-            'name' => $row['name'],
-            'barcode' => $row['barcode'],
-            'category_id' => $categories[$row['category']],
-            'sub_category_id' => $subCategories[$row['sub-cat']],
-            'brand_id' => $brands[$row['brand']],
-            'vat_type' => $row['vat type'],
-            'retail_excl_vat' => $row['retail excl vat'],
-            'retail_incl_vat' => $row['retail incl vat'],
-            'retail_profit' => $row['retail profit'],
-            'wholesale_excl_vat' => $row['wholesale excl vat'],
-            'wholesale_incl_vat' => $row['wholesale incl vat'],
-            'wholesale_profit' => $row['wholesale profit'],
-            'uom' => $row['uom'],
-            'company_id' => $companyId,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ];
-
-        $existingProducts[$key] = true;
     }
 
-    if (!empty($insertData)) {
-        foreach (array_chunk($insertData, 500) as $chunk) {
-            Product::insert($chunk);
-        }
+    Log::info('Import completed', [
+        'company_id' => $companyId,
+        'inserted_count' => $successCount,
+        'error_count' => count($errors),
+        'skipped_count' => $skippedCount
+    ]);
+
+    if ($successCount === 0 && empty($errors)) {
+        return response()->json([
+            'message' => 'No products were imported. All products may already exist or Excel file may be empty.',
+            'inserted_count' => $successCount,
+            'skipped_count' => $skippedCount
+        ], 200);
     }
 
-    Log::info('Import completed', ['company_id' => $companyId, 'inserted_count' => count($insertData)]);
+    if (!empty($errors)) {
+        return response()->json([
+            'message' => 'Import completed with errors',
+            'inserted_count' => $successCount,
+            'error_count' => count($errors),
+            'skipped_count' => $skippedCount,
+            'errors' => $errors
+        ], 207);
+    }
 
     return response()->json([
-        'message' => 'Import completed!',
-        'inserted_count' => count($insertData)
+        'message' => 'Import completed successfully!',
+        'inserted_count' => $successCount,
+        'skipped_count' => $skippedCount
     ]);
 }
-
-
 
 
 }

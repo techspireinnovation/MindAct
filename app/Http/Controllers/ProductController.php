@@ -1087,7 +1087,7 @@ public function importExcel(Request $request)
 {
     $request->validate([
         'file' => 'required|mimes:xlsx,xls,csv',
-        'company_id' => 'required|integer',
+
     ]);
 
     $companyId = $request->company_id;

@@ -34,7 +34,7 @@ use Illuminate\Validation\Rule;
 class AvailableQuantityService
 {
 
-    public function sumQuantityAndFree($quantity, $freeQuantity): string
+    public static function sumQuantityAndFree($quantity, $freeQuantity): string
     {
         $quantity = (string) ($quantity ?? '0');
         $freeQuantity = (string) ($freeQuantity ?? '0');
@@ -322,16 +322,16 @@ class AvailableQuantityService
                 // Calculate total purchase quantity in pieces
                 $quantity = $pp->quantity ?? 0; // e.g., 2.2
                 $freeQuantity = $pp->free_quantity ?? 0; // e.g., 2.3
-                $totalQuantity = $this->sumQuantityAndFree($quantity, $freeQuantity); // 4.5
+                $totalQuantity = self::sumQuantityAndFree($quantity, $freeQuantity); // 4.5
 
-                $totalPurchaseQuantityInPieces = $this->calculatePieces($totalQuantity, $unitData['quantity']);
+                $totalPurchaseQuantityInPieces = self::calculatePieces($totalQuantity, $unitData['quantity']);
 
                 // Calculate returned quantities
                 $totalReturnedInPieces = collect($purchaseProductReturns[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0);
-                    $TotalQty = $this->calculatePieces($retTotalQty, $unitQty);
+                    $retTotalQty = self::sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0);
+                    $TotalQty = self::calculatePieces($retTotalQty, $unitQty);
                     return $TotalQty;
                 });
 
@@ -339,8 +339,8 @@ class AvailableQuantityService
                 $totalSoldInPieces = collect($saleProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0);
-                    $totalQty = $this->calculatePieces($saleTotalQty, $unitQty);
+                    $saleTotalQty = self::sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0);
+                    $totalQty = self::calculatePieces($saleTotalQty, $unitQty);
                     return $totalQty;
                 });
 
@@ -353,7 +353,7 @@ class AvailableQuantityService
 
                         $adjustedTotalQty = ($return->quantity ?? 0);
 
-                        $totalAdjustedQty = $this->calculatePieces($adjustedTotalQty ?? 0, $unitQty);
+                        $totalAdjustedQty = self::calculatePieces($adjustedTotalQty ?? 0, $unitQty);
 
 
 
@@ -365,8 +365,8 @@ class AvailableQuantityService
                 $totalSoldInPieces = collect($saleProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($sale) use ($measureUnitsCalc) {
                     $unitId = $sale->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $saleTotalQty = $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0);
-                    $totalQty = $this->calculatePieces($saleTotalQty, $unitQty);
+                    $saleTotalQty = self::sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0);
+                    $totalQty = self::calculatePieces($saleTotalQty, $unitQty);
                     return $totalQty;
                 });
 
@@ -374,8 +374,8 @@ class AvailableQuantityService
                 $totalSaleReturnsInPieces = collect($salesReturnProducts[$pp->purchase_stock_product_id] ?? [])->sum(function ($return) use ($measureUnitsCalc) {
                     $unitId = $return->measure_unit_id ?? null;
                     $unitQty = isset($measureUnitsCalc[$unitId]) ? $measureUnitsCalc[$unitId]->quantity : 1;
-                    $retTotalQty = $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0);
-                    $totalQty = $this->calculatePieces($retTotalQty, $unitQty);
+                    $retTotalQty = self::sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0);
+                    $totalQty = self::calculatePieces($retTotalQty, $unitQty);
                     return $totalQty;
                 });
 

@@ -144,6 +144,12 @@ class PurchaseReturnController extends Controller
                 ->whereNull('deleted_at')->where('company_id', $companyId)->pluck('quantity_index')->toArray());
         }
 
+        $adjustedIds = $product->stockAdjusted->pluck('id')->toArray();
+        if ($adjustedIds) {
+            $indices = array_merge($indices, StockAdjustedFieldValue::whereIn('stock_adjusted_id', $adjustedIds)
+                ->whereNull('deleted_at')->where('company_id', $companyId)->where('branch_id', $branchId)->pluck('quantity_index')->toArray());
+        }
+
         // Stock Transfer / Adjustment
         $indices = array_merge($indices, StockTransferFieldValue::where('purchase_stock_product_id', $product->id)
             ->whereNull('deleted_at')->where('company_id', $companyId)->where('branch_id', $branchId)->pluck('quantity_index')->toArray());
@@ -654,6 +660,8 @@ class PurchaseReturnController extends Controller
     }
 
 
+
+
     public function getPurchaseByBillNumber(Request $request): JsonResponse
     {
         try {
@@ -692,12 +700,20 @@ class PurchaseReturnController extends Controller
                             ->with('measureUnit:id,quantity'),
                         'saleProducts' => fn($q) => $q->whereNull('deleted_at')
                             ->where('company_id', $companyId)
+                            ->where('branch_id', $branchId)
                             ->with([
                                 'measureUnit:id,quantity',
                                 'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
                                     ->where('company_id', $companyId)
+                                    ->where('branch_id', $branchId)
                                     ->with('measureUnit:id,quantity')
-                            ])
+                            ]),
+                        // ONLY subtract adjustments + load their field values
+                        'stockAdjusted' => fn($q) => $q->whereNull('deleted_at')
+                            ->where('company_id', $companyId)
+                            ->where('branch_id', $branchId)
+                            ->where('adjusted_type', 'subtract')
+                            ->with(['measureUnit:id,quantity', 'fieldValues']) // ← CRITICAL
                     ])
             ])
                 ->where('company_id', $companyId)
@@ -749,13 +765,17 @@ class PurchaseReturnController extends Controller
                         )
                     ));
 
-                    return ($totalPieces - $returned - $sold + $saleReturned) > 0;
+                    $subtractedByAdjustment = $product->stockAdjusted->sum(
+                        fn($adj) =>
+                        $this->calculatePieces((string) ($adj->quantity ?? '0'), $measureUnits[$adj->measure_unit_id]['quantity'] ?? 1)
+                    );
+
+                    return ($totalPieces - $returned - $sold + $saleReturned - $subtractedByAdjustment) > 0;
                 })
                 ->map(function ($product) use ($companyId, $branchId, $measureUnits) {
                     $unit = $measureUnits[$product->measure_unit_id] ?? ['id' => null, 'name' => 'Unit', 'quantity' => 1];
                     $unitQty = $unit['quantity'];
 
-                    // Purchased quantities as strings
                     $regQtyStr = (string) ($product->quantity ?? '0');
                     $freeQtyStr = (string) ($product->free_quantity ?? '0');
                     $totalQtyStr = $this->sumQuantityAndFree($regQtyStr, $freeQtyStr);
@@ -764,7 +784,6 @@ class PurchaseReturnController extends Controller
                     $totalFreePieces = $this->calculatePieces($freeQtyStr, $unitQty);
                     $totalPieces = $this->calculatePieces($totalQtyStr, $unitQty);
 
-                    // Purchase Returns
                     $retRegPieces = $product->purchaseStockProductReturns->sum(
                         fn($r) =>
                         $this->calculatePieces((string) ($r->quantity ?? '0'), $measureUnits[$r->measure_unit_id]['quantity'] ?? 1)
@@ -774,7 +793,6 @@ class PurchaseReturnController extends Controller
                         $this->calculatePieces((string) ($r->free_quantity ?? '0'), $measureUnits[$r->measure_unit_id]['quantity'] ?? 1)
                     );
 
-                    // Sold & Sale Returns
                     $soldPieces = $product->saleProducts->sum(
                         fn($s) =>
                         $this->calculatePieces(
@@ -792,8 +810,11 @@ class PurchaseReturnController extends Controller
                     ));
 
                     $netConsumed = max(0, $soldPieces - $saleReturnPieces);
+                    $subtractedByAdjustment = $product->stockAdjusted->sum(
+                        fn($adj) =>
+                        $this->calculatePieces((string) ($adj->quantity ?? '0'), $measureUnits[$adj->measure_unit_id]['quantity'] ?? 1)
+                    );
 
-                    // Unavailable indices
                     $unavailableIndices = $this->getUnavailableIndices($product, $companyId, $branchId);
 
                     // Group available field values
@@ -804,19 +825,23 @@ class PurchaseReturnController extends Controller
                     if ($product->fieldValues->isNotEmpty()) {
                         foreach ($product->fieldValues as $fv) {
                             $idx = $fv->quantity_index;
-                            if (in_array($idx, $unavailableIndices))
+
+                            if (in_array($idx, $unavailableIndices)) {
                                 continue;
+                            }
 
                             $type = $fv->quantity_type ?? 'regular';
 
                             $groupedFieldValues[$idx][] = [
                                 'purchase_stock_product_id' => $fv->purchase_stock_product_id,
-                                'purchase_product_id' => $fv->purchase_product_id,
-                                'stock_product_id' => $fv->stock_product_id,
-                                'stock_adjustment_id' => $fv->stock_adjustment_id,
-                                'stock_transfer_id' => $fv->pstock_transfer_id,
-                                'values' => $fv->productField->values ?? 'N/A',                                
+                                'purchase_product_id' => $fv->purchase_product_id ?? null,
+                                'product_field_id' => $fv->productField->id,
+                                'stock_product_id' => $fv->stock_product_id ?? null,
+                                'stock_adjustment_id' => $fv->stock_adjustment_id ?? null,
+                                'stock_transfer_id' => $fv->stock_transfer_id ?? null,
+                                'stock_reconciliation_id' => $fv->stock_reconciliation_id ?? null,
                                 'name' => $fv->productField->name ?? 'N/A',
+                                'values' => $fv->productField->values ?? 'N/A',
                                 'value' => $fv->value,
                                 'quantity_index' => $idx,
                                 'quantity_type' => $type,
@@ -829,7 +854,7 @@ class PurchaseReturnController extends Controller
                         }
                     }
 
-                    // FINAL BOSS: Perfect Regular vs Free Logic
+                    // === FINAL BOSS: Regular vs Free ===
                     $hasFieldValues = $product->fieldValues->isNotEmpty() && !empty($groupedFieldValues);
 
                     if ($hasFieldValues) {
@@ -839,7 +864,7 @@ class PurchaseReturnController extends Controller
                         $netReg = $totalRegPieces - $retRegPieces;
                         $netFree = $totalFreePieces - $retFreePieces;
                         $netTotal = $netReg + $netFree;
-                        $remainingTotal = max(0, $netTotal - $netConsumed);
+                        $remainingTotal = max(0, $netTotal - $netConsumed - $subtractedByAdjustment);
 
                         if ($remainingTotal >= $netReg) {
                             $remainingRegular = $netReg;
@@ -872,6 +897,7 @@ class PurchaseReturnController extends Controller
                         'returned_quantity' => $retRegPieces + $retFreePieces,
                         'sold_quantity' => $soldPieces,
                         'sale_returned_quantity' => $saleReturnPieces,
+                        'adjusted_quantity_subtracted' => $subtractedByAdjustment,
 
                         'remaining_quantity' => $remainingTotalPieces,
                         'regular_remaining_quantity' => $remainingRegular,
@@ -902,12 +928,18 @@ class PurchaseReturnController extends Controller
                 'trace' => $e->getTraceAsString(),
                 'query_log' => DB::getQueryLog()
             ]);
-
             return response()->json(['error' => 'Server error'], 500);
         } finally {
             DB::disableQueryLog();
         }
     }
+
+
+
+
+
+
+
 
 
 
@@ -5472,7 +5504,7 @@ class PurchaseReturnController extends Controller
 
             // Fetch product by barcode or unique id
             if ($request->filled('barcode')) {
-                $productList = \App\Models\ProductList::where('company_id', $companyId)
+                $productList = ProductList::where('company_id', $companyId)
                     ->where('barcode', $request->barcode)
                     ->first();
 
@@ -5483,10 +5515,10 @@ class PurchaseReturnController extends Controller
                     ], 404);
                 }
 
-                $product = \App\Models\Product::with(['productLists.measureUnit', 'productFieldValues'])
+                $product = Product::with(['productLists.measureUnit', 'productFieldValues'])
                     ->find($productList->product_id);
             } else {
-                $product = \App\Models\Product::with(['productLists.measureUnit', 'productFieldValues'])
+                $product = Product::with(['productLists.measureUnit', 'productFieldValues'])
                     ->where('company_id', $companyId)
                     ->where('product_unique_id', $request->product_unique_id)
                     ->first();
@@ -5502,12 +5534,12 @@ class PurchaseReturnController extends Controller
             $primary = $product->productLists->firstWhere('is_primary', true)?->measureUnit;
 
             // Fetch measure units for calculation
-            $measureUnits = \App\Models\MeasureUnit::where('company_id', $companyId)
+            $measureUnits = MeasureUnit::where('company_id', $companyId)
                 ->whereNull('deleted_at')
                 ->get()
                 ->keyBy('id');
 
-            $purchaseProducts = \App\Models\PurchaseProduct::where('company_id', $companyId)
+            $purchaseProducts = PurchaseProduct::where('company_id', $companyId)
                 ->where('product_id', $product->id)
                 ->whereNull('deleted_at')
                 ->get();

@@ -661,6 +661,7 @@ class PurchaseReturnController extends Controller
 
 
 
+
     public function getPurchaseByBillNumber(Request $request): JsonResponse
     {
         try {
@@ -834,7 +835,7 @@ class PurchaseReturnController extends Controller
                             $groupedFieldValues[$idx][] = [
                                 'purchase_stock_product_id' => $fv->purchase_stock_product_id,
                                 'purchase_product_id' => $fv->purchase_product_id ?? null,
-
+                                'product_field_id' => $fv->productField->id,
                                 'stock_product_id' => $fv->stock_product_id ?? null,
                                 'stock_adjustment_id' => $fv->stock_adjustment_id ?? null,
                                 'stock_transfer_id' => $fv->stock_transfer_id ?? null,
@@ -932,6 +933,14 @@ class PurchaseReturnController extends Controller
             DB::disableQueryLog();
         }
     }
+
+
+
+
+
+
+
+
 
 
 

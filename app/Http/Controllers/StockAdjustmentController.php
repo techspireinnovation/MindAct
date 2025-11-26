@@ -748,6 +748,7 @@ class StockAdjustmentController extends Controller
                             'branch_id' => $branchId,
                             'product_id' => $productId,
                             'product_code' => $detail['product_code'] ?? null,
+                            'product_name' => $detail['product_name'],
                             'adjusted_type' => 'add',
                             'quantity' => $quantity,
                             'diff_stock' => $diffStock,

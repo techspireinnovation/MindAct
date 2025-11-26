@@ -42,7 +42,13 @@ class PurchaseReturnController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = PurchaseStockReturn::query();
+       $query = PurchaseReturn::query();
+
+        // Filter by branch_id
+        if ($request->has('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
 
         if ($request->has('keywords')) {
             $query->where('purchase_bill_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhereHas('customer', function ($query) use ($request) {

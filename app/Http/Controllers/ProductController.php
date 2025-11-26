@@ -1187,17 +1187,17 @@ public function importExcel(Request $request)
             // Validation
             $validator = Validator::make($mappedRow, [
                 'name' => 'required|string|max:255',
-                'barcode' => 'required|string|max:255',
-                'category' => 'required|string|max:255',
-                'sub-cat' => 'required|string|max:255',
-                'brand' => 'required|string|max:255',
+                'barcode' => 'nullable|string|max:255',
+                'category' => 'nullable|string|max:255',
+                'sub-cat' => 'nullable|string|max:255',
+                'brand' => 'nullable|string|max:255',
                 'vat type' => 'required|string',
-                'retail excl vat' => 'required|numeric',
-                'retail incl vat' => 'required|numeric',
-                'retail profit' => 'required|numeric',
-                'wholesale excl vat' => 'required|numeric',
-                'wholesale incl vat' => 'required|numeric',
-                'wholesale profit' => 'required|numeric',
+                'retail excl vat' => 'nullable|numeric',
+                'retail incl vat' => 'nullable|numeric',
+                'retail profit' => 'nullable|numeric',
+                'wholesale excl vat' => 'nullable|numeric',
+                'wholesale incl vat' => 'nullable|numeric',
+                'wholesale profit' => 'nullable|numeric',
                 'uom' => 'required|string|max:50',
             ]);
 

@@ -566,7 +566,17 @@ class SaleController extends Controller
                 return ['message' => 'No product found', 'data' => []];
             }
 
-            $retailSalePrice = Product::where('id', $productForUnit)->pluck('retail_sales_price')->first();
+            $productRetails = Product::where('id', $productForUnit)->where('company_id',$companyId)->first();
+
+            if (!$productRetails) {
+                $pricePerPiece = 0; // fallback if product not found
+            } else {
+                $retailSalePrice = $productRetails->retail_sales_price ?? 0;
+                $measureUnitQty = $productRetailst->measureUnit->quantity ?? 1;
+
+                // Price per piece
+                $pricePerPiece = $retailSalePrice / $measureUnitQty;
+            }
             $productSoldPrice = SaleProduct::where('product_id', $productForUnit)
                 ->orderByDesc('created_at')
                 ->get(['price', 'created_at']);
@@ -668,6 +678,7 @@ class SaleController extends Controller
                     'stockAdjusted' => fn($q) => $q->whereNull('deleted_at')
                         ->where('company_id', $companyId)
                         ->where('branch_id', $branchId)
+                        ->where('adjusted_type', 'subtract')
                         ->with([
                             'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
 
@@ -730,7 +741,7 @@ class SaleController extends Controller
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
-                ->select(['stock_adjusted_id','purchase_stock_product_id', 'quantity_index'])
+                ->select(['stock_adjusted_id', 'purchase_stock_product_id', 'quantity_index'])
                 ->get()
                 ->groupBy(function ($fv) use ($purchaseProducts) {
                     $adjustedProduct = StockAdjusted::find($fv->stock_adjusted_id);
@@ -815,7 +826,7 @@ class SaleController extends Controller
             ]);
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes,$adjustedQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $adjustedQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
                         // Only exclude sold indices that weren't returned
@@ -824,7 +835,7 @@ class SaleController extends Controller
                             $netSoldIndexes,
                             $returnedQuantityIndexes[$pp->id]
                             ?? [],
-                             $adjustedQuantityIndexes[$pp->id]
+                            $adjustedQuantityIndexes[$pp->id]
                             ?? [],
                             $transferQuantityIndexes[$pp->id] ?? []
                         ));
@@ -854,7 +865,7 @@ class SaleController extends Controller
                 ]);
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
+                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
                         // Calculate purchased piece
     
 
@@ -886,6 +897,13 @@ class SaleController extends Controller
                             ),
                             0
                         );
+
+                        $adjustedPieces = $pp->stockAdjusted->where('adjusted_type','subtract')->reduce(
+                            fn($carry, $adjusted) => $carry + $this->calculatePieces(
+                                $adjusted->quantity, isset($measureUnitsCalc[$adjusted->measure_unit_id]) ? $measureUnitsCalc[$adjusted->measure_unit_id]->quantity : 1
+                            ),
+                            0
+                        );
                         $salesReturnPieces = $pp->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns)->reduce(
                             fn($carry, $return) => $carry + $this->calculatePieces(
                                 $this->sumQuantityAndFree($return->quantity, $return->free_quantity),
@@ -902,6 +920,7 @@ class SaleController extends Controller
                             'product_id' => $pp->product_id,
                             'purchased_pieces' => $purchasedPieces,
                             'return_pieces' => $returnPieces,
+                            'adjusted_pieces' => $adjustedPieces,
                             'sale_pieces' => $salePieces,
                             'sales_return_pieces' => $salesReturnPieces,
                             'available_pieces' => $availablePieces
@@ -980,6 +999,7 @@ class SaleController extends Controller
                             'expiry_date' => $pp->expiry_date,
                             'return_quantity' => $returnPieces,
                             'sale_quantity' => $salePieces,
+                            'adjusted_quantity' => $adjustedPieces,
                             'sales_return_quantity' => $salesReturnPieces,
                             'available_quantity' => max($availablePieces, 0),
                             'purchased_quantity' => $purchasedPieces,
@@ -1004,12 +1024,17 @@ class SaleController extends Controller
                     fn($pp) => $pp['sale_quantity'],
                     $productPurchaseProducts
                 ));
+
+                $adjustedPieces = array_sum(array_map(
+                    fn($pp) => $pp['adjusted_quantity'],
+                    $productPurchaseProducts
+                ));
                 $salesReturnPieces = array_sum(array_map(
                     fn($pp) => $pp['sales_return_quantity'],
                     $productPurchaseProducts
                 ));
 
-                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces;
+                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces - $adjustedPieces;
 
                 Log::debug('Product totals calculated', [
                     'product_id' => $product->product_id,

@@ -31,7 +31,7 @@ use Illuminate\Validation\Rule;
 class SalesReturnController extends Controller
 {
 
-   
+
 
 
     public function index(Request $request): JsonResponse
@@ -44,7 +44,7 @@ class SalesReturnController extends Controller
         }
 
         return response()->json($query->paginate(100));
-        
+
     }
 
 
@@ -5178,12 +5178,6 @@ class SalesReturnController extends Controller
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
-
-
-
-
-
-
 
 
 

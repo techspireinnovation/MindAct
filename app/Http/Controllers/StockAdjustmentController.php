@@ -767,7 +767,7 @@ class StockAdjustmentController extends Controller
 
                     $remainingPieces = $requiredPieces;
 
-                    /* ========== ADD STOCK — ONLY unselected = NEW stock ========== */
+                   
                     if ($adjustedType === 'add') {
                         $psp = PurchaseStockProduct::create([
                             'company_id' => $companyId,
@@ -799,7 +799,7 @@ class StockAdjustmentController extends Controller
                             foreach ($fieldValuesFlat as $fv) {
                                 // Only 'unselected' = new stock being added
                                 if ($fv['value_type'] === 'unselected' && !empty($fv['value'])) {
-                                    // 1. Show in report
+                                 
                                     StockAdjustmentProductFieldValue::create([
                                         'stock_adjustment_product_id' => $adjustmentProduct->id,
                                         'company_id' => $companyId,

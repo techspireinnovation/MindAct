@@ -65,7 +65,7 @@ class StockAdjusted extends BaseTenantModel
 
     public function fieldValues()
     {
-        return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
+        return $this->hasMany(StockAdjustedFieldValue::class, 'stock_adjusted_id');
     }
 
     public function purchase()

@@ -123,6 +123,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group(function () {
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::apiResource('products', ProductController::class);
+    Route::post('products-import-excel', [ProductController::class, 'importExcel']);////
+    
 
     Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
     Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);
@@ -201,6 +203,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::get('/customers-active-list', [CustomerController::class, 'activeCustomers']);////
+    Route::post('/customers-import-excel', [CustomerController::class, 'importCustomerExcel']);////
     Route::resource('customers', CustomerController::class);
     Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);

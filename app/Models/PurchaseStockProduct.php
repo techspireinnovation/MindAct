@@ -89,6 +89,11 @@ class PurchaseStockProduct extends BaseTenantModel
         return $this->hasMany(StockAdjusted::class, 'purchase_stock_product_id');
     }
 
+     public function stockAdjustments()
+    {
+        return $this->hasMany(StockAdjustment::class, 'stock_adjustment_id');
+    }
+
 
     public function product()
     {

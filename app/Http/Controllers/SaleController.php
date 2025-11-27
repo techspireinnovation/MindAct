@@ -192,12 +192,23 @@ class SaleController extends Controller
                     'saleProducts' => fn($q) => $q
                         ->whereNull('sale_products.deleted_at')
                         ->where('sale_products.company_id', $companyId)
+                        ->where('sale_products.branch_id', $branchId)
                         ->with([
                             'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
                             'saleProductReturns' => fn($q) => $q
                                 ->whereNull('sales_return_products.deleted_at')
                                 ->where('sales_return_products.company_id', $companyId)
                                 ->with(['measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity'])])
+                        ]),
+
+                    'stockAdjusted' => fn($q) => $q
+                        ->whereNull('stock_adjusteds.deleted_at')
+                        ->where('stock_adjusteds.company_id', $companyId)
+                        ->where('stock_adjusteds.branch_id', $branchId)
+                        ->where('stock_adjusteds.adjusted_type', 'subtract')
+                        ->with([
+                            'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
+
                         ]),
 
                     'fieldValues' => fn($q) => $q
@@ -264,7 +275,18 @@ class SaleController extends Controller
                 $salePieces = $productPurchaseProducts->sum(function ($pp) use ($measureUnitsCalc) {
                     return $pp->saleProducts->reduce(
                         fn($carry, $sale) => $carry + $this->calculatePieces(
-                            ($sale->quantity ?? 0) + ($sale->free_quantity ?? 0),
+                            $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0),
+                            $measureUnitsCalc[$sale->measure_unit_id]->quantity ?? 1
+                        ),
+                        0
+                    );
+                });
+
+
+                $adjustedPieces = $productPurchaseProducts->sum(function ($pp) use ($measureUnitsCalc) {
+                    return $pp->stockAdjusted->where('adjusted_type', 'subtract')->reduce(
+                        fn($carry, $sale) => $carry + $this->calculatePieces(
+                            $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0),
                             $measureUnitsCalc[$sale->measure_unit_id]->quantity ?? 1
                         ),
                         0
@@ -274,14 +296,15 @@ class SaleController extends Controller
                 $salesReturnPieces = $productPurchaseProducts->sum(function ($pp) use ($measureUnitsCalc) {
                     return $pp->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns)->reduce(
                         fn($carry, $return) => $carry + $this->calculatePieces(
-                            ($return->quantity ?? 0) + ($return->free_quantity ?? 0),
+                            $this->sumQuantityAndFree($return->quantity ?? 0, $return->free_quantity ?? 0),
                             $measureUnitsCalc[$return->measure_unit_id]->quantity ?? 1
                         ),
                         0
                     );
                 });
 
-                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces;
+                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces - $adjustedPieces;
+                // dd($availablePieces);
 
                 return (object) [
                     'id' => $product->id,
@@ -320,62 +343,75 @@ class SaleController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'nullable|integer',
-                'include_details' => 'nullable|boolean',
-                'purchase_type' => 'nullable|string'
+                'company_id' => 'required|integer',
+                'branch_id' => 'nullable|integer',
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+                return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            $companyId = $request->input('company_id') ?? $request->company_id;
-            $branchId = $request->input('branch_id') ?? $request->branch_id;
-            $includeDetails = $request->boolean('include_details', false);
-            $purchaseType = $request->input('purchase_type', null);
+            $companyId = $request->company_id;
+            $branchId = $request->branch_id;
 
-            \Log::info('listAvailableProducts: Processing', [
-                'user_id' => auth()->id(),
-                'company_id' => $companyId,
-                'include_details' => $includeDetails,
-                'purchase_type' => $purchaseType
-            ]);
+            // Get all products (company-specific or global)
+            $products = Product::where(function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)->orWhereNull('company_id');
+            })
+                ->whereNull('deleted_at')
+                ->select('id', 'name')
+                ->orderBy('id', 'asc')
+                ->get();
 
-            if (!auth()->check()) {
+            if ($products->isEmpty()) {
                 return response()->json([
-                    'message' => 'Unauthenticated'
-                ], 401);
+                    'message' => 'No products found',
+                    'count' => 0,
+                    'data' => []
+                ], 200);
             }
 
-            if (!$companyId) {
-                return response()->json([
-                    'message' => 'No company ID provided or available'
-                ], 400);
+            $availableProducts = collect();
+
+            foreach ($products as $product) {
+                $result = $this->getAvailableProductsDetails(
+                    productId: $product->id,
+                    productName: null,
+                    companyId: $companyId,
+                    branchId: $branchId
+                );
+
+                $data = $result['data'][0] ?? null;
+
+                if ($data && ($data['available_quantity'] ?? 0) > 0) {
+                    $availableProducts->push([
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'purchased_quantity' => $data['purchased_quantity'] ?? 0,
+                        'return_quantity' => $data['return_quantity'] ?? 0,
+                        'sale_quantity' => $data['sale_quantity'] ?? 0,
+                        'sales_return_quantity' => $data['sales_return_quantity'] ?? 0,
+                        'available_quantity' => $data['available_quantity'] ?? 0,
+                    ]);
+                }
             }
-
-
-            $products = $includeDetails
-                ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'], $branchId)
-                : $this->getAvailableProductsForSale($purchaseType, $companyId, $branchId);
-
 
             return response()->json([
                 'message' => 'Available products retrieved successfully',
-                'count' => $products->count(),
-                'data' => $products
+                'count' => $availableProducts->count(),
+                'data' => $availableProducts->values()->toArray()
             ], 200);
+
         } catch (\Exception $e) {
-            \Log::error('Error listing available products', [
-                'request' => $request->all(),
+            \Log::error('Error in listAvailableProducts', [
+                'company_id' => $request->company_id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
             return response()->json([
-                'message' => 'Failed to retrieve available products',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'message' => 'Failed to fetch available products',
+                'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
     }
@@ -544,14 +580,42 @@ class SaleController extends Controller
                 return ['message' => 'No product found', 'data' => []];
             }
 
-            $retailSalePrice = Product::where('id', $productForUnit)->pluck('retail_sales_price')->first();
-            $productSoldPrice = SaleProduct::where('product_id', $productForUnit)
-                ->orderByDesc('created_at')
-                ->get(['price', 'created_at']);
+            // Fetch product
+            $productRetails = Product::where('id', $productForUnit)
+                ->where('company_id', $companyId)
+                ->with('measureUnit')  // load MU
+                ->first();
 
-            $avgPrice = $productSoldPrice->avg('price');
-            $minPrice = $productSoldPrice->min('price');
-            $latestSoldPrice = $productSoldPrice->first()->price ?? 0;
+            if (!$productRetails) {
+                $pricePerPiece = 0;
+            } else {
+                $retailSalePrice = $productRetails->retail_sales_price ?? 0;
+                $measureUnitQty = $productRetails->measureUnit->quantity ?? 1;
+
+                // Retail price per piece
+                $pricePerPiece = $retailSalePrice / $measureUnitQty;
+            }
+
+
+            // Fetch sale prices (with measure units)
+            $saleProducts = SaleProduct::where('product_id', $productForUnit)
+                ->with('measureUnit') // load MU
+                ->orderByDesc('created_at')
+                ->get(['price', 'measure_unit_id', 'created_at']);
+
+
+            // Convert each sale price to per-piece
+            $salePricesPerPiece = $saleProducts->map(function ($sp) {
+                $qty = $sp->measureUnit->quantity ?? 1;
+                return $sp->price / $qty;
+            });
+
+
+            // Calculate avg, min, latest — all in per-piece now
+            $avgPrice = $salePricesPerPiece->avg() ?? 0;
+            $minPrice = $salePricesPerPiece->min() ?? 0;
+            $latestSoldPrice = $salePricesPerPiece->first() ?? 0;
+
 
             Log::debug('Product pricing calculated', [
                 'product_id' => $productForUnit,
@@ -642,6 +706,19 @@ class SaleController extends Controller
                                 ->where('branch_id', $branchId)
                                 ->select(['sale_product_id', 'quantity_index'])
                         ]),
+
+                    'stockAdjusted' => fn($q) => $q->whereNull('deleted_at')
+                        ->where('company_id', $companyId)
+                        ->where('branch_id', $branchId)
+                        ->where('adjusted_type', 'subtract')
+                        ->with([
+                            'measureUnit' => fn($q) => $q->select(['id', 'name', 'quantity']),
+
+                            'fieldValues' => fn($q) => $q->whereNull('deleted_at')
+                                ->where('company_id', $companyId)
+                                ->where('branch_id', $branchId)
+                                ->select(['stock_adjusted_id', 'purchase_stock_product_id', 'quantity_index'])
+                        ]),
                     'fieldValues' => fn($q) => $q->whereNull('purchase_stock_product_field_values.deleted_at')
                         ->where('purchase_stock_product_field_values.company_id', $companyId)
                         ->where('purchase_stock_product_field_values.branch_id', $branchId)
@@ -691,6 +768,21 @@ class SaleController extends Controller
                     return $saleProduct ? $saleProduct->purchase_stock_product_id : null;
                 })
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
+
+            $adjustedQuantityIndexes = StockAdjustedFieldValue::whereIn('stock_adjusted_id', $purchaseProducts->flatMap(fn($pp) => $pp->stockAdjusted->pluck('id')))
+                ->where('company_id', $companyId)
+                ->where('branch_id', $branchId)
+                ->whereNull('deleted_at')
+                ->select('purchase_stock_product_id', 'quantity_index')
+                ->get()
+                ->groupBy('purchase_stock_product_id')
+                ->mapWithKeys(fn($group, $key) => [(int) $key => $group->pluck('quantity_index')->map('intval')->unique()->values()->toArray()])
+                ->toArray(); // ← This makes keys integers!
+
+
+
+
+
 
             Log::debug('Sold quantity indexes fetched', [
                 'company_id' => $companyId,
@@ -768,14 +860,16 @@ class SaleController extends Controller
             ]);
 
             // Process results
-            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
+            $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $adjustedQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
                             $returnedQuantityIndexes[$pp->id]
+                            ?? [],
+                            $adjustedQuantityIndexes[$pp->id]
                             ?? [],
                             $transferQuantityIndexes[$pp->id] ?? []
                         ));
@@ -805,7 +899,7 @@ class SaleController extends Controller
                 ]);
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
+                    ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
                         // Calculate purchased piece
     
 
@@ -837,6 +931,14 @@ class SaleController extends Controller
                             ),
                             0
                         );
+
+                        $adjustedPieces = $pp->stockAdjusted->where('adjusted_type', 'subtract')->reduce(
+                            fn($carry, $adjusted) => $carry + $this->calculatePieces(
+                                $adjusted->quantity,
+                                isset($measureUnitsCalc[$adjusted->measure_unit_id]) ? $measureUnitsCalc[$adjusted->measure_unit_id]->quantity : 1
+                            ),
+                            0
+                        );
                         $salesReturnPieces = $pp->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns)->reduce(
                             fn($carry, $return) => $carry + $this->calculatePieces(
                                 $this->sumQuantityAndFree($return->quantity, $return->free_quantity),
@@ -853,6 +955,7 @@ class SaleController extends Controller
                             'product_id' => $pp->product_id,
                             'purchased_pieces' => $purchasedPieces,
                             'return_pieces' => $returnPieces,
+                            'adjusted_pieces' => $adjustedPieces,
                             'sale_pieces' => $salePieces,
                             'sales_return_pieces' => $salesReturnPieces,
                             'available_pieces' => $availablePieces
@@ -862,6 +965,7 @@ class SaleController extends Controller
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
                             $netSoldIndexes,
+                            $adjustedQuantityIndexes[$pp->id] ?? [],
                             $returnedQuantityIndexes[$pp->id] ?? []
                         ));
 
@@ -930,6 +1034,7 @@ class SaleController extends Controller
                             'expiry_date' => $pp->expiry_date,
                             'return_quantity' => $returnPieces,
                             'sale_quantity' => $salePieces,
+                            'adjusted_quantity' => $adjustedPieces,
                             'sales_return_quantity' => $salesReturnPieces,
                             'available_quantity' => max($availablePieces, 0),
                             'purchased_quantity' => $purchasedPieces,
@@ -954,12 +1059,17 @@ class SaleController extends Controller
                     fn($pp) => $pp['sale_quantity'],
                     $productPurchaseProducts
                 ));
+
+                $adjustedPieces = array_sum(array_map(
+                    fn($pp) => $pp['adjusted_quantity'],
+                    $productPurchaseProducts
+                ));
                 $salesReturnPieces = array_sum(array_map(
                     fn($pp) => $pp['sales_return_quantity'],
                     $productPurchaseProducts
                 ));
 
-                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces;
+                $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces - $adjustedPieces;
 
                 Log::debug('Product totals calculated', [
                     'product_id' => $product->product_id,
@@ -994,9 +1104,7 @@ class SaleController extends Controller
                     'min_price' => $minPrice ?? 0,
                     'latest_price' => $latestSoldPrice ?? 0,
                     'measure_units_used' => $measureUnitsUsed,
-                    'avg_sales_price' => round($salesPrice->avg(), 2) ?: null,
-                    'min_sales_price' => round($salesPrice->min(), 2) ?: null,
-                    'latest_sales_price' => round($lastSalesPrice, 2) ?: null,
+
                     'purchased_quantity' => $purchasedPieces,
                     'return_quantity' => $returnPieces,
                     'sale_quantity' => $salePieces,
@@ -1442,16 +1550,41 @@ class SaleController extends Controller
     }
 
 
+    // public function index(Request $request): JsonResponse
+    // {
+    //     $query = Sale::query();
+
+    //     if ($request->has('keywords')) {
+    //         $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
+
+    //     }
+    //     return response()->json($query->paginate(100));
+    // }
+
+
     public function index(Request $request): JsonResponse
     {
         $query = Sale::query();
 
-        if ($request->has('keywords')) {
-            $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
-
+        // Filter by branch_id
+        if ($request->has('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
         }
+
+        // Filter by keywords
+        if ($request->has('keywords')) {
+            $keywords = $request->input('keywords');
+
+            $query->where(function ($q) use ($keywords) {
+                $q->where('ref_number', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('invoice_number', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('customer_name', 'LIKE', '%' . $keywords . '%');
+            });
+        }
+
         return response()->json($query->paginate(100));
     }
+
 
 
 

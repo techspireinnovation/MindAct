@@ -284,7 +284,7 @@ class SaleController extends Controller
 
 
                 $adjustedPieces = $productPurchaseProducts->sum(function ($pp) use ($measureUnitsCalc) {
-                    return $pp->stockAdjusted->reduce(
+                    return $pp->stockAdjusted->where('adjusted_type', 'subtract')->reduce(
                         fn($carry, $sale) => $carry + $this->calculatePieces(
                             $this->sumQuantityAndFree($sale->quantity ?? 0, $sale->free_quantity ?? 0),
                             $measureUnitsCalc[$sale->measure_unit_id]->quantity ?? 1
@@ -304,6 +304,7 @@ class SaleController extends Controller
                 });
 
                 $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces - $adjustedPieces;
+                // dd($availablePieces);
 
                 return (object) [
                     'id' => $product->id,
@@ -342,62 +343,75 @@ class SaleController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'nullable|integer',
-                'include_details' => 'nullable|boolean',
-                'purchase_type' => 'nullable|string'
+                'company_id' => 'required|integer',
+                'branch_id' => 'nullable|integer',
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+                return response()->json(['errors' => $validator->errors()], 422);
             }
 
-            $companyId = $request->input('company_id') ?? $request->company_id;
-            $branchId = $request->input('branch_id') ?? $request->branch_id;
-            $includeDetails = $request->boolean('include_details', false);
-            $purchaseType = $request->input('purchase_type', null);
+            $companyId = $request->company_id;
+            $branchId = $request->branch_id;
 
-            \Log::info('listAvailableProducts: Processing', [
-                'user_id' => auth()->id(),
-                'company_id' => $companyId,
-                'include_details' => $includeDetails,
-                'purchase_type' => $purchaseType
-            ]);
+            // Get all products (company-specific or global)
+            $products = Product::where(function ($q) use ($companyId) {
+                $q->where('company_id', $companyId)->orWhereNull('company_id');
+            })
+                ->whereNull('deleted_at')
+                ->select('id', 'name')
+                ->orderBy('id', 'asc')
+                ->get();
 
-            if (!auth()->check()) {
+            if ($products->isEmpty()) {
                 return response()->json([
-                    'message' => 'Unauthenticated'
-                ], 401);
+                    'message' => 'No products found',
+                    'count' => 0,
+                    'data' => []
+                ], 200);
             }
 
-            if (!$companyId) {
-                return response()->json([
-                    'message' => 'No company ID provided or available'
-                ], 400);
+            $availableProducts = collect();
+
+            foreach ($products as $product) {
+                $result = $this->getAvailableProductsDetails(
+                    productId: $product->id,
+                    productName: null,
+                    companyId: $companyId,
+                    branchId: $branchId
+                );
+
+                $data = $result['data'][0] ?? null;
+
+                if ($data && ($data['available_quantity'] ?? 0) > 0) {
+                    $availableProducts->push([
+                        'id' => $product->id,
+                        'name' => $product->name,
+                        'purchased_quantity' => $data['purchased_quantity'] ?? 0,
+                        'return_quantity' => $data['return_quantity'] ?? 0,
+                        'sale_quantity' => $data['sale_quantity'] ?? 0,
+                        'sales_return_quantity' => $data['sales_return_quantity'] ?? 0,
+                        'available_quantity' => $data['available_quantity'] ?? 0,
+                    ]);
+                }
             }
-
-
-            $products = $includeDetails
-                ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'], $branchId)
-                : $this->getAvailableProductsForSale($purchaseType, $companyId, $branchId);
-
 
             return response()->json([
                 'message' => 'Available products retrieved successfully',
-                'count' => $products->count(),
-                'data' => $products
+                'count' => $availableProducts->count(),
+                'data' => $availableProducts->values()->toArray()
             ], 200);
+
         } catch (\Exception $e) {
-            \Log::error('Error listing available products', [
-                'request' => $request->all(),
+            \Log::error('Error in listAvailableProducts', [
+                'company_id' => $request->company_id ?? null,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+
             return response()->json([
-                'message' => 'Failed to retrieve available products',
-                'error' => config('app.debug') ? $e->getMessage() : null
+                'message' => 'Failed to fetch available products',
+                'error' => app()->environment('local') ? $e->getMessage() : null
             ], 500);
         }
     }
@@ -566,24 +580,42 @@ class SaleController extends Controller
                 return ['message' => 'No product found', 'data' => []];
             }
 
-            $productRetails = Product::where('id', $productForUnit)->where('company_id', $companyId)->first();
+            // Fetch product
+            $productRetails = Product::where('id', $productForUnit)
+                ->where('company_id', $companyId)
+                ->with('measureUnit')  // load MU
+                ->first();
 
             if (!$productRetails) {
-                $pricePerPiece = 0; // fallback if product not found
+                $pricePerPiece = 0;
             } else {
                 $retailSalePrice = $productRetails->retail_sales_price ?? 0;
-                $measureUnitQty = $productRetailst->measureUnit->quantity ?? 1;
+                $measureUnitQty = $productRetails->measureUnit->quantity ?? 1;
 
-                // Price per piece
+                // Retail price per piece
                 $pricePerPiece = $retailSalePrice / $measureUnitQty;
             }
-            $productSoldPrice = SaleProduct::where('product_id', $productForUnit)
-                ->orderByDesc('created_at')
-                ->get(['price', 'created_at']);
 
-            $avgPrice = $productSoldPrice->avg('price');
-            $minPrice = $productSoldPrice->min('price');
-            $latestSoldPrice = $productSoldPrice->first()->price ?? 0;
+
+            // Fetch sale prices (with measure units)
+            $saleProducts = SaleProduct::where('product_id', $productForUnit)
+                ->with('measureUnit') // load MU
+                ->orderByDesc('created_at')
+                ->get(['price', 'measure_unit_id', 'created_at']);
+
+
+            // Convert each sale price to per-piece
+            $salePricesPerPiece = $saleProducts->map(function ($sp) {
+                $qty = $sp->measureUnit->quantity ?? 1;
+                return $sp->price / $qty;
+            });
+
+
+            // Calculate avg, min, latest — all in per-piece now
+            $avgPrice = $salePricesPerPiece->avg() ?? 0;
+            $minPrice = $salePricesPerPiece->min() ?? 0;
+            $latestSoldPrice = $salePricesPerPiece->first() ?? 0;
+
 
             Log::debug('Product pricing calculated', [
                 'product_id' => $productForUnit,
@@ -830,7 +862,7 @@ class SaleController extends Controller
             // Process results
             $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $adjustedQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
@@ -1072,9 +1104,7 @@ class SaleController extends Controller
                     'min_price' => $minPrice ?? 0,
                     'latest_price' => $latestSoldPrice ?? 0,
                     'measure_units_used' => $measureUnitsUsed,
-                    'avg_sales_price' => round($salesPrice->avg(), 2) ?: null,
-                    'min_sales_price' => round($salesPrice->min(), 2) ?: null,
-                    'latest_sales_price' => round($lastSalesPrice, 2) ?: null,
+
                     'purchased_quantity' => $purchasedPieces,
                     'return_quantity' => $returnPieces,
                     'sale_quantity' => $salePieces,
@@ -1533,27 +1563,27 @@ class SaleController extends Controller
 
 
     public function index(Request $request): JsonResponse
-{
-    $query = Sale::query();
+    {
+        $query = Sale::query();
 
-    // Filter by branch_id
-    if ($request->has('branch_id')) {
-        $query->where('branch_id', $request->branch_id);
+        // Filter by branch_id
+        if ($request->has('branch_id')) {
+            $query->where('branch_id', $request->branch_id);
+        }
+
+        // Filter by keywords
+        if ($request->has('keywords')) {
+            $keywords = $request->input('keywords');
+
+            $query->where(function ($q) use ($keywords) {
+                $q->where('ref_number', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('invoice_number', 'LIKE', '%' . $keywords . '%')
+                    ->orWhere('customer_name', 'LIKE', '%' . $keywords . '%');
+            });
+        }
+
+        return response()->json($query->paginate(100));
     }
-
-    // Filter by keywords
-    if ($request->has('keywords')) {
-        $keywords = $request->input('keywords');
-
-        $query->where(function ($q) use ($keywords) {
-            $q->where('ref_number', 'LIKE', '%' . $keywords . '%')
-              ->orWhere('invoice_number', 'LIKE', '%' . $keywords . '%')
-              ->orWhere('customer_name', 'LIKE', '%' . $keywords . '%');
-        });
-    }
-
-    return response()->json($query->paginate(100));
-}
 
 
 

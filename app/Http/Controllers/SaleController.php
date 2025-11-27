@@ -1520,16 +1520,41 @@ class SaleController extends Controller
     }
 
 
+    // public function index(Request $request): JsonResponse
+    // {
+    //     $query = Sale::query();
+
+    //     if ($request->has('keywords')) {
+    //         $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
+
+    //     }
+    //     return response()->json($query->paginate(100));
+    // }
+
+
     public function index(Request $request): JsonResponse
-    {
-        $query = Sale::query();
+{
+    $query = Sale::query();
 
-        if ($request->has('keywords')) {
-            $query->where('ref_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('invoice_number', 'LIKE', '%' . $request->input('keywords') . '%')->orWhere('customer_name', 'LIKE', '%' . $request->input('keywords') . '%');
-
-        }
-        return response()->json($query->paginate(100));
+    // Filter by branch_id
+    if ($request->has('branch_id')) {
+        $query->where('branch_id', $request->branch_id);
     }
+
+    // Filter by keywords
+    if ($request->has('keywords')) {
+        $keywords = $request->input('keywords');
+
+        $query->where(function ($q) use ($keywords) {
+            $q->where('ref_number', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('invoice_number', 'LIKE', '%' . $keywords . '%')
+              ->orWhere('customer_name', 'LIKE', '%' . $keywords . '%');
+        });
+    }
+
+    return response()->json($query->paginate(100));
+}
+
 
 
 

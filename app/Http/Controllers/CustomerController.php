@@ -640,7 +640,7 @@ public function index(Request $request): JsonResponse
     }
 
     $data = $rows[0]; // Get first sheet
-    Log::info('Excel data loaded', ['total_rows' => count($data)]);
+    Log::info('Excel data loaded !', ['total_rows' => count($data)]);
 
     // Skip header row (index 0)
     $dataRows = array_slice($data, 1);

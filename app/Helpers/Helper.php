@@ -9,6 +9,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseProduct;
 use App\Models\Sale;
 use App\Models\SaleProduct;
+use App\Models\PurchaseStockProduct;
 use App\Models\SalesReturn;
 use App\Models\SalesReturnProduct;
 use Cache;
@@ -387,7 +388,7 @@ class Helper
     }
 
 
-    public static function getProdutDetailsByName($name, $company)
+    public static function getProdutDetailsByName($name, $company, $branch)
     {
         $productDetail = Product::with([
             'productLists',
@@ -455,24 +456,40 @@ class Helper
         })->toArray();
 
 
-        $purchasePrices = PurchaseProduct::where('product_id', $productDetail->id)
-            ->where('company_id', $company)
-            ->whereNull('deleted_at')
-            ->pluck('price');
+        $unitQty = $productDetail->measureUnit->quantity ?? 1;
 
-        $productData['average_price'] = round($purchasePrices->avg(), 2);
-        $productData['min_price'] = round($purchasePrices->min(), 2);
-        $productData['last_purchase_price'] = round(
-            PurchaseProduct::where('product_id', $productDetail->id)
-                ->where('company_id', $company)
-                ->whereNull('deleted_at')
-                ->orderBy('created_at', 'desc')
-                ->value('price') ?? 0
-        );
+      
+        $productData['original_price'] = ($productDetail->purchase_rate ?? 0) / $unitQty;
+
+       
+        $purchaseStockProducts = PurchaseStockProduct::where('product_id', $productDetail->id)
+            ->where('company_id', $company)
+            ->where('branch_id', $branch)
+            ->whereNull('deleted_at')
+            ->with('measureUnit:id,quantity') // eager load measure unit
+            ->get();
+
+       
+        $perPiecePrices = $purchaseStockProducts->map(function ($item) {
+            $unitQty = $item->measureUnit->quantity ?? 1; 
+            return $item->price / $unitQty;
+        });
+
+        $productData['average_price'] = round($perPiecePrices->avg() ?? 0, 2);
+        $productData['min_price'] = round($perPiecePrices->min() ?? 0, 2);
+
+        
+        $latestPurchaseStock = $purchaseStockProducts->sortByDesc('created_at')->first();
+        $latestPerPiecePrice = $latestPurchaseStock
+            ? ($latestPurchaseStock->price / ($latestPurchaseStock->measureUnit->quantity ?? 1))
+            : 0;
+
+        $productData['latest_price'] = round($latestPerPiecePrice, 2);
+
 
 
         return [
-            'message' => 'Successful!!', // Fixed typo: "Sucessfull" to "Successful"
+            'message' => 'Successful!!', 
             'data' => $productData
         ];
     }

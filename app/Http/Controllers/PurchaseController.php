@@ -225,8 +225,9 @@ class PurchaseController extends Controller
 
             $name = $request->input('name');
             $company = $request->company_id;
+            $branch = $request->branch_id;
 
-            $productDetails = Helper::getProdutDetailsByName($name, $company);
+            $productDetails = Helper::getProdutDetailsByName($name, $company, $branch);
 
 
             return response()->json($productDetails);

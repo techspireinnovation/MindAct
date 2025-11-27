@@ -1336,7 +1336,7 @@ public function show($id): JsonResponse
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
-            ], 403); // Changed to 403 for consistency
+            ], 403); // Changed to 403 for consistency/
         }
 
         $company = Company::findOrFail($id);

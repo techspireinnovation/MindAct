@@ -415,13 +415,14 @@ class MainGroupStub
             ]);
 
             $subGroupCode = 1;
+            $subGroupRanking = 1;
             foreach ($mainGroup as $mainGroupKey1 => $accountGroups) {
                 $subGroup = SubGroup::firstOrCreate([
                     'name' => ucfirst($mainGroupKey1),
                     'company_id' => $companyId,
                     'main_group_id' => $newMainGroup->id,
                     'code' => $subGroupCode++,
-                    'ranking_for_trial' => 1,
+                    'ranking_for_trial' => $subGroupRanking++,
                     'is_active' => true,
                     'is_primary' => true,
                 ]);

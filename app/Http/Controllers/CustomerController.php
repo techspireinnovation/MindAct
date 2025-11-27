@@ -12,11 +12,13 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 use Illuminate\Validation\Rule;
 
 use Illuminate\Support\Facades\Validator;
 
+use Illuminate\Support\Facades\Log;
 
 class CustomerController extends Controller
 {
@@ -71,17 +73,133 @@ class CustomerController extends Controller
         ]);
     }
 
-    public function index(Request $request): JsonResponse
-    {
-        $query = Customer::query();
+    // public function index(Request $request): JsonResponse
+    // {
+    //     $query = Customer::query();
 
-        if ($request->has('keywords')) {
-            $query->where('party_name', 'LIKE', '%' . $request->input('keywords') . '%');
+    //     if ($request->has('keywords')) {
+    //         $query->where('party_name', 'LIKE', '%' . $request->input('keywords') . '%');
+    //     }
+
+    //     return response()->json($query->paginate(50));
+    // }
+
+
+public function index(Request $request): JsonResponse
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'company_id' => 'required',
+            'filter_by' => 'nullable|string',
+            'search_party_name' => 'nullable|string|max:255',
+            'search_phone' => 'nullable|string|max:20',
+            'search_email' => 'nullable|string|max:255',
+            'search_pan_number' => 'nullable|string|max:255',
+            'search_contact_person' => 'nullable|string|max:255',
+            'search_ledger_type' => 'nullable|string|in:customer,vendor,both',
+            'search_billing_address' => 'nullable|string|max:255',
+            'search_customer_field' => 'nullable|string|max:100',
+            'search_customer_field_value' => 'nullable|string|max:100',
+            'per_page' => 'nullable|integer|min:1|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
 
-        return response()->json($query->paginate(50));
-    }
+        $companyId = $request->company_id;
 
+        $query = Customer::where('company_id', $companyId);
+
+        // Apply filters
+        if ($request->has('search_party_name')) {
+            $query->where('party_name', 'LIKE', '%' . $request->input('search_party_name') . '%');
+        }
+
+        if ($request->has('search_phone')) {
+            $query->where('phone', 'LIKE', '%' . $request->input('search_phone') . '%');
+        }
+
+        if ($request->has('search_email')) {
+            $query->where('email', 'LIKE', '%' . $request->input('search_email') . '%');
+        }
+
+        if ($request->has('search_pan_number')) {
+            $query->where('pan_number', 'LIKE', '%' . $request->input('search_pan_number') . '%');
+        }
+
+        if ($request->has('search_contact_person')) {
+            $query->where('contact_person', 'LIKE', '%' . $request->input('search_contact_person') . '%');
+        }
+
+        if ($request->has('search_ledger_type')) {
+            $query->where('ledger_type', $request->input('search_ledger_type'));
+        }
+
+        if ($request->has('search_billing_address')) {
+            $query->where('billing_address', 'LIKE', '%' . $request->input('search_billing_address') . '%');
+        }
+
+        // Order by latest first
+        $query->orderBy('created_at', 'desc');
+
+        $perPage = $request->input('per_page', 50);
+        $customers = $query->paginate($perPage);
+
+        // Transform the customers to match your desired format
+        $transformedCustomers = $customers->through(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'party_name' => $customer->party_name,
+                'phone' => $customer->phone,
+                'email' => $customer->email,
+                'pan_number' => $customer->pan_number,
+                'billing_address' => $customer->billing_address,
+                'contact_person' => $customer->contact_person,
+                'contact_person_phone' => $customer->contact_person_phone,
+                'ledger_type' => $customer->ledger_type,
+                'opening_balance' => $customer->opening_balance,
+                'district' => $customer->district,
+                'address' => $customer->address,
+                'country' => $customer->country,
+                'state' => $customer->state,
+                'city' => $customer->city,
+                'vdc_municipality' => $customer->vdc_municipality,
+                'ward_no' => $customer->ward_no,
+                'area' => $customer->area,
+                'bank_name' => $customer->bank_name,
+                'bank_id' => $customer->bank_id,
+                'bank_account_number' => $customer->bank_account_number,
+                'company_id' => $customer->company_id,
+                'is_active' => $customer->is_active,
+                'created_at' => $customer->created_at,
+                'updated_at' => $customer->updated_at,
+                'deleted_at' => $customer->deleted_at,
+                'customer_fields' => []
+            ];
+        });
+
+        return response()->json([
+            'data' => $transformedCustomers->items(),
+            'pagination' => [
+                'current_page' => $customers->currentPage(),
+                'last_page' => $customers->lastPage(),
+                'per_page' => $customers->perPage(),
+                'total' => $customers->total()
+            ]
+        ]);
+
+    } catch (QueryException $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Database error occurred.'], 500);
+    } catch (\Exception $e) {
+        \Log::error($e);
+        return response()->json(['error' => 'Unexpected error occurred.'], 500);
+    }
+}
 
     public function customerList(Request $request)
     {
@@ -501,5 +619,266 @@ class CustomerController extends Controller
             return response()->json(['error' => 'Unexpected error occurred !!'], 500);
         }
     }
+
+
+
+    public function importCustomerExcel(Request $request)
+{
+    $request->validate([
+        'file' => 'required|mimes:xlsx,xls,csv',
+      
+    ]);
+
+    $companyId = $request->company_id;
+    Log::info('Customer import started', ['company_id' => $companyId]);
+
+    // Read Excel
+    $rows = Excel::toArray(null, $request->file('file'));
+    
+    if (empty($rows) || empty($rows[0])) {
+        return response()->json(['message' => 'No data found in Excel file'], 400);
+    }
+
+    $data = $rows[0]; // Get first sheet
+    Log::info('Excel data loaded', ['total_rows' => count($data)]);
+
+    // Skip header row (index 0)
+    $dataRows = array_slice($data, 1);
+    Log::info('Data rows after slicing', ['count' => count($dataRows)]);
+
+    if (empty($dataRows)) {
+        return response()->json(['message' => 'No data rows found after skipping header'], 400);
+    }
+
+    // Get existing customers for this company to check duplicates
+    $existingCustomers = Customer::where('company_id', $companyId)
+        ->get()
+        ->map(function ($customer) {
+            return [
+                'party_name' => strtolower(trim($customer->party_name)),
+                'pan_number' => $customer->pan_number ? strtolower(trim($customer->pan_number)) : null,
+                'email' => $customer->email ? strtolower(trim($customer->email)) : null,
+                'phone' => $customer->phone ? trim($customer->phone) : null
+            ];
+        })
+        ->toArray();
+
+    $successCount = 0;
+    $errors = [];
+    $skippedCount = 0;
+
+    // First pass: Validate all rows and check for duplicates
+    $allRowsData = [];
+    $importPhoneNumbers = [];
+    $importPanNumbers = [];
+    $importEmails = [];
+
+    foreach ($dataRows as $index => $row) {
+        $rowNumber = $index + 2;
+
+        // Map Excel columns
+        $mappedRow = [
+            'ledger_type' => $row[0] ?? null,
+            'party_name' => $row[1] ?? null,
+            'phone' => $row[2] ?? null,
+            'billing_address' => $row[3] ?? null,
+            'pan_number' => $row[4] ?? null,
+            'email' => $row[5] ?? null,
+            'contact_person' => $row[6] ?? null,
+            'contact_person_phone' => $row[7] ?? null,
+        ];
+
+        // Skip if party name is empty
+        if (empty(trim($mappedRow['party_name'] ?? ''))) {
+            $errors[] = [
+                'row_number' => $rowNumber,
+                'errors' => ['Party name is required'],
+                'row_data' => $mappedRow
+            ];
+            continue;
+        }
+
+        // Basic validation
+        $validator = Validator::make($mappedRow, [
+            'ledger_type' => 'required|in:customer,vendor,both',
+            'party_name' => 'required|string|max:255',
+            'phone' => 'nullable|digits:10',
+            'billing_address' => 'nullable|string',
+            'pan_number' => 'nullable|string|max:255',
+            'email' => 'nullable|email|string|max:255',
+            'contact_person' => 'nullable|string|max:255',
+            'contact_person_phone' => 'nullable|string|max:20',
+        ], [
+            'phone.digits' => 'The contact number must be exactly 10 digits.',
+            'ledger_type.in' => 'Ledger type must be one of: customer, vendor, both.',
+            'email.email' => 'The email address must be a valid email.',
+        ]);
+
+        if ($validator->fails()) {
+            $errors[] = [
+                'row_number' => $rowNumber,
+                'errors' => $validator->errors()->all(),
+                'row_data' => $mappedRow
+            ];
+            continue;
+        }
+
+        // Check for duplicates in existing database
+        $phone = $mappedRow['phone'] ? trim($mappedRow['phone']) : null;
+        $panNumber = $mappedRow['pan_number'] ? strtolower(trim($mappedRow['pan_number'])) : null;
+        $email = $mappedRow['email'] ? strtolower(trim($mappedRow['email'])) : null;
+
+        foreach ($existingCustomers as $existingCustomer) {
+            if ($phone && $existingCustomer['phone'] === $phone) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => ['Contact number already exists in database'],
+                    'row_data' => $mappedRow
+                ];
+                continue 2;
+            }
+            if ($panNumber && $existingCustomer['pan_number'] === $panNumber) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => ['PAN number already exists in database'],
+                    'row_data' => $mappedRow
+                ];
+                continue 2;
+            }
+            if ($email && $existingCustomer['email'] === $email) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => ['Email address already exists in database'],
+                    'row_data' => $mappedRow
+                ];
+                continue 2;
+            }
+        }
+
+        // Check for duplicates within the import file itself
+        if ($phone) {
+            if (in_array($phone, $importPhoneNumbers)) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => ['Contact number duplicate within the import file'],
+                    'row_data' => $mappedRow
+                ];
+                continue;
+            }
+            $importPhoneNumbers[] = $phone;
+        }
+
+        if ($panNumber) {
+            if (in_array($panNumber, $importPanNumbers)) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => ['PAN number duplicate within the import file'],
+                    'row_data' => $mappedRow
+                ];
+                continue;
+            }
+            $importPanNumbers[] = $panNumber;
+        }
+
+        if ($email) {
+            if (in_array($email, $importEmails)) {
+                $errors[] = [
+                    'row_number' => $rowNumber,
+                    'errors' => ['Email address duplicate within the import file'],
+                    'row_data' => $mappedRow
+                ];
+                continue;
+            }
+            $importEmails[] = $email;
+        }
+
+        // If no errors, add to valid rows
+        $allRowsData[] = [
+            'row_number' => $rowNumber,
+            'data' => $mappedRow
+        ];
+    }
+
+    // If there are any validation errors, stop the entire import
+    if (!empty($errors)) {
+        Log::info('Import stopped due to validation errors', [
+            'company_id' => $companyId,
+            'error_count' => count($errors)
+        ]);
+
+        return response()->json([
+            'message' => 'Import failed due to validation errors. Please fix the errors and try again.',
+            'error_count' => count($errors),
+            'errors' => $errors
+        ], 422);
+    }
+
+    // Second pass: Import all valid rows
+    DB::beginTransaction();
+    try {
+        foreach ($allRowsData as $rowItem) {
+            $mappedRow = $rowItem['data'];
+            $rowNumber = $rowItem['row_number'];
+
+            try {
+                // Prepare data for customer creation
+                $customerData = [
+                    'company_id' => $companyId,
+                    'ledger_type' => $mappedRow['ledger_type'] ?? 'customer',
+                    'party_name' => trim($mappedRow['party_name']),
+                    'phone' => $mappedRow['phone'] ?? null,
+                    'billing_address' => $mappedRow['billing_address'] ?? null,
+                    'pan_number' => $mappedRow['pan_number'] ?? null,
+                    'email' => $mappedRow['email'] ?? null,
+                    'contact_person' => $mappedRow['contact_person'] ?? null,
+                    'contact_person_phone' => $mappedRow['contact_person_phone'] ?? null,
+                    'is_active' => true,
+                ];
+
+                // Create Customer
+                $customer = Customer::create($customerData);
+                $successCount++;
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                
+                Log::error('Database error during customer import', [
+                    'row_number' => $rowNumber,
+                    'error' => $e->getMessage()
+                ]);
+
+                return response()->json([
+                    'message' => 'Import failed due to database error at row ' . $rowNumber,
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        }
+
+        DB::commit();
+
+        Log::info('Customer import completed successfully', [
+            'company_id' => $companyId,
+            'inserted_count' => $successCount
+        ]);
+
+        return response()->json([
+            'message' => 'Customer import completed successfully!',
+            'inserted_count' => $successCount
+        ]);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        Log::error('Transaction failed during customer import', [
+            'company_id' => $companyId,
+            'error' => $e->getMessage()
+        ]);
+
+        return response()->json([
+            'message' => 'Import failed due to transaction error',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
 }

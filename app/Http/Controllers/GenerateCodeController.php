@@ -709,77 +709,148 @@ public function generatePurchaseReturnBillNumber(Request $request)
 
 
 
+    // public function generateStockEntryBillNumber(Request $request)
+    // {
+    //     try {
+    //         // Get current BS date
+    //         $bsDate = NepaliDate::create(Carbon::now())->toBS();
+    //         $bsDateParts = explode('-', $bsDate);
+    //         $currentBsYear = (int) $bsDateParts[0];
+    //         $currentBsMonth = (int) $bsDateParts[1];
+
+    //         // Determine fiscal year
+    //         $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
+    //         $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
+
+    //         // Get authenticated user (Sanctum-compatible)
+    //         $user = Auth::user();
+    //         if (!$user) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'Unauthorized: User not authenticated'
+    //             ], 401);
+    //         }
+
+    //         // Extract branch ID from token abilities if available
+    //         $branchId = null;
+    //         if (method_exists($user, 'currentAccessToken') && $user->currentAccessToken()) {
+    //             foreach ($user->currentAccessToken()->abilities as $ability) {
+    //                 if (strpos($ability, 'branch:') === 0) {
+    //                     $branchId = (int) str_replace('branch:', '', $ability);
+    //                     break;
+    //                 }
+    //             }
+    //         }
+
+    //         // Fallback: use branch_id from request if token doesn't have ability
+    //         if (!$branchId) {
+    //             $branchId = $request->branch_id ?? null;
+    //         }
+
+    //         if (!$branchId) {
+    //             return response()->json([
+    //                 'status' => 'error',
+    //                 'message' => 'No branch associated with the user'
+    //             ], 400);
+    //         }
+
+    //         // Find last StockEntry code for this branch & fiscal year
+    //         $lastEntry = StockEntry::where('entry_code', 'like', "SE{$fiscalYearCode}-{$branchId}-%")
+    //             ->orderBy('id', 'desc')
+    //             ->first();
+
+    //         $lastNumber = $lastEntry ? (int) substr($lastEntry->entry_code, -6) : 0;
+    //         $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+
+    //         // Generate new stock entry code
+    //         $entryCode = "SE{$fiscalYearCode}-{$branchId}-{$newNumber}";
+
+    //         return response()->json([
+    //             'status' => 'success',
+    //             'data' => [
+    //                 'entry_code' => $entryCode,
+    //                 'fiscal_year' => $fiscalYearCode,
+    //                 'branch_id' => $branchId
+    //             ]
+    //         ]);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Error generating stock entry code: ' . $e->getMessage()
+    //         ], 500);
+    //     }
+    // }
+
+
     public function generateStockEntryBillNumber(Request $request)
-    {
-        try {
-            // Get current BS date
-            $bsDate = NepaliDate::create(Carbon::now())->toBS();
-            $bsDateParts = explode('-', $bsDate);
-            $currentBsYear = (int) $bsDateParts[0];
-            $currentBsMonth = (int) $bsDateParts[1];
+{
+    try {
+        // Get current BS date
+        $bsDate = NepaliDate::create(Carbon::now())->toBS();
+        $bsDateParts = explode('-', $bsDate);
+        $currentBsYear = (int) $bsDateParts[0];
+        $currentBsMonth = (int) $bsDateParts[1];
 
-            // Determine fiscal year
-            $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
-            $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
+        // Determine fiscal year
+        $fiscalYear = $currentBsMonth >= 4 ? $currentBsYear : $currentBsYear - 1;
+        $fiscalYearCode = substr($fiscalYear, 2, 2) . substr($fiscalYear + 1, 2, 2);
 
-            // Get authenticated user (Sanctum-compatible)
-            $user = Auth::user();
-            if (!$user) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Unauthorized: User not authenticated'
-                ], 401);
-            }
+        // Get authenticated user
+        $userId = $request->user_id;
+        $user = User::on('mysql')->with('roles')->find($userId);
 
-            // Extract branch ID from token abilities if available
-            $branchId = null;
-            if (method_exists($user, 'currentAccessToken') && $user->currentAccessToken()) {
-                foreach ($user->currentAccessToken()->abilities as $ability) {
-                    if (strpos($ability, 'branch:') === 0) {
-                        $branchId = (int) str_replace('branch:', '', $ability);
-                        break;
-                    }
-                }
-            }
-
-            // Fallback: use branch_id from request if token doesn't have ability
-            if (!$branchId) {
-                $branchId = $request->branch_id ?? null;
-            }
-
-            if (!$branchId) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'No branch associated with the user'
-                ], 400);
-            }
-
-            // Find last StockEntry code for this branch & fiscal year
-            $lastEntry = StockEntry::where('entry_code', 'like', "SE{$fiscalYearCode}-{$branchId}-%")
-                ->orderBy('id', 'desc')
-                ->first();
-
-            $lastNumber = $lastEntry ? (int) substr($lastEntry->entry_code, -6) : 0;
-            $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
-
-            // Generate new stock entry code
-            $entryCode = "SE{$fiscalYearCode}-{$branchId}-{$newNumber}";
-
-            return response()->json([
-                'status' => 'success',
-                'data' => [
-                    'entry_code' => $entryCode,
-                    'fiscal_year' => $fiscalYearCode,
-                    'branch_id' => $branchId
-                ]
-            ]);
-        } catch (\Exception $e) {
+        if (!$user) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Error generating stock entry code: ' . $e->getMessage()
-            ], 500);
+                'message' => 'Unauthorized: User not authenticated !'
+            ], 401);
         }
+
+        $branchId = $request->branch_id;
+
+        if (!$branchId) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No branch associated with the user'
+            ], 200);
+        }
+
+        // Find last stock entry number
+        $lastEntryNumber = StockEntry::where(
+            'entry_code',
+            'like',
+            "SE{$fiscalYearCode}-{$branchId}-%"
+        )
+            ->orderBy('id', 'desc')
+            ->first();
+
+        // Generate sequential number
+        $lastNumber = $lastEntryNumber
+            ? (int) substr($lastEntryNumber->entry_code, -6)
+            : 0;
+
+        $newNumber = str_pad($lastNumber + 1, 6, '0', STR_PAD_LEFT);
+
+        // Generate entry code
+        $entryCode = "SE{$fiscalYearCode}-{$branchId}-{$newNumber}";
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'entry_code' => $entryCode,
+                'fiscal_year' => $fiscalYearCode,
+                'branch_id' => $branchId
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Error generating stock entry code: ' . $e->getMessage()
+        ], 400);
     }
+}
 
 
     public function generateStockReconciliationNumber(Request $request)

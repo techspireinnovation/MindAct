@@ -1645,21 +1645,31 @@ class PurchaseReturnController extends Controller
                 ->groupBy('purchase_stock_product_id');
 
 
-            $adjustedQuantityIndexes = DB::table('stock_adjusted_field_values')
-                ->select([
-                    'stock_adjusteds.purchase_stock_product_id',
-                    'stock_adjusted_field_values.quantity_index'
-                ])
-                ->join('stock_adjusteds', 'stock_adjusted_field_values.stock_adjusted_id', '=', 'stock_adjusteds.id')
-                ->whereIn('stock_adjusteds.purchase_stock_product_id', $purchaseProductIds)
-                ->where('stock_adjusteds.company_id', $companyId)
-                ->where('stock_adjusteds.branch_id', $branchId)
-                ->where('stock_adjusteds.adjusted_type', 'subtract')
-                ->whereNull('stock_adjusteds.deleted_at')
-                ->distinct()
+            // CORRECT WAY — USE stock_adjusteds table as source
+            $adjustedQuantityIndexes = DB::table('stock_adjusted_field_values as fv')
+                ->join('stock_adjusteds as sa', 'fv.stock_adjusted_id', '=', 'sa.id')
+                ->whereIn('fv.purchase_stock_product_id', $purchaseProductIds)
+                ->where('sa.company_id', $companyId)
+                ->where('sa.branch_id', $branchId)
+                ->where('sa.adjusted_type', 'subtract')
+                ->whereNull('sa.deleted_at')
+                ->whereNull('fv.deleted_at')
+                ->select('fv.purchase_stock_product_id', 'fv.quantity_index')
                 ->get()
-                ->groupBy('purchase_stock_product_id')
-                ->map(fn($group) => $group->pluck('quantity_index')->toArray());
+                ->groupBy('purchase_stock_product_id')  // ← This keeps the key!
+                ->mapWithKeys(function ($group, $pspId) {
+                    return [
+                        (int) $pspId => $group->pluck('quantity_index')
+                            ->map('intval')
+                            ->unique()
+                            ->values()
+                            ->toArray()
+                    ];
+                })
+                ->toArray();                                                         // ← array
+
+
+
 
 
             // Process purchase products
@@ -1939,7 +1949,7 @@ class PurchaseReturnController extends Controller
                         $ppFieldValues = $fieldValues[$pp->purchase_stock_product_id]
                             ->filter(fn($fv) => !in_array($fv->quantity_index, $excludedIndexes))
                             ->groupBy('quantity_index')
-                            ->take($availableUnits)
+                            // ->take($availableUnits)
                             ->flatten(1)
                             ->map(fn($fv) => [
 

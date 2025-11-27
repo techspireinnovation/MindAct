@@ -566,7 +566,7 @@ class SaleController extends Controller
                 return ['message' => 'No product found', 'data' => []];
             }
 
-            $productRetails = Product::where('id', $productForUnit)->where('company_id',$companyId)->first();
+            $productRetails = Product::where('id', $productForUnit)->where('company_id', $companyId)->first();
 
             if (!$productRetails) {
                 $pricePerPiece = 0; // fallback if product not found
@@ -741,13 +741,15 @@ class SaleController extends Controller
                 ->where('company_id', $companyId)
                 ->where('branch_id', $branchId)
                 ->whereNull('deleted_at')
-                ->select(['stock_adjusted_id', 'purchase_stock_product_id', 'quantity_index'])
+                ->select('purchase_stock_product_id', 'quantity_index')
                 ->get()
-                ->groupBy(function ($fv) use ($purchaseProducts) {
-                    $adjustedProduct = StockAdjusted::find($fv->stock_adjusted_id);
-                    return $adjustedProduct ? $adjustedProduct->purchase_stock_product_id : null;
-                })
-                ->map(fn($group) => $group->pluck('quantity_index')->toArray());
+                ->groupBy('purchase_stock_product_id')
+                ->mapWithKeys(fn($group, $key) => [(int) $key => $group->pluck('quantity_index')->map('intval')->unique()->values()->toArray()])
+                ->toArray(); // ← This makes keys integers!
+
+
+
+
 
 
             Log::debug('Sold quantity indexes fetched', [
@@ -828,7 +830,7 @@ class SaleController extends Controller
             // Process results
             $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $adjustedQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
                 $allFieldValues = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
-                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
+                    ->flatMap(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes,$adjustedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, ) {
                         // Only exclude sold indices that weren't returned
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
                         $excludedIndexes = array_unique(array_merge(
@@ -898,9 +900,10 @@ class SaleController extends Controller
                             0
                         );
 
-                        $adjustedPieces = $pp->stockAdjusted->where('adjusted_type','subtract')->reduce(
+                        $adjustedPieces = $pp->stockAdjusted->where('adjusted_type', 'subtract')->reduce(
                             fn($carry, $adjusted) => $carry + $this->calculatePieces(
-                                $adjusted->quantity, isset($measureUnitsCalc[$adjusted->measure_unit_id]) ? $measureUnitsCalc[$adjusted->measure_unit_id]->quantity : 1
+                                $adjusted->quantity,
+                                isset($measureUnitsCalc[$adjusted->measure_unit_id]) ? $measureUnitsCalc[$adjusted->measure_unit_id]->quantity : 1
                             ),
                             0
                         );

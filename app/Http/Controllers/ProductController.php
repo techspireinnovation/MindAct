@@ -1087,25 +1087,20 @@ public function importExcel(Request $request)
 {
     $request->validate([
         'file' => 'required|mimes:xlsx,xls,csv',
-
     ]);
 
     $companyId = $request->company_id;
-    Log::info('Import started', ['company_id' => $companyId]);
 
     // Read Excel
     $rows = Excel::toArray(null, $request->file('file'));
-    
+
     if (empty($rows) || empty($rows[0])) {
         return response()->json(['message' => 'No data found in Excel file'], 400);
     }
 
-    $data = $rows[0]; // Get first sheet
-    Log::info('Excel data loaded', ['total_rows' => count($data)]);
+    $data = $rows[0];
 
-    // Skip header row (index 0)
     $dataRows = array_slice($data, 1);
-    Log::info('Data rows after slicing', ['count' => count($dataRows)]);
 
     if (empty($dataRows)) {
         return response()->json(['message' => 'No data rows found after skipping header'], 400);
@@ -1119,7 +1114,6 @@ public function importExcel(Request $request)
 
     $lastNumber = 0;
     if ($lastProduct) {
-        Log::info('Last product found', ['last_product' => $lastProduct->product_unique_id]);
         if (preg_match('/PID-(\d+)/', $lastProduct->product_unique_id, $matches)) {
             $lastNumber = (int)$matches[1];
         }
@@ -1136,7 +1130,6 @@ public function importExcel(Request $request)
     $subCategories = ProductSubCategory::where('company_id', $companyId)->pluck('id', 'name')->toArray();
     $brands = Brand::where('company_id', $companyId)->pluck('id', 'name')->toArray();
 
-    // Use default measure unit ID (you can change this to whatever ID you want)
     $defaultMeasureUnitId = 1;
 
     $successCount = 0;
@@ -1144,10 +1137,9 @@ public function importExcel(Request $request)
     $skippedCount = 0;
 
     foreach ($dataRows as $index => $row) {
-        $rowNumber = $index + 2; // Excel row number (accounting for header)
+        $rowNumber = $index + 2;
 
         try {
-            // Map Excel columns
             $mappedRow = [
                 'name' => $row[1] ?? null,
                 'category' => $row[2] ?? null,
@@ -1170,7 +1162,6 @@ public function importExcel(Request $request)
                 'final price' => $row[19] ?? null,
             ];
 
-            // Skip if product name is empty
             if (empty(trim($mappedRow['name'] ?? ''))) {
                 $skippedCount++;
                 continue;
@@ -1178,13 +1169,11 @@ public function importExcel(Request $request)
 
             $productName = strtolower(trim($mappedRow['name']));
 
-            // Skip if product already exists
             if (in_array($productName, $existingProducts)) {
                 $skippedCount++;
                 continue;
             }
 
-            // Validation
             $validator = Validator::make($mappedRow, [
                 'name' => 'required|string|max:255',
                 'barcode' => 'nullable|string|max:255',
@@ -1210,7 +1199,6 @@ public function importExcel(Request $request)
                 continue;
             }
 
-            // Create missing categories
             if (!isset($categories[$mappedRow['category']])) {
                 $categories[$mappedRow['category']] = ProductCategory::create([
                     'name' => $mappedRow['category'],
@@ -1236,11 +1224,9 @@ public function importExcel(Request $request)
                 ])->id;
             }
 
-            // Generate product unique ID
             $lastNumber++;
             $productUniqueId = 'PID-' . str_pad($lastNumber, 6, '0', STR_PAD_LEFT);
 
-            // Create Product
             $product = Product::create([
                 'name' => $mappedRow['name'],
                 'product_unique_id' => $productUniqueId,
@@ -1259,12 +1245,11 @@ public function importExcel(Request $request)
                 'is_active' => true,
             ]);
 
-            // Create ProductList
             ProductList::create([
                 'product_id' => $product->id,
                 'product_unique_id' => $productUniqueId,
-                'measure_unit_id' => $defaultMeasureUnitId, // Use default ID
-                'primary_measure_unit_id' => $defaultMeasureUnitId, // Use default ID
+                'measure_unit_id' => $defaultMeasureUnitId,
+                'primary_measure_unit_id' => $defaultMeasureUnitId,
                 'barcode' => $mappedRow['barcode'],
                 'hs_code' => $mappedRow['hs code'] ?? null,
                 'quantity' => 1,
@@ -1274,12 +1259,6 @@ public function importExcel(Request $request)
                 'is_primary' => true,
                 'company_id' => $companyId,
             ]);
-
-            // VERIFY the ProductList was created
-            $productListCount = ProductList::where('product_id', $product->id)->count();
-            if ($productListCount === 0) {
-                throw new \Exception("ProductList creation failed for product ID: {$product->id}");
-            }
 
             $existingProducts[] = $productName;
             $successCount++;
@@ -1292,13 +1271,6 @@ public function importExcel(Request $request)
             ];
         }
     }
-
-    Log::info('Import completed', [
-        'company_id' => $companyId,
-        'inserted_count' => $successCount,
-        'error_count' => count($errors),
-        'skipped_count' => $skippedCount
-    ]);
 
     if ($successCount === 0 && empty($errors)) {
         return response()->json([
@@ -1324,6 +1296,7 @@ public function importExcel(Request $request)
         'skipped_count' => $skippedCount
     ]);
 }
+
 
     
 }

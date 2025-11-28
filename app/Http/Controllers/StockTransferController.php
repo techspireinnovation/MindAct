@@ -1930,7 +1930,7 @@ class StockTransferController extends Controller
                 'message' => 'Stock Transfer deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Stock Transfer not found!'
@@ -1942,7 +1942,7 @@ class StockTransferController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Stock Transfer.'

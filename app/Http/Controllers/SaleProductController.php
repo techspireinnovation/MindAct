@@ -159,7 +159,7 @@ class SaleProductController extends Controller
                 'message' => 'Sale Product deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Sale Product not found!'
@@ -171,7 +171,7 @@ class SaleProductController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Sale Product.'

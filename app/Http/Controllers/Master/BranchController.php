@@ -75,13 +75,13 @@ class BranchController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+          
             return response()->json(["error" => "Branch not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+            
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -215,19 +215,19 @@ class BranchController extends Controller
     //             'message' => 'Branch deleted successfully!'
     //         ]);
     //     } catch (ModelNotFoundException $e) {
-    //         \Log::error($e);
+    //        
     //         return response()->json([
     //             'error' => 'not_found',
     //             'message' => 'Branch not found!'
     //         ], 404);
     //     } catch (QueryException $e) {
-    //         \Log::error($e);
+    //         
     //         return response()->json([
     //             'error' => 'query_error',
     //             'message' => 'A database error occurred while deleting the branch.'
     //         ], 500);
     //     } catch (\Exception $e) {
-    //         \Log::error($e);
+    //        
     //         return response()->json([
     //             'error' => 'unexpected_error',
     //             'message' => 'An unexpected error occurred while deleting the branch.'
@@ -304,14 +304,14 @@ public function destroy($id): JsonResponse
         ], 404);
 
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json([
             'error' => 'query_error',
             'message' => $e->getMessage(),
         ], 422);
 
     } catch (\Exception $e) {
-        \Log::error($e);
+        
         return response()->json([
             'error' => 'unexpected_error',
             'message' => $e->getMessage(),
@@ -342,13 +342,13 @@ public function destroy($id): JsonResponse
         ], 200);
 
     } catch (ModelNotFoundException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'No Active Branch Found!'], 404);
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Database Error Occurred!'], 500);
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Unexpected Error Occurred!'], 500);
     }
 }

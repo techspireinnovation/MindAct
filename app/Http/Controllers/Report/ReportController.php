@@ -70,7 +70,7 @@ class ReportController extends Controller
             }
             return response()->json([]);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -114,7 +114,7 @@ class ReportController extends Controller
             }
             return response()->json([]);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -196,13 +196,13 @@ class ReportController extends Controller
             return response()->json($items);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Product not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -243,7 +243,7 @@ class ReportController extends Controller
             return response()->json($items);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -322,10 +322,10 @@ class ReportController extends Controller
             return response()->json($transactions);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Product not found'], 404);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -442,7 +442,7 @@ class ReportController extends Controller
             }
             return response()->json($items);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -508,7 +508,7 @@ class ReportController extends Controller
             Helper::applyCache($request->fullUrlWithQuery($request->all()), $report);
             return response()->json($report);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -623,7 +623,7 @@ class ReportController extends Controller
             return response()->json($report);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -665,7 +665,7 @@ class ReportController extends Controller
             return response()->json([]);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -710,7 +710,7 @@ class ReportController extends Controller
             return response()->json([]);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }

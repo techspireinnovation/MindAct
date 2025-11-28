@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class SubGroupController extends Controller
 {
@@ -135,76 +136,180 @@ class SubGroupController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
-    {
-        try {
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
+    // public function store(Request $request): JsonResponse
+    // {
+    //     try {
+    //         $validator = Validator::make($request->all(), [
+    //             'name' => [
+    //                 'required',
+    //                 'string',
+    //                 'max:255',
+    //                 Rule::unique('sub_groups')->where(function ($query) use ($request) {
+    //                     return $query->where('company_id', $request->company_id)
+    //                         ->whereNull('deleted_at');
 
-                    }),
+    //                 }),
 
-                ],
-                'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
-                "code" => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('sub_groups')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
+    //             ],
+    //             'is_active' => 'boolean|required',
+    //             'is_primary' => 'boolean',
+    //             "code" => [
+    //                 'nullable',
+    //                 'string',
+    //                 'max:255',
+    //                 Rule::unique('sub_groups')->where(function ($query) use ($request) {
+    //                     return $query->where('company_id', $request->company_id)
+    //                         ->whereNull('deleted_at');
 
-                    }),
+    //                 }),
 
-                ],
+    //             ],
 
-                'company_id' => 'integer',
-                'main_group_id' => [
-                    'required',
-                    'integer',
-                    Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->input('company_id'));
-                    }),
-                ],
+    //             'company_id' => 'integer',
+    //             'main_group_id' => [
+    //                 'required',
+    //                 'integer',
+    //                 Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
+    //                     return $query->where('company_id', $request->input('company_id'));
+    //                 }),
+    //             ],
 
-            ]);
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
+    //         ]);
+    //         if ($validator->fails()) {
+    //             return response()->json([
+    //                 'message' => $validator->errors()->first(),
+    //                 'errors' => $validator->errors()
+    //             ], 422);
+    //         }
 
-            $validated = $validator->validated();
-            $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])->orderBy('code', 'DESC')->first();
+    //         $validated = $validator->validated();
+    //         $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])->orderBy('code', 'DESC')->first();
 
-            $rankingForTrial = Subgroup::where('company_id', $request->company_id)
-                ->where('main_group_id', $validated['main_group_id'])
-                ->orderBy('ranking_for_trial', 'desc')
-                ->first();
-            $newrankingForTrial = $rankingForTrial ? $rankingForTrial->ranking_for_trial + 1 : 1;
-            $validated['ranking_for_trial'] = $newrankingForTrial;
+    //         $rankingForTrial = Subgroup::where('company_id', $request->company_id)
+    //             ->where('main_group_id', $validated['main_group_id'])
+    //             ->orderBy('ranking_for_trial', 'desc')
+    //             ->first();
+    //         $newrankingForTrial = $rankingForTrial ? $rankingForTrial->ranking_for_trial + 1 : 1;
+    //         $validated['ranking_for_trial'] = $newrankingForTrial;
 
-            $validated['code'] = $lastSubGroup ? (int) ($lastSubGroup->code) + 1 : 1;
+    //         $validated['code'] = $lastSubGroup ? (int) ($lastSubGroup->code) + 1 : 1;
 
-            $group = SubGroup::create($validated);
-            return response()->json($group, 201);
-        } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Sub Group not found!!'], 404);
-        } catch (QueryException $e) {
-            dd($e->getMessage());
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
-        } catch (\Exception $e) {
-            dd($e->getMessage());
-            return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    //         $group = SubGroup::create($validated);
+    //         return response()->json($group, 201);
+    //     } catch (ModelNotFoundException $e) {
+    //         return response()->json(['error' => 'Sub Group not found!!'], 404);
+    //     } catch (QueryException $e) {
+    //         dd($e->getMessage());
+    //         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    //     } catch (\Exception $e) {
+    //         dd($e->getMessage());
+    //         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    //     }
+    // }
+
+public function store(Request $request): JsonResponse
+{
+    try {
+        $validator = Validator::make($request->all(), [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('sub_groups')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
+                        ->whereNull('deleted_at');
+                }),
+            ],
+            'is_active' => 'boolean|required',
+            'is_primary' => 'boolean',
+            "code" => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('sub_groups')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->company_id)
+                        ->whereNull('deleted_at');
+                }),
+            ],
+            'company_id' => 'integer',
+            'main_group_id' => [
+                'required',
+                'integer',
+                Rule::exists('main_groups', 'id')->where(function ($query) use ($request) {
+                    return $query->where('company_id', $request->input('company_id'));
+                }),
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
+
+        $validated = $validator->validated();
+
+        // DEBUG: Log the input
+        Log::info('SubGroup Store - Input', [
+            'company_id' => $request->company_id,
+            'main_group_id' => $validated['main_group_id'],
+            'name' => $validated['name']
+        ]);
+
+        // Get the last code for this main group
+        $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])
+            ->orderBy('code', 'DESC')
+            ->first();
+
+        $validated['code'] = $lastSubGroup ? (int) ($lastSubGroup->code) + 1 : 1;
+
+        // DEBUG: Log the last sub group found
+        Log::info('SubGroup Store - Last SubGroup', [
+            'last_subgroup' => $lastSubGroup ? $lastSubGroup->toArray() : 'null'
+        ]);
+
+        // Get the last ranking_for_trial for this main group
+        $lastRanking = SubGroup::where('company_id', $request->company_id)
+            ->where('main_group_id', $validated['main_group_id'])
+            ->orderBy('ranking_for_trial', 'desc')
+            ->first();
+
+        // DEBUG: Log the last ranking found
+        Log::info('SubGroup Store - Last Ranking', [
+            'last_ranking' => $lastRanking ? $lastRanking->toArray() : 'null',
+            'query_conditions' => [
+                'company_id' => $request->company_id,
+                'main_group_id' => $validated['main_group_id']
+            ]
+        ]);
+        
+        // Set the new ranking_for_trial (increment from the last one in the same main group)
+        $validated['ranking_for_trial'] = $lastRanking ? $lastRanking->ranking_for_trial + 1 : 1;
+
+        // DEBUG: Log the final ranking
+        Log::info('SubGroup Store - Final Ranking', [
+            'final_ranking' => $validated['ranking_for_trial']
+        ]);
+
+        $group = SubGroup::create($validated);
+        
+        // DEBUG: Log the created record
+        Log::info('SubGroup Store - Created', $group->toArray());
+        
+        return response()->json($group, 201);
+        
+    } catch (ModelNotFoundException $e) {
+        Log::error('SubGroup Store - Model Not Found', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'Sub Group not found!!'], 404);
+    } catch (QueryException $e) {
+        Log::error('SubGroup Store - Query Exception', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+    } catch (\Exception $e) {
+        Log::error('SubGroup Store - General Exception', ['error' => $e->getMessage()]);
+        return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
+}
 
     public function show($id): JsonResponse
     {
@@ -252,21 +357,21 @@ class SubGroupController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Sub Main Group not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the mainGroup.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the mainGroup.'

@@ -219,14 +219,14 @@ class ReceiptVoucherController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Receipt Voucher not found!'], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }
@@ -242,14 +242,14 @@ class ReceiptVoucherController extends Controller
 
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
 
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
 
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

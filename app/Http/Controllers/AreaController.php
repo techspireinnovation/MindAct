@@ -60,13 +60,13 @@ class AreaController extends Controller
                                     ]);
 
         }catch(ModelNotFoundException $e){
-            \Log::error($e);
+           
             return response()->json(["error"=>"Area not Found !!"],404);
         }catch(QueryException $e){
-            \Log::error($e);
+           
             return response()->json(["error"=>"Database error occurred !!"],500);
         }catch(\Exception $e){
-            \Log::error($e);
+          
             return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
     }
@@ -137,13 +137,13 @@ class AreaController extends Controller
             $area->update($validated);
             return response()->json($area);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+          
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+          
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -188,14 +188,14 @@ class AreaController extends Controller
             $area = Area::create($validated);
             return response()->json($area, 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+          
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
             dd($e->getMessage());
-            \Log::error($e);
+          
             return response()->json(['error' => 'Database  error occurred!!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+          
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -206,10 +206,10 @@ class AreaController extends Controller
             $area = Area::findOrFail($id);
             return response()->json($area);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -222,10 +222,10 @@ class AreaController extends Controller
             $area->delete();
             return response()->json(['message' => 'Area deleted!!']);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

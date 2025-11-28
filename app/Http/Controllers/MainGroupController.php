@@ -46,13 +46,13 @@ class MainGroupController extends Controller
                                     ]);
 
         }catch(ModelNotFoundException $e){
-            \Log::error($e);
+           
             return response()->json(["error"=>"Main Group not Found !!"],404);
         }catch(QueryException $e){
-            \Log::error($e);
+           
             return response()->json(["error"=>"Database error occurred !!"],500);
         }catch(\Exception $e){
-            \Log::error($e);
+           
             return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
     }
@@ -233,13 +233,13 @@ public function draggable(Request $request): JsonResponse
             $group->update($validated);
             return response()->json($group, 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -281,13 +281,13 @@ public function draggable(Request $request): JsonResponse
             $group = MainGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -298,10 +298,10 @@ public function draggable(Request $request): JsonResponse
             $group = MainGroup::findOrFail($id);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -340,21 +340,21 @@ public function draggable(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Main Group not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the mainGroup.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the mainGroup.'

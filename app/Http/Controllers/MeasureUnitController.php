@@ -43,13 +43,13 @@ class MeasureUnitController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Measure Unit not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -172,10 +172,10 @@ class MeasureUnitController extends Controller
             $item = MeasureUnit::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -222,21 +222,21 @@ class MeasureUnitController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Measure Unit not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Measure Unit.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Measure Unit.'
@@ -274,10 +274,10 @@ class MeasureUnitController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }

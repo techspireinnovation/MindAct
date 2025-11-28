@@ -40,13 +40,13 @@ class StoreController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Store not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -202,21 +202,21 @@ class StoreController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'true',
                 'message' => 'Store not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Store.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Store.'

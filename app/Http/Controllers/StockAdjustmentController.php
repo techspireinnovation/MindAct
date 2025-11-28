@@ -858,7 +858,7 @@ class StockAdjustmentController extends Controller
                                     }
                                 }
 
-                                // Only incrementt for unselected groups (one new unit = one group)
+                               
                                 if ($isUnselectedGroup) {
                                     $newUnitIndex++;
                                 }
@@ -868,7 +868,7 @@ class StockAdjustmentController extends Controller
                         continue;
                     }
 
-                    // SUBTRACT — 100% UNCHANGED (your original working code)
+                  
                     $stockAdjusted = null;
 
                     if ($hasFieldValues) {
@@ -1039,13 +1039,13 @@ class StockAdjustmentController extends Controller
             return response()->json($itemArray);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Stock Adjustment not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -1077,7 +1077,7 @@ class StockAdjustmentController extends Controller
                 'message' => 'Stock Adjustment deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Stock Adjustment not found!'
@@ -1089,7 +1089,7 @@ class StockAdjustmentController extends Controller
                 'message' => $e->getMessage()
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Stock Adjustment.'

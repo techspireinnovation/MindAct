@@ -42,13 +42,13 @@ class AccountGroupController extends Controller
                                     ]);
 
         }catch(ModelNotFoundException $e){
-            \Log::error($e);
+          
             return response()->json(["error"=>"Account Group not Found !!"],404);
         }catch(QueryException $e){
-            \Log::error($e);
+           
             return response()->json(["error"=>"Database error occurred !!"],500);
         }catch(\Exception $e){
-            \Log::error($e);
+          
             return response()->json(["error"=>"An unexpected error occurred !!"],500);
         }
     }
@@ -130,13 +130,13 @@ class AccountGroupController extends Controller
             $group->update($validated);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            
             return response()->json(['error' => 'Account Group not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -176,13 +176,13 @@ class AccountGroupController extends Controller
             $group = AccountGroup::create($validated);
             return response()->json($group, 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Main Group not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -193,10 +193,10 @@ class AccountGroupController extends Controller
             $group = AccountGroup::findOrFail($id);
             return response()->json($group);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Account Group not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+            
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -241,21 +241,21 @@ class AccountGroupController extends Controller
             ]);
     
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+            
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Account Group not found!'
             ], 404);
     
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Account Group.'
             ], 500);
     
         } catch (\Exception $e) {
-            \Log::error($e);
+          
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Account Group.'

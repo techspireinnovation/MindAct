@@ -38,13 +38,13 @@ class LocationController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Location not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -130,10 +130,10 @@ class LocationController extends Controller
 
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -182,14 +182,14 @@ class LocationController extends Controller
             $item = Location::create($validated);
             return response()->json($item, 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
@@ -202,10 +202,10 @@ class LocationController extends Controller
             $item = Location::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -249,19 +249,19 @@ class LocationController extends Controller
                 'message' => 'Location deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Location not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the location.'
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the location.'

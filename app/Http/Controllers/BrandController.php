@@ -44,13 +44,13 @@ class BrandController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Brand not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -144,13 +144,13 @@ class BrandController extends Controller
 
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
@@ -228,7 +228,7 @@ class BrandController extends Controller
                 'message' => 'Brand deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'true',
                 'message' => 'Brand not found!'
@@ -241,7 +241,7 @@ class BrandController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the brand.'

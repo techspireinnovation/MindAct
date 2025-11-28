@@ -161,7 +161,7 @@ class PurchaseReturnObserver
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error($e);
+           
         }
     }
 }

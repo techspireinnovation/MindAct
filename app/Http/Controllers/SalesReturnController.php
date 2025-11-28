@@ -249,6 +249,30 @@ class SalesReturnController extends Controller
 
             foreach ($sale->saleProducts as $saleProduct) {
                 $productId = $saleProduct->product_id;
+                $product = Product::with('measureUnit:id,quantity')
+                    ->select('id', 'measure_unit_id', 'retail_sales_price')
+                    ->find($productId);
+
+
+
+                $unitQty = $product->measureUnit->quantity ?? 1;
+                $originalPricePerPiece = $product->retail_sales_price / $unitQty;
+
+                // 2. Get all sale prices for this product (company + branch), ordered by created_at
+                $salePrices = SaleProduct::where('product_id', $productId)
+                    ->where('company_id', $companyId)
+                    ->where('branch_id', $branchId)
+                    ->whereNull('deleted_at')
+                    ->orderBy('created_at')
+                    ->pluck('price');
+
+                // 3. Calculate prices per piece
+                $latestPrice = $salePrices->last() ?? 0; // latest by created_at
+                $latestPricePerPiece = $latestPrice / $unitQty;
+                $avgPricePerPiece = $salePrices->avg() / $unitQty;
+                $minPricePerPiece = $salePrices->min() / $unitQty;
+
+
                 $productMeasureUnit = Product::where('id', $productId)->first();
                 $productMeasureUnitId = $productMeasureUnit->measure_unit_id ?? null;
                 $productMeasureUnitLists = ProductList::where('product_id', $productId)->pluck('measure_unit_id')->toArray();
@@ -338,7 +362,10 @@ class SalesReturnController extends Controller
                         'product_id' => $productId,
                         'product_name' => $saleProduct->product_name,
                         'product_code' => $saleProduct->product_code,
-                        'min_price' => $saleProduct->price,
+                        'original_price' => $originalPricePerPiece ?? 0,
+                        'min_price' => $minPricePerPiece ?? 0,
+                        'avg_price' => $avgPricePerPiece ?? 0,
+                        'latest_price' => $latestPricePerPiece ?? 0,
                         'amount' => $saleProduct->amount,
                         'is_vatable' => (bool) $saleProduct->is_vatable,
                         'used_measure_units' => $usedMeasureUnits,
@@ -2037,17 +2064,27 @@ class SalesReturnController extends Controller
                     }
 
                     // Fetch product metadata
-                    $product = Product::where('id', $productId)
+                    $product = Product::with('measureUnit:id,quantity')
+                        ->where('id', $productId)
                         ->where('company_id', $companyId)
                         ->whereNull('deleted_at')
                         ->first();
 
-                    $originalProductPrice = Product::where('id', $productId)->value('purchase_rate');
+                    $unitQty = $product->measureUnit->quantity ?? 1;
+                    $originalPricePerPiece = ($product->retail_sales_price ?? 0) / $unitQty;
 
-                    $saleProductsPrice = SaleProduct::where('product_id', $productId)->where('company_id', $companyId)->where('branch_id', $branchId)->orderBy('created_at', 'desc')->pluck('price');
-                    $latestPrice = $saleProductsPrice->first();
-                    $minProductPrice = $saleProductsPrice->min();
-                    $avgProductPrice = $saleProductsPrice->avg();
+                    // Fetch all sale prices once
+                    $salePrices = SaleProduct::where('product_id', $productId)
+                        ->where('company_id', $companyId)
+                        ->where('branch_id', $branchId)
+                        ->whereNull('deleted_at')
+                        ->orderBy('created_at')
+                        ->pluck('price');
+
+                    $latestPrice = $salePrices->last() ?? 0;
+                    $latestPricePerPiece = $latestPrice / $unitQty;
+                    $minPricePerPiece = $salePrices->min() / $unitQty;
+                    $avgPricePerPiece = $salePrices->avg() / $unitQty;
 
                     // Initialize product entry
                     if (!isset($products[$productId])) {
@@ -2055,10 +2092,10 @@ class SalesReturnController extends Controller
                             'product_id' => $productId,
                             'product_name' => $saleProduct->product_name,
                             'product_code' => $saleProduct->product_code,
-                            'original_price' => $originalProductPrice ?? null,
-                            'latest_price' => $latestPrice ?? null,
-                            'min_price' => $minProductPrice ?? null,
-                            'avg_price' => $avgProductPrice ?? null,
+                            'original_price' => $originalPricePerPiece ?? 0,
+                            'latest_price' => $latestPricePerPiece ?? 0,
+                            'min_price' => $minPricePerPiece ?? 0,
+                            'avg_price' => $avgPricePerPiece ?? 0,
                             'amount' => $saleProduct->amount ?? null,
                             'is_vatable' => (bool) $saleProduct->is_vatable,
                             'used_measure_units' => $usedMeasureUnits,
@@ -2204,10 +2241,9 @@ class SalesReturnController extends Controller
                         $products[$productId]['expiry_dates'][] = $saleProduct->expiry_date;
                     }
 
-                    // Add field values for unreturned quantities
-                    // Add field values for unreturned quantities
+                    
                     if ($saleProduct->fieldValues->isNotEmpty()) {
-                        // Temporary structure to group field values by purchase_stock_product_id and quantity_index
+                      
                         $tempFieldValues = [];
 
                         foreach ($saleProduct->fieldValues as $fv) {
@@ -2223,7 +2259,7 @@ class SalesReturnController extends Controller
                                     $tempFieldValues[$purchaseStockProductId][$quantityIndex] = [];
                                 }
 
-                                // Add field value to the temporary grouped structure
+                              
                                 $tempFieldValues[$purchaseStockProductId][$quantityIndex][] = [
                                     'sale_product_id' => $saleProduct->id,
                                     'purchase_stock_product_id' => $saleProduct->purchase_stock_product_id,
@@ -5313,7 +5349,7 @@ class SalesReturnController extends Controller
                 })
                 ->values();
 
-            // Step 5: Attach measure units, field names, codes, and available qty
+
             foreach ($mergedProducts as $saleReturn) {
                 $units = $productMeasureUnits->get($saleReturn->product_id, collect())
                     ->pluck('measureUnit');
@@ -5322,7 +5358,7 @@ class SalesReturnController extends Controller
                 $productId = $saleReturn->product_id;
                 $productCode = Product::where('id', $productId)->value('product_unique_id');
 
-                // Map fieldValues with their field names
+
                 $saleReturn->setRelation(
                     'field_values',
                     $saleReturn->fieldValues->map(function ($fv) {
@@ -5335,7 +5371,7 @@ class SalesReturnController extends Controller
                 $saleReturn->remaining_quantity = $availableMap[$saleReturn->product_id] ?? 0;
             }
 
-            // Step 6: Replace salesReturnProducts with merged ones
+
             $salesReturn->setRelation('salesReturnProducts', $mergedProducts);
 
 

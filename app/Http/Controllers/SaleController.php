@@ -723,7 +723,7 @@ class SaleController extends Controller
                         ->where('purchase_stock_product_field_values.company_id', $companyId)
                         ->where('purchase_stock_product_field_values.branch_id', $branchId)
                         ->with([
-                            'productField' => fn($q) => $q->select(['id', 'name', 'company_id'])
+                            'productField' => fn($q) => $q->select(['id', 'name','type','values', 'company_id'])
                                 ->where('company_id', $companyId)
                                 ->whereNull('deleted_at')
                         ])
@@ -885,6 +885,8 @@ class SaleController extends Controller
                                 'stock_reconciliation_id' => $fv->stock_reconciliation_id,
                                 'stock_transfer_id' => $fv->stock_transfer_id,
                                 'product_field_id' => $fv->product_field_id,
+                                'type' => $fv->productField->type ?? null,
+                                'values' => $fv->productField->values ?? null,
                                 'name' => $fv->productField->name ?? null,
                                 'value' => $fv->value,
                                 'quantity_index' => $fv->quantity_index

@@ -325,8 +325,7 @@ class StockAdjustmentController extends Controller
         return $available;
     }
 
-
-    private function flattenFieldValues($fieldValues, $index = 0): array
+    private function flattenFieldValues($fieldValues, $index = 0, $adjustedType): array
     {
         $flat = [];
 
@@ -360,6 +359,7 @@ class StockAdjustmentController extends Controller
 
         return $flat;
     }
+
     public function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
     {
         if ($targetMeasureUnitQuantity <= 0) {
@@ -746,8 +746,9 @@ class StockAdjustmentController extends Controller
                     $piecesPerUnit = $measureUnitMap[$measureUnitId] ?? 1;
                     $requiredPieces = $this->calculatePieces((string) $quantity, $piecesPerUnit);
 
+                    // Keep your existing flatten (safe for subtract)
                     $fieldValuesFlat = is_array($detail['field_values'] ?? [])
-                        ? $this->flattenFieldValues($detail['field_values'], 0)
+                        ? $this->flattenFieldValues($detail['field_values'], 0, $adjustedType)
                         : [];
                     $hasFieldValues = !empty($fieldValuesFlat);
 
@@ -767,8 +768,8 @@ class StockAdjustmentController extends Controller
 
                     $remainingPieces = $requiredPieces;
 
-                   
                     if ($adjustedType === 'add') {
+                        // 1. Create the new incoming batch (represents the +quantity)
                         $psp = PurchaseStockProduct::create([
                             'company_id' => $companyId,
                             'branch_id' => $branchId,
@@ -781,6 +782,7 @@ class StockAdjustmentController extends Controller
                             'stock_adjustment_id' => $stockAdjustment->id,
                         ]);
 
+                        // 2. StockAdjusted entry (traceability)
                         $stockAdjusted = StockAdjusted::create([
                             'stock_adjustment_id' => $stockAdjustment->id,
                             'purchase_stock_product_id' => $psp->id,
@@ -795,59 +797,70 @@ class StockAdjustmentController extends Controller
                             'measure_unit_id' => $measureUnitId,
                         ]);
 
-                        if ($hasFieldValues) {
-                            foreach ($fieldValuesFlat as $fv) {
-                                // Only 'unselected' = new stock being added
-                                if ($fv['value_type'] === 'unselected' && !empty($fv['value'])) {
-                                 
+                        // 3. Handle field values
+                        if ($hasFieldValues && !empty($detail['field_values'])) {
+                            $newUnitIndex = 0; // This counts only the new physical units being added
+
+                            foreach ($detail['field_values'] as $group) {
+                                if (!is_array($group) || empty($group))
+                                    continue;
+
+                                // Detect if this group is "unselected" (new stock) or "selected" (just display)
+                                $firstItem = $group[0] ?? null;
+                                $isUnselectedGroup = $firstItem && ($firstItem['value_type'] ?? '') === 'unselected';
+
+                                foreach ($group as $field) {
+                                    if (empty($field['value']))
+                                        continue;
+
+                                    $fieldProductId = $field['product_field_id'];
+                                    $fieldValue = $field['value'];
+                                    $quantityIndex = $isUnselectedGroup ? $newUnitIndex : ($field['quantity_index'] ?? 0);
+
+                                    // Always save in adjustment display table
                                     StockAdjustmentProductFieldValue::create([
                                         'stock_adjustment_product_id' => $adjustmentProduct->id,
                                         'company_id' => $companyId,
                                         'product_id' => $productId,
-                                        'product_field_id' => $fv['product_field_id'],
-                                        'quantity_index' => $fv['quantity_index'],
-                                        'quantity_type' => $fv['quantity_type'] ?? 'regular',
-                                        'value' => $fv['value'],
+                                        'product_field_id' => $fieldProductId,
+                                        'quantity_index' => $quantityIndex,
+                                        'quantity_type' => $field['quantity_type'] ?? 'regular',
+                                        'value' => $fieldValue,
                                     ]);
 
-                                    // 2. Make it sellable
-                                    PurchaseStockProductFieldValue::create([
-                                        'purchase_stock_product_id' => $psp->id,
-                                        'company_id' => $companyId,
-                                        'branch_id' => $branchId,
-                                        'product_id' => $productId,
-                                        'product_field_id' => $fv['product_field_id'],
-                                        'quantity_index' => $fv['quantity_index'],
-                                        'quantity_type' => $fv['quantity_type'] ?? 'regular',
-                                        'value' => $fv['value'],
-                                    ]);
+                                    // Only unselected → save in real stock tables
+                                    if ($isUnselectedGroup) {
+                                        // Make it sellable
+                                        PurchaseStockProductFieldValue::create([
+                                            'purchase_stock_product_id' => $psp->id,
+                                            'company_id' => $companyId,
+                                            'branch_id' => $branchId,
+                                            'product_id' => $productId,
+                                            'product_field_id' => $fieldProductId,
+                                            'quantity_index' => $newUnitIndex,
+                                            'quantity_type' => $field['quantity_type'] ?? 'regular',
+                                            'value' => $fieldValue,
+                                        ]);
 
-                                    // 3. Traceability
-                                    StockAdjustedFieldValue::create([
-                                        'stock_adjusted_id' => $stockAdjusted->id,
-                                        'stock_adjustment_id' => $stockAdjustment->id,
-                                        'purchase_stock_product_id' => $psp->id,
-                                        'company_id' => $companyId,
-                                        'branch_id' => $branchId,
-                                        'product_id' => $productId,
-                                        'product_field_id' => $fv['product_field_id'],
-                                        'quantity_index' => $fv['quantity_index'],
-                                        'quantity_type' => $fv['quantity_type'] ?? 'regular',
-                                        'value' => $fv['value'],
-                                    ]);
+                                        // Full traceability
+                                        StockAdjustedFieldValue::create([
+                                            'stock_adjusted_id' => $stockAdjusted->id,
+                                            'stock_adjustment_id' => $stockAdjustment->id,
+                                            'purchase_stock_product_id' => $psp->id,
+                                            'company_id' => $companyId,
+                                            'branch_id' => $branchId,
+                                            'product_id' => $productId,
+                                            'product_field_id' => $fieldProductId,
+                                            'quantity_index' => $newUnitIndex,
+                                            'quantity_type' => $field['quantity_type'] ?? 'regular',
+                                            'value' => $fieldValue,
+                                        ]);
+                                    }
                                 }
 
-                                // 'selected' = just display (existing batches shown for reference)
-                                if ($fv['value_type'] === 'selected' && !empty($fv['value'])) {
-                                    StockAdjustmentProductFieldValue::create([
-                                        'stock_adjustment_product_id' => $adjustmentProduct->id,
-                                        'company_id' => $companyId,
-                                        'product_id' => $productId,
-                                        'product_field_id' => $fv['product_field_id'],
-                                        'quantity_index' => $fv['quantity_index'],
-                                        'quantity_type' => $fv['quantity_type'] ?? 'regular',
-                                        'value' => $fv['value'],
-                                    ]);
+                                // Only incrementt for unselected groups (one new unit = one group)
+                                if ($isUnselectedGroup) {
+                                    $newUnitIndex++;
                                 }
                             }
                         }
@@ -855,8 +868,8 @@ class StockAdjustmentController extends Controller
                         continue;
                     }
 
-                    /* ========== SUBTRACT — YOUR ORIGINAL WORKING CODE (UNTOUCHED) ========== */
-                    $stockAdjusted = null; // will hold last created StockAdjusted
+                    // SUBTRACT — 100% UNCHANGED (your original working code)
+                    $stockAdjusted = null;
 
                     if ($hasFieldValues) {
                         $usedPspIds = collect($fieldValuesFlat)
@@ -928,10 +941,9 @@ class StockAdjustmentController extends Controller
                         throw new \Exception("Insufficient stock for {$detail['product_name']} ({$detail['product_code']})");
                     }
 
-                    /* ---------- field-value rows (EXACTLY YOUR ORIGINAL WORKING CODE) ---------- */
+                    // SUBTRACT field values — unchanged
                     if (!empty($fieldValuesFlat)) {
                         foreach ($fieldValuesFlat as $fv) {
-                            // display rows (selected)
                             if ($fv['value_type'] === 'selected') {
                                 StockAdjustmentProductFieldValue::create([
                                     'stock_adjustment_product_id' => $adjustmentProduct->id,
@@ -944,7 +956,6 @@ class StockAdjustmentController extends Controller
                                 ]);
                             }
 
-                            // tracking rows (unselected) – link to last StockAdjusted
                             if ($fv['value_type'] === 'unselected' && isset($stockAdjusted)) {
                                 StockAdjustedFieldValue::create([
                                     'stock_adjusted_id' => $stockAdjusted->id,
@@ -973,6 +984,9 @@ class StockAdjustmentController extends Controller
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
+
+
+
 
 
 

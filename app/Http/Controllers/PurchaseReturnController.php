@@ -42,7 +42,7 @@ class PurchaseReturnController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-       $query = PurchaseReturn::query();
+        $query = PurchaseReturn::query();
 
         // Filter by branch_id
         if ($request->has('branch_id')) {

@@ -91,6 +91,7 @@ class StockEntryController extends Controller
                 $stockMain = StockMain::create([
                     'name' => $request->name,
                     'code' => $request->code,
+                    'total_amount' => $request->total_amount,
                     'company_id' => $request->company_id,
                     'branch_id' => $request->destination_branch_id,
                 ]);

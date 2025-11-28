@@ -403,11 +403,7 @@ class SaleController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Error in listAvailableProducts', [
-                'company_id' => $request->company_id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+           
 
             return response()->json([
                 'message' => 'Failed to fetch available products',
@@ -671,11 +667,7 @@ class SaleController extends Controller
                     ];
                 });
 
-            Log::debug('Measure units used', [
-                'product_id' => $productForUnit,
-                'measure_unit_ids' => $allUnitIds->toArray(),
-                'measure_units_used' => $measureUnitsUsed->toArray()
-            ]);
+           
 
             $purchaseProducts = PurchaseStockProduct::whereIn('product_id', $productIds)
                 ->where('company_id', $companyId)
@@ -731,21 +723,7 @@ class SaleController extends Controller
                 ->orderBy('created_at', 'asc')
                 ->get();
 
-            Log::debug('Purchase stock products fetched', [
-                'product_ids' => $productIds,
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'purchase_products_count' => $purchaseProducts->count(),
-                'purchase_product_ids' => $purchaseProducts->pluck('id')->toArray(),
-                'purchase_products' => $purchaseProducts->map(fn($pp) => [
-                    'id' => $pp->id,
-                    'product_id' => $pp->product_id,
-                    'quantity' => $pp->quantity,
-                    'free_quantity' => $pp->free_quantity,
-                    'measure_unit_id' => $pp->measure_unit_id
-                ])->toArray(),
-                'query_log' => DB::getQueryLog()
-            ]);
+           
 
             if ($purchaseProducts->isEmpty()) {
                 Log::warning('No purchase products found', [
@@ -784,11 +762,7 @@ class SaleController extends Controller
 
 
 
-            Log::debug('Sold quantity indexes fetched', [
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'sold_quantity_indexes' => $soldQuantityIndexes->toArray()
-            ]);
+          
 
             $returnedQuantityIndexes = PurchaseStockProductReturnFieldValue::whereIn('purchase_stock_product_return_id', $purchaseProducts->flatMap(fn($pp) => $pp->purchaseStockProductReturns->pluck('id')))
                 ->where('company_id', $companyId)
@@ -811,25 +785,14 @@ class SaleController extends Controller
                 ->groupBy('purchase_stock_product_id')
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
-            // Log the results for debugging
-            Log::debug('Transfer quantity indexes fetched', [
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'purchase_product_ids' => $purchaseProducts->pluck('id')->toArray(),
-                'transfer_quantity_indexes' => $transferQuantityIndexes->toArray()
-            ]);
+           
 
             // Check for missing purchase_stock_product_ids
             $expectedIds = $purchaseProducts->pluck('id')->toArray();
             $returnedIds = array_keys($transferQuantityIndexes->toArray());
             $missingIds = array_diff($expectedIds, $returnedIds);
             if (!empty($missingIds)) {
-                Log::warning('Missing quantity indexes for some purchase_stock_product_ids in stock transfers', [
-                    'company_id' => $companyId,
-                    'branch_id' => $branchId,
-                    'missing_ids' => $missingIds,
-                    'expected_ids' => $expectedIds
-                ]);
+              
                 // Initialize missing IDs with empty arrays to prevent errors
                 foreach ($missingIds as $missingId) {
                     $transferQuantityIndexes[$missingId] = [];
@@ -894,11 +857,7 @@ class SaleController extends Controller
                         })->values();
                     })->toArray();
 
-                Log::debug('All field values for product', [
-                    'product_id' => $product->product_id,
-                    'field_values_count' => count($allFieldValues),
-                    'field_values' => $allFieldValues
-                ]);
+              
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
@@ -952,16 +911,7 @@ class SaleController extends Controller
                         // Calculate available pieces
                         $availablePieces = $this->calculateAvailablePieces($pp, $companyId, $branchId, $measureUnitsCalc);
 
-                        Log::debug('Purchase stock product quantities calculated', [
-                            'purchase_stock_product_id' => $pp->id,
-                            'product_id' => $pp->product_id,
-                            'purchased_pieces' => $purchasedPieces,
-                            'return_pieces' => $returnPieces,
-                            'adjusted_pieces' => $adjustedPieces,
-                            'sale_pieces' => $salePieces,
-                            'sales_return_pieces' => $salesReturnPieces,
-                            'available_pieces' => $availablePieces
-                        ]);
+                        
 
                         // Collect field values for this purchase product
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
@@ -971,29 +921,11 @@ class SaleController extends Controller
                             $returnedQuantityIndexes[$pp->id] ?? []
                         ));
 
-                        Log::debug('Field values before filtering', [
-                            'purchase_stock_product_id' => $pp->id,
-                            'field_values_count' => $pp->fieldValues->count(),
-                            'field_values' => $pp->fieldValues->map(fn($fv) => [
-                                'id' => $fv->id,
-                                'quantity_index' => $fv->quantity_index,
-                                'product_field_id' => $fv->product_field_id,
-                                'value' => $fv->value,
-                                'product_field_name' => $fv->productField?->name
-                            ])->toArray(),
-                            'excluded_indexes' => $excludedIndexes
-                        ]);
+                        
 
                         $fieldValues = $pp->fieldValues->filter(function ($fv) use ($excludedIndexes) {
                             $isAvailable = !in_array($fv->quantity_index, $excludedIndexes);
-                            Log::debug('Field value availability check', [
-                                'purchase_stock_product_id' => $fv->purchase_stock_product_id,
-                                'field_value_id' => $fv->id,
-                                'quantity_index' => $fv->quantity_index,
-                                'product_field_id' => $fv->product_field_id,
-                                'value' => $fv->value,
-                                'is_available' => $isAvailable
-                            ]);
+                            
                             return $isAvailable;
                         })->map(function ($fv) {
                             return [
@@ -1011,11 +943,7 @@ class SaleController extends Controller
                             ];
                         })->values()->toArray();
 
-                        Log::debug('Field values after filtering', [
-                            'purchase_stock_product_id' => $pp->id,
-                            'field_values_count' => count($fieldValues),
-                            'field_values' => $fieldValues
-                        ]);
+                        
 
                         return [
                             'purchase_stock_product_id' => $pp->id,
@@ -1073,14 +1001,7 @@ class SaleController extends Controller
 
                 $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces - $adjustedPieces;
 
-                Log::debug('Product totals calculated', [
-                    'product_id' => $product->product_id,
-                    'purchased_pieces' => $purchasedPieces,
-                    'return_pieces' => $returnPieces,
-                    'sale_pieces' => $salePieces,
-                    'sales_return_pieces' => $salesReturnPieces,
-                    'available_pieces' => $availablePieces
-                ]);
+                
 
                 $salesPrice = SaleProduct::where('product_id', $product->product_id)
                     ->where('company_id', $companyId)
@@ -1118,30 +1039,15 @@ class SaleController extends Controller
                 ];
             })->filter()->values()->toArray();
 
-            Log::debug('Final result prepared', [
-                'products_count' => count($result),
-                'products' => array_map(fn($item) => [
-                    'product_id' => $item['product_id'],
-                    'available_quantity' => $item['available_quantity'],
-                    'purchase_products_count' => count($item['purchase_products'])
-                ], $result)
-            ]);
+            
 
             return [
-                'message' => 'Product details retrieved',
+                'message' => 'Product details retrieved !',
                 'data' => $result
             ];
 
         } catch (\Exception $e) {
-            Log::error('Error fetching detailed available products', [
-                'product_id' => $productId,
-                'product_name' => $productName,
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'query_log' => DB::getQueryLog()
-            ]);
+           
             throw $e;
         } finally {
             DB::disableQueryLog();

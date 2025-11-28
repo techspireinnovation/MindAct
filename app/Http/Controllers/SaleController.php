@@ -1042,7 +1042,7 @@ class SaleController extends Controller
             
 
             return [
-                'message' => 'Product details retrieved',
+                'message' => 'Product details retrieved !',
                 'data' => $result
             ];
 

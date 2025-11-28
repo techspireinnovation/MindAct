@@ -145,7 +145,7 @@ class JournalVoucherController extends Controller
             return response()->json(['message' => 'Journal Voucher Updated']);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
             Log::error($e);
@@ -348,13 +348,13 @@ class JournalVoucherController extends Controller
             $item->delete();
             return response()->json(['message' => 'Journal Voucher deleted!!']);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

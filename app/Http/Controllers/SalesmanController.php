@@ -43,13 +43,13 @@ class SalesmanController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Sales men not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -167,11 +167,11 @@ class SalesmanController extends Controller
                 'data' => $salesman
             ], 201);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
 
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -293,10 +293,10 @@ class SalesmanController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Salesman not found.'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -329,21 +329,21 @@ class SalesmanController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Salesman not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the salesman.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the salesman.'

@@ -193,10 +193,10 @@ public function index(Request $request): JsonResponse
         ]);
 
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Unexpected error occurred.'], 500);
     }
 }
@@ -243,14 +243,14 @@ public function index(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
             dd($e->getMessage());
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -275,14 +275,14 @@ public function index(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
 
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -310,7 +310,7 @@ public function index(Request $request): JsonResponse
 
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
@@ -398,7 +398,7 @@ public function index(Request $request): JsonResponse
 
         } catch (QueryException $e) {
             DB::rollBack();
-            \Log::error($e);
+           
 
           
 
@@ -419,11 +419,11 @@ public function index(Request $request): JsonResponse
             $item = Customer::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
 
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -501,13 +501,13 @@ public function index(Request $request): JsonResponse
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Customer not found.'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -553,21 +553,21 @@ public function index(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Customer not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the customer.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the customer.'
@@ -622,15 +622,13 @@ public function index(Request $request): JsonResponse
 
 
 
-    public function importCustomerExcel(Request $request)
+public function importCustomerExcel(Request $request)
 {
     $request->validate([
         'file' => 'required|mimes:xlsx,xls,csv',
-      
     ]);
 
     $companyId = $request->company_id;
-    Log::info('Customer import started', ['company_id' => $companyId]);
 
     // Read Excel
     $rows = Excel::toArray(null, $request->file('file'));
@@ -639,12 +637,10 @@ public function index(Request $request): JsonResponse
         return response()->json(['message' => 'No data found in Excel file'], 400);
     }
 
-    $data = $rows[0]; // Get first sheet
-    Log::info('Excel data loaded !', ['total_rows' => count($data)]);
+    $data = $rows[0];
 
     // Skip header row (index 0)
     $dataRows = array_slice($data, 1);
-    Log::info('Data rows after slicing', ['count' => count($dataRows)]);
 
     if (empty($dataRows)) {
         return response()->json(['message' => 'No data rows found after skipping header'], 400);
@@ -688,7 +684,6 @@ public function index(Request $request): JsonResponse
             'contact_person_phone' => $row[7] ?? null,
         ];
 
-        // Skip if party name is empty
         if (empty(trim($mappedRow['party_name'] ?? ''))) {
             $errors[] = [
                 'row_number' => $rowNumber,
@@ -723,7 +718,7 @@ public function index(Request $request): JsonResponse
             continue;
         }
 
-        // Check for duplicates in existing database
+        // Check duplicates from DB
         $phone = $mappedRow['phone'] ? trim($mappedRow['phone']) : null;
         $panNumber = $mappedRow['pan_number'] ? strtolower(trim($mappedRow['pan_number'])) : null;
         $email = $mappedRow['email'] ? strtolower(trim($mappedRow['email'])) : null;
@@ -755,7 +750,7 @@ public function index(Request $request): JsonResponse
             }
         }
 
-        // Check for duplicates within the import file itself
+        // Check duplicates inside file
         if ($phone) {
             if (in_array($phone, $importPhoneNumbers)) {
                 $errors[] = [
@@ -792,20 +787,13 @@ public function index(Request $request): JsonResponse
             $importEmails[] = $email;
         }
 
-        // If no errors, add to valid rows
         $allRowsData[] = [
             'row_number' => $rowNumber,
             'data' => $mappedRow
         ];
     }
 
-    // If there are any validation errors, stop the entire import
     if (!empty($errors)) {
-        Log::info('Import stopped due to validation errors', [
-            'company_id' => $companyId,
-            'error_count' => count($errors)
-        ]);
-
         return response()->json([
             'message' => 'Import failed due to validation errors. Please fix the errors and try again.',
             'error_count' => count($errors),
@@ -813,7 +801,7 @@ public function index(Request $request): JsonResponse
         ], 422);
     }
 
-    // Second pass: Import all valid rows
+    // Second pass: Import valid rows
     DB::beginTransaction();
     try {
         foreach ($allRowsData as $rowItem) {
@@ -821,7 +809,6 @@ public function index(Request $request): JsonResponse
             $rowNumber = $rowItem['row_number'];
 
             try {
-                // Prepare data for customer creation
                 $customerData = [
                     'company_id' => $companyId,
                     'ledger_type' => $mappedRow['ledger_type'] ?? 'customer',
@@ -835,18 +822,11 @@ public function index(Request $request): JsonResponse
                     'is_active' => true,
                 ];
 
-                // Create Customer
-                $customer = Customer::create($customerData);
+                Customer::create($customerData);
                 $successCount++;
 
             } catch (\Exception $e) {
                 DB::rollBack();
-                
-                Log::error('Database error during customer import', [
-                    'row_number' => $rowNumber,
-                    'error' => $e->getMessage()
-                ]);
-
                 return response()->json([
                     'message' => 'Import failed due to database error at row ' . $rowNumber,
                     'error' => $e->getMessage()
@@ -856,11 +836,6 @@ public function index(Request $request): JsonResponse
 
         DB::commit();
 
-        Log::info('Customer import completed successfully', [
-            'company_id' => $companyId,
-            'inserted_count' => $successCount
-        ]);
-
         return response()->json([
             'message' => 'Customer import completed successfully!',
             'inserted_count' => $successCount
@@ -869,16 +844,12 @@ public function index(Request $request): JsonResponse
     } catch (\Exception $e) {
         DB::rollBack();
 
-        Log::error('Transaction failed during customer import', [
-            'company_id' => $companyId,
-            'error' => $e->getMessage()
-        ]);
-
         return response()->json([
             'message' => 'Import failed due to transaction error',
             'error' => $e->getMessage()
         ], 500);
     }
 }
+
 
 }

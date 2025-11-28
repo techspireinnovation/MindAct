@@ -53,7 +53,7 @@ class FileUploadController extends Controller
         ], 400);
 
     } catch (\Illuminate\Validation\ValidationException $e) {
-        \Log::error($e);
+       
 
         // Get the first error message
         $firstError = collect($e->errors())->flatten()->first();
@@ -64,7 +64,7 @@ class FileUploadController extends Controller
         ], 422);
 
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json([
             'success' => false,
             'message' => 'An unexpected error occurred during file upload.',

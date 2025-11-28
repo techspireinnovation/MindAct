@@ -39,13 +39,13 @@ class BankController extends Controller
                     "data" => $banks
                 ]);
             } catch (ModelNotFoundException $e) {
-                \Log::error($e);
+               
                 return response()->json(["error" => "Bank not Found !!"], 404);
             } catch (QueryException $e) {
-                \Log::error($e);
+               
                 return response()->json(["error" => "Database error occurred !!"], 500);
             } catch (\Exception $e) {
-                \Log::error($e);
+               
                 return response()->json(["error" => "An unexpected error occurred !!"], 500);
             }
         }
@@ -71,10 +71,10 @@ class BankController extends Controller
             } catch (ModelNotFoundException $e) {
                 return response()->json(["error" => "Bank not Found !!"], 404);
             } catch (QueryException $e) {
-                \Log::error($e);
+               
                 return response()->json(["error" => "Database error occurred !!"], 500);
             } catch (\Exception $e) {
-                \Log::error($e);
+               
                 return response()->json(["error" => "An unexpected error occurred !!"], 500);
             }
         }
@@ -153,13 +153,13 @@ class BankController extends Controller
 
     //         return response()->json($item);
     //     } catch (ModelNotFoundException $e) {
-    //         \Log::error($e);
+    //        
     //         return response()->json(['error' => 'Item not found'], 404);
     //     } catch (QueryException $e) {
-    //         \Log::error($e);
+    //        
     //         return response()->json(['error' => 'An unexpected error occurred'], 500);
     //     } catch (\Exception $e) {
-    //         \Log::error($e);
+    //        
     //         return response()->json(['error' => 'An unexpected error occurred'], 500);
     //     }
     // }
@@ -236,13 +236,13 @@ class BankController extends Controller
 
         return response()->json($item);
     } catch (ModelNotFoundException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Item not found'], 404);
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'An unexpected error occurred'], 500);
     }
 }
@@ -338,10 +338,10 @@ class BankController extends Controller
             $item = Bank::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -378,11 +378,11 @@ class BankController extends Controller
             return response()->json(['message' => 'Bank deleted']);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the bank.'
@@ -411,7 +411,7 @@ class BankController extends Controller
         ], 200);
 
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
 }

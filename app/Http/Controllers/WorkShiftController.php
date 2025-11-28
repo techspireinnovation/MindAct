@@ -225,13 +225,13 @@ public function activeWorkShiftList(Request $request): JsonResponse
             'data' => $workShifts
         ]);
     } catch (ModelNotFoundException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Work shifts not found!'], 404);
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Database error occurred!'], 500);
     } catch (Exception $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'An unexpected error occurred!'], 500);
     }
 }

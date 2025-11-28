@@ -4157,13 +4157,13 @@ class SalesReturnController extends Controller
             $purchase = SalesReturn::where('id', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -5378,10 +5378,10 @@ class SalesReturnController extends Controller
             return response()->json($salesReturn);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Sales Return not found'], 404);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
     }
@@ -5395,13 +5395,13 @@ class SalesReturnController extends Controller
             $salesReturn->delete();
             return response()->json(['message' => 'Sales Return deleted']);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Sales Return not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error'], 500);
         }
 
@@ -5435,10 +5435,10 @@ class SalesReturnController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
     }
@@ -5471,10 +5471,10 @@ class SalesReturnController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
     }
@@ -5507,10 +5507,10 @@ class SalesReturnController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error: ' . $e->getMessage()], 500);
         }
     }

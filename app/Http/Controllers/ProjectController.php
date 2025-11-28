@@ -39,13 +39,13 @@ class ProjectController extends Controller
                 "data" => $projects
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Project not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !"], 500);
         }
     }
@@ -71,10 +71,10 @@ class ProjectController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Project not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -217,7 +217,7 @@ class ProjectController extends Controller
                 'message' => 'Project deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Project not found!'
@@ -229,7 +229,7 @@ class ProjectController extends Controller
                 'message' => $e->getMessage() // careful, expose only in dev
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the project.'

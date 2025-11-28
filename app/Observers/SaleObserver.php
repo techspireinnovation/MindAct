@@ -176,7 +176,7 @@ class SaleObserver
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error($e);
+           
         }
 
     }

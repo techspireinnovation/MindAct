@@ -858,7 +858,7 @@ class StockAdjustmentController extends Controller
                                     }
                                 }
 
-                                // Only increment for unselected groups (one new unit = one group)
+                                // Only incrementt for unselected groups (one new unit = one group)
                                 if ($isUnselectedGroup) {
                                     $newUnitIndex++;
                                 }

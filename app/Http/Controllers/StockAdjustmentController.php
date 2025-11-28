@@ -858,7 +858,7 @@ class StockAdjustmentController extends Controller
                                     }
                                 }
 
-                                // Only incrementt for unselected groups (one new unit = one group)
+                               
                                 if ($isUnselectedGroup) {
                                     $newUnitIndex++;
                                 }
@@ -868,7 +868,7 @@ class StockAdjustmentController extends Controller
                         continue;
                     }
 
-                    // SUBTRACT — 100% UNCHANGED (your original working code)
+                  
                     $stockAdjusted = null;
 
                     if ($hasFieldValues) {

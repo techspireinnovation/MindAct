@@ -110,13 +110,13 @@ class PaymentVoucherController extends Controller
                 'item' => $PaymentVoucher->load('paymentVoucherDetails'),
             ], 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Payment Voucher not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
@@ -224,14 +224,14 @@ class PaymentVoucherController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Payment Voucher not found!'], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }
@@ -247,14 +247,14 @@ class PaymentVoucherController extends Controller
 
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
 
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
 
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

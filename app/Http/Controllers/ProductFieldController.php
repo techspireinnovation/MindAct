@@ -37,13 +37,13 @@ class ProductFieldController extends Controller
                 "data" => $productFields
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Product Field not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -179,19 +179,19 @@ class ProductFieldController extends Controller
                 'message' => 'Product Field deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Product Field not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the product field.'
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the product field.'
@@ -212,12 +212,12 @@ class ProductFieldController extends Controller
                 'data' => $activeFields
             ], 200);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'Database error occurred!!'
             ], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'An unexpected error occurred!!'
             ], 500);

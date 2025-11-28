@@ -174,7 +174,7 @@ class SaleReturnObserver
                 ]);
             }
         } catch (\Exception $e) {
-            \Log::error($e);
+           
         }
     }
 

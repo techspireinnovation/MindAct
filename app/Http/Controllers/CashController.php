@@ -139,10 +139,10 @@ class CashController extends Controller
             $cash = Cash::findOrFail($id);
             return response()->json($cash);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Cash not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -156,10 +156,10 @@ class CashController extends Controller
             $cash->delete();
             return response()->json(['message' => 'Cash deleted!!']);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Cash not found!!'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -180,13 +180,13 @@ class CashController extends Controller
             "data" => $cashes
         ]);
     } catch (ModelNotFoundException $e) {
-        \Log::error($e);
+       
         return response()->json(["error" => "Cash not Found !!"], 404);
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json(["error" => "Database error occurred !!"], 500);
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
 }

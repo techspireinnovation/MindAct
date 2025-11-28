@@ -66,13 +66,13 @@ class PurchaseReturnController extends Controller
             $purchase = PurchaseReturn::where('id', '=', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected query error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected exception error occurred'], 500);
         }
     }
@@ -1184,13 +1184,13 @@ class PurchaseReturnController extends Controller
 
             return response()->json($productNames);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }
@@ -1206,13 +1206,13 @@ class PurchaseReturnController extends Controller
 
             return response()->json($productDetails);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item Not Found!!'], 422);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error occurred!!'], 422);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 422);
         }
     }
@@ -5540,13 +5540,13 @@ class PurchaseReturnController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected query error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -5561,13 +5561,13 @@ class PurchaseReturnController extends Controller
             $item->delete();
             return response()->json(['message' => 'Purchase Return deleted']);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }

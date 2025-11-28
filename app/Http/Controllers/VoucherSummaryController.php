@@ -89,10 +89,10 @@ class VoucherSummaryController extends Controller
             $item = VoucherSummary::with(['accountHead:id,name', 'accountGroup:id,name'])->findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

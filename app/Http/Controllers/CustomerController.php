@@ -193,10 +193,10 @@ public function index(Request $request): JsonResponse
         ]);
 
     } catch (QueryException $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error($e);
+       
         return response()->json(['error' => 'Unexpected error occurred.'], 500);
     }
 }
@@ -243,14 +243,14 @@ public function index(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
             dd($e->getMessage());
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -275,14 +275,14 @@ public function index(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
 
-            \Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -310,7 +310,7 @@ public function index(Request $request): JsonResponse
 
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(["error" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
@@ -398,7 +398,7 @@ public function index(Request $request): JsonResponse
 
         } catch (QueryException $e) {
             DB::rollBack();
-            \Log::error($e);
+           
 
           
 
@@ -419,11 +419,11 @@ public function index(Request $request): JsonResponse
             $item = Customer::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
 
-            \Log::error($e);
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -501,13 +501,13 @@ public function index(Request $request): JsonResponse
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Customer not found.'], 404);
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -553,21 +553,21 @@ public function index(Request $request): JsonResponse
             ]);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Customer not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the customer.'
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error($e);
+           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the customer.'

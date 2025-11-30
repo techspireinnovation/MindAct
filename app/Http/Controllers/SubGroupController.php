@@ -251,11 +251,7 @@ public function store(Request $request): JsonResponse
         $validated = $validator->validated();
 
         // DEBUG: Log the input
-        Log::info('SubGroup Store - Input', [
-            'company_id' => $request->company_id,
-            'main_group_id' => $validated['main_group_id'],
-            'name' => $validated['name']
-        ]);
+       
 
         // Get the last code for this main group
         $lastSubGroup = SubGroup::where(['main_group_id' => $validated['main_group_id']])
@@ -265,9 +261,7 @@ public function store(Request $request): JsonResponse
         $validated['code'] = $lastSubGroup ? (int) ($lastSubGroup->code) + 1 : 1;
 
         // DEBUG: Log the last sub group found
-        Log::info('SubGroup Store - Last SubGroup', [
-            'last_subgroup' => $lastSubGroup ? $lastSubGroup->toArray() : 'null'
-        ]);
+       
 
         // Get the last ranking_for_trial for this main group
         $lastRanking = SubGroup::where('company_id', $request->company_id)
@@ -275,38 +269,28 @@ public function store(Request $request): JsonResponse
             ->orderBy('ranking_for_trial', 'desc')
             ->first();
 
-        // DEBUG: Log the last ranking found
-        Log::info('SubGroup Store - Last Ranking', [
-            'last_ranking' => $lastRanking ? $lastRanking->toArray() : 'null',
-            'query_conditions' => [
-                'company_id' => $request->company_id,
-                'main_group_id' => $validated['main_group_id']
-            ]
-        ]);
+      
         
         // Set the new ranking_for_trial (increment from the last one in the same main group)
         $validated['ranking_for_trial'] = $lastRanking ? $lastRanking->ranking_for_trial + 1 : 1;
 
-        // DEBUG: Log the final ranking
-        Log::info('SubGroup Store - Final Ranking', [
-            'final_ranking' => $validated['ranking_for_trial']
-        ]);
+      
 
         $group = SubGroup::create($validated);
         
         // DEBUG: Log the created record
-        Log::info('SubGroup Store - Created', $group->toArray());
+       
         
         return response()->json($group, 201);
         
     } catch (ModelNotFoundException $e) {
-        Log::error('SubGroup Store - Model Not Found', ['error' => $e->getMessage()]);
+       
         return response()->json(['error' => 'Sub Group not found!!'], 404);
     } catch (QueryException $e) {
-        Log::error('SubGroup Store - Query Exception', ['error' => $e->getMessage()]);
+       
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     } catch (\Exception $e) {
-        Log::error('SubGroup Store - General Exception', ['error' => $e->getMessage()]);
+       
         return response()->json(['error' => 'An unexpected error occurred!!'], 500);
     }
 }

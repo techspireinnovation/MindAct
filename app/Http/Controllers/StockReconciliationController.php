@@ -177,7 +177,7 @@ class StockReconciliationController extends Controller
 
                         // Process field values
                         if (!empty($detail['field_values'])) {
-                            Log::info('Processing field_values for product_id: ' . $detail['product_id'], $detail['field_values']);
+                           
                             foreach ($detail['field_values'] as $fieldValueGroup) {
                                 foreach ($fieldValueGroup as $fieldValue) {
 
@@ -234,7 +234,7 @@ class StockReconciliationController extends Controller
                                 }
                             }
                         } else {
-                            Log::info('No field_values for product_id: ' . $detail['product_id']);
+                           
                         }
                     }
                 }
@@ -248,11 +248,11 @@ class StockReconciliationController extends Controller
             ], 201);
         } catch (QueryException $e) {
             dd($e->getMessage());
-            Log::error('Database error in StockReconciliationController::store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+           
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
 
-            Log::error('Unexpected error in StockReconciliationController::store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+           
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -349,8 +349,7 @@ class StockReconciliationController extends Controller
     {
         try {
             // Log the input request for debugging
-            Log::info('Update request product_details:', $request->product_details);
-
+           
             // Validation rules
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer',
@@ -501,7 +500,7 @@ class StockReconciliationController extends Controller
                             'diff_stock' => $detail['diff_stock'],
                         ]));
                         if ($detailId) {
-                            Log::warning('StockReconciliationDetail ID provided but not found, created new', ['detail_id' => $detailId]);
+                           
                             $providedDetailIds[] = $stockReconciliationDetail->id;
                         }
                     }
@@ -535,7 +534,7 @@ class StockReconciliationController extends Controller
 
                     // Process field values
                     if (!empty($detail['field_values'])) {
-                        Log::info('Processing field_values for product_id: ' . $detail['product_id'], $detail['field_values']);
+                       
 
                         // Delete existing field values for StockReconciliationDetail
                         StockReconciliationFieldValue::where('stock_reconciliation_detail_id', $stockReconciliationDetail->id)->delete();
@@ -598,7 +597,7 @@ class StockReconciliationController extends Controller
                     } else {
                         // Delete all existing field values for StockReconciliationDetail if none provided
                         StockReconciliationFieldValue::where('stock_reconciliation_detail_id', $stockReconciliationDetail->id)->delete();
-                        Log::info('No field_values for product_id: ' . $detail['product_id']);
+                        
                     }
                 }
 
@@ -619,13 +618,13 @@ class StockReconciliationController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            Log::error('StockReconciliation not found: ' . $e->getMessage());
+           
             return response()->json(['error' => 'Stock reconciliation not found'], 404);
         } catch (QueryException $e) {
-            Log::error('QueryException in StockReconciliationController::update: ' . $e->getMessage());
+            
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-            Log::error('Exception in StockReconciliationController::update: ' . $e->getMessage());
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

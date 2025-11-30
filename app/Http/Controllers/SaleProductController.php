@@ -165,7 +165,7 @@ class SaleProductController extends Controller
                 'message' => 'Sale Product not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e->getMessage());
+            
             return response()->json([
                 'error' => 'query_error',
                 'message' => $e->getMessage()

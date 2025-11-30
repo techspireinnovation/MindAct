@@ -80,13 +80,13 @@ class WorkShiftController extends Controller
                 'data' => $workShift
             ], 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error('ModelNotFoundException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Work shift not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Database error occurred!'], 500);
         } catch (Exception $e) {
-            \Log::error('Exception in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
@@ -176,13 +176,13 @@ public function update(Request $request, $id): JsonResponse
             'data' => $shift
         ], 200);
     } catch (ModelNotFoundException $e) {
-        \Log::error('ModelNotFoundException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+      
         return response()->json(['error' => 'Work shift not found!'], 404);
     } catch (QueryException $e) {
-        \Log::error('QueryException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+       
         return response()->json(['error' => 'Database error occurred!'], 500);
     } catch (Exception $e) {
-        \Log::error('Exception in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+      
         return response()->json(['error' => 'An unexpected error occurred!'], 500);
     }
 }

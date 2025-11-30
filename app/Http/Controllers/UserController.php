@@ -22,16 +22,12 @@ class UserController extends Controller
     {
         try {
             // Log request for debugging
-            Log::info('UserController::store Request', [
-                'headers' => $request->headers->all(),
-                'payload' => $request->all(),
-                'user' => $request->user() ? $request->user()->toArray() : null,
-            ]);
+            
 
             // Get company_id from authenticated user
             $company_id = auth()->user()->company_id ?? null;
             if (!$company_id) {
-                Log::error('UserController::store - No company_id found for authenticated user');
+              
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
@@ -59,7 +55,7 @@ class UserController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::error('UserController::store Validation Failed', $validator->errors()->toArray());
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation error',
@@ -88,15 +84,7 @@ class UserController extends Controller
             $user->branches()->sync($request->branch_ids);
 
             // Log success
-            Log::info('UserController::store User Created', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'company_id' => $company_id,
-                'branch_ids' => $request->branch_ids,
-                'role_id' => $request->role_id,
-                'role_name' => $role->name,
-            ]);
-
+           
             return response()->json([
                 'success' => true,
                 'message' => 'User created successfully.',
@@ -112,10 +100,7 @@ class UserController extends Controller
                 ],
             ], 201);
         } catch (\Exception $e) {
-            Log::error('UserController::store Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while creating the user: ' . $e->getMessage(),
@@ -125,13 +110,10 @@ class UserController extends Controller
     public function userList(Request $request)
     {
         try {
-            Log::info('UserController::userList Request', [
-                'company_id' => $request->company_id,
-                'user' => $request->user() ? $request->user()->toArray() : null,
-            ]);
+            
 
             if (!$request->company_id) {
-                Log::error('UserController::userList - No company_id provided');
+              
                 return response()->json([
                     'success' => false,
                     'message' => 'Company ID is required',
@@ -151,10 +133,7 @@ class UserController extends Controller
                 'data' => $users
             ]);
         } catch (\Exception $e) {
-            Log::error('UserController::userList Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'error' => 'An unexpected error occurred: ' . $e->getMessage()
             ], 500);
@@ -164,15 +143,12 @@ class UserController extends Controller
     public function userDetail(Request $request, $identifier): JsonResponse
     {
         try {
-            Log::info('UserController::userDetail Request', [
-                'identifier' => $identifier,
-                'user' => $request->user() ? $request->user()->toArray() : null,
-            ]);
+           
 
             // Get company_id from authenticated user
             $company_id = auth()->user()->company_id ?? null;
             if (!$company_id) {
-                Log::error('UserController::userDetail - No company_id found for authenticated user');
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
@@ -197,10 +173,7 @@ class UserController extends Controller
                 ->first();
 
             if (!$user) {
-                Log::error('UserController::userDetail - User not found', [
-                    'identifier' => $identifier,
-                    'company_id' => $company_id,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'User not found or does not belong to your company',
@@ -227,11 +200,7 @@ class UserController extends Controller
                 ],
             ], 200);
         } catch (\Exception $e) {
-            Log::error('UserController::userDetail Error', [
-                'identifier' => $identifier,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+          
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while retrieving user details: ' . $e->getMessage(),
@@ -244,7 +213,7 @@ class UserController extends Controller
             // Get company_id from authenticated user
             $company_id = auth()->user()->company_id ?? null;
             if (!$company_id) {
-                Log::error('UserController::index - No company_id found for authenticated user');
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
@@ -252,10 +221,7 @@ class UserController extends Controller
             }
 
             // Log request
-            Log::info('UserController::index Request', [
-                'headers' => $request->headers->all(),
-                'user' => $request->user() ? $request->user()->toArray() : null,
-            ]);
+            
 
             // Query users for the company with role_id = 3
             $users = User::whereHas('companies', function ($query) use ($company_id) {
@@ -280,11 +246,8 @@ class UserController extends Controller
                 ];
             });
 
-            // Log success
-            Log::info('UserController::index Users Retrieved', [
-                'company_id' => $company_id,
-                'user_count' => $users->count(),
-            ]);
+           
+            
 
             return response()->json([
                 'success' => true,
@@ -292,10 +255,7 @@ class UserController extends Controller
                 'data' => $formattedUsers,
             ], 200);
         } catch (\Exception $e) {
-            Log::error('UserController::index Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+         
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while retrieving users: ' . $e->getMessage(),
@@ -307,17 +267,12 @@ class UserController extends Controller
     {
         try {
             // Log request
-            Log::info('UserController::update Request', [
-                'headers' => $request->headers->all(),
-                'payload' => $request->all(),
-                'user_id' => $id,
-                'user' => $request->user() ? $request->user()->toArray() : null,
-            ]);
+           
 
             // Get company_id from authenticated user
             $company_id = auth()->user()->company_id ?? null;
             if (!$company_id) {
-                Log::error('UserController::update - No company_id found for authenticated user');
+              
                 return response()->json([
                     'success' => false,
                     'message' => 'Authenticated user must have a company_id',
@@ -329,10 +284,7 @@ class UserController extends Controller
 
             // Check if user belongs to the same company
             if (!$user->companies()->where('company_id', $company_id)->exists()) {
-                Log::error('UserController::update - User does not belong to authenticated user\'s company', [
-                    'user_id' => $id,
-                    'company_id' => $company_id,
-                ]);
+              
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to update this user',
@@ -360,7 +312,7 @@ class UserController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::error('UserController::update Validation Failed', $validator->errors()->toArray());
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation error',
@@ -394,14 +346,7 @@ class UserController extends Controller
             }
 
             // Log success
-            Log::info('UserController::update User Updated', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'company_id' => $company_id,
-                'updated_fields' => array_keys($updateData),
-                'branch_ids' => $request->branch_ids ?? null,
-                'role_id' => $request->role_id ?? null,
-            ]);
+          
 
             return response()->json([
                 'success' => true,
@@ -418,10 +363,7 @@ class UserController extends Controller
                 ],
             ], 200);
         } catch (\Exception $e) {
-            Log::error('UserController::update Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+          
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while updating the user: ' . $e->getMessage(),
@@ -433,19 +375,11 @@ class UserController extends Controller
     {
         try {
             // Log request
-            Log::info('UserController::destroy Request', [
-                'user_id' => $id,
-                'user' => auth()->user() ? auth()->user()->toArray() : null,
-            ]);
-
+       
             // Get company_id from authenticated user
             $company_id = auth()->user()->company_id ?? null;
             if (!$company_id) {
-                Log::error('UserController::destroy - No company_id found for authenticated user');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Authenticated user must have a company_id',
-                ], 200);
+              
             }
 
             // Find user
@@ -453,10 +387,7 @@ class UserController extends Controller
 
             // Check if user belongs to the same company
             if (!$user->companies()->where('company_id', $company_id)->exists()) {
-                Log::error('UserController::destroy - User does not belong to authenticated user\'s company', [
-                    'user_id' => $id,
-                    'company_id' => $company_id,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized to delete this user',
@@ -472,21 +403,14 @@ class UserController extends Controller
             CompanyUser::where('user_id', $user->id)->delete();
 
             // Log success
-            Log::info('UserController::destroy User Deleted', [
-                'user_id' => $id,
-                'email' => $user->email,
-                'company_id' => $company_id,
-            ]);
+           
 
             return response()->json([
                 'success' => true,
                 'message' => 'User deleted successfully.',
             ], 200);
         } catch (\Exception $e) {
-            Log::error('UserController::destroy Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+         
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while deleting the user: ' . $e->getMessage(),

@@ -150,10 +150,10 @@ class StockEntryController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
-            \Log::error('Database error in StockEntry store', ['error' => $e->getMessage()]);
+          
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in StockEntry store', ['error' => $e->getMessage()]);
+            
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -272,10 +272,10 @@ class StockEntryController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error('Database error in StockEntry update', ['error' => $e->getMessage()]);
+           
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in StockEntry update', ['error' => $e->getMessage()]);
+           
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }

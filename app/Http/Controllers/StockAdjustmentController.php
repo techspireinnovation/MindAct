@@ -78,13 +78,7 @@ class StockAdjustmentController extends Controller
 
         $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices, $adjustedIndices));
 
-        Log::debug('Unavailable quantity indices', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'sold_indices' => $soldIndices,
-            'returned_indices' => $returnedIndices,
-            'adjusted_indices' => $adjustedIndices,
-            'unavailable_indices' => $unavailableIndices
-        ]);
+     
 
         return $unavailableIndices;
     }
@@ -93,7 +87,7 @@ class StockAdjustmentController extends Controller
     public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
-            Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
+            
             return 0;
         }
 
@@ -112,26 +106,14 @@ class StockAdjustmentController extends Controller
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
 
-        Log::debug('Measure unit quantity', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'measure_unit_id' => $purchaseProduct->measure_unit_id,
-            'purchaseMeasureUnitQuantity' => $purchaseMeasureUnitQuantity
-        ]);
+        
 
         if ($purchaseMeasureUnitQuantity <= 0) {
-            Log::warning('Invalid measure unit quantity for purchase product', [
-                'purchase_stock_product_id' => $purchaseProduct->id,
-                'measureUnitQuantity' => $purchaseMeasureUnitQuantity
-            ]);
+            
             return 0;
         }
 
-        // Log purchase product data
-        Log::debug('Purchase product data', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'quantity' => $purchaseProduct->quantity ?? 0,
-            'free_quantity' => $purchaseProduct->free_quantity ?? 0
-        ]);
+        
 
         // Prioritize field values if they exist
         $fieldValues = $purchaseProduct->fieldValues->whereNull('deleted_at')->groupBy('quantity_index');
@@ -141,12 +123,7 @@ class StockAdjustmentController extends Controller
                 return !in_array($index, $unavailableIndices);
             })->count();
 
-            Log::debug('Calculated available pieces via field values', [
-                'purchase_stock_product_id' => $purchaseProduct->id,
-                'total_field_values' => $fieldValues->count(),
-                'unavailable_indices' => $unavailableIndices,
-                'available_pieces' => $availablePieces
-            ]);
+            
 
             return max(0, $availablePieces);
         }
@@ -217,24 +194,10 @@ class StockAdjustmentController extends Controller
         $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces - $adjustedPieces;
 
         if ($availablePieces < 0) {
-            Log::warning('Negative available pieces detected', [
-                'purchase_stock_product_id' => $purchaseProduct->id,
-                'total_purchased' => $totalPurchasedPieces,
-                'purchase_returned' => $purchaseReturnedPieces,
-                'sold' => $soldPieces,
-                'sales_returned' => $salesReturnedPieces,
-                'available' => $availablePieces
-            ]);
+            
         }
 
-        Log::debug('Calculated available pieces via quantities', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'total_purchased' => $totalPurchasedPieces,
-            'purchase_returned' => $purchaseReturnedPieces,
-            'sold' => $soldPieces,
-            'sales_returned' => $salesReturnedPieces,
-            'available' => $availablePieces
-        ]);
+       
 
         return max(0, (int) $availablePieces); // Remove floor, cast to int
     }
@@ -313,14 +276,7 @@ class StockAdjustmentController extends Controller
 
         $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces);
 
-        Log::debug('Available pieces for sale update', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'purchased' => $purchasedPieces,
-            'purchaseRet' => $purchaseReturnedPieces,
-            'sold' => $soldPieces,
-            'custReturned' => $customerReturnedPieces,
-            'available' => $available,
-        ]);
+       
 
         return $available;
     }
@@ -402,7 +358,7 @@ class StockAdjustmentController extends Controller
     {
         try {
             // Log the input request for debugging
-            Log::info('Update request product_details:', $request->product_details);
+           
 
             // Validation rules
             $validator = Validator::make($request->all(), [
@@ -561,7 +517,7 @@ class StockAdjustmentController extends Controller
                             'quantity' => $detail['diff_stock'],
                         ]));
                         if ($sapId) {
-                            Log::warning('StockAdjustmentProduct ID provided but not found, created new', ['sap_id' => $sapId]);
+                            
                             $providedSAPIds[] = $stockAdjustmentProduct->id;
                         }
                     }
@@ -597,7 +553,7 @@ class StockAdjustmentController extends Controller
 
                     // Process field values
                     if (!empty($detail['field_values'])) {
-                        Log::info('Processing field_values for product_id: ' . $detail['product_id'], $detail['field_values']);
+                        
 
                         // Delete existing field values for StockAdjustmentProduct
                         StockAdjustmentProductFieldValue::where('stock_adjustment_product_id', $stockAdjustmentProduct->id)->delete();
@@ -659,7 +615,7 @@ class StockAdjustmentController extends Controller
                     } else {
                         // Delete all existing field values for StockAdjustmentProduct if none provided
                         StockAdjustmentProductFieldValue::where('stock_adjustment_product_id', $stockAdjustmentProduct->id)->delete();
-                        Log::info('No field_values for product_id: ' . $detail['product_id']);
+                       
                     }
                 }
 
@@ -678,13 +634,13 @@ class StockAdjustmentController extends Controller
 
             return response()->json($stockAdjustment->load('StockAdjustmentProduct.fieldValues'), 200);
         } catch (ModelNotFoundException $e) {
-            Log::error('StockAdjustment not found: ' . $e->getMessage());
+            
             return response()->json(['error' => 'Stock adjustment not found'], 404);
         } catch (QueryException $e) {
-            Log::error('QueryException in StockAdjustmentController::update: ' . $e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-            Log::error('Exception in StockAdjustmentController::update: ' . $e->getMessage());
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -980,7 +936,7 @@ class StockAdjustmentController extends Controller
             return response()->json($adjustment, 201);
 
         } catch (\Exception $e) {
-            \Log::error('StockAdjustment Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -1083,7 +1039,7 @@ class StockAdjustmentController extends Controller
                 'message' => 'Stock Adjustment not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e->getMessage());
+            
             return response()->json([
                 'error' => 'query_error',
                 'message' => $e->getMessage()
@@ -1119,12 +1075,7 @@ class StockAdjustmentController extends Controller
             $includeDetails = $request->boolean('include_details', false);
 
 
-            \Log::info('listAvailableProducts: Processing', [
-                'user_id' => auth()->id(),
-                'company_id' => $companyId,
-                'include_details' => $includeDetails,
-
-            ]);
+           
 
             if (!auth()->check()) {
                 return response()->json([
@@ -1149,11 +1100,7 @@ class StockAdjustmentController extends Controller
                 'data' => $products
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('Error listing available products', [
-                'request' => $request->all(),
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            
             return response()->json([
                 'message' => 'Failed to retrieve available products',
                 'error' => config('app.debug') ? $e->getMessage() : null
@@ -1167,7 +1114,7 @@ class StockAdjustmentController extends Controller
     public function getAvailableProductsForSale($companyId, $branchId)
     {
 
-        Log::debug('Fetching available products for sale', ['company_id' => $companyId]);
+        
 
         try {
             DB::enableQueryLog();
@@ -1190,10 +1137,10 @@ class StockAdjustmentController extends Controller
                 ->get();
 
 
-            Log::info('Fetched products', ['products' => $products->pluck('name', 'id')]);
+            
 
             if ($products->isEmpty()) {
-                Log::warning('No products found', ['company_id' => $companyId]);
+                
                 return collect([]);
             }
 
@@ -1233,7 +1180,7 @@ class StockAdjustmentController extends Controller
 
 
             if ($purchaseProducts->isEmpty()) {
-                Log::warning('No purchase products found', ['company_id' => $companyId, 'product_ids' => $productIds]);
+                
                 return collect([]);
             }
 
@@ -1319,20 +1266,13 @@ class StockAdjustmentController extends Controller
                 ];
             })->filter(fn($product) => $product->available_quantity > 0)->values();
 
-            Log::debug('Available products query', [
-                'sql' => DB::getQueryLog(),
-                'results_count' => $results->count(),
-                'products' => $results->toArray()
-            ]);
+          
 
             return $results;
             // dd($results);
 
         } catch (\Exception $e) {
-            Log::error('Error fetching available products for sale', [
-                'company_id' => $companyId,
-                'error' => $e->getMessage(),
-            ]);
+          
             throw $e;
         } finally {
             DB::disableQueryLog();

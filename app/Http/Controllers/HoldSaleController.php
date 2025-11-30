@@ -46,7 +46,7 @@ class HoldSaleController extends Controller
     private function calculatePieces(float $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
-            Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
+          
             return 0;
         }
 
@@ -65,26 +65,14 @@ class HoldSaleController extends Controller
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
 
-        Log::debug('Measure unit quantity', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'measure_unit_id' => $purchaseProduct->measure_unit_id,
-            'purchaseMeasureUnitQuantity' => $purchaseMeasureUnitQuantity
-        ]);
+       
 
         if ($purchaseMeasureUnitQuantity <= 0) {
-            Log::warning('Invalid measure unit quantity for purchase product', [
-                'purchase_stock_product_id' => $purchaseProduct->id,
-                'measureUnitQuantity' => $purchaseMeasureUnitQuantity
-            ]);
+           
             return 0;
         }
 
-        // Log purchase product data
-        Log::debug('Purchase product data', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'quantity' => $purchaseProduct->quantity ?? 0,
-            'free_quantity' => $purchaseProduct->free_quantity ?? 0
-        ]);
+      
 
         // Prioritize field values if they exist
         $fieldValues = $purchaseProduct->fieldValues->whereNull('deleted_at')->groupBy('quantity_index');
@@ -94,12 +82,7 @@ class HoldSaleController extends Controller
                 return !in_array($index, $unavailableIndices);
             })->count();
 
-            Log::debug('Calculated available pieces via field values', [
-                'purchase_stock_product_id' => $purchaseProduct->id,
-                'total_field_values' => $fieldValues->count(),
-                'unavailable_indices' => $unavailableIndices,
-                'available_pieces' => $availablePieces
-            ]);
+           
 
             return max(0, $availablePieces);
         }
@@ -147,24 +130,10 @@ class HoldSaleController extends Controller
         $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces;
 
         if ($availablePieces < 0) {
-            Log::warning('Negative available pieces detected', [
-                'purchase_stock_product_id' => $purchaseProduct->id,
-                'total_purchased' => $totalPurchasedPieces,
-                'purchase_returned' => $purchaseReturnedPieces,
-                'sold' => $soldPieces,
-                'sales_returned' => $salesReturnedPieces,
-                'available' => $availablePieces
-            ]);
+          
         }
 
-        Log::debug('Calculated available pieces via quantities', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'total_purchased' => $totalPurchasedPieces,
-            'purchase_returned' => $purchaseReturnedPieces,
-            'sold' => $soldPieces,
-            'sales_returned' => $salesReturnedPieces,
-            'available' => $availablePieces
-        ]);
+       
 
         return max(0, (int) $availablePieces); // Remove floor, cast to int
     }
@@ -243,14 +212,7 @@ class HoldSaleController extends Controller
 
         $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces);
 
-        Log::debug('Available pieces for sale update', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'purchased' => $purchasedPieces,
-            'purchaseRet' => $purchaseReturnedPieces,
-            'sold' => $soldPieces,
-            'custReturned' => $customerReturnedPieces,
-            'available' => $available,
-        ]);
+       
 
         return $available;
     }
@@ -282,7 +244,7 @@ class HoldSaleController extends Controller
     private function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
     {
         if ($targetMeasureUnitQuantity <= 0) {
-            Log::warning('Invalid target measure unit quantity', ['targetMeasureUnitQuantity' => $targetMeasureUnitQuantity]);
+           
             return [0, 0];
         }
 
@@ -301,13 +263,7 @@ class HoldSaleController extends Controller
         $freeQuantity = $freePiecesInt + $freeDecimal;
 
 
-        Log::debug('Converted to target measure unit', [
-            'regular_pieces' => $regularPieces,
-            'free_pieces' => $freePieces,
-            'target_measure_unit_quantity' => $targetMeasureUnitQuantity,
-            'regular_quantity' => $regularQuantity,
-            'free_quantity' => $freeQuantity
-        ]);
+      
 
         return [$regularQuantity, $freeQuantity];
     }
@@ -334,12 +290,7 @@ class HoldSaleController extends Controller
 
         $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices));
 
-        Log::debug('Unavailable quantity indices', [
-            'purchase_stock_product_id' => $purchaseProduct->id,
-            'sold_indices' => $soldIndices,
-            'returned_indices' => $returnedIndices,
-            'unavailable_indices' => $unavailableIndices
-        ]);
+       
 
         return $unavailableIndices;
     }
@@ -357,18 +308,18 @@ class HoldSaleController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            Log::error('Hold Sales not found', ['error' => $e->getMessage()]);
+           
             return response()->json([
                 'message' => 'Hold Sales not found'
             ], 404);
 
         } catch (QueryException $e) {
-            Log::error('Database query error while retrieving Hold Sales', ['error' => $e->getMessage()]);
+          
             return response()->json([
                 'message' => 'Database query error'
             ], 500);
         } catch (\Exception $e) {
-            Log::error('Error while retrieving Hold Sales', ['error' => $e->getMessage()]);
+          
             return response()->json([
                 'message' => 'An error occurred while retrieving Hold Sales'
             ], 500);
@@ -500,7 +451,7 @@ class HoldSaleController extends Controller
             $validated['branch_id'] = $request->branch_id;
             $validated['company_id'] = $request->company_id;
 
-            Log::debug('Sale request validated', ['sale_products' => $validated['sale_products']]);
+          
 
             $sale = DB::transaction(function () use ($validated) {
                 // Create HoldSale
@@ -553,7 +504,7 @@ class HoldSaleController extends Controller
                     'batch_no_sale' => $validated['batch_no_sale'] ?? null,
                 ]);
 
-                Log::debug('HoldSale created', ['sale_id' => $sale->id]);
+             
 
                 // Save products
                 foreach ($validated['sale_products'] as $productData) {
@@ -605,13 +556,13 @@ class HoldSaleController extends Controller
             ], 201);
 
         } catch (ModelNotFoundException $e) {
-            Log::error('Model not found', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Resource not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error', ['error' => $e->getMessage(), 'sql' => $e->getSql(), 'trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-            Log::error('Unexpected error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Unexpected error occurred'], 500);
         }
     }
@@ -630,19 +581,19 @@ class HoldSaleController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            Log::error('Hold Sale not found', ['error' => $e->getMessage()]);
+           
             return response()->json([
                 'message' => 'Hold Sale not found'
             ], 404);
 
         } catch (QueryException $e) {
-            Log::error('Database query error while retrieving Hold Sale', ['error' => $e->getMessage()]);
+          
             return response()->json([
                 'message' => 'Database query error'
             ], 500);
 
         } catch (\Exception $e) {
-            Log::error('Error while retrieving Hold Sale', ['error' => $e->getMessage()]);
+           
             return response()->json([
                 'message' => 'An error occurred while retrieving Hold Sale'
             ], 500);
@@ -898,10 +849,7 @@ class HoldSaleController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error('HoldSale not found', [
-                'hold_sale_id' => $id,
-                'exception' => $e->getMessage(),
-            ]);
+          
 
             return response()->json([
                 'error' => 'not_found',
@@ -909,12 +857,7 @@ class HoldSaleController extends Controller
             ], 404);
 
         } catch (QueryException $e) {
-            \Log::error('Database error while deleting HoldSale', [
-                'hold_sale_id' => $id,
-                'sql' => $e->getSql() ?? null,
-                'bindings' => $e->getBindings() ?? [],
-                'exception' => $e->getMessage(),
-            ]);
+          
 
             return response()->json([
                 'error' => 'query_error',
@@ -922,11 +865,9 @@ class HoldSaleController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            \Log::error('Unexpected error while deleting HoldSale', [
-                'hold_sale_id' => $id,
-                'exception' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
+
+            
 
             return response()->json([
                 'error' => 'unexpected_error',

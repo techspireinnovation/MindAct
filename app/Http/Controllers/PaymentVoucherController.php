@@ -201,7 +201,7 @@ class PaymentVoucherController extends Controller
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
         }
     }

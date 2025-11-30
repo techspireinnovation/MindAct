@@ -124,10 +124,10 @@ class PurchaseReturnController extends Controller
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
-            \Log::error('Database error in getRefBillNumber: ' . $e->getMessage());
+           
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in getRefBillNumber: ' . $e->getMessage());
+         
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
@@ -233,11 +233,7 @@ class PurchaseReturnController extends Controller
 
 
 
-            Log::debug('Input parameters for purchase bill numbers', [
-                'company_id' => $companyId,
-                'user_id' => auth()->id(),
-            ]);
-
+          
             if (!auth()->check()) {
                 return response()->json(['message' => 'Unauthenticated'], 401);
             }
@@ -249,10 +245,7 @@ class PurchaseReturnController extends Controller
                 ->get()
                 ->keyBy('id');
 
-            Log::info('Measure units fetched', [
-                'company_id' => $companyId,
-                'measure_units_count' => $measureUnits->count(),
-            ]);
+           
 
             $purchases = Purchase::where('company_id', $companyId)
                 ->where('branch_id', $branchId)
@@ -296,7 +289,7 @@ class PurchaseReturnController extends Controller
 
 
             if ($purchases->isEmpty()) {
-                Log::warning('No purchases found', ['company_id' => $companyId]);
+              
                 return response()->json([], 200);
             }
 
@@ -428,11 +421,7 @@ class PurchaseReturnController extends Controller
             $billNumbers = [];
             foreach ($purchases as $purchase) {
                 if ($purchase->purchaseStockProducts->isEmpty()) {
-                    Log::warning('No available products for purchase', [
-                        'purchase_id' => $purchase->id,
-                        'purchase_bill_number' => $purchase->purchase_bill_number,
-                        'company_id' => $companyId,
-                    ]);
+                   
                     continue;
                 }
 
@@ -452,14 +441,11 @@ class PurchaseReturnController extends Controller
                     $measureUnitQuantity = $measureUnit['quantity'];
 
                     if (!isset($measureUnits[$measureUnitId])) {
-                        Log::warning('Measure unit not found for purchase product, using default', [
-                            'purchase_product_id' => $purchaseProduct->id,
-                            'measure_unit_id' => $purchaseProduct->measure_unit_id,
-                        ]);
+                       
                     }
 
                     $purchaseTotal = $this->calculatePieces($this->sumQuantityAndFree($purchaseProduct->quantity, ($purchaseProduct->free_quantity ?? 0)), $measureUnitQuantity);
-                    // dd($purchaseTotal);
+               
 
                     $returnProducts = $purchaseReturnProducts->where('purchase_stock_product_id', $purchaseProduct->id);
                     $purchaseReturned = 0;
@@ -473,13 +459,7 @@ class PurchaseReturnController extends Controller
                         $lastReturnMeasureUnitId = $returnMeasureUnitId;
                         $lastReturnMeasureUnitQuantity = $returnMeasureUnitQuantity;
 
-                        Log::info('Processing purchase return product', [
-                            'purchase_product_id' => $purchaseProduct->id,
-                            'return_product_id' => $returnProduct->id,
-                            'return_quantity' => $returnQuantity,
-                            'measure_unit_id' => $returnMeasureUnitId,
-                            'measure_unit_quantity' => $returnMeasureUnitQuantity,
-                        ]);
+                       
                     }
 
                     $saleProductsForPurchase = $saleProducts->where('purchase_stock_product_id', $purchaseProduct->id);
@@ -615,14 +595,7 @@ class PurchaseReturnController extends Controller
                     $netSales = round($netSales, 2);
                     $availableQuantity = max(0, round($availableQuantity, 2));
 
-                    Log::info('Quantity calculation for purchase product', [
-                        'purchase_product_id' => $purchaseProduct->id,
-                        'purchase_total' => $purchaseTotal,
-                        'purchase_returned' => $purchaseReturned,
-                        'net_sales' => $netSales,
-                        'available_quantity' => $availableQuantity,
-                        'measure_unit_quantity' => $measureUnitQuantity,
-                    ]);
+                   
 
                     if ($availableQuantity > 0) {
                         $hasAvailableProducts = true;
@@ -636,31 +609,20 @@ class PurchaseReturnController extends Controller
             }
 
             if (empty($billNumbers)) {
-                Log::warning('No purchase bill numbers with available products after processing', ['company_id' => $companyId]);
+               
                 return response()->json([], 200);
             }
 
-            Log::info('Final bill numbers prepared', [
-                'bill_numbers' => $billNumbers,
-                'count' => count($billNumbers),
-            ]);
+           
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
 
-            Log::error('Database query error in getPurchaseBillNumber !', [
-                'company_id' => $companyId,
-                'error' => $e->getMessage(),
-                'sql' => $e->getSql(),
-                'bindings' => $e->getBindings(),
-            ]);
+          
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
-            Log::error('Unexpected error in getPurchaseBillNumber', [
-                'company_id' => $companyId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -973,11 +935,8 @@ class PurchaseReturnController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            Log::error('getPurchaseByBillNumber failed', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'query_log' => DB::getQueryLog()
-            ]);
+           
+            
             return response()->json(['error' => 'Server error'], 500);
         } finally {
             DB::disableQueryLog();
@@ -1165,10 +1124,12 @@ class PurchaseReturnController extends Controller
 
             return response()->json(['data' => $purchaseData]);
         } catch (QueryException $e) {
-            \Log::error('Database error in getPurchaseByRefBillNumber: ' . $e->getMessage());
+           
+            
             return response()->json(['message' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in getPurchaseByRefBillNumber: ' . $e->getMessage());
+           
+            
             return response()->json(['message' => 'An unexpected error occurred'], 500);
         }
     }
@@ -1237,7 +1198,7 @@ class PurchaseReturnController extends Controller
 
             return response()->json(array_values($productNames));
         } catch (\Exception $e) {
-            \Log::error('Error in getPurchaseProductNames: ' . $e->getMessage());
+          
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -1312,10 +1273,10 @@ class PurchaseReturnController extends Controller
 
             return response()->json($productDetails);
         } catch (QueryException $e) {
-            \Log::error('Database error in getPurchaseProductDetails: ' . $e->getMessage());
+            
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in getPurchaseProductDetails: ' . $e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -1391,10 +1352,10 @@ class PurchaseReturnController extends Controller
 
             return response()->json($productDetails);
         } catch (QueryException $e) {
-            \Log::error('Database error in getPurchaseProductDetails: ' . $e->getMessage());
+           
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in getPurchaseProductDetails: ' . $e->getMessage());
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -1414,12 +1375,12 @@ class PurchaseReturnController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::warning('Validation failed', ['errors' => $validator->errors()]);
+               
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
             if (!$request->hasAny(['product_code', 'product_name', 'barcode', 'purchase_bill_number'])) {
-                Log::warning('No valid search parameters provided', ['request' => $request->all()]);
+
                 return response()->json(['error' => 'At least one of product_code, product_name, barcode, or purchase_bill_number is required'], 422);
             }
 
@@ -1430,14 +1391,7 @@ class PurchaseReturnController extends Controller
             $barcode = $request->input('barcode');
             $purchaseBillNumber = $request->input('purchase_bill_number');
 
-            Log::debug('Input parameters', [
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'product_code' => $productCode,
-                'product_name' => $productName,
-                'barcode' => $barcode,
-                'purchase_bill_number' => $purchaseBillNumber
-            ]);
+           
 
 
             DB::enableQueryLog();
@@ -1488,19 +1442,10 @@ class PurchaseReturnController extends Controller
 
             // Fetch purchase products
             $purchaseProducts = $purchaseProductsQuery->get();
-            Log::debug('Purchase products query results', [
-                'purchase_stock_products' => $purchaseProducts,
-                'query' => $purchaseProductsQuery->toSql(),
-                'bindings' => $purchaseProductsQuery->getBindings()
-            ]);
+          
 
             if ($purchaseProducts->isEmpty()) {
-                Log::info('No purchase products found', [
-                    'company_id' => $companyId,
-                    'branch_id' => $companyId,
-                    'filters' => $request->only(['product_code', 'product_name', 'barcode', 'purchase_bill_number']),
-                    'query_log' => DB::getQueryLog()
-                ]);
+               
                 return response()->json(['error' => 'No products found matching the criteria'], 404);
             }
 
@@ -1804,22 +1749,7 @@ class PurchaseReturnController extends Controller
                 $remainingQuantityInPieces = max($totalPurchaseQuantityInPieces - $totalReturnedInPieces - $totalSoldInPieces + $totalSaleReturnsInPieces - $totalAdjustedInPieces, 0);
                 $remainingQuantityInUOM = $remainingQuantityInPieces / ($unitData['quantity'] ?? 1);
 
-                // Log calculations
-                Log::debug('Quantity Calculation', [
-                    'purchase_stock_product_id' => $pp->purchase_stock_product_id,
-                    'quantity' => $quantity,
-                    'free_quantity' => $freeQuantity,
-                    'total_quantity' => $totalQuantity,
-                    'measure_unit_quantity' => $unitData['quantity'],
-                    'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
-                    'total_returned_in_pieces' => $totalReturnedInPieces,
-                    'total_sold_in_pieces' => $totalSoldInPieces,
-                    'total_sale_returns_in_pieces' => $totalSaleReturnsInPieces,
-                    'adjusted_quantity_in_pieces' => $totalAdjustedInPieces,
-
-                    'remaining_quantity_in_pieces' => $remainingQuantityInPieces,
-                    'remaining_quantity_in_uom' => $remainingQuantityInUOM
-                ]);
+               
 
                 return (object) array_merge((array) $pp, [
                     'total_purchase_quantity_in_pieces' => $totalPurchaseQuantityInPieces,
@@ -2019,10 +1949,7 @@ class PurchaseReturnController extends Controller
                 })->values()->toArray();
 
                 if (empty($productPurchaseProducts)) {
-                    Log::info('No purchase products found !', [
-                        'product_id' => $first->product_id,
-                        'company_id' => $companyId
-                    ]);
+                   
                     return null;
                 }
 
@@ -2053,11 +1980,7 @@ class PurchaseReturnController extends Controller
             })->filter()->values()->toArray();
 
             if (empty($products)) {
-                Log::info('No products with available quantity found', [
-                    'company_id' => $companyId,
-                    'filters' => $request->only(['product_code', 'product_name', 'barcode', 'purchase_bill_number']),
-                    'query_log' => DB::getQueryLog()
-                ]);
+               
                 return response()->json(['error' => 'No products with available quantity found'], 404);
             }
 
@@ -2066,33 +1989,13 @@ class PurchaseReturnController extends Controller
                 'data' => $products,
             ], 200);
         } catch (ModelNotFoundException $e) {
-            Log::error('Purchase product not found', [
-                'error' => $e->getMessage(),
-                'company_id' => $companyId,
-                'inputs' => $request->all(),
-                'trace' => $e->getTraceAsString(),
-                'query_log' => DB::getQueryLog()
-            ]);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database query error', [
-                'error' => $e->getMessage(),
-                'company_id' => $companyId,
-                'inputs' => $request->all(),
-                'trace' => $e->getTraceAsString(),
-                'query_log' => DB::getQueryLog()
-            ]);
+            
             return response()->json(['error' => 'Database error: ' . (config('app.debug') ? $e->getMessage() : 'An error occurred')], 500);
         } catch (\Exception $e) {
-            Log::error('Unexpected error occurred', [
-                'error' => $e->getMessage(),
-                'company_id' => $companyId,
-                'inputs' => $request->all(),
-                'line' => $e->getLine(),
-                'file' => $e->getFile(),
-                'trace' => $e->getTraceAsString(),
-                'query_log' => DB::getQueryLog()
-            ]);
+            
             return response()->json(['error' => 'An unexpected error occurred: ' . (config('app.debug') ? $e->getMessage() : 'An unexpected error occurred')], 500);
         } finally {
             DB::disableQueryLog();
@@ -2198,7 +2101,7 @@ class PurchaseReturnController extends Controller
 
             $validated = $validator->validated();
             $validated['branch_id'] = $request->branch_id;
-            Log::debug('Validated request data', ['data' => $validated]);
+           
 
             // Process in transaction
             $purchaseReturn = DB::transaction(function () use ($validated) {
@@ -2220,25 +2123,11 @@ class PurchaseReturnController extends Controller
                     $freePieces = $this->calculatePieces($freeQuantity, $targetMeasureUnitQuantity);
                     $totalRequestedPieces = $regularPieces + $freePieces;
 
-                    Log::debug('Requested quantities', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'regular_quantity' => $regularQuantity,
-                        'free_quantity' => $freeQuantity,
-                        'target_measure_unit_id' => $productData['measure_unit_id'],
-                        'target_measure_unit_quantity' => $targetMeasureUnitQuantity,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces,
-                        'total_requested_pieces' => $totalRequestedPieces
-                    ]);
+                   
 
                     // Normalize field values with robust flattening
                     $fieldValuesFlat = $this->flattenFieldValues($productData['field_values'], $index);
-                    Log::debug('Flattened field values', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'field_values_flat' => $fieldValuesFlat
-                    ]);
+                   
 
                     // Validate field values
                     collect($fieldValuesFlat)->each(function ($fv) use ($index) {
@@ -2275,11 +2164,7 @@ class PurchaseReturnController extends Controller
                         })
                         ->toArray();
 
-                    Log::debug('Grouped field values', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'grouped_field_values' => $groupedFieldValues
-                    ]);
+                  
 
                     // Count field value sets
                     $regularFieldValueSets = collect($fieldValuesFlat)
@@ -2296,17 +2181,7 @@ class PurchaseReturnController extends Controller
                     $hasFieldValues = !empty($fieldValuesFlat);
                     $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) && PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $purchaseProductIds)->whereNull('deleted_at')->exists();
 
-                    Log::debug('Field value requirements', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'has_field_values' => $hasFieldValues,
-                        'requires_field_values' => $requiresFieldValues,
-                        'purchase_stock_product_ids' => $purchaseProductIds,
-                        'regular_field_value_sets' => $regularFieldValueSets,
-                        'free_field_value_sets' => $freeFieldValueSets,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces
-                    ]);
+                    
 
                     if (!$hasFieldValues && $requiresFieldValues) {
                         throw new \Exception("Field values required for product ID {$productData['product_id']} at index {$index}.");
@@ -2354,12 +2229,7 @@ class PurchaseReturnController extends Controller
                     $purchaseProducts = $query->orderBy('created_at')->distinct()->get();
 
 
-                    Log::debug('Fetched PurchaseProducts', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'purchase_stock_product_ids' => $purchaseProducts->pluck('id')->toArray(),
-                        'count' => $purchaseProducts->count()
-                    ]);
+                   
 
                     if ($purchaseProducts->isEmpty()) {
 
@@ -2383,16 +2253,7 @@ class PurchaseReturnController extends Controller
                                 $totalAvailablePieces -= $totalAllocatedPieces[$purchaseProductId];
                             }
 
-                            Log::debug('Stock calculation for PurchaseProduct', [
-                                'product_id' => $productData['product_id'],
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProductId,
-                                'quantity' => $purchaseProduct->quantity,
-                                'free_quantity' => $purchaseProduct->free_quantity,
-                                'measure_unit_id' => $purchaseProduct->measure_unit_id,
-                                'measure_unit_quantity' => $purchaseMeasureUnitQuantity,
-                                'total_available_pieces' => $totalAvailablePieces
-                            ]);
+                           
 
                             if ($totalAvailablePieces <= 0) {
                                 continue;
@@ -2404,14 +2265,7 @@ class PurchaseReturnController extends Controller
                             $salesReturnedIndices = SaleReturnProductFieldValue::whereIn('sale_return_product_id', $purchaseProduct->saleProducts->flatMap(fn($sp) => $sp->saleProductReturns->pluck('id')))->whereNull('deleted_at')->pluck('quantity_index')->toArray();
                             $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
 
-                            Log::debug('Field value validation', [
-                                'product_id' => $productData['product_id'],
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProductId,
-                                'existing_field_values' => $existingFieldValues,
-                                'unavailable_quantity_indices' => $unavailableQuantityIndices,
-                                'sales_returned_indices' => $salesReturnedIndices
-                            ]);
+                            
 
                             foreach ($fvByIndex as $quantityIndex => $fvSet) {
                                 if (in_array($quantityIndex, $unavailableQuantityIndices) || !isset($existingFieldValues[$quantityIndex])) {
@@ -2466,17 +2320,7 @@ class PurchaseReturnController extends Controller
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                                Log::debug('Allocation with field values', [
-                                    'product_id' => $productData['product_id'],
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProductId,
-                                    'allocated_regular_pieces' => $allocateRegularPieces,
-                                    'allocated_free_pieces' => $allocateFreePieces,
-                                    'total_allocated_pieces' => $allocatePieces,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'allocation' => end($allocations)
-                                ]);
+                               
                             }
                         }
                     }
@@ -2507,16 +2351,7 @@ class PurchaseReturnController extends Controller
                                 $totalAvailablePieces -= $totalAllocatedPieces[$purchaseProduct->id];
                             }
 
-                            Log::debug('Stock calculation for FIFO PurchaseProduct', [
-                                'product_id' => $productData['product_id'],
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProduct->id,
-                                'quantity' => $purchaseProduct->quantity,
-                                'free_quantity' => $purchaseProduct->free_quantity,
-                                'measure_unit_id' => $purchaseProduct->measure_unit_id,
-                                'measure_unit_quantity' => $purchaseMeasureUnitQuantity,
-                                'total_available_pieces' => $totalAvailablePieces
-                            ]);
+                            
 
                             if ($totalAvailablePieces <= 0)
                                 continue;
@@ -2547,33 +2382,13 @@ class PurchaseReturnController extends Controller
                                 // Update global allocation tracking
                                 $totalAllocatedPieces[$purchaseProduct->id] = ($totalAllocatedPieces[$purchaseProduct->id] ?? 0) + ($allocateRegularPieces + $allocateFreePieces);
 
-                                Log::debug('FIFO allocation', [
-                                    'product_id' => $productData['product_id'],
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProduct->id,
-                                    'allocated_regular_pieces' => $allocateRegularPieces,
-                                    'allocated_free_pieces' => $allocateFreePieces,
-                                    'total_allocated_pieces' => $allocateRegularPieces + $allocateFreePieces,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'allocation' => end($allocations)
-                                ]);
+                               
                             }
                         }
                     }
 
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                        Log::error('Insufficient stock detected', [
-                            'product_id' => $productData['product_id'],
-                            'index' => $index,
-                            'requested_regular_pieces' => $regularPieces,
-                            'requested_free_pieces' => $freePieces,
-                            'total_requested_pieces' => $totalRequestedPieces,
-                            'remaining_regular_pieces' => $remainingRegularPieces,
-                            'remaining_free_pieces' => $remainingFreePieces,
-                            'total_allocated_pieces' => $totalRequestedPieces - ($remainingRegularPieces + $remainingFreePieces),
-                            'allocations' => $allocations
-                        ]);
+                        
                         throw new \Exception("Insufficient stock for product ID {$productData['product_id']} at index {$index}. Requested: {$totalRequestedPieces} pieces (Regular: {$regularPieces}, Free: {$freePieces}), Allocated: " . ($totalRequestedPieces - ($remainingRegularPieces + $remainingFreePieces)) . " pieces.");
                     }
 
@@ -2637,7 +2452,7 @@ class PurchaseReturnController extends Controller
                     }
                 }
 
-                Log::debug('Purchase return created', ['purchase_stock_return_id' => $purchaseReturn->id, 'processed_products' => $processedProducts]);
+               
 
                 return $purchaseReturn->load([
                     'purchaseStockProductReturns' => fn($query) => $query->select('id', 'purchase_stock_return_id', 'purchase_stock_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id'),
@@ -2647,14 +2462,14 @@ class PurchaseReturnController extends Controller
 
             return response()->json(['message' => 'Purchase Return Created Successfully', 'data' => $purchaseReturn], 201);
         } catch (ModelNotFoundException $e) {
-            Log::error('Model not found: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Record not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
 
-            Log::error('Unexpected error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Error creating purchase return: ' . $e->getMessage()], 500);
         }
     }
@@ -2702,7 +2517,7 @@ class PurchaseReturnController extends Controller
     public function calculatePieces(string $quantity, float $measureUnitQuantity): float
     {
         if ($measureUnitQuantity <= 0) {
-            Log::warning('Invalid measure unit quantity', ['measureUnitQuantity' => $measureUnitQuantity]);
+         
             return 0;
         }
 
@@ -2957,7 +2772,7 @@ class PurchaseReturnController extends Controller
             $branchId = $request->branch_id;
 
             $validated = $validator->validated();
-            Log::debug('Validated request data', ['data' => $validated]);
+            
 
             // Initialize collections
             $processedProducts = [];
@@ -2970,15 +2785,7 @@ class PurchaseReturnController extends Controller
                 $quantityInt = floor($totalQuantity);
                 $decimalDigits = isset($decimalStr[1]) ? (float) $decimalStr[1] : 0;
                 $totalPieces = ($quantityInt * $unitQuantity) + $decimalDigits;
-                Log::debug('Calculating pieces', [
-                    'quantity' => $quantity,
-                    'free_quantity' => $freeQuantity,
-                    'total_quantity' => $totalQuantity,
-                    'unit_quantity' => $unitQuantity,
-                    'quantity_int' => $quantityInt,
-                    'decimal_digits' => $decimalDigits,
-                    'total_pieces' => $totalPieces,
-                ]);
+              
                 return $totalPieces;
             };
 
@@ -3090,15 +2897,7 @@ class PurchaseReturnController extends Controller
                     $batchQuantities[$purchaseProduct->id] = $availableQuantityInPieces;
                     $totalAvailablePieces += $availableQuantityInPieces;
 
-                    Log::debug('Availability check for purchase_product_id ' . $purchaseProduct->id, [
-                        'purchased_pieces' => $purchasedQuantityInPieces,
-                        'sold_pieces' => $soldQuantityInPieces,
-                        'sales_returned_pieces' => $salesReturnedInPieces,
-                        'total_returned_pieces' => $totalReturnedInPieces,
-                        'available_pieces' => $availableQuantityInPieces,
-                        'total_available_pieces' => $totalAvailablePieces,
-                        'requested_pieces' => $totalRequestedPieces,
-                    ]);
+                   
                 }
 
                 // Check if total requested pieces exceed total available pieces
@@ -3182,14 +2981,7 @@ class PurchaseReturnController extends Controller
                             ->unique()
                             ->count();
 
-                        Log::debug('Field value sets', [
-                            'product_id' => $productId,
-                            'index' => $index,
-                            'regular_field_value_sets' => $regularFieldValueSets,
-                            'free_field_value_sets' => $freeFieldValueSets,
-                            'regular_pieces' => $remainingRegularPieces,
-                            'free_pieces' => $remainingFreePieces,
-                        ]);
+                      
 
                         if ($hasFieldValues && ($regularFieldValueSets != $remainingRegularPieces || $freeFieldValueSets != $remainingFreePieces)) {
                             return response()->json([
@@ -3363,18 +3155,7 @@ class PurchaseReturnController extends Controller
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                                Log::debug('Allocation with field values', [
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProductId,
-                                    'allocated_regular_pieces' => $allocateRegularPieces,
-                                    'allocated_free_pieces' => $allocateFreePieces,
-                                    'allocated_regular_quantity' => $allocateRegularQuantity,
-                                    'allocated_free_quantity' => $allocateFreeQuantity,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'batch_remaining_pieces' => $batchQuantities[$purchaseProductId],
-                                ]);
+                               
                             }
                         }
                     }
@@ -3437,18 +3218,7 @@ class PurchaseReturnController extends Controller
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                                Log::debug('FIFO allocation', [
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProduct->id,
-                                    'allocated_regular_pieces' => $allocateRegularPieces,
-                                    'allocated_free_pieces' => $allocateFreePieces,
-                                    'allocated_regular_quantity' => $allocateRegularQuantity,
-                                    'allocated_free_quantity' => $allocateFreeQuantity,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'batch_remaining_pieces' => $batchQuantities[$purchaseProduct->id],
-                                ]);
+                               
                             }
                         }
                     }
@@ -3542,10 +3312,7 @@ class PurchaseReturnController extends Controller
                     $purchaseReturnProduct = $purchaseReturn->purchaseStockProductReturns()->create($productDataFiltered);
 
                     if (!empty($productData['field_values'])) {
-                        Log::debug('Storing field_values for purchase return product', [
-                            'purchase_stock_product_return_id' => $purchaseReturnProduct->id,
-                            'field_values' => $productData['field_values'],
-                        ]);
+                       
 
                         foreach ($productData['field_values'] as $arrayIndex => $fvSet) {
                             $quantityIndex = isset($fvSet[0]['quantity_index']) ? $fvSet[0]['quantity_index'] : $arrayIndex;
@@ -3597,13 +3364,13 @@ class PurchaseReturnController extends Controller
                 'data' => $purchaseReturn,
             ], 201);
         } catch (ModelNotFoundException $e) {
-            Log::error('Purchase or related record not found: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Purchase or related record not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error creating purchase return: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            Log::error('Error creating purchase return: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
     }
@@ -3710,7 +3477,7 @@ class PurchaseReturnController extends Controller
             $validated = $validator->validated();
 
             $validated['branch_id'] = $request->branch_id;
-            Log::debug('Validated request data for update', ['data' => $validated]);
+           
 
             // Process in transaction
             $purchaseReturn = DB::transaction(function () use ($validated, $id) {
@@ -3750,25 +3517,11 @@ class PurchaseReturnController extends Controller
                     $freePieces = $this->calculatePieces($freeQuantity, $targetMeasureUnitQuantity);
                     $totalRequestedPieces = $regularPieces + $freePieces;
 
-                    Log::debug('Requested quantities', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'regular_quantity' => $regularQuantity,
-                        'free_quantity' => $freeQuantity,
-                        'target_measure_unit_id' => $productData['measure_unit_id'],
-                        'target_measure_unit_quantity' => $targetMeasureUnitQuantity,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces,
-                        'total_requested_pieces' => $totalRequestedPieces
-                    ]);
+                  
 
                     // Normalize field values
                     $fieldValuesFlat = $this->flattenFieldValues($productData['field_values'], $index);
-                    Log::debug('Flattened field values', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'field_values_flat' => $fieldValuesFlat
-                    ]);
+                   
 
                     // Validate field values
                     collect($fieldValuesFlat)->each(function ($fv) use ($index) {
@@ -3805,11 +3558,7 @@ class PurchaseReturnController extends Controller
                         })
                         ->toArray();
 
-                    Log::debug('Grouped field values', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'grouped_field_values' => $groupedFieldValues
-                    ]);
+                  
 
                     // Count field value sets
                     $regularFieldValueSets = collect($fieldValuesFlat)
@@ -3826,17 +3575,7 @@ class PurchaseReturnController extends Controller
                     $hasFieldValues = !empty($fieldValuesFlat);
                     $requiresFieldValues = !empty($purchaseProductIds = array_keys($groupedFieldValues)) && PurchaseStockProductFieldValue::whereIn('purchase_stock_product_id', $purchaseProductIds)->whereNull('deleted_at')->exists();
 
-                    Log::debug('Field value requirements', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'has_field_values' => $hasFieldValues,
-                        'requires_field_values' => $requiresFieldValues,
-                        'purchase_product_ids' => $purchaseProductIds,
-                        'regular_field_value_sets' => $regularFieldValueSets,
-                        'free_field_value_sets' => $freeFieldValueSets,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces
-                    ]);
+                  
 
                     if (!$hasFieldValues && $requiresFieldValues) {
                         throw new \Exception("Field values required for product ID {$productData['product_id']} at index {$index}.");
@@ -3873,12 +3612,7 @@ class PurchaseReturnController extends Controller
                     }
 
                     $purchaseProducts = $query->orderBy('created_at')->distinct()->get();
-                    Log::debug('Fetched PurchaseProducts', [
-                        'product_id' => $productData['product_id'],
-                        'index' => $index,
-                        'purchase_stock_product_ids' => $purchaseProducts->pluck('id')->toArray(),
-                        'count' => $purchaseProducts->count()
-                    ]);
+                  
 
                     if ($purchaseProducts->isEmpty()) {
                         throw new \Exception("No valid purchase products found for product ID {$productData['product_id']} at index {$index}.");
@@ -3898,16 +3632,7 @@ class PurchaseReturnController extends Controller
                             $plannedAllocated = $plannedAllocatedPieces[$purchaseProductId] ?? 0;
                             $totalAvailablePieces -= $plannedAllocated;
 
-                            Log::debug('Stock calculation for PurchaseProduct', [
-                                'product_id' => $productData['product_id'],
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProductId,
-                                'quantity' => $purchaseProduct->quantity,
-                                'free_quantity' => $purchaseProduct->free_quantity,
-                                'measure_unit_id' => $purchaseProduct->measure_unit_id,
-                                'measure_unit_quantity' => $purchaseMeasureUnitQuantity,
-                                'total_available_pieces' => $totalAvailablePieces
-                            ]);
+                           
 
                             $existingFieldValues = $purchaseProduct->fieldValues->groupBy('quantity_index')->map(fn($group) => $group->pluck('value', 'product_field_id')->toArray());
                             $unavailableQuantityIndices = $this->getUnavailableQuantityIndices($purchaseProduct, $validated['company_id']);
@@ -4277,10 +4002,7 @@ class PurchaseReturnController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::error('Validation failed', [
-                    'purchase_return_id' => $id,
-                    'errors' => $validator->errors()->toArray(),
-                ]);
+                
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -4292,10 +4014,7 @@ class PurchaseReturnController extends Controller
             $validated = $validator->validated();
             $branchId = $request->branch_id;
             $validated['branch_id'] = $branchId;
-            Log::debug('Validated request data', [
-                'purchase_return_id' => $id,
-                'data' => $validated,
-            ]);
+           
 
             $companyId = $request->input('company_id');
             $branchId = $request->input('branch_id');
@@ -4309,21 +4028,7 @@ class PurchaseReturnController extends Controller
 
 
 
-            Log::debug('Loaded purchase return', [
-                'purchase_stock_return_id' => $id,
-                'company_id' => $validated['company_id'],
-                'purchase_return_products_count' => $purchaseReturn->purchaseStockProductReturns->count(),
-                'purchase_return_products' => $purchaseReturn->purchaseStockProductReturns->map(function ($product) {
-                    return [
-                        'id' => $product->id,
-                        'purchase_stock_product_id' => $product->purchase_stock_product_id,
-                        'product_id' => $product->product_id,
-                        'quantity' => $product->quantity,
-                        'free_quantity' => $product->free_quantity,
-                        'measure_unit_id' => $product->measure_unit_id,
-                    ];
-                })->toArray(),
-            ]);
+           
 
             // Helper function to calculate quantity in pieces
             $calculateQuantityInPieces = function ($quantity, $freeQuantity, $unitQuantity) {
@@ -4341,20 +4046,7 @@ class PurchaseReturnController extends Controller
 
                 $totalPieces = $quantityInt + $freeInt;
 
-                Log::debug('Calculating pieces', [
-                    'quantity' => $quantity,
-                    'quantity_integer' => $regularQuantity,
-                    'quantity_decimal' => $regularDecimal,
-                    'quantity_decimal_in_pieces' => $regularDecimalInPieces,
-                    'free_quantity' => $freeQuantity,
-                    'free_quantity_integer' => $nonRegularQuantity,
-                    'free_quantity_decimal' => $freeDecimal,
-                    'free_quantity_decimal_in_pieces' => $nonRegularDecimalInPieces,
-                    'unit_quantity' => $unitQuantity,
-                    'regular_pieces' => $quantityInt,
-                    'free_pieces' => $freeInt,
-                    'total_pieces' => $totalPieces,
-                ]);
+                
                 return $totalPieces;
             };
 
@@ -4367,18 +4059,12 @@ class PurchaseReturnController extends Controller
 
                 // Calculate quantities to add back from existing PurchaseProductReturn records
                 $currentReturnQuantitiesByPurchaseProduct = [];
-                Log::debug('Starting calculation of current return quantities', [
-                    'purchase_return_id' => $id,
-                    'existing_products_count' => $purchaseReturn->purchaseStockProductReturns->count(),
-                ]);
+             
 
                 foreach ($purchaseReturn->purchaseStockProductReturns as $existingProduct) {
                     $mu = $existingProduct->measureUnit;
                     if (!$mu) {
-                        Log::error('Measure unit not found for purchase_product_return_id', [
-                            'purchase_return_id' => $id,
-                            'purchase_stock_product_return_id' => $existingProduct->id,
-                        ]);
+                       
                         return response()->json(['error' => "Measure unit not found for purchase_product_return_id {$existingProduct->id}"], 404);
                     }
 
@@ -4391,23 +4077,11 @@ class PurchaseReturnController extends Controller
                         ->first();
 
                     if (!$purchaseProduct) {
-                        Log::error('Invalid purchase_product_id in PurchaseStockProductReturn', [
-                            'purchase_stock_return_id' => $id,
-                            'purchase_stock_product_id' => $existingProduct->purchase_stock_product_id,
-                            'purchase_stock_product_return_id' => $existingProduct->id,
-                        ]);
+                     
                         return response()->json(['error' => "Invalid purchase_product_id {$existingProduct->purchase_stock_product_id} in purchase return product"], 422);
                     }
 
-                    Log::debug('Validating purchase product', [
-                        'purchase_stock_return_id' => $id,
-                        'purchase_stock_product_return_id' => $existingProduct->id,
-                        'purchase_stock_product_id' => $existingProduct->purchase_stock_product_id,
-                        'product_id' => $purchaseProduct->product_id,
-                        'measure_unit_id' => $purchaseProduct->measure_unit_id,
-                        'quantity' => $purchaseProduct->quantity,
-                        'free_quantity' => $purchaseProduct->free_quantity,
-                    ]);
+                   
 
                     // Calculate pieces using the return's measure unit
                     $returnUnitQuantity = $mu->quantity ?? 1;
@@ -4415,14 +4089,7 @@ class PurchaseReturnController extends Controller
 
                     // Check if purchase_product_id matches the return's measure_unit_id
                     if ($existingProduct->measure_unit_id != $purchaseProduct->measure_unit_id) {
-                        Log::warning('Measure unit mismatch detected, checking for correct PurchaseProduct', [
-                            'purchase_stock_return_id' => $id,
-                            'purchase_stock_product_return_id' => $existingProduct->id,
-                            'purchase_stock_product_id' => $existingProduct->purchase_stock_product_id,
-                            'return_measure_unit_id' => $existingProduct->measure_unit_id,
-                            'purchase_measure_unit_id' => $purchaseProduct->measure_unit_id,
-                            'return_pieces' => $returnPieces,
-                        ]);
+                      
                         $correctPurchaseProduct = PurchaseStockProduct::where('product_id', $purchaseProduct->product_id)
                             ->where('company_id', $companyId)
                             ->where('branch_id', $branchId)
@@ -4431,13 +4098,7 @@ class PurchaseReturnController extends Controller
                             ->with(['measureUnit'])
                             ->first();
                         if ($correctPurchaseProduct) {
-                            Log::info('Reassigning to matching PurchaseProduct', [
-                                'purchase_stock_return_id' => $id,
-                                'purchase_stock_product_return_id' => $existingProduct->id,
-                                'old_purchase_stock_product_id' => $existingProduct->purchase_stock_product_id,
-                                'new_purchase_product_id' => $correctPurchaseProduct->id,
-                                'measure_unit_id' => $existingProduct->measure_unit_id,
-                            ]);
+                           
                             $existingProduct->purchase_stock_product_id = $correctPurchaseProduct->id;
                             $existingProduct->save();
                             $purchaseProduct = $correctPurchaseProduct;
@@ -4454,14 +4115,7 @@ class PurchaseReturnController extends Controller
                             $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                             $returnUnitQuantity = $mu->quantity ?? 1;
                             $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $returnUnitQuantity);
-                            Log::debug('Calculating total returned pieces for other returns', [
-                                'purchase_stock_product_id' => $return->purchase_stock_product_id,
-                                'purchase_stock_return_id' => $return->purchase_stock_return_id,
-                                'quantity' => $return->quantity,
-                                'free_quantity' => $return->free_quantity,
-                                'measure_unit_id' => $return->measure_unit_id,
-                                'pieces' => $pieces,
-                            ]);
+                          
                             return $pieces;
                         });
 
@@ -4471,13 +4125,7 @@ class PurchaseReturnController extends Controller
                         $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
                         $saleUnitQuantity = $mu->quantity ?? 1;
                         $pieces = $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $saleUnitQuantity);
-                        Log::debug('Calculating sold pieces', [
-                            'sale_product_id' => $sale->id,
-                            'quantity' => $sale->quantity,
-                            'free_quantity' => $sale->free_quantity,
-                            'measure_unit_id' => $sale->measure_unit_id,
-                            'pieces' => $pieces,
-                        ]);
+                       
                         return $pieces;
                     });
 
@@ -4486,36 +4134,18 @@ class PurchaseReturnController extends Controller
                             $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                             $returnUnitQuantity = $mu->quantity ?? 1;
                             $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $returnUnitQuantity);
-                            Log::debug('Calculating sales returned pieces', [
-                                'sale_return_product_id' => $return->id,
-                                'quantity' => $return->quantity,
-                                'free_quantity' => $return->free_quantity,
-                                'measure_unit_id' => $return->measure_unit_id,
-                                'pieces' => $pieces,
-                            ]);
+                          
                             return $pieces;
                         });
                     })->sum();
 
                     $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
 
-                    Log::debug('Key for currentReturnQuantitiesByPurchaseProduct', ['key' => $existingProduct->purchase_stock_product_id, 'purchase_stock_return_id' => $id, 'existing_product_id' => $existingProduct->id]);
+                   
                     $currentAddedBack = $currentReturnQuantitiesByPurchaseProduct[$existingProduct->purchase_stock_product_id] ?? 0;
 
                     if ($returnPieces > $availableQuantityInPieces + $currentAddedBack) {
-                        Log::error('Adding back pieces exceeds available stock', [
-                            'purchase_stock_return_id' => $id,
-                            'purchase_stock_product_return_id' => $existingProduct->id,
-                            'purchase_stock_product_id' => $existingProduct->purchase_stock_product_id,
-                            'pieces_to_add_back' => $returnPieces,
-                            'available_pieces' => $availableQuantityInPieces,
-                            'purchased_pieces' => $purchasedQuantityInPieces,
-                            'current_added_back' => $currentAddedBack,
-                            'return_measure_unit_id' => $existingProduct->measure_unit_id,
-                            'return_unit_quantity' => $returnUnitQuantity,
-                            'purchase_measure_unit_id' => $purchaseProduct->measure_unit_id,
-                            'purchase_unit_quantity' => $purchaseUnitQuantity,
-                        ]);
+                        
                         return response()->json([
                             'error' => "Cannot add back {$returnPieces} pieces for purchase_product_id {$existingProduct->purchase_product_id}. Available: {$availableQuantityInPieces} pieces"
                         ], 422);
@@ -4525,51 +4155,23 @@ class PurchaseReturnController extends Controller
                     $currentReturnQuantitiesByPurchaseProduct[$existingProduct->purchase_stock_product_id] =
                         ($currentReturnQuantitiesByPurchaseProduct[$existingProduct->purchase_stock_product_id] ?? 0) + $returnPieces;
 
-                    // Detailed logging
-                    Log::debug('Adding back return quantity', [
-                        'purchase_stock_return_id' => $id,
-                        'purchase_stock_product_return_id' => $existingProduct->id,
-                        'purchase_stock_product_id' => $existingProduct->purchase_stock_product_id,
-                        'product_id' => $existingProduct->product_id,
-                        'quantity' => $existingProduct->quantity,
-                        'free_quantity' => $existingProduct->free_quantity,
-                        'return_measure_unit_id' => $existingProduct->measure_unit_id,
-                        'return_unit_quantity' => $returnUnitQuantity,
-                        'return_pieces' => $returnPieces,
-                        'purchase_measure_unit_id' => $purchaseProduct->measure_unit_id,
-                        'purchase_unit_quantity' => $purchaseUnitQuantity,
-                        'purchased_pieces' => $purchasedQuantityInPieces,
-                        'sold_pieces' => $soldQuantityInPieces,
-                        'sales_returned_pieces' => $salesReturnedInPieces,
-                        'total_returned_pieces' => $totalReturnedInPieces,
-                        'available_pieces' => $availableQuantityInPieces,
-                        'total_added_back_for_product' => $currentReturnQuantitiesByPurchaseProduct[$existingProduct->purchase_stock_product_id],
-                    ]);
+                   
                 }
 
-                // Log final state
-                Log::debug('Final return quantities by purchase product', [
-                    'purchase_stock_return_id' => $id,
-                    'current_return_quantities' => $currentReturnQuantitiesByPurchaseProduct,
-                ]);
+               
+                
 
                 // Delete existing PurchaseProductReturn records
                 $deletedCount = PurchaseStockProductReturn::where('purchase_stock_return_id', $id)->count();
                 PurchaseStockProductReturn::where('purchase_stock_return_id', $id)->delete();
-                Log::info('Deleted existing PurchaseProductReturn records', [
-                    'purchase_stock_return_id' => $id,
-                    'deleted_count' => $deletedCount,
-                ]);
+                
 
                 // Group products by product_id for FIFO allocation
                 $productsById = collect($validated['purchase_return_products'])->groupBy('product_id')->map(function ($products) {
                     return $products->toArray();
                 })->toArray();
 
-                Log::debug('Grouped products by product_id', [
-                    'purchase_stock_return_id' => $id,
-                    'products_by_id' => array_keys($productsById),
-                ]);
+               
 
                 foreach ($productsById as $productId => $productGroup) {
                     // Calculate total requested pieces
@@ -4578,11 +4180,8 @@ class PurchaseReturnController extends Controller
 
                     foreach ($productGroup as $index => $productData) {
                         if (is_null($productData['quantity'])) {
-                            Log::error('Null quantity detected', [
-                                'purchase_return_id' => $id,
-                                'product_id' => $productId,
-                                'index' => $index,
-                            ]);
+                          
+                            
                             return response()->json(['error' => "Quantity cannot be null for product at index {$index}"], 422);
                         }
                         $regularQuantity = (float) ($productData['quantity'] ?? 0);
@@ -4601,18 +4200,7 @@ class PurchaseReturnController extends Controller
                             'allocations' => [],
                         ];
 
-                        Log::debug('Requested quantities for product', [
-                            'purchase_stock_return_id' => $id,
-                            'product_id' => $productId,
-                            'index' => $index,
-                            'regular_quantity' => $regularQuantity,
-                            'free_quantity' => $freeQuantity,
-                            'regular_pieces' => $regularPieces,
-                            'free_pieces' => $freePieces,
-                            'total_requested_pieces' => $totalRequestedPieces,
-                            'measure_unit_id' => $productData['measure_unit_id'],
-                            'unit_quantity' => $unitQuantity,
-                        ]);
+                      
                     }
 
                     // Build query for PurchaseProducts
@@ -4641,18 +4229,10 @@ class PurchaseReturnController extends Controller
 
                     $purchaseProducts = $purchaseProductsQuery->orderBy('created_at')->get();
 
-                    Log::debug('Loaded purchase products for allocation', [
-                        'purchase_stock_return_id' => $id,
-                        'product_id' => $productId,
-                        'purchase_stock_products_count' => $purchaseProducts->count(),
-                        'purchase_stock_product_ids' => $purchaseProducts->pluck('id')->toArray(),
-                    ]);
+                  
 
                     if ($purchaseProducts->isEmpty()) {
-                        Log::error('No valid purchase products found', [
-                            'purchase_stock_return_id' => $id,
-                            'product_id' => $productId,
-                        ]);
+                       
                         return response()->json(['error' => "No valid purchase products found for product ID {$productId}"], 404);
                     }
 
@@ -4661,10 +4241,7 @@ class PurchaseReturnController extends Controller
                     foreach ($purchaseProducts as $purchaseProduct) {
                         $purchaseMeasureUnit = $purchaseProduct->measureUnit;
                         if (!$purchaseMeasureUnit) {
-                            Log::error('Measure unit not found for purchase product', [
-                                'purchase_stock_return_id' => $id,
-                                'purchase_stock_product_id' => $purchaseProduct->id,
-                            ]);
+                           
                             return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProduct->id}"], 404);
                         }
                         $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
@@ -4675,14 +4252,7 @@ class PurchaseReturnController extends Controller
                         $totalReturnedInPieces = $purchaseProduct->purchaseStockProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
                             $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                             $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                            Log::debug('Calculating total returned pieces for other returns.', [
-                                'purchase_product_id' => $return->purchase_product_id,
-                                'purchase_return_id' => $return->purchase_return_id,
-                                'quantity' => $return->quantity,
-                                'free_quantity' => $return->free_quantity,
-                                'measure_unit_id' => $return->measure_unit_id,
-                                'pieces' => $pieces,
-                            ]);
+                           
                             return $pieces;
                         });
 
@@ -4691,13 +4261,7 @@ class PurchaseReturnController extends Controller
                         $soldQuantityInPieces = $purchaseProduct->saleProducts->sum(function ($sale) use ($calculateQuantityInPieces) {
                             $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
                             $pieces = $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
-                            Log::debug('Calculating sold pieces', [
-                                'sale_product_id' => $sale->id,
-                                'quantity' => $sale->quantity,
-                                'free_quantity' => $sale->free_quantity,
-                                'measure_unit_id' => $sale->measure_unit_id,
-                                'pieces' => $pieces,
-                            ]);
+                           
                             return $pieces;
                         });
 
@@ -4705,20 +4269,14 @@ class PurchaseReturnController extends Controller
                             return $sale->saleReturnProducts->map(function ($return) use ($calculateQuantityInPieces) {
                                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                                 $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                                Log::debug('Calculating sales returned pieces', [
-                                    'sale_return_product_id' => $return->id,
-                                    'quantity' => $return->quantity,
-                                    'free_quantity' => $return->free_quantity,
-                                    'measure_unit_id' => $return->measure_unit_id,
-                                    'pieces' => $pieces,
-                                ]);
+                              
                                 return $pieces;
                             });
                         })->sum();
 
                         $availableQuantityInPieces = ($purchasedQuantityInPieces - $soldQuantityInPieces) + $salesReturnedInPieces - $totalReturnedInPieces;
 
-                        Log::debug('Key for addedBackPieces', ['key' => $purchaseProduct->id, 'purchase_stock_return_id' => $id]);
+                      
                         $addedBackPieces = $currentReturnQuantitiesByPurchaseProduct[$purchaseProduct->id] ?? 0;
                         $availableQuantityInPieces += $addedBackPieces;
 
@@ -4727,30 +4285,11 @@ class PurchaseReturnController extends Controller
                         $totalAvailablePieces += $availableQuantityInPieces;
 
 
-                        Log::debug('Calculated available pieces', [
-                            'purchase_stock_return_id' => $id,
-                            'purchase_stock_product_id' => $purchaseProduct->id,
-                            'product_id' => $productId,
-                            'purchase_id' => $purchaseProduct->purchase_id,
-                            'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
-                            'purchased_pieces' => $purchasedQuantityInPieces,
-                            'sold_pieces' => $soldQuantityInPieces,
-                            'sales_returned_pieces' => $salesReturnedInPieces,
-                            'total_returned_pieces' => $totalReturnedInPieces,
-                            'available_pieces' => $availableQuantityInPieces,
-                            'added_back_pieces' => $addedBackPieces,
-                            'total_available_pieces' => $totalAvailablePieces,
-                            'requested_pieces' => $totalRequestedPieces,
-                        ]);
+                       
                     }
 
                     if ($totalRequestedPieces > $totalAvailablePieces) {
-                        Log::error('Insufficient stock for product', [
-                            'purchase_stock_return_id' => $id,
-                            'product_id' => $productId,
-                            'total_requested_pieces' => $totalRequestedPieces,
-                            'total_available_pieces' => $totalAvailablePieces,
-                        ]);
+                    
                         return response()->json([
                             'error' => "Insufficient stock for product ID {$productId}. Requested: {$totalRequestedPieces} pieces, Available: {$totalAvailablePieces} pieces"
                         ], 422);
@@ -4766,13 +4305,7 @@ class PurchaseReturnController extends Controller
                         $remainingRegularPieces = $productAllocations[$index]['regular_pieces'];
                         $remainingFreePieces = $productAllocations[$index]['free_pieces'];
 
-                        Log::debug('Starting allocation for product', [
-                            'purchase_stock_return_id' => $id,
-                            'product_id' => $productId,
-                            'index' => $index,
-                            'regular_pieces' => $remainingRegularPieces,
-                            'free_pieces' => $remainingFreePieces,
-                        ]);
+                      
 
                         // Normalize field_values
                         $fieldValuesFlat = collect($productData['field_values'])->flatMap(function ($item) {
@@ -4783,48 +4316,25 @@ class PurchaseReturnController extends Controller
 
                         if ($hasFieldValues) {
                             foreach ($fieldValuesFlat as $fv) {
-                                Log::debug('Field value entry', ['fv' => $fv, 'product_id' => $productId, 'index' => $index]);
+                              
                                 if (!isset($fv['purchase_stock_product_id']) || !is_numeric($fv['purchase_stock_product_id'])) {
-                                    Log::error('Invalid purchase_product_id in field_values', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'field_value' => $fv,
-                                    ]);
+                                   
                                     return response()->json(['error' => "Invalid or missing purchase_product_id in field_values at index {$index}"], 422);
                                 }
                                 if (!isset($fv['quantity_index']) || !is_numeric($fv['quantity_index']) || $fv['quantity_index'] < 0) {
-                                    Log::error('Invalid quantity_index in field_values', [
-                                        'purchase_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'field_value' => $fv,
-                                    ]);
+                                  
                                     return response()->json(['error' => "Invalid quantity_index in field_values at index {$index}"], 422);
                                 }
                                 if (!isset($fv['quantity_type']) || !in_array($fv['quantity_type'], ['regular', 'free'])) {
-                                    Log::error('Invalid quantity_type in field_values', [
-                                        'purchase_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'field_value' => $fv,
-                                    ]);
+                                  
                                     return response()->json(['error' => "Invalid quantity_type in field_values at index {$index}. Must be 'regular' or 'free'"], 422);
                                 }
                                 if ($fv['quantity_type'] === 'free' && $freeQuantity == 0) {
-                                    Log::error('Invalid free quantity_type with zero free_quantity', [
-                                        'purchase_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                    ]);
+                                 
                                     return response()->json(['error' => "quantity_type 'free' is not allowed when free_quantity is 0 at index {$index}"], 422);
                                 }
                                 if ($fv['quantity_type'] === 'regular' && $regularQuantity == 0) {
-                                    Log::error('Invalid regular quantity_type with zero quantity', [
-                                        'purchase_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                    ]);
+                                   
                                     return response()->json(['error' => "quantity_type 'regular' is not allowed when quantity is 0 at index {$index}"], 422);
                                 }
                             }
@@ -4858,27 +4368,11 @@ class PurchaseReturnController extends Controller
                                 ->unique()
                                 ->count();
 
-                            Log::debug('Field value sets', [
-                                'purchase_stock_return_id' => $id,
-                                'product_id' => $productId,
-                                'index' => $index,
-                                'regular_field_value_sets' => $regularFieldValueSets,
-                                'free_field_value_sets' => $freeFieldValueSets,
-                                'regular_pieces' => $remainingRegularPieces,
-                                'free_pieces' => $remainingFreePieces,
-                                'field_values' => $fieldValuesFlat,
-                            ]);
+                          
 
                             if ($hasFieldValues && ($regularFieldValueSets != $remainingRegularPieces || $freeFieldValueSets != $remainingFreePieces)) {
-                                Log::error('Field value sets mismatch', [
-                                    'purchase_stock_return_id' => $id,
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                    'regular_field_value_sets' => $regularFieldValueSets,
-                                    'free_field_value_sets' => $freeFieldValueSets,
-                                    'regular_pieces' => $remainingRegularPieces,
-                                    'free_pieces' => $remainingFreePieces,
-                                ]);
+                             
+
                                 return response()->json([
                                     'error' => "Field value sets (Regular: {$regularFieldValueSets}, Free: {$freeFieldValueSets}) must match pieces (Regular: {$remainingRegularPieces}, Free: {$remainingFreePieces}) for product ID {$productId} at index {$index}"
                                 ], 422);
@@ -4891,20 +4385,10 @@ class PurchaseReturnController extends Controller
                                 ->whereNull('deleted_at')
                                 ->exists();
 
-                            Log::debug('Checking field values requirement', [
-                                'purchase_stock_return_id' => $id,
-                                'product_id' => $productId,
-                                'index' => $index,
-                                'purchase_stock_product_ids' => $purchaseProductIds,
-                                'requires_field_values' => $requiresFieldValues,
-                            ]);
+                        
 
                             if ($hasFieldValues && !$requiresFieldValues) {
-                                Log::error('Field values provided but not required', [
-                                    'purchase_stock_return_id' => $id,
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                ]);
+                             
                                 return response()->json([
                                     'error' => "Field values provided for product ID {$productId} at index {$index}, but no field values are required."
                                 ], 422);
@@ -4917,35 +4401,20 @@ class PurchaseReturnController extends Controller
 
                                 $purchaseProduct = $purchaseProducts->firstWhere('id', $purchaseProductId);
                                 if (!$purchaseProduct) {
-                                    Log::error('Purchase product not found for field values', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProductId,
-                                    ]);
+                                
                                     return response()->json(['error' => "Purchase product ID {$purchaseProductId} not found at index {$index}"], 404);
                                 }
 
                                 $purchases[$purchaseProduct->purchase_id] = $purchaseProduct->purchase;
                                 $purchaseMeasureUnit = $purchaseProduct->measureUnit;
                                 if (!$purchaseMeasureUnit) {
-                                    Log::error('Measure unit not found for purchase product in field values', [
-                                        'purchase_stock_return_id' => $id,
-                                        'purchase_stock_product_id' => $purchaseProductId,
-                                        'index' => $index,
-                                    ]);
+                                 
                                     return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProductId} at index {$index}"], 404);
                                 }
                                 $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
 
                                 $availableQuantityInPieces = $batchQuantities[$purchaseProductId] - ($cumulativeAllocatedByPurchaseProduct[$purchaseProductId] ?? 0);
-                                Log::debug('Checking available quantity for field values allocation', [
-                                    'purchase_stock_return_id' => $id,
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProductId,
-                                    'available_quantity_in_pieces' => $availableQuantityInPieces,
-                                ]);
+                             
 
                                 if ($availableQuantityInPieces <= 0) {
                                     continue;
@@ -4988,46 +4457,18 @@ class PurchaseReturnController extends Controller
                                     ->toArray();
                                 $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $salesReturnedIndices);
 
-                                Log::debug('Field values validation', [
-                                    'purchase_stock_return_id' => $id,
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProductId,
-                                    'existing_field_values' => $existingFieldValues,
-                                    'sale_return_field_values' => $saleReturnFieldValues,
-                                    'unavailable_quantity_indices' => $unavailableQuantityIndices,
-                                    'sales_returned_indices' => $salesReturnedIndices,
-                                ]);
+                               
 
                                 foreach ($fvByIndex as $quantityIndex => $fvSet) {
                                     if (in_array($quantityIndex, $unavailableQuantityIndices) || (!isset($existingFieldValues[$quantityIndex]) && !isset($saleReturnFieldValues[$quantityIndex]))) {
-                                        Log::error('Invalid or unavailable quantity_index', [
-                                            'purchase_stock_return_id' => $id,
-                                            'product_id' => $productId,
-                                            'index' => $index,
-                                            'purchase_stock_product_id' => $purchaseProductId,
-                                            'quantity_index' => $quantityIndex,
-                                        ]);
+                                       
                                         return response()->json(['error' => "Invalid or already returned/sold quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}"], 422);
                                     }
                                     if (in_array($quantityIndex, $usedQuantityIndexes[$purchaseProductId] ?? [])) {
-                                        Log::error('Duplicate quantity_index', [
-                                            'purchase_stock_return_id' => $id,
-                                            'product_id' => $productId,
-                                            'index' => $index,
-                                            'purchase_stock_product_id' => $purchaseProductId,
-                                            'quantity_index' => $quantityIndex,
-                                        ]);
+                                    
                                         return response()->json(['error' => "Duplicate quantity_index {$quantityIndex} for purchase_product_id {$purchaseProductId} at index {$index}"], 422);
                                     }
-                                    Log::debug('Field values set for comparison', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProductId,
-                                        'quantity_index' => $quantityIndex,
-                                        'fv_set' => $fvSet,
-                                    ]);
+                                   
                                     $providedFieldValues = collect($fvSet)->pluck('value', 'product_field_id')->toArray();
                                     $expectedFieldValues = $existingFieldValues[$quantityIndex] ?? $saleReturnFieldValues[$quantityIndex] ?? [];
                                     if ($providedFieldValues != $expectedFieldValues) {
@@ -5111,12 +4552,7 @@ class PurchaseReturnController extends Controller
 
                             if ($purchaseProduct) {
                                 if ($purchaseProduct->fieldValues->isNotEmpty()) {
-                                    Log::error('Field values required but not provided', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProduct->id,
-                                    ]);
+                                   
                                     return response()->json(['error' => "Purchase product ID {$purchaseProduct->id} has field values; field_values must be provided at index {$index}"], 422);
                                 }
                                 $purchaseProductsToProcess = collect([$purchaseProduct]);
@@ -5133,24 +4569,13 @@ class PurchaseReturnController extends Controller
                                 $purchaseMeasureUnit = $purchaseProduct->measureUnit;
 
                                 if (!$purchaseMeasureUnit) {
-                                    Log::error('Measure unit not found for purchase product in FIFO allocation', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProduct->id,
-                                    ]);
+                                  
                                     return response()->json(['error' => "Measure unit not found for purchase_product_id {$purchaseProduct->id} at index {$index}"], 422);
                                 }
                                 $purchaseUnitQuantity = $purchaseMeasureUnit->quantity ?? 1;
 
                                 $availableQuantityInPieces = $batchQuantities[$purchaseProduct->id] - ($cumulativeAllocatedByPurchaseProduct[$purchaseProduct->id] ?? 0);
-                                Log::debug('Checking available quantity for FIFO allocation', [
-                                    'purchase_stock_return_id' => $id,
-                                    'product_id' => $productId,
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProduct->id,
-                                    'available_quantity_in_pieces' => $availableQuantityInPieces,
-                                ]);
+                              
 
                                 if ($availableQuantityInPieces <= 0) {
                                     continue;
@@ -5186,44 +4611,18 @@ class PurchaseReturnController extends Controller
                                     $remainingRegularPieces -= $allocateRegularPieces;
                                     $remainingFreePieces -= $allocateFreePieces;
 
-                                    Log::debug('FIFO allocation', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProduct->id,
-                                        'allocated_regular_pieces' => $allocateRegularPieces,
-                                        'allocated_free_pieces' => $allocateFreePieces,
-                                        'allocated_regular_quantity' => $allocateRegularQuantity,
-                                        'allocated_free_quantity' => $allocateFreeQuantity,
-                                        'remaining_regular_pieces' => $remainingRegularPieces,
-                                        'remaining_free_pieces' => $remainingFreePieces,
-                                        'batch_remaining_pieces' => $batchQuantities[$purchaseProduct->id],
-                                        'cumulative_allocated_pieces' => $cumulativeAllocatedByPurchaseProduct[$purchaseProduct->id] ?? 0,
-                                    ]);
+                                   
                                 }
                             }
 
                             $remainingPurchaseProducts = $remainingPurchaseProducts->filter(function ($purchaseProduct) use ($batchQuantities, $cumulativeAllocatedByPurchaseProduct) {
                                 return ($batchQuantities[$purchaseProduct->id] - ($cumulativeAllocatedByPurchaseProduct[$purchaseProduct->id] ?? 0)) > 0;
                             });
-                            Log::debug('Updated remaining purchase products', [
-                                'purchase_stock_return_id' => $id,
-                                'product_id' => $productId,
-                                'index' => $index,
-                                'remaining_purchase_stock_product_ids' => $remainingPurchaseProducts->pluck('id')->toArray(),
-                            ]);
+                          
                         }
 
                         if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                            Log::error('Insufficient stock after allocation', [
-                                'purchase_stock_return_id' => $id,
-                                'product_id' => $productId,
-                                'index' => $index,
-                                'remaining_regular_pieces' => $remainingRegularPieces,
-                                'remaining_free_pieces' => $remainingFreePieces,
-                                'requested_pieces' => $productAllocations[$index]['regular_pieces'] + $productAllocations[$index]['free_pieces'],
-                                'allocated_pieces' => ($productAllocations[$index]['regular_pieces'] + $productAllocations[$index]['free_pieces']) - ($remainingRegularPieces + $remainingFreePieces),
-                            ]);
+                           
                             return response()->json([
                                 'error' => "Insufficient stock for product ID {$productId} at index {$index}. Requested: " . ($productAllocations[$index]['regular_pieces'] + $productAllocations[$index]['free_pieces']) . " pieces (Regular: {$productAllocations[$index]['regular_pieces']}, Free: {$productAllocations[$index]['free_pieces']}), Allocated: " . (($productAllocations[$index]['regular_pieces'] + $productAllocations[$index]['free_pieces']) - ($remainingRegularPieces + $remainingFreePieces)) . " pieces"
                             ], 422);
@@ -5239,39 +4638,20 @@ class PurchaseReturnController extends Controller
                             $totalReturnedInPieces = $purchaseProduct->purchaseStockProductReturns->sum(function ($return) use ($calculateQuantityInPieces) {
                                 $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                                 $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                                Log::debug('Calculating total returned pieces for processed product', [
-                                    'purchase_stock_product_id' => $return->purchase_stock_product_id,
-                                    'purchase_stock_return_id' => $return->purchase_stock_return_id,
-                                    'quantity' => $return->quantity,
-                                    'free_quantity' => $return->free_quantity,
-                                    'measure_unit_id' => $return->measure_unit_id,
-                                    'pieces' => $pieces,
-                                ]);
+                               
                                 return $pieces;
                             });
                             $soldQuantityInPieces = $purchaseProduct->saleProducts->sum(function ($sale) use ($calculateQuantityInPieces) {
                                 $mu = MeasureUnit::findOrFail($sale->measure_unit_id);
                                 $pieces = $calculateQuantityInPieces($sale->quantity, $sale->free_quantity, $mu->quantity ?? 1);
-                                Log::debug('Calculating sold pieces for processed product', [
-                                    'sale_product_id' => $sale->id,
-                                    'quantity' => $sale->quantity,
-                                    'free_quantity' => $sale->free_quantity,
-                                    'measure_unit_id' => $sale->measure_unit_id,
-                                    'pieces' => $pieces,
-                                ]);
+                              
                                 return $pieces;
                             });
                             $salesReturnedInPieces = $purchaseProduct->saleProducts->flatMap(function ($sale) use ($calculateQuantityInPieces) {
                                 return $sale->saleReturnProducts->map(function ($return) use ($calculateQuantityInPieces) {
                                     $mu = MeasureUnit::findOrFail($return->measure_unit_id);
                                     $pieces = $calculateQuantityInPieces($return->quantity, $return->free_quantity, $mu->quantity ?? 1);
-                                    Log::debug('Calculating sales returned pieces for processed product', [
-                                        'sale_return_product_id' => $return->id,
-                                        'quantity' => $return->quantity,
-                                        'free_quantity' => $return->free_quantity,
-                                        'measure_unit_id' => $return->measure_unit_id,
-                                        'pieces' => $pieces,
-                                    ]);
+                                  
                                     return $pieces;
                                 });
                             })->sum();
@@ -5302,15 +4682,7 @@ class PurchaseReturnController extends Controller
                                 'remaining_quantity_in_pieces' => $remainingQuantityInPiecesAfterAllocation,
                             ];
 
-                            Log::debug('Processed product allocation', [
-                                'purchase_stock_return_id' => $id,
-                                'product_id' => $productId,
-                                'index' => $index,
-                                'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
-                                'allocated_quantity_in_pieces' => $allocatedQuantityInPieces,
-                                'remaining_quantity_in_pieces' => $remainingQuantityInPiecesAfterAllocation,
-                                'processed_product' => end($processedProducts),
-                            ]);
+                            
                         }
                     }
                 }
@@ -5320,11 +4692,7 @@ class PurchaseReturnController extends Controller
                 $totalAmount = array_sum(array_column($processedProducts, 'amount'));
                 $purchaseReturnData['total_amount'] = $totalAmount;
 
-                Log::debug('Updating purchase return', [
-                    'purchase_stock_return_id' => $id,
-                    'purchase_return_data' => $purchaseReturnData,
-                    'total_amount' => $totalAmount,
-                ]);
+              
 
                 $purchaseReturn->update($purchaseReturnData);
 
@@ -5339,19 +4707,12 @@ class PurchaseReturnController extends Controller
                     $productDataFiltered['company_id'] = $validated['company_id'];
                     $productDataFiltered['purchase_stock_return_id'] = $id;
 
-                    Log::debug('Creating purchase return product', [
-                        'purchase_stock_return_id' => $id,
-                        'purchase_stock_product_id' => $purchaseProductId,
-                        'product_data' => $productDataFiltered,
-                    ]);
+                  
 
                     $purchaseReturnProduct = PurchaseStockProductReturn::create($productDataFiltered);
 
                     if (!empty($productData['field_values'])) {
-                        Log::debug('Storing field_values for purchase return product', [
-                            'purchase_stock_product_return_id' => $purchaseReturnProduct->id,
-                            'field_values' => $productData['field_values'],
-                        ]);
+                       
                         foreach ($productData['field_values'] as $arrayIndex => $fvSet) {
                             $quantityIndex = isset($fvSet[0]['quantity_index']) ? $fvSet[0]['quantity_index'] : $arrayIndex;
                             foreach ($fvSet as $fv) {
@@ -5366,11 +4727,7 @@ class PurchaseReturnController extends Controller
                                     'quantity_index' => $quantityIndex,
                                     'quantity_type' => $fv['quantity_type'],
                                 ]);
-                                Log::debug('Created field value', [
-                                    'purchase_stock_product_return_id' => $purchaseReturnProduct->id,
-                                    'field_value_id' => $fieldValue->id,
-                                    'field_value' => $fieldValue->toArray(),
-                                ]);
+                               
                             }
                         }
                     }
@@ -5378,19 +4735,10 @@ class PurchaseReturnController extends Controller
                     $returnValue = ($productData['quantity'] * ($productData['price'] ?? 0)) - ($productData['discount_amount'] ?? 0);
                     $balanceUpdates[$purchaseId] = ($balanceUpdates[$purchaseId] ?? 0) + $returnValue;
 
-                    Log::debug('Calculated balance update', [
-                        'purchase_stock_return_id' => $id,
-                        'purchase_id' => $purchaseId,
-                        'purchase_stock_product_id' => $purchaseProductId,
-                        'return_value' => $returnValue,
-                        'balance_updates' => $balanceUpdates,
-                    ]);
+                   
                 }
 
-                Log::debug('Balance updates prepared', [
-                    'purchase_return_id' => $id,
-                    'balance_updates' => $balanceUpdates,
-                ]);
+             
 
 
 
@@ -5406,25 +4754,13 @@ class PurchaseReturnController extends Controller
             });
         } catch (ModelNotFoundException $e) {
 
-            Log::error('Purchase or related record not found', [
-                'purchase_return_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+          
             return response()->json(['error' => 'Purchase or related record not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error updating purchase return', [
-                'purchase_return_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+          
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            Log::error('Error updating purchase return', [
-                'purchase_return_id' => $id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
     }
@@ -5584,7 +4920,7 @@ class PurchaseReturnController extends Controller
     public function filterByBarcode(Request $request): JsonResponse
     {
         try {
-            \Log::info('Filter Purchase request: ', $request->all());
+           
 
             // Validate request
             $validator = Validator::make($request->all(), [
@@ -5766,7 +5102,7 @@ class PurchaseReturnController extends Controller
                 "data" => $data
             ]);
         } catch (\Exception $e) {
-            \Log::error('Error in filterByBarcode: ' . $e->getMessage());
+           
             return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
     }

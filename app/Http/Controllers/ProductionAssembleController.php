@@ -145,38 +145,7 @@ public function index(Request $request): JsonResponse
 
 
 
-
-
-
-
-
-
-
-
-    // public function getProductionSettingList(Request $request): JsonResponse
-    // {
-    //     try {
-    //         $productionSettings = ProductionSetting::select('id', 'product_id', 'product_name', 'quantity')
-    //             ->whereNull('deleted_at')
-    //             ->where('company_id', $request->company_id)
-    //             ->get();
-
-    //         return response()->json([
-    //             'message' => 'Production Settings fetched successfully.',
-    //             'data' => $productionSettings
-    //         ], 200);
-
-    //     } catch (ModelNotFoundException $e) {
-    //         \Log::error('Item not Found in getProductionSettingList', ['error' => $e->getMessage()]);
-    //         return response()->json(['message' => 'Item Not Found !!'], 404);
-    //     } catch (QueryException $e) {
-    //         \Log::error('Database error in getProductionSettingList', ['error' => $e->getMessage()]);
-    //         return response()->json(['message' => 'Database error occurred.'], 500);
-    //     } catch (\Exception $e) {
-    //         \Log::error('Unexpected error in getProductionSettingList', ['error' => $e->getMessage()]);
-    //         return response()->json(['message' => 'Unexpected error occurred.'], 500);
-    //     }
-    // }
+   
 
     public function getProductionSettingList(Request $request): JsonResponse
 {
@@ -219,140 +188,17 @@ public function index(Request $request): JsonResponse
         ], 200);
 
     } catch (ModelNotFoundException $e) {
-        \Log::error('Item not Found in getProductionSettingList', ['error' => $e->getMessage()]);
+       
         return response()->json(['message' => 'Item Not Found !!'], 404);
     } catch (QueryException $e) {
-        \Log::error('Database error in getProductionSettingList', ['error' => $e->getMessage()]);
+       
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error('Unexpected error in getProductionSettingList', ['error' => $e->getMessage()]);
+       
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
 
-
-
-    // public function getProductionSettingDetail(Request $request): JsonResponse
-    // {
-    //     try {
-    //         $productionSettingId = $request->input('production_setting_id');
-    //         $item = ProductionSetting::with('settingDetail')->findOrFail($productionSettingId);
-
-    //         $mainProductId = $item->product_id;
-    //         $settingDetails = $item->settingDetail ?? [];
-
-    //         $detailProductIds = collect($settingDetails)->pluck('product_id')->filter()->unique()->toArray();
-    //         $allProductIds = $detailProductIds;
-
-    //         if ($mainProductId) {
-    //             $allProductIds[] = $mainProductId;
-    //         }
-
-    //         $allProductIds = array_unique($allProductIds);
-
-    //         $productUnits = Product::whereIn('id', $allProductIds)->get(['id', 'measure_unit_id']);
-    //         $productUnitsMap = [];
-    //         foreach ($productUnits as $p) {
-    //             if ($p->measure_unit_id) {
-    //                 $productUnitsMap[$p->id][] = $p->measure_unit_id;
-    //             }
-    //         }
-
-    //         $productListUnits = ProductList::whereIn('product_id', $allProductIds)->get(['product_id', 'measure_unit_id']);
-    //         $productListUnitsMap = [];
-    //         foreach ($productListUnits as $pl) {
-    //             if ($pl->measure_unit_id) {
-    //                 $productListUnitsMap[$pl->product_id][] = $pl->measure_unit_id;
-    //             }
-    //         }
-
-    //         $detailUnitsMap = [];
-    //         foreach ($settingDetails as $detail) {
-    //             $productId = $detail->product_id;
-    //             $units = array_merge(
-    //                 $productUnitsMap[$productId] ?? [],
-    //                 $productListUnitsMap[$productId] ?? [],
-    //                 $detail->measure_unit_id ? [$detail->measure_unit_id] : []
-    //             );
-    //             $detailUnitsMap[$productId] = array_unique($units);
-    //         }
-
-    //         $mainUnits = array_unique(array_merge(
-    //             $productUnitsMap[$mainProductId] ?? [],
-    //             $productListUnitsMap[$mainProductId] ?? [],
-    //             $item->measure_unit_id ? [$item->measure_unit_id] : []
-    //         ));
-
-    //         $allMeasureUnitIds = array_unique(array_merge(
-    //             $mainUnits,
-    //             ...array_values($detailUnitsMap)
-    //         ));
-
-    //         $measureUnits = MeasureUnit::whereIn('id', $allMeasureUnitIds)
-    //             ->get(['id', 'name', 'quantity'])
-    //             ->keyBy('id');
-
-    //         $mainUsedMeasureUnits = collect($mainUnits)
-    //             ->filter(fn($id) => isset($measureUnits[$id]))
-    //             ->map(fn($id) => [
-    //                 'id' => $id,
-    //                 'name' => $measureUnits[$id]->name,
-    //                 'quantity' => $measureUnits[$id]->quantity,
-    //             ])
-    //             ->values()
-    //             ->toArray();
-
-    //         $detailUsedMeasureUnits = [];
-    //         foreach ($detailUnitsMap as $productId => $unitIds) {
-    //             $detailUsedMeasureUnits[$productId] = collect($unitIds)
-    //                 ->filter(fn($id) => isset($measureUnits[$id]))
-    //                 ->map(fn($id) => [
-    //                     'id' => $id,
-    //                     'name' => $measureUnits[$id]->name,
-    //                     'quantity' => $measureUnits[$id]->quantity,
-    //                 ])
-    //                 ->values()
-    //                 ->toArray();
-    //         }
-
-    //         $enrichedDetails = collect($settingDetails)->map(function ($detail) use ($detailUsedMeasureUnits) {
-    //             return array_merge($detail->toArray(), [
-    //                 'used_measure_units' => $detailUsedMeasureUnits[$detail->product_id] ?? [],
-    //             ]);
-    //         });
-
-    //         $measureUnitDetails = null;
-    //         if ($item->measure_unit_id && isset($measureUnits[$item->measure_unit_id])) {
-    //             $measureUnit = $measureUnits[$item->measure_unit_id];
-    //             $measureUnitDetails = [
-    //                 'id' => $measureUnit->id,
-    //                 'name' => $measureUnit->name,
-    //                 'quantity' => $measureUnit->quantity,
-    //             ];
-    //         }
-
-    //         $mainData = $item->toArray();
-    //         unset($mainData['measure_unit_id']); // Remove measure_unit_id
-    //         $mainData['measure_unit'] = $measureUnitDetails; // Add measure_unit with full details
-    //         $mainData['used_measure_units'] = $mainUsedMeasureUnits;
-    //         $mainData['setting_detail'] = $enrichedDetails;
-
-    //         return response()->json([
-    //             'message' => 'Production Settings fetched successfully.',
-    //             'data' => $mainData,
-    //         ], 200);
-
-    //     } catch (ModelNotFoundException $e) {
-    //         \Log::error('Item not Found in getProductionSettingDetail', ['error' => $e->getMessage()]);
-    //         return response()->json(['message' => 'Item Not Found !!'], 404);
-    //     } catch (QueryException $e) {
-    //         \Log::error('Database error in getProductionSettingDetail', ['error' => $e->getMessage()]);
-    //         return response()->json(['message' => 'Database error occurred.'], 500);
-    //     } catch (\Exception $e) {
-    //         \Log::error('Unexpected error in getProductionSettingDetail', ['error' => $e->getMessage()]);
-    //         return response()->json(['message' => 'Unexpected error occurred.'], 500);
-    //     }
-    // }
 
 public function getProductionSettingDetail(Request $request): JsonResponse
 {
@@ -465,13 +311,13 @@ public function getProductionSettingDetail(Request $request): JsonResponse
         ], 200);
 
     } catch (ModelNotFoundException $e) {
-        \Log::error('Item not Found in getProductionSettingDetail', ['error' => $e->getMessage()]);
+      
         return response()->json(['message' => 'Item Not Found !!'], 404);
     } catch (QueryException $e) {
-        \Log::error('Database error in getProductionSettingDetail', ['error' => $e->getMessage()]);
+       
         return response()->json(['message' => 'Database error occurred.'], 500);
     } catch (\Exception $e) {
-        \Log::error('Unexpected error in getProductionSettingDetail', ['error' => $e->getMessage()]);
+       
         return response()->json(['message' => 'Unexpected error occurred.'], 500);
     }
 }
@@ -555,11 +401,11 @@ public function getProductionSettingDetail(Request $request): JsonResponse
             ], 201);
 
         } catch (QueryException $e) {
-            \Log::error('Database error in Production Assemble store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
-            dd($e->getMessage());
+           
+            
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in Production Assemble store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+          
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -765,12 +611,9 @@ public function show($id): JsonResponse
             ], 200);
 
         } catch (QueryException $e) {
-            dd($e->getMessage());
-            \Log::error('Database error in Production Assemble update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
-            return response()->json(['message' => 'Database error occurred.'], 500);
+                return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            // Log the error with sensitive data excluded
-            \Log::error('Unexpected error in Production Assemble update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }

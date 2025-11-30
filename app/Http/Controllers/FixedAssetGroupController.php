@@ -39,13 +39,13 @@ class FixedAssetGroupController extends Controller
                 "data" => $fixedAssetGroups
             ]);
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "Fixed Asset Group not Found !!"], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+            
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -71,10 +71,10 @@ class FixedAssetGroupController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Fixed Asset Group not Found !!"], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -112,10 +112,10 @@ class FixedAssetGroupController extends Controller
             return response()->json(['message' => 'Fixed Asset Group Updated']);
 
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
 
@@ -158,13 +158,13 @@ class FixedAssetGroupController extends Controller
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Fixed Asset Group not found!'], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }
@@ -198,21 +198,21 @@ class FixedAssetGroupController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Fixed Asset Group not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            Log::error($e);
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Fixed Asset Group.'
             ], 500);
 
         } catch (\Exception $e) {
-            Log::error($e);
+          
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Fixed Asset Group.'

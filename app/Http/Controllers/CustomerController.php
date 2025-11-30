@@ -612,10 +612,10 @@ public function index(Request $request): JsonResponse
             ], 200);
 
         } catch (QueryException $e) {
-            \Log::error('DB Error in activeCustomers: ' . $e->getMessage());
+           
             return response()->json(['error' => 'Database error occurred !!'], 500);
         } catch (\Exception $e) {
-            \Log::error('Exception in activeCustomers: ' . $e->getMessage());
+           
             return response()->json(['error' => 'Unexpected error occurred !!'], 500);
         }
     }

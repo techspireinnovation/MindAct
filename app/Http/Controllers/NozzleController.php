@@ -79,13 +79,13 @@ class NozzleController extends Controller
                 'data' => $nozzle
             ], 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error('ModelNotFoundException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+         
             return response()->json(['error' => 'Nozzle not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Database error occurred!'], 500);
         } catch (Exception $e) {
-            \Log::error('Exception in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
@@ -141,13 +141,13 @@ class NozzleController extends Controller
                 'data' => $nozzle
             ], 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error('ModelNotFoundException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Nozzle not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Database error occurred!'], 500);
         } catch (Exception $e) {
-            \Log::error('Exception in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
@@ -221,7 +221,7 @@ public function destroy($id)
         ]);
 
     } catch (\Exception $e) {
-        \Log::error('Error deleting nozzle: ' . $e->getMessage());
+      
         return response()->json(['error' => 'An unexpected error occurred!'], 500);
     }
 }
@@ -249,7 +249,7 @@ public function destroy($id)
         ], 200);
 
     } catch (\Exception $e) {
-        \Log::error('Exception in activeNozzles: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+       
         return response()->json(['error' => 'An unexpected error occurred!'], 500);
     }
 }

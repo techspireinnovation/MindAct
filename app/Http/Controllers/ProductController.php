@@ -117,9 +117,7 @@ class ProductController extends Controller
                 ->pluck('name');
             return $productNames;
         } catch (\Exception $e) {
-            Log::error('Error fetching product names: ' . $e->getMessage(), [
-                'exception' => $e
-            ]);
+           
             return response()->json([
                 'error' => 'Server error occurred while fetching product names',
                 'details' => config('app.debug') ? $e->getMessage() : null
@@ -246,10 +244,7 @@ class ProductController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Product search error: ' . $e->getMessage(), [
-                'exception' => $e,
-                'request' => $request->all()
-            ]);
+           
 
             return response()->json([
                 'error' => 'Server error occurred',
@@ -276,13 +271,13 @@ class ProductController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "Product Name not Found !!"], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -346,10 +341,7 @@ class ProductController extends Controller
             return response()->json($query->get());
 
         } catch (\Exception $e) {
-            Log::error('Product search error !! ' . $e->getMessage(), [
-                'exception' => $e,
-                'request' => $request->all()
-            ]);
+           
 
             return response()->json([
                 'error' => 'Server error occurred',
@@ -505,12 +497,12 @@ class ProductController extends Controller
             return response()->json(['data' => $products]);
 
         } catch (QueryException $e) {
-            Log::error('Database error in filterbyBarcode: ' . $e->getMessage());
+          
 
             return response()->json(['error' => 'Database error'], 500);
         } catch (\Exception $e) {
 
-            Log::error('Server error in filterbyBarcode: ' . $e->getMessage());
+          
             return response()->json(['error' => 'Server error'], 500);
         }
     }
@@ -693,7 +685,7 @@ class ProductController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not SaleCfound'], 404);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
 
@@ -784,13 +776,10 @@ class ProductController extends Controller
         $broadcast_status = 'initiated';
         try {
             //$data = broadcast(new ProductUpdated($item, 'created'));
-            \Log::info('ProductUpdated event broadcast initiated', ['product_id' => $item->id]);
+           
         } catch (\Exception $e) {
             $broadcast_status = 'failed';
-            \Log::error('ProductUpdated event broadcast failed', [
-                'error' => $e->getMessage(),
-                'product_id' => $item->id
-            ]);
+           
         }
         return response()->json([
             'item' => $item->load('productLists'),

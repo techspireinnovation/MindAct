@@ -30,7 +30,7 @@ class DashboardController extends Controller
                 'error' => $e->getMessage()
             ], 404);
         } catch (Exception $e) {
-            Log::error('dashboard exception ' . $e->getMessage());
+           
             return response()->json([
                 'message' => 'An unexpected error occurred',
                 'error' => $e->getMessage()

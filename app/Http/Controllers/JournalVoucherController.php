@@ -148,7 +148,7 @@ class JournalVoucherController extends Controller
            
             return response()->json(['error' => 'Item not found'], 404);
         } catch (\Exception $e) {
-            Log::error($e);
+          
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
 
@@ -330,13 +330,13 @@ class JournalVoucherController extends Controller
                 'item' => $product
             ]);
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Journal Voucher not found!'], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+          
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+            
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }

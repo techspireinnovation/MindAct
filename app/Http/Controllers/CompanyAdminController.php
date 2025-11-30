@@ -75,7 +75,7 @@ class CompanyAdminController extends Controller
             ]);
 
         } catch (\Throwable $e) {
-            \Log::error('Login error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while logging in',
@@ -128,7 +128,7 @@ class CompanyAdminController extends Controller
                 ],
             ]);
         } catch (\Throwable $e) {
-            \Log::error('selectAdmin error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'An error occurred while selecting admin',
@@ -138,21 +138,13 @@ class CompanyAdminController extends Controller
     }
     public function selectCompany(Request $request)
     {
-        \Log::info('selectCompany Request', [
-            'headers' => $request->headers->all(),
-            'payload' => $request->all(),
-            'user' => Auth::user(),
-            'has_company_access' => Auth::user() ? Auth::user()->hasAnyRole(['company_admin', 'company_user', 'master_user']) : false,
-        ]);
+        
 
         try {
             $user = Auth::guard('api')->user();
 
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
-                \Log::error('selectCompany Auth Failed', [
-                    'user' => $user,
-                    'has_role' => $user ? $user->hasAnyRole(['company_admin', 'company_user', 'master_user']) : false,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Company access required',
@@ -168,7 +160,7 @@ class CompanyAdminController extends Controller
             $validator = Validator::make($request->all(), $rules);
 
             if ($validator->fails()) {
-                \Log::error('selectCompany Validation Failed', $validator->errors()->toArray());
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation error',
@@ -182,10 +174,7 @@ class CompanyAdminController extends Controller
                 ->first();
 
             if (!$companyUser) {
-                \Log::error('selectCompany Company Association Failed', [
-                    'user_id' => $user->id,
-                    'company_id' => $request->company_id,
-                ]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with the selected company',
@@ -195,9 +184,7 @@ class CompanyAdminController extends Controller
             // Find tenant for the company
             $tenant = Tenant::where('data->company_id', $request->company_id)->first();
             if (!$tenant) {
-                \Log::error('selectCompany Tenant Not Found', [
-                    'company_id' => $request->company_id,
-                ]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Tenant database not found for this company',
@@ -208,7 +195,7 @@ class CompanyAdminController extends Controller
             // Switch to tenant DB
             \App\Providers\TenantInitializer::switchTenant($tenant);
 
-            \Log::info("Tenant database switched: {$tenant->database}");
+           
 
             // Fetch branch inside tenant context
             $branch = Branch::on('tenant')
@@ -218,10 +205,7 @@ class CompanyAdminController extends Controller
                 ->first();
 
             if (!$branch) {
-                \Log::error('selectCompany Branch Association Failed', [
-                    'branch_id' => $request->branch_id,
-                    'company_id' => $request->company_id,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Selected branch is invalid or not associated with the company',
@@ -239,11 +223,7 @@ class CompanyAdminController extends Controller
                     ->first();
 
                 if (!$userBranch) {
-                    \Log::error('selectCompany Branch Association Failed for company_user', [
-                        'user_id' => $user->id,
-                        'branch_id' => $request->branch_id,
-                        'company_id' => $request->company_id,
-                    ]);
+                   
                     return response()->json([
                         'success' => false,
                         'message' => 'User is not associated with the selected branch',
@@ -257,10 +237,7 @@ class CompanyAdminController extends Controller
                 ->first();
 
             if (!$company) {
-                \Log::error('selectCompany Company Not Found', [
-                    'user_id' => $user->id,
-                    'company_id' => $request->company_id,
-                ]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Selected company not found',
@@ -276,12 +253,7 @@ class CompanyAdminController extends Controller
             ];
             $token = $user->createToken('MatraErpToken', $abilities)->plainTextToken;
 
-            \Log::info('selectCompany Token Created', [
-                'user_id' => $user->id,
-                'company_id' => $request->company_id,
-                'branch_id' => $request->branch_id,
-                'abilities' => $abilities,
-            ]);
+           
 
             return response()->json([
                 'success' => true,
@@ -292,10 +264,7 @@ class CompanyAdminController extends Controller
                 'is_vatable' => $company->is_vatable,
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('selectCompany Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to select company and branch.',
@@ -313,7 +282,7 @@ class CompanyAdminController extends Controller
             $branchId = $request->branch_id;
 
             if (!$userId) {
-                \Log::error('Profile: Missing user_id in request');
+               
                 return response()->json(['success' => false, 'message' => 'Unauthenticated.'], 401);
             }
 
@@ -321,30 +290,23 @@ class CompanyAdminController extends Controller
             $user = \App\Models\User::on('mysql')->with('roles')->find($userId);
 
             if (!$user) {
-                \Log::error('Profile: User not found in central DB', ['user_id' => $userId]);
+              
                 return response()->json(['success' => false, 'message' => 'User not found in central database.'], 404);
             }
 
-            // ✅ 3. Debug log
-            \Log::info('Profile Request', [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'roles' => $user->roles->pluck('name')->toArray(),
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-            ]);
+           
 
-            // ✅ 4. Role check
+            
             if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
-                \Log::error('Profile: Unauthorized role', ['user_id' => $user->id]);
+                
                 return response()->json(['success' => false, 'message' => 'Unauthorized role.'], 403);
             }
 
-            // ✅ 5. Find tenant database using company_id (from central DB)
+            
             $tenant = \App\Models\Tenant::on('mysql')->where('data->company_id', $companyId)->first();
 
             if (!$tenant) {
-                \Log::error('Profile: Tenant not found', ['company_id' => $companyId]);
+               
                 return response()->json(['success' => false, 'message' => 'Tenant not found.'], 404);
             }
 
@@ -363,7 +325,7 @@ class CompanyAdminController extends Controller
                 ->first();
 
             if (!$company) {
-                \Log::error('Profile: Company not found', ['company_id' => $companyId]);
+               
                 return response()->json(['success' => false, 'message' => 'Company not found in tenant DB.'], 404);
             }
 
@@ -407,11 +369,7 @@ class CompanyAdminController extends Controller
             ], 200);
 
         } catch (\Throwable $e) {
-            \Log::error('Profile Error', [
-                'user_id' => $request->user_id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
 
             return response()->json([
                 'success' => false,
@@ -432,27 +390,20 @@ class CompanyAdminController extends Controller
                 ->first();
 
             if (!$masterUser) {
-                \Log::error('getMasterUserCompanies: Master user not found', [
-                    'master_user_id' => $masterUserId,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Master user not found',
                 ], 404);
             }
 
-            // Debug roles
-            \Log::info('Master User Roles', [
-                'user_id' => $masterUserId,
-                'roles' => $masterUser->getRoleNames()->toArray(),
-            ]);
+          
+            
 
             $companyIds = $masterUser->companies()->pluck('companies.id');
 
             if ($companyIds->isEmpty()) {
-                \Log::info('getMasterUserCompanies: No companies found for master user', [
-                    'master_user_id' => $masterUserId,
-                ]);
+               
                 return response()->json([
                     'success' => true,
                     'message' => 'No companies associated with this master user',
@@ -479,11 +430,7 @@ class CompanyAdminController extends Controller
                 'data' => $admins,
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('getMasterUserCompanies Error', [
-                'master_user_id' => $masterUserId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve company admins.',
@@ -496,7 +443,7 @@ class CompanyAdminController extends Controller
     public function getUserCompaniesAndBranches($userId)
     {
         try {
-            \Log::info("Fetching user", ['user_id' => $userId]);
+          
             $user = User::find($userId);
 
             if (!$user) {
@@ -517,10 +464,7 @@ class CompanyAdminController extends Controller
                 ->pluck('company')
                 ->filter();
 
-            \Log::info("Companies fetched for user", [
-                'user_id' => $user->id,
-                'companies' => $companies->pluck('name', 'id')
-            ]);
+           
 
             if ($companies->isEmpty()) {
                 return response()->json([
@@ -532,7 +476,7 @@ class CompanyAdminController extends Controller
             $companiesWithBranches = [];
 
             foreach ($companies as $company) {
-                \Log::info("Processing company", ['company_id' => $company->id, 'company_name' => $company->name]);
+              
 
                 // Find tenant by decoding the raw JSON data
                 $tenant = Tenant::all()->first(
@@ -541,17 +485,17 @@ class CompanyAdminController extends Controller
                 );
 
                 if (!$tenant) {
-                    \Log::warning("Tenant not found for company", ['company_id' => $company->id]);
+                  
                     continue;
                 }
 
                 $tenantData = json_decode($tenant->getRawOriginal('data'), true);
                 $tenantDb = $tenantData['database'] ?? null;
 
-                \Log::info("Tenant database found", ['company_id' => $company->id, 'tenant_db' => $tenantDb]);
+               
 
                 if (!$tenantDb) {
-                    \Log::warning("Tenant database name missing", ['company_id' => $company->id]);
+                   
                     continue;
                 }
 
@@ -559,19 +503,15 @@ class CompanyAdminController extends Controller
                 DB::purge('tenant');
                 Config::set('database.connections.tenant.database', $tenantDb);
                 DB::reconnect('tenant');
-                \Log::info("Switched tenant connection", ['tenant_db' => $tenantDb]);
+             
 
-                // Fetch branches
+                
                 $branches = Branch::on('tenant')
                     ->select('id', 'name', 'company_id')
                     ->where('is_active', true)
                     ->whereNull('deleted_at')
                     ->get();
 
-                \Log::info("Branches fetched", [
-                    'company_id' => $company->id,
-                    'branches' => $branches->pluck('name', 'id')->toArray()
-                ]);
 
                 $branchesArray = $branches->map(fn($branch) => ['id' => $branch->id, 'name' => $branch->name]);
 
@@ -598,11 +538,7 @@ class CompanyAdminController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('getUserCompaniesAndBranches Error', [
-                'user_id' => $userId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve user companies and branches.',
@@ -659,10 +595,7 @@ class CompanyAdminController extends Controller
                 'data' => $admins,
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('tree Error', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve company admin tree.',
@@ -694,7 +627,7 @@ class CompanyAdminController extends Controller
                 'data' => $companyAdmins,
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('Failed to retrieve company admins: ' . $e->getMessage());
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to retrieve company admins',
@@ -718,7 +651,7 @@ class CompanyAdminController extends Controller
             ]);
 
             if ($validator->fails()) {
-                \Log::error('changePassword Validation Failed', $validator->errors()->toArray());
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation error',
@@ -729,10 +662,7 @@ class CompanyAdminController extends Controller
             $user = Auth::guard('api')->user();
 
             if (!$user || !$user->hasAnyRole(['company_admin', 'company_user'])) {
-                \Log::error('changePassword Auth Failed', [
-                    'user' => $user,
-                    'has_role' => $user ? $user->hasAnyRole(['company_admin', 'company_user']) : false,
-                ]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: Not authorized for company access',
@@ -753,10 +683,7 @@ class CompanyAdminController extends Controller
             }
 
             if (!$companyId || !CompanyUser::where('user_id', $user->id)->where('company_id', $companyId)->exists()) {
-                \Log::error('changePassword Company Association Failed', [
-                    'user_id' => $user->id,
-                    'company_id' => $companyId,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'User is not associated with the selected company',
@@ -764,10 +691,7 @@ class CompanyAdminController extends Controller
             }
 
             if (!$branchId) {
-                \Log::error('changePassword Branch Not Provided', [
-                    'user_id' => $user->id,
-                    'company_id' => $companyId,
-                ]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Branch not selected',
@@ -781,11 +705,7 @@ class CompanyAdminController extends Controller
                 ->first();
 
             if (!$branch) {
-                \Log::error('changePassword Branch Association Failed', [
-                    'user_id' => $user->id,
-                    'branch_id' => $branchId,
-                    'company_id' => $companyId,
-                ]);
+                
                 return response()->json([
                     'success' => false,
                     'message' => 'Selected branch is invalid or not associated with the company',
@@ -801,11 +721,7 @@ class CompanyAdminController extends Controller
                     ->first();
 
                 if (!$userBranch) {
-                    \Log::error('changePassword Branch Association Failed for company_user', [
-                        'user_id' => $user->id,
-                        'branch_id' => $branchId,
-                        'company_id' => $companyId,
-                    ]);
+                   
                     return response()->json([
                         'success' => false,
                         'message' => 'User is not associated with the selected branch',
@@ -829,13 +745,7 @@ class CompanyAdminController extends Controller
             $newAbilities = [$user->hasRole('company_admin') ? 'company_admin' : 'company_user', "company:{$companyId}", "branch:{$branchId}"];
             $newToken = $user->createToken('MatraErpToken', $newAbilities)->plainTextToken;
 
-            \Log::info('changePassword Token Created', [
-                'user_id' => $user->id,
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'abilities' => $newAbilities,
-                'token' => $newToken,
-            ]);
+           
 
             return response()->json([
                 'success' => true,
@@ -845,11 +755,7 @@ class CompanyAdminController extends Controller
                 ],
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('changePassword Error', [
-                'user_id' => $user ? $user->id : null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to change password.',
@@ -874,13 +780,7 @@ class CompanyAdminController extends Controller
             $companyId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'company:'));
             $branchId = collect($token->abilities)->first(fn($ab) => str_starts_with($ab, 'branch:'));
 
-            \Log::info('Logout', [
-                'user_id' => $user->id,
-                'role' => $user->getRoleNames()->first(),
-                'company_id' => $companyId,
-                'branch_id' => $branchId,
-                'token_name' => $token->name,
-            ]);
+           
 
             $isTempToken = $token->name === 'TempToken';
 
@@ -909,11 +809,7 @@ class CompanyAdminController extends Controller
                 'message' => 'Logout successful',
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('logout Error', [
-                'user_id' => $user ? $user->id : null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to logout.',

@@ -118,7 +118,7 @@ class ReceiptVoucherController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Receipt Voucher not found'], 404);
         } catch (\Exception $e) {
-            Log::error($e);
+           
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
         }
     }
@@ -198,7 +198,7 @@ class ReceiptVoucherController extends Controller
                 'item' => $receiptVoucher->load('receiptVoucherDetails'),
             ], 201);
         } catch (\Exception $e) {
-            Log::error($e);
+          
             return response()->json(['error' => 'Creation failed: ' . $e->getMessage()], 500);
         }
     }

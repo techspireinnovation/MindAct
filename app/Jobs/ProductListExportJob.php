@@ -98,9 +98,7 @@ class ProductListExportJob implements ShouldQueue
 
 
         } catch (\Exception $e) {
-            \Log::error("---->> ProductListExportJob Error <---");
-           
-            \Log::error("---->> ProductListExportJob Error End <---");
+          return;
         }
     }
 

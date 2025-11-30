@@ -2602,19 +2602,7 @@ class PurchaseReturnController extends Controller
 
         $availablePieces = max(0, ($regularPieces + $freePieces) - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces);
 
-        Log::debug('Calculated available pieces', [
-            'purchase_product_id' => $purchaseProduct->id,
-            'product_id' => $purchaseProduct->product_id,
-            'purchase_id' => $purchaseId,
-            'purchase_bill_number' => $purchaseBillNumber,
-            'regular_pieces' => $regularPieces,
-            'free_pieces' => $freePieces,
-            'purchase_returned_pieces' => $purchaseReturnedPieces,
-            'sold_pieces' => $soldPieces,
-            'sales_returned_pieces' => $salesReturnedPieces,
-            'available_pieces' => $availablePieces,
-            'measure_unit_quantity' => $measureUnitQuantity
-        ]);
+      
 
         return $availablePieces;
     }
@@ -2823,17 +2811,7 @@ class PurchaseReturnController extends Controller
                         'allocations' => [],
                     ];
 
-                    Log::debug('Requested quantities for product', [
-                        'product_id' => $productId,
-                        'index' => $index,
-                        'regular_quantity' => $regularQuantity,
-                        'free_quantity' => $freeQuantity,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces,
-                        'total_requested_pieces' => $totalRequestedPieces,
-                        'measure_unit_id' => $productData['measure_unit_id'],
-                        'unit_quantity' => $unitQuantity,
-                    ]);
+                  
                 }
 
                 // Build query for PurchaseProducts
@@ -3641,14 +3619,7 @@ class PurchaseReturnController extends Controller
                             $unavailableQuantityIndices = array_diff($unavailableQuantityIndices, $myOldIndices);
                             $plannedUsed = $plannedUsedQuantityIndexes[$purchaseProductId] ?? [];
                             $unavailableQuantityIndices = array_unique(array_merge($unavailableQuantityIndices, $plannedUsed));
-                            Log::debug('Field value validation', [
-                                'product_id' => $productData['product_id'],
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProductId,
-                                'existing_field_values' => $existingFieldValues,
-                                'unavailable_quantity_indices' => $unavailableQuantityIndices,
-                                'sales_returned_indices' => $salesReturnedIndices
-                            ]);
+                           
 
                             foreach ($fvByIndex as $quantityIndex => $fvSet) {
                                 if (in_array($quantityIndex, $unavailableQuantityIndices) || !isset($existingFieldValues[$quantityIndex])) {
@@ -3707,17 +3678,7 @@ class PurchaseReturnController extends Controller
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                                Log::debug('Allocation with field values', [
-                                    'product_id' => $productData['product_id'],
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProductId,
-                                    'allocated_regular_pieces' => $allocateRegularPieces,
-                                    'allocated_free_pieces' => $allocateFreePieces,
-                                    'total_allocated_pieces' => $allocatePieces,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'allocation' => end($allocations)
-                                ]);
+                              
                             }
                         }
                     }
@@ -3746,16 +3707,7 @@ class PurchaseReturnController extends Controller
                             $plannedAllocated = $plannedAllocatedPieces[$purchaseProduct->id] ?? 0;
                             $totalAvailablePieces -= $plannedAllocated;
 
-                            Log::debug('Stock calculation for FIFO PurchaseProduct', [
-                                'product_id' => $productData['product_id'],
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProduct->id,
-                                'quantity' => $purchaseProduct->quantity,
-                                'free_quantity' => $purchaseProduct->free_quantity,
-                                'measure_unit_id' => $purchaseProduct->measure_unit_id,
-                                'measure_unit_quantity' => $purchaseMeasureUnitQuantity,
-                                'total_available_pieces' => $totalAvailablePieces
-                            ]);
+                          
 
                             if ($totalAvailablePieces <= 0)
                                 continue;
@@ -3785,33 +3737,13 @@ class PurchaseReturnController extends Controller
 
                                 $plannedAllocatedPieces[$purchaseProduct->id] = ($plannedAllocatedPieces[$purchaseProduct->id] ?? 0) + ($allocateRegularPieces + $allocateFreePieces);
 
-                                Log::debug('FIFO allocation', [
-                                    'product_id' => $productData['product_id'],
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProduct->id,
-                                    'allocated_regular_pieces' => $allocateRegularPieces,
-                                    'allocated_free_pieces' => $allocateFreePieces,
-                                    'total_allocated_pieces' => $allocateRegularPieces + $allocateFreePieces,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'allocation' => end($allocations)
-                                ]);
+                              
                             }
                         }
                     }
 
                     if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                        Log::error('Insufficient stock detected', [
-                            'product_id' => $productData['product_id'],
-                            'index' => $index,
-                            'requested_regular_pieces' => $regularPieces,
-                            'requested_free_pieces' => $freePieces,
-                            'total_requested_pieces' => $totalRequestedPieces,
-                            'remaining_regular_pieces' => $remainingRegularPieces,
-                            'remaining_free_pieces' => $remainingFreePieces,
-                            'total_allocated_pieces' => $totalRequestedPieces - ($remainingRegularPieces + $remainingFreePieces),
-                            'allocations' => $allocations
-                        ]);
+                      
                         throw new \Exception("Insufficient stock for product ID {$productData['product_id']} at index {$index}. Requested: {$totalRequestedPieces} pieces (Regular: {$regularPieces}, Free: {$freePieces}), Allocated: " . ($totalRequestedPieces - ($remainingRegularPieces + $remainingFreePieces)) . " pieces.");
                     }
 
@@ -3875,7 +3807,7 @@ class PurchaseReturnController extends Controller
                     }
                 }
 
-                Log::debug('Purchase return created', ['purchase_stock_return_id' => $purchaseReturn->id, 'processed_products' => $processedProducts]);
+              
 
                 return $purchaseReturn->load([
                     'purchaseStockProductReturns' => fn($query) => $query->select('id', 'purchase_stock_return_id', 'purchase_stock_product_id', 'product_id', 'product_name', 'purchase_product_code', 'quantity', 'free_quantity', 'price', 'discount_percent', 'discount_amount', 'amount', 'is_vatable', 'measure_unit_id', 'expiry_date', 'mfd', 'customer_id'),
@@ -3885,14 +3817,14 @@ class PurchaseReturnController extends Controller
 
             return response()->json(['message' => 'Purchase Return Created Successfully', 'data' => $purchaseReturn], 201);
         } catch (ModelNotFoundException $e) {
-            Log::error('Model not found: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Record not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Database error: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
-            Log::error('Unexpected error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
+           
             return response()->json(['error' => 'Error creating purchase return: ' . $e->getMessage()], 500);
         }
     }
@@ -4472,15 +4404,7 @@ class PurchaseReturnController extends Controller
                                     $providedFieldValues = collect($fvSet)->pluck('value', 'product_field_id')->toArray();
                                     $expectedFieldValues = $existingFieldValues[$quantityIndex] ?? $saleReturnFieldValues[$quantityIndex] ?? [];
                                     if ($providedFieldValues != $expectedFieldValues) {
-                                        Log::error('Field values mismatch', [
-                                            'purchase_stock_return_id' => $id,
-                                            'product_id' => $productId,
-                                            'index' => $index,
-                                            'purchase_stock_product_id' => $purchaseProductId,
-                                            'quantity_index' => $quantityIndex,
-                                            'provided_field_values' => $providedFieldValues,
-                                            'expected_field_values' => $expectedFieldValues,
-                                        ]);
+                                        
                                         return response()->json(['error' => "Field values for quantity_index {$quantityIndex} do not match for purchase_product_id {$purchaseProductId} at index {$index}"], 422);
                                     }
                                     $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
@@ -4529,20 +4453,7 @@ class PurchaseReturnController extends Controller
                                     $remainingRegularPieces -= $allocateRegularPieces;
                                     $remainingFreePieces -= $allocateFreePieces;
 
-                                    Log::debug('Allocation with field values', [
-                                        'purchase_stock_return_id' => $id,
-                                        'product_id' => $productId,
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProductId,
-                                        'allocated_regular_pieces' => $allocateRegularPieces,
-                                        'allocated_free_pieces' => $allocateFreePieces,
-                                        'allocated_regular_quantity' => $allocateRegularQuantity,
-                                        'allocated_free_quantity' => $allocateFreeQuantity,
-                                        'remaining_regular_pieces' => $remainingRegularPieces,
-                                        'remaining_free_pieces' => $remainingFreePieces,
-                                        'batch_remaining_pieces' => $batchQuantities[$purchaseProductId],
-                                        'cumulative_allocated_pieces' => $cumulativeAllocatedByPurchaseProduct[$purchaseProductId] ?? 0,
-                                    ]);
+                                   
                                 }
                             }
                         }

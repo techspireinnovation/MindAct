@@ -130,9 +130,9 @@ class GrossProfitListExportJob implements ShouldQueue
             event(new ReportEvent($this->tokenId, ["exportJob" => ['downloadCompleted' => true, 'jobType' => 'grossProfitListExport', 'fileUrl' => url("api/company/download-file/$filename")]]));
 
         } catch (\Exception $e) {
-            Log::error("---->> GrossProfitListExportJob Error <---");
+           
             Log::error($e->getMessage());
-            Log::error("---->> GrossProfitListExportJob Error End <---");
+           
         }
     }
 

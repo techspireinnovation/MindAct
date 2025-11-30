@@ -65,7 +65,7 @@ class SaleController extends Controller
 
         // Lock the sales_returns table to prevent race conditions
         return DB::transaction(function () use ($prefix, $year, $fiscalYear) {
-           
+
 
             // Find the latest invoice number in sales_returns (including soft-deleted)
             $latestInvoice = Sale::withTrashed()
@@ -77,9 +77,9 @@ class SaleController extends Controller
             $sequence = 0;
             if ($latestInvoice && preg_match("/{$prefix}-{$year}-(\d+)/", $latestInvoice->invoice_number, $matches)) {
                 $sequence = (int) $matches[1];
-                
 
-            } 
+
+            }
 
             // Increment the sequence
             $newSequence = $sequence + 1;
@@ -90,14 +90,14 @@ class SaleController extends Controller
             // Construct the new invoice number
             $newInvoiceNumber = "{$prefix}-{$year}-{$formattedSequence}";
 
-          
+
 
             // Double-check uniqueness in sales_returns (including soft-deleted)
             while (Sale::withTrashed()->where('invoice_number', $newInvoiceNumber)->exists()) {
                 $newSequence++;
                 $formattedSequence = str_pad($newSequence, 6, '0', STR_PAD_LEFT);
                 $newInvoiceNumber = "{$prefix}-{$year}-{$formattedSequence}";
-               
+
             }
 
             return response()->json(['invoice_number' => $newInvoiceNumber]);
@@ -109,7 +109,7 @@ class SaleController extends Controller
     public function getAvailableProductsForSale($purchaseType, $companyId, $branchId)
     {
 
-       
+
 
         try {
             DB::enableQueryLog();
@@ -132,10 +132,10 @@ class SaleController extends Controller
                 ->get();
 
 
-         
+
 
             if ($products->isEmpty()) {
-             
+
                 return collect([]);
             }
 
@@ -146,7 +146,7 @@ class SaleController extends Controller
 
 
             if (strtolower($purchaseType) === 'capital') {
-              
+
                 return collect([]);
             }
 
@@ -197,7 +197,7 @@ class SaleController extends Controller
 
 
             if ($purchaseProducts->isEmpty()) {
-               
+
                 return collect([]);
             }
 
@@ -295,13 +295,13 @@ class SaleController extends Controller
                 ];
             })->filter(fn($product) => $product->available_quantity > 0)->values();
 
-           
+
 
             return $results;
             // dd($results);
 
         } catch (\Exception $e) {
-          
+
             throw $e;
         } finally {
             DB::disableQueryLog();
@@ -314,74 +314,57 @@ class SaleController extends Controller
     {
         try {
             $validator = Validator::make($request->all(), [
-                'company_id' => 'required|integer',
-                'branch_id' => 'nullable|integer',
+                'company_id' => 'nullable|integer',
+                'include_details' => 'nullable|boolean',
+                'purchase_type' => 'nullable|string'
             ]);
 
             if ($validator->fails()) {
-                return response()->json(['errors' => $validator->errors()], 422);
-            }
-
-            $companyId = $request->company_id;
-            $branchId = $request->branch_id;
-
-           
-            $products = Product::where(function ($q) use ($companyId) {
-                $q->where('company_id', $companyId)->orWhereNull('company_id');
-            })
-                ->whereNull('deleted_at')
-                ->select('id', 'name')
-                ->orderBy('id', 'asc')
-                ->get();
-
-            if ($products->isEmpty()) {
                 return response()->json([
-                    'message' => 'No products found',
-                    'count' => 0,
-                    'data' => []
-                ], 200);
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
             }
 
-            $availableProducts = collect();
+            $companyId = $request->input('company_id') ?? $request->company_id;
+            $branchId = $request->input('branch_id') ?? $request->branch_id;
+            $includeDetails = $request->boolean('include_details', false);
+            $purchaseType = $request->input('purchase_type', null);
 
-            foreach ($products as $product) {
-                $result = $this->getAvailableProductsDetails(
-                    productId: $product->id,
-                    productName: null,
-                    companyId: $companyId,
-                    branchId: $branchId
-                );
+            
 
-                $data = $result['data'][0] ?? null;
-
-                if ($data && ($data['available_quantity'] ?? 0) > 0) {
-                    $availableProducts->push([
-                        'id' => $product->id,
-                        'name' => $product->name,
-                        'purchased_quantity' => $data['purchased_quantity'] ?? 0,
-                        'return_quantity' => $data['return_quantity'] ?? 0,
-                        'sale_quantity' => $data['sale_quantity'] ?? 0,
-                        'sales_return_quantity' => $data['sales_return_quantity'] ?? 0,
-                        'available_quantity' => $data['available_quantity'] ?? 0,
-                    ]);
-                }
+            if (!auth()->check()) {
+                return response()->json([
+                    'message' => 'Unauthenticated'
+                ], 401);
             }
+
+            if (!$companyId) {
+                return response()->json([
+                    'message' => 'No company ID provided or available'
+                ], 400);
+            }
+
+
+            $products = $includeDetails
+                ? collect($this->getAvailableProductsDetails(null, null, $companyId)['data'], $branchId)
+                : $this->getAvailableProductsForSale($purchaseType, $companyId, $branchId);
+
 
             return response()->json([
                 'message' => 'Available products retrieved successfully',
-                'count' => $availableProducts->count(),
-                'data' => $availableProducts->values()->toArray()
+                'count' => $products->count(),
+                'data' => $products
             ], 200);
-
         } catch (\Exception $e) {
            
-
             return response()->json([
-                'message' => 'Failed to fetch available products',
-                'error' => app()->environment('local') ? $e->getMessage() : null
+                'message' => 'Failed to retrieve available products',
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
+
 
 
     public function getAvailableProductByIdOrName(Request $request): JsonResponse
@@ -404,7 +387,7 @@ class SaleController extends Controller
             $branchId = $request->input('branch_id');
             $responseUnitId = $request->input('response_unit_id');
 
-            
+
 
             if (!$productId && !$productName) {
                 return response()->json(['error' => 'Either product_id or product_name is required'], 422);
@@ -419,16 +402,16 @@ class SaleController extends Controller
             ], !empty($products['data']) ? 200 : 200);
 
         } catch (ModelNotFoundException $e) {
-            
+
             return response()->json(['message' => 'No matching product found', 'data' => []], 200);
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'Database query error',
                 'message' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         } catch (\Exception $e) {
-            
+
             return response()->json([
                 'error' => 'An unexpected error occurred !!',
                 'message' => config('app.debug') ? $e->getMessage() : null
@@ -442,7 +425,7 @@ class SaleController extends Controller
 
     public function getAvailableProductsDetails(?int $productId = null, ?string $productName = null, ?int $companyId = null, ?int $branchId = null, ?int $responseUnitId = null): array
     {
-        
+
 
         try {
             DB::enableQueryLog();
@@ -452,11 +435,11 @@ class SaleController extends Controller
                 ->get()
                 ->keyBy('id');
 
-          
+
 
             // Validate response_unit_id (optional)
             if ($responseUnitId && !isset($measureUnitsCalc[$responseUnitId])) {
-               
+
                 return ['message' => 'Invalid response unit ID', 'data' => []];
             }
 
@@ -487,10 +470,10 @@ class SaleController extends Controller
 
             $products = $productsQuery->get();
 
-            
+
 
             if ($products->isEmpty()) {
-                
+
                 return ['message' => 'No available products found', 'data' => []];
             }
 
@@ -499,7 +482,7 @@ class SaleController extends Controller
             $productForUnit = $productId ?? ($productName ? Product::where('name', $productName)->first()->id ?? null : null);
 
             if (!$productForUnit) {
-                
+
 
                 return ['message' => 'No product found', 'data' => []];
             }
@@ -541,7 +524,7 @@ class SaleController extends Controller
             $latestSoldPrice = $salePricesPerPiece->first() ?? 0;
 
 
-           
+
 
             $getProductForMeasureUnits = Product::with('productLists')
                 ->where('id', $productForUnit)
@@ -564,7 +547,7 @@ class SaleController extends Controller
             $primarayMeasureUnitId = MeasureUnit::where('id', $productPrimaryMeasureUnit)->first();
             $primaryMeasureUnitQuantity = $primarayMeasureUnitId->quantity ?? 0;
 
-          
+
 
             $allUnitIds = $getProductForMeasureUnits
                 ? collect([$getProductForMeasureUnits->measure_unit_id])
@@ -585,7 +568,7 @@ class SaleController extends Controller
                     ];
                 });
 
-           
+
 
             $purchaseProducts = PurchaseStockProduct::whereIn('product_id', $productIds)
                 ->where('company_id', $companyId)
@@ -633,7 +616,7 @@ class SaleController extends Controller
                         ->where('purchase_stock_product_field_values.company_id', $companyId)
                         ->where('purchase_stock_product_field_values.branch_id', $branchId)
                         ->with([
-                            'productField' => fn($q) => $q->select(['id', 'name','type','values', 'company_id'])
+                            'productField' => fn($q) => $q->select(['id', 'name', 'type', 'values', 'company_id'])
                                 ->where('company_id', $companyId)
                                 ->whereNull('deleted_at')
                         ])
@@ -641,10 +624,10 @@ class SaleController extends Controller
                 ->orderBy('created_at', 'asc')
                 ->get();
 
-           
+
 
             if ($purchaseProducts->isEmpty()) {
-               
+
                 return ['message' => 'No available products found', 'data' => []];
             }
 
@@ -676,7 +659,7 @@ class SaleController extends Controller
 
 
 
-          
+
 
             $returnedQuantityIndexes = PurchaseStockProductReturnFieldValue::whereIn('purchase_stock_product_return_id', $purchaseProducts->flatMap(fn($pp) => $pp->purchaseStockProductReturns->pluck('id')))
                 ->where('company_id', $companyId)
@@ -699,14 +682,14 @@ class SaleController extends Controller
                 ->groupBy('purchase_stock_product_id')
                 ->map(fn($group) => $group->pluck('quantity_index')->toArray());
 
-           
+
 
             // Check for missing purchase_stock_product_ids
             $expectedIds = $purchaseProducts->pluck('id')->toArray();
             $returnedIds = array_keys($transferQuantityIndexes->toArray());
             $missingIds = array_diff($expectedIds, $returnedIds);
             if (!empty($missingIds)) {
-              
+
                 // Initialize missing IDs with empty arrays to prevent errors
                 foreach ($missingIds as $missingId) {
                     $transferQuantityIndexes[$missingId] = [];
@@ -729,7 +712,7 @@ class SaleController extends Controller
                     ->map(fn($group) => $group->pluck('quantity_index')->toArray());
             }
 
-            
+
 
             // Process results
             $result = $products->map(function ($product) use ($purchaseProducts, $soldQuantityIndexes, $adjustedQuantityIndexes, $returnedQuantityIndexes, $salesReturnQuantityIndexes, $transferQuantityIndexes, $companyId, $branchId, $measureUnitsCalc, $measureUnitsUsed, $latestSoldPrice, $minPrice, $avgPrice, $retailSalePrice, $primaryMeasureUnitQuantity, $primarayMeasureUnitId) {
@@ -766,7 +749,7 @@ class SaleController extends Controller
                         })->values();
                     })->toArray();
 
-              
+
 
                 $productPurchaseProducts = $purchaseProducts->filter(fn($pp) => $pp->product_id == $product->product_id)
                     ->map(function ($pp) use ($soldQuantityIndexes, $returnedQuantityIndexes, $adjustedQuantityIndexes, $salesReturnQuantityIndexes, $companyId, $branchId, $measureUnitsCalc) {
@@ -820,7 +803,7 @@ class SaleController extends Controller
                         // Calculate available pieces
                         $availablePieces = $this->calculateAvailablePieces($pp, $companyId, $branchId, $measureUnitsCalc);
 
-                        
+
 
                         // Collect field values for this purchase product
                         $netSoldIndexes = array_diff($soldQuantityIndexes[$pp->id] ?? [], $salesReturnQuantityIndexes[$pp->id] ?? []);
@@ -830,11 +813,11 @@ class SaleController extends Controller
                             $returnedQuantityIndexes[$pp->id] ?? []
                         ));
 
-                        
+
 
                         $fieldValues = $pp->fieldValues->filter(function ($fv) use ($excludedIndexes) {
                             $isAvailable = !in_array($fv->quantity_index, $excludedIndexes);
-                            
+
                             return $isAvailable;
                         })->map(function ($fv) {
                             return [
@@ -852,7 +835,7 @@ class SaleController extends Controller
                             ];
                         })->values()->toArray();
 
-                        
+
 
                         return [
                             'purchase_stock_product_id' => $pp->id,
@@ -910,7 +893,7 @@ class SaleController extends Controller
 
                 $availablePieces = $purchasedPieces - $returnPieces - $salePieces + $salesReturnPieces - $adjustedPieces;
 
-                
+
 
                 $salesPrice = SaleProduct::where('product_id', $product->product_id)
                     ->where('company_id', $companyId)
@@ -948,7 +931,7 @@ class SaleController extends Controller
                 ];
             })->filter()->values()->toArray();
 
-            
+
 
             return [
                 'message' => 'Product details retrieved !',
@@ -956,7 +939,7 @@ class SaleController extends Controller
             ];
 
         } catch (\Exception $e) {
-           
+
             throw $e;
         } finally {
             DB::disableQueryLog();
@@ -1050,16 +1033,16 @@ class SaleController extends Controller
 
 
         } catch (ModelNotFoundException $e) {
-            
+
             return response()->json(['error' => 'Data nor Found !!', 'message' => config('app.debug') ? $e->getMessage() : null], 404);
 
 
         } catch (QueryException $e) {
-         
+
             return response()->json(['error' => 'Database query error', 'message' => config('app.debug') ? $e->getMessage() : null], 500);
 
         } catch (\Exception $e) {
-          
+
             return response()->json([
                 'error' => 'An unexpected error occurred',
                 'message' => config('app.debug') ? $e->getMessage() : null
@@ -1108,14 +1091,14 @@ class SaleController extends Controller
     {
         $purchaseMeasureUnitQuantity = isset($measureUnitsCalc[$purchaseProduct->measure_unit_id]) ? $measureUnitsCalc[$purchaseProduct->measure_unit_id]->quantity : 1;
 
-       
+
 
         if ($purchaseMeasureUnitQuantity <= 0) {
-            
+
             return 0;
         }
 
-      
+
 
         // Prioritize field values if they exist
         $fieldValues = $purchaseProduct->fieldValues->whereNull('deleted_at')->groupBy('quantity_index');
@@ -1125,7 +1108,7 @@ class SaleController extends Controller
                 return !in_array($index, $unavailableIndices);
             })->count();
 
-            
+
 
             return max(0, $availablePieces);
         }
@@ -1196,10 +1179,10 @@ class SaleController extends Controller
         $availablePieces = $totalPurchasedPieces - $purchaseReturnedPieces - $soldPieces + $salesReturnedPieces - $adjustedPieces;
 
         if ($availablePieces < 0) {
-            
+
         }
 
-       
+
 
         return max(0, (int) $availablePieces); // Remove floor, cast to int
     }
@@ -1295,7 +1278,7 @@ class SaleController extends Controller
 
         $available = max(0, $purchasedPieces - $purchaseReturnedPieces - $soldPieces + $customerReturnedPieces - $adjustedPieces);
 
-        
+
 
         return $available;
     }
@@ -1308,13 +1291,13 @@ class SaleController extends Controller
             $purchase = Sale::where('invoice_number', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -1481,7 +1464,7 @@ class SaleController extends Controller
             $validated = $validator->validated();
             $validated['branch_id'] = $request->branch_id;
 
-          
+
 
 
 
@@ -1529,7 +1512,7 @@ class SaleController extends Controller
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 
-            
+
 
                 if (isset($validated['sale_additionals']) && !empty($validated['sale_additionals'])) {
                     SaleAdditional::create([
@@ -1547,7 +1530,7 @@ class SaleController extends Controller
                         'delivery_time' => $validated['sale_additionals']['delivery_time'] ?? null,
                     ]);
 
-                  
+
                 }
 
                 $purchases = collect();
@@ -1595,7 +1578,7 @@ class SaleController extends Controller
                     $totalRequestedPieces = $regularPieces + $freePieces;
 
 
-                    
+
 
                     $fieldValuesFlat = $this->flattenFieldValues($productData['field_values'], $index);
 
@@ -1622,7 +1605,7 @@ class SaleController extends Controller
                             })->toArray();
                         })->toArray();
 
-                   
+
 
                     $regularFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
@@ -1644,7 +1627,7 @@ class SaleController extends Controller
                         ->whereNull('deleted_at')
                         ->exists();
 
-                  
+
 
                     if (!$hasFieldValues && $requiresFieldValues) {
                         throw new \Exception("Field values required for product ID {$productId} at index {$index}.");
@@ -1721,7 +1704,7 @@ class SaleController extends Controller
                                     throw new \Exception("Duplicate quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} at index {$index}.");
                                 }
                                 if (collect($fvSet)->pluck('value', 'product_field_id')->toArray() != $existingFieldValues[$quantityIndex]) {
-                                    
+
                                     throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} do not match at index {$index}.");
                                 }
                                 $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
@@ -1758,7 +1741,7 @@ class SaleController extends Controller
                             $remainingRegularPieces -= $requestedRegularPieces;
                             $remainingFreePieces -= $requestedFreePieces;
 
-                          
+
                         }
 
                         if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
@@ -1783,7 +1766,7 @@ class SaleController extends Controller
                             return (object) ['quantity' => $unit->quantity ?? 1];
                         })->toArray();
 
-                       
+
 
                         // Initialize allocations for this product
                         $allocations = [];
@@ -1846,7 +1829,7 @@ class SaleController extends Controller
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                               
+
                             }
                         }
 
@@ -1879,7 +1862,7 @@ class SaleController extends Controller
                             'name' => $productModel->name,
                         ]);
 
-                        
+
 
                         if (!empty($allocation['field_values'])) {
                             foreach ($allocation['field_values'] as $fvSet) {
@@ -1905,7 +1888,7 @@ class SaleController extends Controller
                                 }
                             }
 
-                          
+
                         }
                     }
                 }
@@ -1913,7 +1896,7 @@ class SaleController extends Controller
                 return $sale;
             });
 
-          
+
 
             return response()->json([
                 'message' => 'Sale created successfully',
@@ -1925,13 +1908,13 @@ class SaleController extends Controller
                 ])
             ], 201);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Resource not found'], 404);
         } catch (QueryException $e) {
-          
+
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
@@ -1967,7 +1950,7 @@ class SaleController extends Controller
     public function convertToTargetMeasureUnit(float $regularPieces, float $freePieces, float $targetMeasureUnitQuantity): array
     {
         if ($targetMeasureUnitQuantity <= 0) {
-           
+
             return [0, 0];
         }
 
@@ -1986,7 +1969,7 @@ class SaleController extends Controller
         $freeQuantity = $freePiecesInt + $freeDecimal;
 
 
-       
+
 
         return [$regularQuantity, $freeQuantity];
     }
@@ -2024,7 +2007,7 @@ class SaleController extends Controller
 
         $unavailableIndices = array_unique(array_merge($soldIndices, $returnedIndices, $adjustedIndices));
 
-       
+
 
         return $unavailableIndices;
     }
@@ -2157,7 +2140,7 @@ class SaleController extends Controller
 
             $validated = $validator->validated();
             $validated['branch_id'] = $request->branch_id;
-         
+
 
 
 
@@ -2216,7 +2199,7 @@ class SaleController extends Controller
                 ]);
 
                 $sale->save();
-              
+
 
                 // Delete existing sale products and field values
                 DB::table('sales_product_field_values')
@@ -2241,7 +2224,7 @@ class SaleController extends Controller
                         'delivery_date' => $validated['sale_additionals']['delivery_date'] ?? null,
                         'delivery_time' => $validated['sale_additionals']['delivery_time'] ?? null,
                     ]);
-                   
+
                 }
 
                 $purchases = collect();
@@ -2285,7 +2268,7 @@ class SaleController extends Controller
                     $freePieces = $this->calculatePieces($freeQuantity, $targetMeasureUnitQuantity);
                     $totalRequestedPieces = $regularPieces + $freePieces;
 
-                   
+
 
                     $fieldValuesFlat = $this->flattenFieldValues($productData['field_values'], $index);
                     $groupedFieldValues = collect($fieldValuesFlat)
@@ -2312,7 +2295,7 @@ class SaleController extends Controller
                             })->toArray();
                         })->toArray();
 
-                    
+
 
                     $regularFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
@@ -2334,7 +2317,7 @@ class SaleController extends Controller
                         ->whereNull('deleted_at')
                         ->exists();
 
-                  
+
 
                     if (!$hasFieldValues && $requiresFieldValues) {
                         throw new \Exception("Field values required for product ID {$productId} at index {$index}.");
@@ -2410,7 +2393,7 @@ class SaleController extends Controller
                                     throw new \Exception("Duplicate quantity index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} at index {$index}.");
                                 }
                                 if (collect($fvSet)->pluck('value', 'product_field_id')->toArray() != $existingFieldValues[$quantityIndex]) {
-                                   
+
                                     throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} do not match at index {$index}.");
                                 }
                                 $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
@@ -2439,7 +2422,7 @@ class SaleController extends Controller
                             $remainingRegularPieces -= $requestedRegularPieces;
                             $remainingFreePieces -= $requestedFreePieces;
 
-                           
+
                         }
 
                         if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
@@ -2463,7 +2446,7 @@ class SaleController extends Controller
                             return (object) ['quantity' => $unit->quantity ?? 1];
                         })->toArray();
 
-                      
+
 
                         foreach ($purchaseProducts as $purchaseProduct) {
                             if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) {
@@ -2507,7 +2490,7 @@ class SaleController extends Controller
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                               
+
                             }
                         }
 
@@ -2544,7 +2527,7 @@ class SaleController extends Controller
                             'name' => $productModel->name,
                         ]);
 
-                       
+
 
                         if (!empty($allocation['field_values'])) {
                             foreach ($allocation['field_values'] as $fvSet) {
@@ -2569,7 +2552,7 @@ class SaleController extends Controller
                                     ]);
                                 }
                             }
-                            
+
                         }
                     }
                 }
@@ -2577,7 +2560,7 @@ class SaleController extends Controller
                 return $sale;
             });
 
-           
+
 
             return response()->json([
                 'message' => 'Sale updated successfully',
@@ -2590,13 +2573,13 @@ class SaleController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-          
+
             return response()->json(['error' => 'Sale not found'], 404);
         } catch (QueryException $e) {
-          
+
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-          
+
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
@@ -2656,10 +2639,10 @@ class SaleController extends Controller
             }
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An Unexpected error occurred'], 500);
         }
     }
@@ -2809,21 +2792,21 @@ class SaleController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Sale not found!'
             ], 404);
 
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the sale.'
             ], 500);
 
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the sale.'
@@ -2831,11 +2814,11 @@ class SaleController extends Controller
         }
     }
 
-  
+
     public function filterByBarcode(Request $request): JsonResponse
     {
         try {
-         
+
 
             // Validate request
             $validator = Validator::make($request->all(), [
@@ -2902,16 +2885,16 @@ class SaleController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-          
+
             return response()->json(['message' => 'No matching product found', 'data' => []], 200);
         } catch (QueryException $e) {
-          
+
             return response()->json([
                 'error' => 'Database query error',
                 'message' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         } catch (\Exception $e) {
-          
+
             return response()->json([
                 'error' => 'An unexpected error occurred',
                 'message' => config('app.debug') ? $e->getMessage() : null

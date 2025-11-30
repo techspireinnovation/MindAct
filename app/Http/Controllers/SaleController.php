@@ -407,7 +407,7 @@ class SaleController extends Controller
         } catch (QueryException $e) {
 
             return response()->json([
-                'error' => 'Database query error',
+                'error' => 'Database query error !',
                 'message' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         } catch (\Exception $e) {

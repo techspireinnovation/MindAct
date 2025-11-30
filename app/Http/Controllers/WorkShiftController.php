@@ -20,7 +20,7 @@ class WorkShiftController extends Controller
         $query = Workshift::where('company_id',$request->company_id);
        
         return response()->json([
-            'message' => 'Data Retrived Successfully!!',
+            'message' => 'Data Retrived Successfully!',
             'data' => $query->paginate(50)
         ]);
 

@@ -300,9 +300,7 @@ class LocationController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Exception in activeLocations: ' . $e->getMessage(), [
-                'trace' => $e->getTraceAsString()
-            ]);
+            
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

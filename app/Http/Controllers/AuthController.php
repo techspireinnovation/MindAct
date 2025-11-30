@@ -74,9 +74,7 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         try{
-        \Log::info('AuthController::login Request', [
-            'payload' => $request->all(),
-        ]);
+        
 
         $validator = Validator::make($request->all(), [
             'email' => 'required|email',
@@ -84,7 +82,7 @@ class AuthController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::error('AuthController::login Validation Failed', $validator->errors()->toArray());
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
@@ -93,9 +91,7 @@ class AuthController extends Controller
         }
 
         if (!Auth::attempt($request->only('email', 'password'))) {
-            \Log::error('AuthController::login Invalid Credentials', [
-                'email' => $request->email,
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid credentials',
@@ -105,9 +101,7 @@ class AuthController extends Controller
         $user = Auth::user();
 
         if (!$user->hasRole('super_admin', 'api')) {
-            \Log::error('AuthController::login User Not Super Admin', [
-                'user_id' => $user->id,
-            ]);
+          
             return response()->json([
                 'success' => false,
                 'message' => 'Unauthorized: Not a super admin',
@@ -116,10 +110,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('SuperAdminToken', ['super_admin'])->plainTextToken;
 
-        \Log::info('AuthController::login Success', [
-            'user_id' => $user->id,
-            'token' => $token,
-        ]);
+       
 
         return response()->json([
             'success' => true,
@@ -134,9 +125,7 @@ class AuthController extends Controller
             ],
         ], 200);
     }catch (Exception $e) {
-        \Log::error('AuthController::login Exception', [
-            'error' => $e->getMessage(),
-        ]);
+       
         return response()->json([
             'success' => false,
             'message' => 'An unexpected error occurred',

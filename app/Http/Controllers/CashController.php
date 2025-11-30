@@ -72,13 +72,13 @@ class CashController extends Controller
 
             return response()->json($cash, 200);
         } catch (ModelNotFoundException $e) {
-            \Log::error('ModelNotFoundException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Cash not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error('Exception in update: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
@@ -122,13 +122,13 @@ class CashController extends Controller
 
             return response()->json($cash, 201);
         } catch (ModelNotFoundException $e) {
-            \Log::error('ModelNotFoundException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
             return response()->json(['error' => 'Cash not found!'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         } catch (\Exception $e) {
-            \Log::error('Exception in store: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }

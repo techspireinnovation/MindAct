@@ -101,19 +101,14 @@ class ProductionSettingController extends Controller
         } catch (QueryException $e) {
             DB::rollBack();
 
-            \Log::error('Database error in Production Setting store', [
-                'error' => $e->getMessage(),
-                'request' => $request->except(['sensitive_field'])
-            ]);
+           
             return response()->json(['message' => 'Database error occurred.'], 500);
 
         } catch (\Exception $e) {
 
             DB::rollBack();
-            \Log::error('Unexpected error in Production Setting store', [
-                'error' => $e->getMessage(),
-                'request' => $request->except(['sensitive_field'])
-            ]);
+           
+            
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -333,18 +328,12 @@ class ProductionSettingController extends Controller
 
         } catch (QueryException $e) {
             DB::rollBack();
-            \Log::error('Database error in Production Setting update', [
-                'error' => $e->getMessage(),
-                'request' => $request->except(['sensitive_field'])
-            ]);
+           
             return response()->json(['message' => 'Database error occurred.'], 500);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Unexpected error in Production Setting update', [
-                'error' => $e->getMessage(),
-                'request' => $request->except(['sensitive_field'])
-            ]);
+           
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }

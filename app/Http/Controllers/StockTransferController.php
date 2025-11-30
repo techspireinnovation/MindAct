@@ -52,13 +52,13 @@ class StockTransferController extends Controller
 
             return $this->stockTransferService->listAvailableStock($purchaseType, $companyId, $branchId);
         } catch (ModelNotFoundException $e) {
-            Log::error('ModelNotFoundException in StockTransferController@getProductListforStockTransfer: ' . $e->getMessage());
+          
             return response()->json(['error' => 'Product not found'], 404);
         } catch (QueryException $e) {
-            Log::error('QueryException in StockTransferController@getProductListforStockTransfer: ' . $e->getMessage());
+         
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-            Log::error('Exception in StockTransferController@getProductListforStockTransfer: ' . $e->getMessage());
+          
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -97,14 +97,14 @@ class StockTransferController extends Controller
 
             return $this->stockTransferService->getAvailableProductByIdOrName($purchaseType, $companyId, $branchId, $productId);
         } catch (ModelNotFoundException $e) {
-            Log::error('ModelNotFoundException in StockTransferController@getProductListforStockTransfer: ' . $e->getMessage());
+          
             return response()->json(['error' => 'Product not found'], 404);
         } catch (QueryException $e) {
 
-            Log::error('QueryException in StockTransferController@getProductListforStockTransfer: ' . $e->getMessage());
+           
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-            Log::error('Exception in StockTransferController@getProductListforStockTransfer: ' . $e->getMessage());
+          
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -124,10 +124,7 @@ class StockTransferController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            \Log::info('Starting stock transfer store process', [
-                'request_data' => $request->all(),
-                'user_id' => auth()->id(),
-            ]);
+            
 
             $validator = Validator::make($request->all(), [
                 'reference_no' => [
@@ -176,10 +173,7 @@ class StockTransferController extends Controller
             ]);
 
             if ($validator->fails()) {
-                \Log::warning('Validation failed for stock transfer', [
-                    'errors' => $validator->errors()->toArray(),
-                    'request_data' => $request->all(),
-                ]);
+                
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -187,9 +181,7 @@ class StockTransferController extends Controller
             }
 
             $validated = $validator->validated();
-            \Log::debug('Validated product details', [
-                'product_details' => $validated['product_details'],
-            ]);
+           
 
             $item = DB::transaction(function () use ($validated) {
                 $validated['branch_id'] = $validated['current_location'];
@@ -209,10 +201,7 @@ class StockTransferController extends Controller
                 $fieldValuesToCreate = [];
 
                 foreach ($productDetails as $index => $detail) {
-                    \Log::debug('Processing product detail', [
-                        'index' => $index,
-                        'detail' => $detail,
-                    ]);
+                 
 
                     // Calculate pieces for validation
                     $regularQuantity = $detail['quantity'] ?? 0;
@@ -273,16 +262,7 @@ class StockTransferController extends Controller
                             ->unique()
                             ->count();
 
-                        \Log::debug('Field value validation', [
-                            'index' => $index,
-                            'product_id' => $detail['product_id'],
-                            'regular_field_value_sets' => $regularFieldValueSets,
-                            'free_field_value_sets' => $freeFieldValueSets,
-                            'regular_pieces' => $regularPieces,
-                            'free_pieces' => $freePieces,
-                            'has_field_values' => $hasFieldValues,
-                            'requires_field_values' => $requiresFieldValues
-                        ]);
+                      
 
                         if (!$requiresFieldValues) {
                             throw new \Exception("Field values provided for product ID {$detail['product_id']} at index {$index}, but none required.");
@@ -301,14 +281,7 @@ class StockTransferController extends Controller
                             // Convert field value counts to target measure unit quantities
                             [$allocateRegularQuantity, $allocateFreeQuantity] = $this->stockTransferService->convertToTargetMeasureUnit($requestedRegularPieces, $requestedFreePieces, $targetMeasureUnitQuantity);
 
-                            \Log::debug('Converted quantities for field-valued product', [
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseStockProductId,
-                                'regular_pieces' => $requestedRegularPieces,
-                                'free_pieces' => $requestedFreePieces,
-                                'regular_quantity' => $allocateRegularQuantity,
-                                'free_quantity' => $allocateFreeQuantity,
-                            ]);
+                          
 
                             $transferResult = $this->transferProduct(
                                 array_merge($detail, [
@@ -379,13 +352,7 @@ class StockTransferController extends Controller
                         }
                     } else {
                         // Non-field-valued product logic (unchanged)
-                        \Log::info('Processing non-field-valued product detail', [
-                            'index' => $index,
-                            'product_id' => $detail['product_id'],
-                            'quantity' => $regularQuantity,
-                            'free_quantity' => $freeQuantity,
-                            'total_pieces' => $totalPieces,
-                        ]);
+                       
 
                         $transferResult = $this->transferProduct(
                             array_merge($detail, ['quantity' => $regularQuantity, 'free_quantity' => $freeQuantity]),
@@ -437,28 +404,14 @@ class StockTransferController extends Controller
 
             return response()->json($item->load('stockTransferDetails.fieldValues'), 201);
         } catch (\Exception $e) {
-            \Log::error('Exception in StockTransfer::store', [
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     private function transferProduct($detail, $companyId, $branchId, $targetBranchId, $measureUnitsCalc, $stockTransferId, $index, $piecesToTransfer)
     {
-        \Log::info('Starting transferProduct', [
-            'product_id' => $detail['product_id'],
-            'index' => $index,
-            'quantity' => $detail['quantity'],
-            'free_quantity' => $detail['free_quantity'] ?? 0,
-            'company_id' => $companyId,
-            'source_branch_id' => $branchId,
-            'target_branch_id' => $targetBranchId,
-            'measure_unit_id' => $detail['measure_unit_id'],
-            'field_values' => $detail['field_values'] ?? [],
-            'pieces_to_transfer' => $piecesToTransfer,
-        ]);
+        
 
         $productId = $detail['product_id'];
         $productName = $detail['product_name'];
@@ -467,7 +420,7 @@ class StockTransferController extends Controller
         $freeQuantity = $detail['free_quantity'] ?? 0;
 
         // Fetch target measure unit
-        \Log::debug('Fetching target measure unit', ['measure_unit_id' => $measureUnitId]);
+       
         $targetMeasureUnit = $measureUnitsCalc[$measureUnitId] ?? throw new \Exception("Measure unit ID {$measureUnitId} not found.");
         $targetMeasureUnitQuantity = (float) ($targetMeasureUnit->quantity ?? 1);
 
@@ -477,11 +430,7 @@ class StockTransferController extends Controller
         $totalPieces = $regularPieces + $freePieces;
 
         if ($totalPieces != $piecesToTransfer) {
-            \Log::error('Total pieces mismatch', [
-                'index' => $index,
-                'calculated_total_pieces' => $totalPieces,
-                'provided_pieces_to_transfer' => $piecesToTransfer,
-            ]);
+           
             throw new \Exception("Total pieces to transfer ({$piecesToTransfer}) does not match calculated pieces (Regular: {$regularPieces}, Free: {$freePieces}) for product {$productName} at index {$index}.");
         }
 
@@ -489,17 +438,11 @@ class StockTransferController extends Controller
         $fieldValues = $detail['field_values'] ?? [];
         if (!empty($fieldValues) && !is_array($fieldValues[0])) {
             $fieldValues = [$fieldValues];
-            \Log::debug('Normalized field_values to array of arrays', [
-                'index' => $index,
-                'normalized_field_values' => $fieldValues,
-            ]);
+           
         }
 
         $hasFieldValues = !empty($fieldValues) && !empty($fieldValues[0]);
-        \Log::debug('Processed field values', [
-            'has_field_values' => $hasFieldValues,
-            'field_values_raw' => $fieldValues,
-        ]);
+       
 
         $result = [
             'purchase_stock_product_id' => null,
@@ -510,12 +453,7 @@ class StockTransferController extends Controller
         ];
 
         if ($hasFieldValues) {
-            \Log::info('Processing field-valued product transfer', [
-                'product_id' => $productId,
-                'index' => $index,
-                'regular_pieces' => $regularPieces,
-                'free_pieces' => $freePieces,
-            ]);
+            
 
             // Group field values by purchase_stock_product_id
             $fieldValuesByStockId = [];
@@ -536,10 +474,7 @@ class StockTransferController extends Controller
                 $totalPiecesForStock = $regularPiecesForStock + $freePiecesForStock;
 
                 if ($totalPiecesForStock == 0) {
-                    \Log::warning('No pieces to transfer for purchase_stock_product_id', [
-                        'purchase_stock_product_id' => $purchaseStockProductId,
-                        'index' => $index,
-                    ]);
+                   
                     continue;
                 }
 
@@ -551,12 +486,7 @@ class StockTransferController extends Controller
                     ->first();
 
                 if (!$psp) {
-                    \Log::error('PurchaseStockProduct not found', [
-                        'purchase_stock_product_id' => $purchaseStockProductId,
-                        'product_id' => $productId,
-                        'index' => $index,
-                        'product_name' => $productName,
-                    ]);
+                    
                     throw new \Exception("PurchaseStockProduct ID {$purchaseStockProductId} not found for product {$productName} (ID: {$productId}) at index {$index}.");
                 }
 
@@ -567,11 +497,7 @@ class StockTransferController extends Controller
                     foreach ($fieldValueSet as $fieldValue) {
                         $fieldValueId = $fieldValue['purchase_stock_product_field_value_id'] ?? null;
                         if (!$fieldValueId) {
-                            \Log::error('Missing purchase_stock_product_field_value_id', [
-                                'purchase_stock_product_id' => $purchaseStockProductId,
-                                'field_value' => $fieldValue,
-                                'index' => $index,
-                            ]);
+                            
                             throw new \Exception("Missing purchase_stock_product_field_value_id for purchase_stock_product_id {$purchaseStockProductId} at index {$index}.");
                         }
 
@@ -583,23 +509,13 @@ class StockTransferController extends Controller
                             ->first();
 
                         if (!$fieldValueRecord) {
-                            \Log::error('PurchaseStockProductFieldValue not found', [
-                                'purchase_stock_product_field_value_id' => $fieldValueId,
-                                'purchase_stock_product_id' => $purchaseStockProductId,
-                                'index' => $index,
-                            ]);
+                           
                             throw new \Exception("PurchaseStockProductFieldValue ID {$fieldValueId} not found for purchase_stock_product_id {$purchaseStockProductId} at index {$index}.");
                         }
 
                         // Validate field value set against existing
                         if (!isset($existingFieldValues[$quantityIndex]) || collect($fieldValueSet)->pluck('value', 'product_field_id')->toArray() != $existingFieldValues[$quantityIndex]) {
-                            \Log::debug('Field value mismatch', [
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseStockProductId,
-                                'quantity_index' => $quantityIndex,
-                                'submitted' => collect($fieldValueSet)->pluck('value', 'product_field_id')->toArray(),
-                                'existing' => $existingFieldValues[$quantityIndex] ?? [],
-                            ]);
+                          
                             throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseStockProductId} do not match at index {$index}.");
                         }
                     }
@@ -610,85 +526,41 @@ class StockTransferController extends Controller
                 $availableFreePieces = $this->stockTransferService->calculatePieces(max($psp->free_quantity ?? 0, 0), $pspMuQty);
                 $totalAvailable = $availableRegularPieces + $availableFreePieces;
 
-                \Log::debug('Checking stock availability', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'regular_pieces' => $availableRegularPieces,
-                    'free_pieces' => $availableFreePieces,
-                    'total_available' => $totalAvailable,
-                    'regular_to_transfer' => $regularPiecesForStock,
-                    'free_to_transfer' => $freePiecesForStock,
-                ]);
+               
 
                 if ($regularPiecesForStock > $availableRegularPieces) {
-                    \Log::error('Insufficient regular stock', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'index' => $index,
-                        'regular_to_transfer' => $regularPiecesForStock,
-                        'regular_available' => $availableRegularPieces,
-                    ]);
+                  
                     throw new \Exception("Insufficient regular stock in purchase_stock_product_id {$psp->id} for product {$productName} at index {$index}. Requested: {$regularPiecesForStock}, Available: {$availableRegularPieces}.");
                 }
 
                 if ($freePiecesForStock > $availableFreePieces) {
-                    \Log::error('Insufficient free stock', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'index' => $index,
-                        'free_to_transfer' => $freePiecesForStock,
-                        'free_available' => $availableFreePieces,
-                    ]);
+                 
                     throw new \Exception("Insufficient free stock in purchase_stock_product_id {$psp->id} for product {$productName} at index {$index}. Requested: {$freePiecesForStock}, Available: {$availableFreePieces}.");
                 }
 
-                \Log::info('Updating source purchase stock product', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'regular_pieces' => $regularPiecesForStock,
-                    'free_pieces' => $freePiecesForStock,
-                ]);
+              
                 $oldQuantity = $psp->quantity;
                 $oldFreeQuantity = $psp->free_quantity ?? 0;
 
                 $psp->quantity = $this->stockTransferService->calculatePiecestoReduce($oldQuantity, $regularPiecesForStock, $pspMuQty);
                 $psp->free_quantity = $this->stockTransferService->calculatePiecestoReduce($oldFreeQuantity, $freePiecesForStock, $pspMuQty);
-                \Log::debug('Before saving source purchase stock product', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'old_quantity' => $oldQuantity,
-                    'new_quantity' => $psp->quantity,
-                    'old_free_quantity' => $oldFreeQuantity,
-                    'new_free_quantity' => $psp->free_quantity,
-                ]);
+              
 
                 try {
                     $saved = $psp->save();
                     if (!$saved) {
-                        \Log::error('Source purchase stock product save failed', [
-                            'purchase_stock_product_id' => $psp->id,
-                            'quantity' => $psp->quantity,
-                            'free_quantity' => $psp->free_quantity,
-                        ]);
+                      
                         throw new \Exception("Failed to save source purchase stock product ID {$psp->id} at index {$index}.");
                     }
-                    \Log::info('Saved source purchase stock product', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'quantity' => $psp->quantity,
-                        'free_quantity' => $psp->free_quantity,
-                    ]);
+                  
                     $updatedPsp = PurchaseStockProduct::find($psp->id);
                     if (!$updatedPsp) {
-                        \Log::error('Source purchase stock product not found after save', [
-                            'purchase_stock_product_id' => $psp->id,
-                        ]);
+                        
                         throw new \Exception("Source purchase stock product ID {$psp->id} not found after save at index {$index}.");
                     }
-                    \Log::debug('Verified source purchase stock product after save', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'db_quantity' => $updatedPsp->quantity,
-                        'db_free_quantity' => $updatedPsp->free_quantity,
-                    ]);
+                    
                 } catch (\Exception $e) {
-                    \Log::error('Failed to save source purchase stock product', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                   
                     throw $e;
                 }
 
@@ -705,12 +577,7 @@ class StockTransferController extends Controller
             }
         } else {
             // Non-field-valued product logic (unchanged)
-            \Log::info('Processing non-field-valued product transfer', [
-                'product_id' => $productId,
-                'index' => $index,
-                'regular_pieces' => $regularPieces,
-                'free_pieces' => $freePieces,
-            ]);
+          
 
             $purchaseStockProducts = PurchaseStockProduct::where('product_id', $productId)
                 ->where('company_id', $companyId)
@@ -720,31 +587,10 @@ class StockTransferController extends Controller
                 ->orderBy('created_at')
                 ->get();
 
-            \Log::debug('Fetched non-field-valued stock', [
-                'product_id' => $productId,
-                'index' => $index,
-                'count' => $purchaseStockProducts->count(),
-                'records' => $purchaseStockProducts->map(function ($psp) use ($measureUnitsCalc) {
-                    $muQty = (float) ($measureUnitsCalc[$psp->measure_unit_id]->quantity ?? 1);
-                    return [
-                        'id' => $psp->id,
-                        'quantity' => $psp->quantity,
-                        'free_quantity' => $psp->free_quantity ?? 0,
-                        'measure_unit_id' => $psp->measure_unit_id,
-                        'measure_unit_quantity' => $muQty,
-                        'purchase_id' => $psp->purchase_id,
-                        'batch_no' => $psp->batch_no,
-                        'product_code' => $psp->product_code,
-                    ];
-                })->toArray(),
-            ]);
+            
 
             if ($purchaseStockProducts->isEmpty()) {
-                \Log::error('No stock found for non-field-valued product', [
-                    'product_id' => $productId,
-                    'index' => $index,
-                    'product_name' => $productName,
-                ]);
+              
                 throw new \Exception("No stock found for product {$productName} (ID: {$productId}) at index {$index}.");
             }
 
@@ -754,9 +600,7 @@ class StockTransferController extends Controller
 
             foreach ($purchaseStockProducts as $psp) {
                 if ($remainingRegularPieces <= 0 && $remainingFreePieces <= 0) {
-                    \Log::debug('No more pieces to transfer', [
-                        'purchase_stock_product_id' => $psp->id,
-                    ]);
+                   
                     break;
                 }
 
@@ -765,75 +609,39 @@ class StockTransferController extends Controller
                 $availableFreePieces = $this->stockTransferService->calculatePieces(max($psp->free_quantity ?? 0, 0), $pspMuQty);
                 $totalAvailable = $availableRegularPieces + $availableFreePieces;
 
-                \Log::debug('Checking non-field-valued stock availability', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'regular_pieces' => $availableRegularPieces,
-                    'free_pieces' => $availableFreePieces,
-                    'total_available' => $totalAvailable,
-                    'regular_to_transfer' => $remainingRegularPieces,
-                    'free_to_transfer' => $remainingFreePieces,
-                ]);
+             
 
                 if ($totalAvailable <= 0) {
-                    \Log::warning('No available stock in purchase stock product', [
-                        'purchase_stock_product_id' => $psp->id,
-                    ]);
+                   
                     continue;
                 }
 
                 $toReduceRegular = min($remainingRegularPieces, $availableRegularPieces);
                 $toReduceFree = min($remainingFreePieces, $availableFreePieces);
 
-                \Log::info('Updating source purchase stock product', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'regular_pieces' => $toReduceRegular,
-                    'free_pieces' => $toReduceFree,
-                ]);
+             
                 $oldQuantity = $psp->quantity;
                 $oldFreeQuantity = $psp->free_quantity ?? 0;
 
                 $psp->quantity = $this->stockTransferService->calculatePiecestoReduce($oldQuantity, $toReduceRegular, $pspMuQty);
                 $psp->free_quantity = $this->stockTransferService->calculatePiecestoReduce($oldFreeQuantity, $toReduceFree, $pspMuQty);
-                \Log::debug('Before saving source purchase stock product', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'old_quantity' => $oldQuantity,
-                    'new_quantity' => $psp->quantity,
-                    'old_free_quantity' => $oldFreeQuantity,
-                    'new_free_quantity' => $psp->free_quantity,
-                ]);
+             
 
                 try {
                     $saved = $psp->save();
                     if (!$saved) {
-                        \Log::error('Source purchase stock product save failed', [
-                            'purchase_stock_product_id' => $psp->id,
-                            'quantity' => $psp->quantity,
-                            'free_quantity' => $psp->free_quantity,
-                        ]);
+                       
                         throw new \Exception("Failed to save source purchase stock product ID {$psp->id} at index {$index}.");
                     }
-                    \Log::info('Saved source purchase stock product', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'quantity' => $psp->quantity,
-                        'free_quantity' => $psp->free_quantity,
-                    ]);
+                    
                     $updatedPsp = PurchaseStockProduct::find($psp->id);
                     if (!$updatedPsp) {
-                        \Log::error('Source purchase stock product not found after save', [
-                            'purchase_stock_product_id' => $psp->id,
-                        ]);
+                        
                         throw new \Exception("Source purchase stock product ID {$psp->id} not found after save at index {$index}.");
                     }
-                    \Log::debug('Verified source purchase stock product after save', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'db_quantity' => $updatedPsp->quantity,
-                        'db_free_quantity' => $updatedPsp->free_quantity,
-                    ]);
+                    
                 } catch (\Exception $e) {
-                    \Log::error('Failed to save source purchase stock product', [
-                        'purchase_stock_product_id' => $psp->id,
-                        'error' => $e->getMessage(),
-                    ]);
+                    
                     throw $e;
                 }
 
@@ -845,12 +653,7 @@ class StockTransferController extends Controller
             }
 
             if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
-                \Log::error('Insufficient stock for non-field-valued product', [
-                    'product_id' => $productId,
-                    'index' => $index,
-                    'remaining_regular_pieces' => $remainingRegularPieces,
-                    'remaining_free_pieces' => $remainingFreePieces,
-                ]);
+              
                 throw new \Exception("Insufficient stock for product {$productName} (ID: {$productId}) at index {$index}. Remaining: Regular {$remainingRegularPieces}, Free {$remainingFreePieces}.");
             }
 
@@ -863,11 +666,7 @@ class StockTransferController extends Controller
             ];
         }
 
-        \Log::info('Completed transferProduct', [
-            'product_id' => $productId,
-            'index' => $index,
-            'result' => $result,
-        ]);
+      
 
         return $result;
     }
@@ -879,11 +678,7 @@ class StockTransferController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            Log::info('Starting stock transfer update process', [
-                'stock_transfer_id' => $id,
-                'request_data' => $request->all(),
-                'user_id' => auth()->id(),
-            ]);
+          
 
             $stockTransfer = StockTransfer::where('id', $id)
                 ->where('company_id', $request->company_id)
@@ -891,10 +686,7 @@ class StockTransferController extends Controller
                 ->whereNull('deleted_at')
                 ->firstOrFail();
 
-            Log::debug('Fetched StockTransfer', [
-                'stock_transfer_id' => $id,
-                'stock_transfer' => $stockTransfer->toArray(),
-            ]);
+          
 
             $validator = Validator::make($request->all(), [
                 'reference_no' => [
@@ -945,11 +737,7 @@ class StockTransferController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::warning('Validation failed for stock transfer update', [
-                    'stock_transfer_id' => $id,
-                    'errors' => $validator->errors()->toArray(),
-                    'request_data' => $request->all(),
-                ]);
+                
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -957,10 +745,7 @@ class StockTransferController extends Controller
             }
 
             $validated = $validator->validated();
-            Log::debug('Validated product details for update', [
-                'stock_transfer_id' => $id,
-                'product_details' => $validated['product_details'],
-            ]);
+            
 
             $item = DB::transaction(function () use ($validated, $stockTransfer, $id) {
                 $validated['branch_id'] = $validated['current_location'];
@@ -974,10 +759,7 @@ class StockTransferController extends Controller
                     ->get()
                     ->keyBy('id');
 
-                Log::debug('Fetched measure units', [
-                    'stock_transfer_id' => $id,
-                    'measure_units' => $measureUnitsCalc->toArray(),
-                ]);
+               ;
 
                 // Reverse existing stock changes
                 $existingDetails = $stockTransfer->stockTransferDetails()->get();
@@ -986,27 +768,18 @@ class StockTransferController extends Controller
                 }
 
                 // Delete existing details and field values
-                Log::info('Deleting existing stock transfer field values and details', [
-                    'stock_transfer_id' => $id,
-                ]);
+                
                 StockTransferFieldValue::where('stock_transfer_id', $stockTransfer->id)->delete();
                 StockTransferDetails::where('stock_transfer_id', $stockTransfer->id)->delete();
 
                 // Update StockTransfer
-                Log::debug('Updating StockTransfer', [
-                    'stock_transfer_id' => $id,
-                    'validated_data' => $validated,
-                ]);
+                
                 $stockTransfer->update($validated);
 
                 $fieldValuesToCreate = [];
 
                 foreach ($productDetails as $index => $detail) {
-                    Log::debug('Processing product detail in update', [
-                        'stock_transfer_id' => $id,
-                        'index' => $index,
-                        'detail' => $detail,
-                    ]);
+                  
 
                     // Calculate pieces for validation
                     $regularQuantity = $detail['quantity'] ?? 0;
@@ -1067,17 +840,7 @@ class StockTransferController extends Controller
                             ->unique()
                             ->count();
 
-                        Log::debug('Field value validation', [
-                            'stock_transfer_id' => $id,
-                            'index' => $index,
-                            'product_id' => $detail['product_id'],
-                            'regular_field_value_sets' => $regularFieldValueSets,
-                            'free_field_value_sets' => $freeFieldValueSets,
-                            'regular_pieces' => $regularPieces,
-                            'free_pieces' => $freePieces,
-                            'has_field_values' => $hasFieldValues,
-                            'requires_field_values' => $requiresFieldValues
-                        ]);
+                    
 
                         if (!$requiresFieldValues) {
                             throw new \Exception("Field values provided for product ID {$detail['product_id']} at index {$index}, but none required.");
@@ -1096,15 +859,7 @@ class StockTransferController extends Controller
                             // Convert field value counts to target measure unit quantities
                             [$allocateRegularQuantity, $allocateFreeQuantity] = $this->stockTransferService->convertToTargetMeasureUnit($requestedRegularPieces, $requestedFreePieces, $targetMeasureUnitQuantity);
 
-                            Log::debug('Converted quantities for field-valued product', [
-                                'stock_transfer_id' => $id,
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseStockProductId,
-                                'regular_pieces' => $requestedRegularPieces,
-                                'free_pieces' => $requestedFreePieces,
-                                'regular_quantity' => $allocateRegularQuantity,
-                                'free_quantity' => $allocateFreeQuantity,
-                            ]);
+                          
 
                             $transferResult = $this->transferProduct(
                                 array_merge($detail, [
@@ -1153,11 +908,7 @@ class StockTransferController extends Controller
                                 )
                                 : $stockTransfer->stockTransferDetails()->create($detailData);
 
-                            Log::debug('Created/Updated StockTransferDetail', [
-                                'stock_transfer_id' => $id,
-                                'stock_transfer_details_id' => $stockTransferDetail->id,
-                                'detail_data' => $detailData,
-                            ]);
+                           
 
                             // Build field values for this detail
                             foreach (array_merge($regularFvByIndex, $freeFvByIndex) as $fieldValueGroup) {
@@ -1186,14 +937,7 @@ class StockTransferController extends Controller
                         }
                     } else {
                         // Non-field-valued product logic
-                        Log::info('Processing non-field-valued product detail in update', [
-                            'stock_transfer_id' => $id,
-                            'index' => $index,
-                            'product_id' => $detail['product_id'],
-                            'quantity' => $regularQuantity,
-                            'free_quantity' => $freeQuantity,
-                            'total_pieces' => $totalPieces,
-                        ]);
+                        
 
                         $transferResult = $this->transferProduct(
                             array_merge($detail, ['quantity' => $regularQuantity, 'free_quantity' => $freeQuantity]),
@@ -1238,50 +982,31 @@ class StockTransferController extends Controller
                             )
                             : $stockTransfer->stockTransferDetails()->create($detailData);
 
-                        Log::debug('Created/Updated StockTransferDetail', [
-                            'stock_transfer_id' => $id,
-                            'stock_transfer_details_id' => $stockTransferDetail->id,
-                            'detail_data' => $detailData,
-                        ]);
+                       
                     }
                 }
 
                 // Insert field values
                 if (!empty($fieldValuesToCreate)) {
-                    Log::debug('Inserting stock transfer field values in update', [
-                        'stock_transfer_id' => $id,
-                        'field_values_to_create' => $fieldValuesToCreate,
-                    ]);
+                   
                     StockTransferFieldValue::insert($fieldValuesToCreate);
                 }
 
                 return $stockTransfer;
             });
 
-            Log::info('Completed stock transfer update', [
-                'stock_transfer_id' => $id,
-                'updated_stock_transfer' => $item->toArray(),
-            ]);
+           
 
             return response()->json($item->load('stockTransferDetails.fieldValues'), 200);
         } catch (\Exception $e) {
-            Log::error('Exception in StockTransfer::update', [
-                'stock_transfer_id' => $id,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+            
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
 
     private function reverseStockTransfer($stockTransferId, $detail, $companyId, $branchId, $index)
     {
-        Log::info('Starting reverseStockTransfer', [
-            'stock_transfer_id' => $stockTransferId,
-            'company_id' => $companyId,
-            'branch_id' => $branchId,
-            'index' => $index,
-        ]);
+      
 
         $productId = $detail['product_id'];
         $productName = $detail['product_name'];
@@ -1290,21 +1015,10 @@ class StockTransferController extends Controller
         $measureUnitId = $detail['measure_unit_id'];
         $purchaseStockProductId = $detail['purchase_stock_product_id'];
 
-        Log::debug('Input detail for reverse', [
-            'product_id' => $productId,
-            'product_name' => $productName,
-            'quantity' => $quantity,
-            'free_quantity' => $freeQuantity,
-            'measure_unit_id' => $measureUnitId,
-            'purchase_stock_product_id' => $purchaseStockProductId,
-        ]);
+       
 
         if (!$purchaseStockProductId) {
-            Log::warning('No purchase_stock_product_id provided for reverse', [
-                'stock_transfer_id' => $stockTransferId,
-                'product_id' => $productId,
-                'index' => $index,
-            ]);
+            
             return;
         }
 
@@ -1316,18 +1030,10 @@ class StockTransferController extends Controller
             ->whereNull('deleted_at')
             ->first();
 
-        Log::debug('Fetched PurchaseStockProduct', [
-            'purchase_stock_product_id' => $purchaseStockProductId,
-            'psp' => $psp ? $psp->toArray() : 'null',
-        ]);
+       
 
         if (!$psp) {
-            Log::warning('PurchaseStockProduct not found for reverse', [
-                'purchase_stock_product_id' => $purchaseStockProductId,
-                'product_id' => $productId,
-                'stock_transfer_id' => $stockTransferId,
-                'index' => $index,
-            ]);
+           
             return;
         }
 
@@ -1338,42 +1044,20 @@ class StockTransferController extends Controller
             ->first();
         $measureUnitQuantity = $measureUnit ? (float) ($measureUnit->quantity ?? 1) : 1;
 
-        Log::debug('Fetched measureUnit', [
-            'measure_unit_id' => $measureUnitId,
-            'measureUnit' => $measureUnit ? $measureUnit->toArray() : 'null',
-            'measureUnitQuantity' => $measureUnitQuantity,
-        ]);
+       
 
         // Calculate pieces to restore
         $toRestoreRegular = $this->stockTransferService->calculatePieces($quantity, $measureUnitQuantity);
         $toRestoreFree = $this->stockTransferService->calculatePieces($freeQuantity, $measureUnitQuantity);
 
 
-        Log::debug('Calculated pieces to restore', [
-            'toRestoreRegular' => $toRestoreRegular,
-            'toRestoreFree' => $toRestoreFree,
-            'quantity' => $quantity,
-            'free_quantity' => $freeQuantity,
-            'measure_unit_quantity' => $measureUnitQuantity,
-        ]);
-
+       
         // Get the measure unit quantity for the PurchaseStockProduct
         $pspMuQty = MeasureUnit::find($psp->measure_unit_id)->quantity ?? 1;
 
-        Log::debug('Fetched PurchaseStockProduct measure unit', [
-            'purchase_stock_product_id' => $psp->id,
-            'psp_measure_unit_id' => $psp->measure_unit_id,
-            'pspMuQty' => $pspMuQty,
-        ]);
+       
 
-        Log::info('Reversing stock for PurchaseStockProduct', [
-            'purchase_stock_product_id' => $psp->id,
-            'current_quantity' => $psp->quantity,
-            'current_free_quantity' => $psp->free_quantity ?? 0,
-            'to_restore_regular' => $toRestoreRegular,
-            'to_restore_free' => $toRestoreFree,
-            'measure_unit_quantity' => $pspMuQty,
-        ]);
+      
 
         // Convert pieces to quantities in the PurchaseStockProduct's measure unit
         list($regularQty, $freeQty) = $this->stockTransferService->convertToTargetMeasureUnit(
@@ -1382,14 +1066,7 @@ class StockTransferController extends Controller
             $pspMuQty
         );
 
-        Log::debug('Converted pieces to quantities', [
-            'purchase_stock_product_id' => $psp->id,
-            'regularQty' => $regularQty,
-            'freeQty' => $freeQty,
-            'toRestoreRegular' => $toRestoreRegular,
-            'toRestoreFree' => $toRestoreFree,
-            'pspMuQty' => $pspMuQty,
-        ]);
+        
 
         // Update PurchaseStockProduct quantities
         $oldQuantity = $psp->quantity;
@@ -1397,44 +1074,21 @@ class StockTransferController extends Controller
         $psp->quantity += $regularQty;
         $psp->free_quantity = ($psp->free_quantity ?? 0) + $freeQty;
 
-        Log::debug('Updated PurchaseStockProduct quantities before save', [
-            'purchase_stock_product_id' => $psp->id,
-            'old_quantity' => $oldQuantity,
-            'new_quantity' => $psp->quantity,
-            'old_free_quantity' => $oldFreeQuantity,
-            'new_free_quantity' => $psp->free_quantity,
-        ]);
+     
 
         try {
             $saved = $psp->save();
             if (!$saved) {
-                Log::error('Failed to save PurchaseStockProduct during reverse', [
-                    'purchase_stock_product_id' => $psp->id,
-                    'quantity' => $psp->quantity,
-                    'free_quantity' => $psp->free_quantity,
-                    'stock_transfer_id' => $stockTransferId,
-                ]);
+              
                 throw new \Exception("Failed to save PurchaseStockProduct ID {$psp->id} during reverse at index {$index}.");
             }
-            Log::info('Reversed stock for PurchaseStockProduct', [
-                'purchase_stock_product_id' => $psp->id,
-                'new_quantity' => $psp->quantity,
-                'new_free_quantity' => $psp->free_quantity,
-                'stock_transfer_id' => $stockTransferId,
-            ]);
+           
         } catch (\Exception $e) {
-            Log::error('Exception during stock reversal', [
-                'purchase_stock_product_id' => $psp->id,
-                'stock_transfer_id' => $stockTransferId,
-                'error' => $e->getMessage(),
-            ]);
+            
             throw $e;
         }
 
-        Log::info('Completed reverseStockTransfer', [
-            'stock_transfer_id' => $stockTransferId,
-            'index' => $index,
-        ]);
+        
     }
 
 
@@ -1725,22 +1379,14 @@ class StockTransferController extends Controller
     public function acceptStockTransfer(Request $request, $stockTransferId): JsonResponse
     {
         try {
-            \Log::info('Starting stock transfer acceptance process', [
-                'stock_transfer_id' => $stockTransferId,
-                'request_data' => $request->all(),
-                'user_id' => auth()->id(),
-            ]);
-
+          
             $validator = Validator::make($request->all(), [
                 'accept_status' => 'required|in:0,1',
                
             ]);
 
             if ($validator->fails()) {
-                \Log::warning('Validation failed for stock transfer acceptance', [
-                    'errors' => $validator->errors()->toArray(),
-                    'request_data' => $request->all(),
-                ]);
+               
                 return response()->json([
                     'message' => $validator->errors()->first(),
                     'errors' => $validator->errors()
@@ -1752,10 +1398,7 @@ class StockTransferController extends Controller
             $branchId = $request->input('branch_id');
 
             if ($validated['accept_status'] !== 1) {
-                \Log::info('Accept status is not 1, no transfer required', [
-                    'stock_transfer_id' => $stockTransferId,
-                    'accept_status' => $validated['accept_status'],
-                ]);
+               
                 return response()->json(['message' => 'Stock transfer not accepted, no changes made.'], 200);
             }
 
@@ -1769,26 +1412,18 @@ class StockTransferController extends Controller
                     ->first();
 
                 if (!$stockTransfer) {
-                    \Log::error('Stock transfer not found', [
-                        'stock_transfer_id' => $stockTransferId,
-                        'company_id' => $validated['company_id'],
-                    ]);
+                  
                     throw new \Exception("Stock transfer ID {$stockTransferId} not found.");
                 }
 
                 if ($stockTransfer->accept_status === '1') {
-                    \Log::warning('Stock transfer already accepted', [
-                        'stock_transfer_id' => $stockTransferId,
-                    ]);
+                   
                     throw new \Exception("Stock transfer ID {$stockTransferId} has already been accepted.");
                 }
 
                 // Validate transfer_to is a valid branch ID
                 if (!$stockTransfer->transfer_to || !is_numeric($stockTransfer->transfer_to)) {
-                    \Log::error('Invalid transfer_to in stock transfer', [
-                        'stock_transfer_id' => $stockTransferId,
-                        'transfer_to' => $stockTransfer->transfer_to,
-                    ]);
+                   
                     throw new \Exception("Invalid or missing transfer_to in stock transfer ID {$stockTransferId}.");
                 }
 
@@ -1834,11 +1469,7 @@ class StockTransferController extends Controller
                     // Handle field values if they exist - copy to purchase_stock_product_field_values
                     $fieldValues = $detail->fieldValues;
                     if ($fieldValues->isNotEmpty()) {
-                        \Log::info('Processing field values for stock transfer detail', [
-                            'stock_transfer_detail_id' => $detail->id,
-                            'field_value_count' => $fieldValues->count(),
-                            'new_psp_id' => $newPsp->id,
-                        ]);
+                       
 
                         foreach ($fieldValues as $fieldValue) {
                             $newFieldValues[] = [
@@ -1866,9 +1497,7 @@ class StockTransferController extends Controller
 
                 // Insert new field values in batch
                 if (!empty($newFieldValues)) {
-                    \Log::info('Inserting new purchase stock product field values', [
-                        'count' => count($newFieldValues),
-                    ]);
+                    
                     PurchaseStockProductFieldValue::insert($newFieldValues);
                 }
 
@@ -1876,11 +1505,7 @@ class StockTransferController extends Controller
                 $stockTransfer->accept_status = '1';
                 $stockTransfer->save();
 
-                \Log::info('Stock transfer accepted and processed', [
-                    'stock_transfer_id' => $stockTransferId,
-                    'new_purchase_stock_products_count' => count($newPurchaseStockProducts),
-                    'new_field_values_count' => count($newFieldValues),
-                ]);
+               
 
                 return [
                     'stock_transfer' => $stockTransfer->fresh()->load('stockTransferDetails.fieldValues'),
@@ -1893,11 +1518,7 @@ class StockTransferController extends Controller
                 'data' => $result['stock_transfer'],
             ], 200);
         } catch (\Exception $e) {
-            \Log::error('Exception in acceptStockTransfer', [
-                'stock_transfer_id' => $stockTransferId,
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }
@@ -1936,7 +1557,7 @@ class StockTransferController extends Controller
                 'message' => 'Stock Transfer not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e->getMessage());
+           
             return response()->json([
                 'error' => 'query_error',
                 'message' => $e->getMessage()

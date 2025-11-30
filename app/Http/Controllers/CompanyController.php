@@ -146,7 +146,7 @@ class CompanyController extends Controller
                 'url_link' => $validated['url_link'] ?? '',
             ]);
 
-            Log::info('Company created successfully, dispatching tenant setup job', ['company_id' => $company->id]);
+           
 
 
             $sluggedName = Str::slug($company->name);
@@ -173,14 +173,14 @@ class CompanyController extends Controller
 
                 if ($companyAdmin->trashed()) {
                     $companyAdmin->restore();
-                    Log::info('Restored trashed admin', ['admin_id' => $companyAdmin->id]);
+                   
                 }
             }
 
             $role = Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
             if (!$companyAdmin->hasRole('company_admin')) {
                 $companyAdmin->assignRole($role);
-                Log::info('Assigned company_admin role', ['admin_id' => $companyAdmin->id]);
+               
             }
 
             CompanyUser::create([
@@ -199,16 +199,14 @@ class CompanyController extends Controller
             ], 201);
 
         } catch (ValidationException $e) {
-            Log::error('Validation error during company creation', ['errors' => $e->errors()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-            Log::error('Failed to create company', [
-                'error' => $e->getMessage(),
-            ]);
+           
 
             return response()->json([
                 'success' => false,
@@ -264,7 +262,7 @@ class CompanyController extends Controller
                 ->toArray();
 
             if (empty($companies)) {
-                \Log::info('No companies found in companyList', ['user_id' => $user->id]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'No companies found',
@@ -277,13 +275,13 @@ class CompanyController extends Controller
                 'data' => $companies
             ], 200);
         } catch (QueryException $e) {
-            \Log::error('Database error in companyList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in companyList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -305,7 +303,7 @@ class CompanyController extends Controller
             $companyName = $request->input('name');
 
             if (!$companyName) {
-                \Log::info('Company name not provided in companyDetails', ['user_id' => $user->id]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'Company name is required',
@@ -314,11 +312,7 @@ class CompanyController extends Controller
 
             $query = Company::where('name', $companyName)
                 ->whereNull('deleted_at');
-            \Log::info('companyDetails query', [
-                'name' => $companyName,
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings()
-            ]);
+           
 
             $company = $query->firstOrFail();
 
@@ -328,22 +322,19 @@ class CompanyController extends Controller
                 'data' => $company
             ], 200);
         } catch (ModelNotFoundException $e) {
-            \Log::info('Company not found in companyDetails', [
-                'name' => $companyName,
-                'user_id' => $user->id
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found',
             ], 404);
         } catch (QueryException $e) {
-            \Log::error('Database error in companyDetails: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in companyDetails: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -368,18 +359,14 @@ class CompanyController extends Controller
             $companyName = $request->input('name');
 
             if (!$companyId && !$companyName) {
-                \Log::info('No parameters provided in companyBranchList', ['user_id' => $user->id]);
+              
                 return response()->json([
                     'success' => false,
                     'message' => 'Either company ID or name is required',
                 ], 400);
             }
 
-            \Log::info('companyBranchList called', [
-                'user_id' => $user->id,
-                'company_id' => $companyId,
-                'company_name' => $companyName
-            ]);
+            
 
             // Build query based on provided parameter
             $query = Company::whereNull('deleted_at')
@@ -398,20 +385,13 @@ class CompanyController extends Controller
                 $query->where('name', $companyName);
             }
 
-            \Log::info('companyBranchList query', [
-                'sql' => $query->toSql(),
-                'bindings' => $query->getBindings()
-            ]);
+           
 
             $company = $query->firstOrFail();
 
             // Check if company has active branches
             if ($company->branches->isEmpty()) {
-                \Log::info('No active branches found for company in companyBranchList', [
-                    'company_id' => $company->id,
-                    'company_name' => $company->name,
-                    'user_id' => $user->id
-                ]);
+               
                 return response()->json([
                     'success' => false,
                     'message' => 'No active branches found for the specified company',
@@ -436,23 +416,19 @@ class CompanyController extends Controller
                 'data' => $result
             ], 200);
         } catch (ModelNotFoundException $e) {
-            \Log::info('Company not found in companyBranchList', [
-                'id' => $companyId,
-                'name' => $companyName,
-                'user_id' => $user->id
-            ]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found with provided ID or name',
             ], 404);
         } catch (QueryException $e) {
-            \Log::error('Database error in companyBranchList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in companyBranchList: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -570,14 +546,14 @@ class CompanyController extends Controller
             ], 404);
         } catch (QueryException $e) {
 
-            Log::error('Purchase master key update failed: ' . $e->getMessage());
+          
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
 
-            Log::error('Purchase master key update failed: ' . $e->getMessage());
+          
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -639,11 +615,7 @@ class CompanyController extends Controller
             return response()->json(['success' => true, 'data' => $purchaseMaster], 200);
 
         } catch (\Exception $e) {
-            \Log::error('getPurchaseMasterKey Exception', [
-                'user_id' => $request->user_id ?? null,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
+           
 
             return response()->json([
                 'success' => false,
@@ -773,13 +745,13 @@ class CompanyController extends Controller
                 'message' => 'Sales master key not found',
             ], 404);
         } catch (QueryException $e) {
-            Log::error('Sales master key update failed: ' . $e->getMessage());
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-            Log::error('Sales master key update failed: ' . $e->getMessage());
+          
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -805,7 +777,7 @@ class CompanyController extends Controller
 
             // Get company_id from middleware
             $companyId = $request->company_id;
-            \Log::info('getSalesMasterKey: Company ID', ['company_id' => $companyId]);
+          
             if (!$companyId) {
                 return response()->json([
                     'success' => false,
@@ -837,7 +809,7 @@ class CompanyController extends Controller
 
             // Find the SalesMasterKey for the company
             $saleMaster = \App\Models\SalesMasterKey::where('company_id', $companyId)->first();
-            \Log::info('getSalesMasterKey: SalesMasterKey', ['found' => $saleMaster ? true : false]);
+           
             if (!$saleMaster) {
                 return response()->json([
                     'success' => false,
@@ -850,13 +822,12 @@ class CompanyController extends Controller
                 'data' => $saleMaster,
             ], 200);
         } catch (QueryException $e) {
-            \Log::error('getSalesMasterKey QueryException', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
-            return response()->json([
+                return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
-            \Log::error('getSalesMasterKey Exception', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+           
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -1050,7 +1021,7 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ValidationException $e) {
-            Log::error('Validation error during company update: ' . $e->getMessage());
+          
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
@@ -1058,7 +1029,7 @@ class CompanyController extends Controller
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Company update failed: ' . $e->getMessage());
+           
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update company or admin details',
@@ -1121,7 +1092,7 @@ class CompanyController extends Controller
 
 public function show($id): JsonResponse
 {
-    \Log::info('=== COMPANY SHOW METHOD STARTED ===', ['company_id' => $id]);
+  
     
     try {
         $user = Auth::user();
@@ -1133,39 +1104,24 @@ public function show($id): JsonResponse
             ], 403);
         }
 
-        \Log::info('Attempting to find company with ID: ' . $id);
+     
         
         // Get company from CENTRAL database (without branches relationship)
         $company = Company::findOrFail($id);
-        \Log::info('Company found successfully', [
-            'company_id' => $company->id,
-            'company_name' => $company->name
-        ]);
+      
 
         // Get tenant information
         $tenant = Tenant::where('company_id', $company->id)->first();
-        \Log::info('Tenant info', [
-            'tenant_found' => !is_null($tenant),
-            'tenant_id' => $tenant ? $tenant->id : null,
-            'database_name' => $tenant ? $tenant->database : null
-        ]);
+       
 
         // Get the first associated admin via pivot from CENTRAL database
         $companyUser = CompanyUser::where('company_id', $company->id)->with('user')->first();
         
-        \Log::info('CompanyUser query result', [
-            'company_user_found' => !is_null($companyUser),
-            'company_user_id' => $companyUser ? $companyUser->id : null
-        ]);
+       
 
         $admin = $companyUser->user ?? null;
         
-        \Log::info('Admin user result', [
-            'admin_found' => !is_null($admin),
-            'admin_id' => $admin ? $admin->id : null,
-            'admin_name' => $admin ? $admin->name : null,
-            'admin_email' => $admin ? $admin->email : null
-        ]);
+       
 
         $admin_selection = $admin ? 'existing' : 'new';
         $existing_admin_id = $admin ? $admin->id : null;
@@ -1174,7 +1130,7 @@ public function show($id): JsonResponse
         // But for the show method in central admin, you might not need branches
         $branches = collect([]); // Empty collection since branches are in tenant DB
         
-        \Log::info('=== COMPANY SHOW METHOD COMPLETED SUCCESSFULLY ===');
+      
         
         return response()->json([
             'success' => true,
@@ -1191,20 +1147,14 @@ public function show($id): JsonResponse
         ], 200);
 
     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-        \Log::warning('Company not found', ['requested_id' => $id]);
+       
         return response()->json([
             'success' => false,
             'message' => 'Company not found'
         ], 404);
         
     } catch (\Exception $e) {
-        \Log::error('EXCEPTION IN COMPANY SHOW METHOD', [
-            'company_id' => $id,
-            'error_message' => $e->getMessage(),
-            'error_file' => $e->getFile(),
-            'error_line' => $e->getLine(),
-            'trace' => $e->getTraceAsString()
-        ]);
+       
         
         return response()->json([
             'success' => false,
@@ -1216,117 +1166,7 @@ public function show($id): JsonResponse
 
 
 
-    // public function updateCompany(Request $request, $id): JsonResponse
-    // {
-    //     try {
-
-    //         $user = Auth::user();
-    //         if (!$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'Unauthorized: Not a super admin',
-    //             ], 200);
-    //         }
-    //         $company = Company::findOrFail($id);
-
-    //         $companyUser = CompanyUser::where('company_id', $company->id)->first();
-    //         if (!$companyUser) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'No user associated with this company',
-    //             ], 404);
-    //         }
-
-    //         $userAdmin = $companyUser->user;
-    //         if (!$userAdmin) {
-    //             return response()->json([
-    //                 'success' => false,
-    //                 'message' => 'No user associated with this company',
-    //             ], 404);
-    //         }
-
-
-    //         $validated = $request->validate([
-    //             'name' => 'sometimes|required|string|max:255',
-    //             'licence_issue_date' => 'nullable|string|max:255',
-    //             'working_date' => 'nullable|string|max:255',
-    //             'is_vatable' => 'nullable|boolean',
-    //             'reg_number' => 'nullable|string|max:255',
-    //             // 'vat_number' => 'nullable|string|max:255',
-    //             'pan_number' => 'nullable|string|max:255',
-    //             'full_address' => 'nullable|string|max:255',
-    //             'email_address' => 'nullable|string|email|max:255',
-    //             'website' => 'nullable|string|max:255',
-    //             'fax' => 'nullable|string|max:255',
-    //             'logo' => 'nullable|string|max:255',
-    //             'province' => 'nullable|string|max:255',
-    //             'district' => 'nullable|string|max:255',
-    //             'palika_name' => 'nullable|string|max:255',
-    //             'ward_number' => 'nullable|string|max:255',
-    //             'contact_number' => 'nullable|string|max:255',
-    //             'contact_person' => 'nullable|string|max:255',
-    //             'contact_person_position' => 'nullable|string|max:255',
-    //             'agreement_holder_name' => 'nullable|string|max:255',
-    //             'phone' => 'nullable|string|max:255',
-    //             'position' => 'nullable|string|max:255',
-    //             'license_number' => 'nullable|string|max:255',
-    //             'activation_key' => 'nullable|string|max:255',
-    //             'url_link' => 'nullable|string|max:255',
-    //             'admin_name' => 'sometimes|required|string|max:255',
-    //             'admin_selection' => 'required|in:existing,new',
-
-    //             'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
-    //             'password' => 'sometimes|required|string|min:6',
-    //         ]);
-
-    //         $company->update($validated);
-    //         MainGroupStub::createMainGroups($company->id);
-
-    //         $userUpdates = [];
-    //         $newToken = null;
-    //         if ($request->has('admin_name')) {
-    //             $userUpdates['name'] = $validated['admin_name'];
-    //         }
-    //         if ($request->has('admin_email')) {
-    //             $userUpdates['email'] = $validated['admin_email'];
-    //         }
-    //         if ($request->has('password')) {
-    //             $userUpdates['password'] = Hash::make($validated['password']);
-
-    //             $userAdmin->tokens()->where('abilities', '["company_admin"]')->delete();
-
-    //             $newToken = $userAdmin->createToken('MatraErpToken', ['company_admin'])->plainTextToken;
-    //         }
-    //         if (!empty($userUpdates)) {
-    //             $userAdmin->update($userUpdates);
-    //         }
-
-    //         return response()->json([
-    //             'success' => true,
-    //             'message' => 'Company and admin details updated successfully',
-    //             'data' => [
-    //                 'company' => $company->fresh(),
-    //                 'user' => $userAdmin->fresh(),
-    //                 'new_token' => $newToken,
-    //             ],
-    //         ], 200);
-
-    //     } catch (ValidationException $e) {
-    //        
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'Validation error',
-    //             'errors' => $e->errors(),
-    //         ], 422);
-    //     } catch (\Exception $e) {
-    //        
-    //         return response()->json([
-    //             'success' => false,
-    //             'message' => 'An unexpected error occurred',
-    //             'error' => $e->getMessage(),
-    //         ], 500);
-    //     }
-    // }
+   
 
     public function updateCompany(Request $request, $id): JsonResponse
 {
@@ -1433,18 +1273,14 @@ public function show($id): JsonResponse
         ], 200);
 
     } catch (ValidationException $e) {
-        \Log::error('Validation error in updateCompany', ['errors' => $e->errors()]);
+       
         return response()->json([
             'success' => false,
             'message' => 'Validation error',
             'errors' => $e->errors(),
         ], 422);
     } catch (\Exception $e) {
-        \Log::error('Exception in updateCompany', [
-            'company_id' => $id,
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
+       
         return response()->json([
             'success' => false,
             'message' => 'An unexpected error occurred',
@@ -1499,7 +1335,7 @@ public function show($id): JsonResponse
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Company deletion failed: ' . $e->getMessage());
+          
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete company',

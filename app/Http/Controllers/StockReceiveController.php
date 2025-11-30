@@ -139,10 +139,10 @@ class StockReceiveController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Stock receive record not found'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in StockReceive::update: ' . $e->getMessage());
+          
             return response()->json(['error' => 'An unexpected database error occurred'], 500);
         } catch (\Exception $e) {
-            \Log::error('Exception in StockReceive::update: ' . $e->getMessage());
+           
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -233,12 +233,12 @@ class StockReceiveController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-            \Log::error('QueryException in StockReceive::store: ' . $e->getMessage());
+           
             dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
             dd($e->getMessage());
-            \Log::error('Exception in Stock Transfer::store: ' . $e->getMessage());
+          
 
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
@@ -251,13 +251,13 @@ class StockReceiveController extends Controller
             $item = StockReceive::with('stockReceiveDetails')->findOrFail($id);
             return response()->json($item, 200);
         } catch (ModelNotFoundException $e) {
-            Log::error('StockReceive::show - Record not found for ID: ' . $id . ' - ' . $e->getMessage());
+           
             return response()->json(['error' => 'Stock Transfer not found!!'], 404);
         } catch (QueryException $e) {
-            Log::error('StockReceive::show - Query error for ID: ' . $id . ' - ' . $e->getMessage());
+           
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            Log::error('StockReceive::show - Unexpected error for ID: ' . $id . ' - ' . $e->getMessage());
+            
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

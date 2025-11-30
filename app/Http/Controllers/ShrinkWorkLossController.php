@@ -48,11 +48,7 @@ class ShrinkWorkLossController extends Controller
             return response()->json(['data' => $loss], 200);
 
         } catch (Exception $e) {
-            Log::error('Error in ShrinkWorkLossController@show', [
-                'message'    => $e->getMessage(),
-                'company_id' => $request->company_id,
-                'branch_id'  => $request->branch_id,
-            ]);
+         
 
             return response()->json([
                 'success' => false,
@@ -103,11 +99,7 @@ class ShrinkWorkLossController extends Controller
             return response()->json(['data' => $loss], 200);
 
         } catch (Exception $e) {
-            Log::error('Error in ShrinkWorkLossController@update', [
-                'message'    => $e->getMessage(),
-                'company_id' => $request->company_id,
-                'branch_id'  => $request->branch_id,
-            ]);
+           
 
             return response()->json([
                 'success' => false,

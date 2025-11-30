@@ -26,7 +26,7 @@ class ProductTypeController extends Controller
 
     public function productTypeList(Request $request)
     {
-        \Log::info('Auth User in productTypeList', ['user' => auth()->user()]);
+     
 
         try {
 
@@ -175,10 +175,10 @@ class ProductTypeController extends Controller
             $item = ProductType::findOrFail($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
+          
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+          
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

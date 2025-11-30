@@ -178,7 +178,7 @@ class PosStoreController extends SaleController
             $validated['branch_id'] = $request->branch_id;
             $validated['company_id'] = $request->company_id;
 
-            Log::debug('Sale request validated', ['sale_products' => $validated['sale_products']]);
+           
 
 
 
@@ -232,7 +232,7 @@ class PosStoreController extends SaleController
                     'purchase_bill_number' => $validated['purchase_bill_number'] ?? null,
                 ]);
 
-                Log::debug('Sale created', ['sale_id' => $sale->id]);
+              
 
                 if (isset($validated['sale_additionals']) && !empty($validated['sale_additionals'])) {
                     SaleAdditional::create([
@@ -250,7 +250,7 @@ class PosStoreController extends SaleController
                         'delivery_time' => $validated['sale_additionals']['delivery_time'] ?? null,
                     ]);
 
-                    Log::debug('Sale additionals created', ['sale_id' => $sale->id]);
+                   
                 }
 
                 $purchases = collect();
@@ -298,15 +298,7 @@ class PosStoreController extends SaleController
                     $totalRequestedPieces = $regularPieces + $freePieces;
 
 
-                    Log::debug('Sale product quantities', [
-                        'index' => $index,
-                        'product_id' => $productId,
-                        'regular_quantity' => $regularQuantity,
-                        'free_quantity' => $freeQuantity,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces,
-                        'total_requested_pieces' => $totalRequestedPieces
-                    ]);
+                   
 
                     $fieldValuesFlat = $this->flattenFieldValues($productData['field_values'], $index);
 
@@ -333,11 +325,7 @@ class PosStoreController extends SaleController
                             })->toArray();
                         })->toArray();
 
-                    Log::debug('Field values processed', [
-                        'index' => $index,
-                        'product_id' => $productId,
-                        'grouped_field_values' => $groupedFieldValues
-                    ]);
+                   
 
                     $regularFieldValueSets = collect($fieldValuesFlat)
                         ->filter(fn($fv) => ($fv['quantity_type'] ?? 'regular') === 'regular')
@@ -359,16 +347,7 @@ class PosStoreController extends SaleController
                         ->whereNull('deleted_at')
                         ->exists();
 
-                    Log::debug('Field value validation', [
-                        'index' => $index,
-                        'product_id' => $productId,
-                        'regular_field_value_sets' => $regularFieldValueSets,
-                        'free_field_value_sets' => $freeFieldValueSets,
-                        'regular_pieces' => $regularPieces,
-                        'free_pieces' => $freePieces,
-                        'has_field_values' => $hasFieldValues,
-                        'requires_field_values' => $requiresFieldValues
-                    ]);
+                   
 
                     if (!$hasFieldValues && $requiresFieldValues) {
                         throw new \Exception("Field values required for product ID {$productId} at index {$index}.");
@@ -445,13 +424,7 @@ class PosStoreController extends SaleController
                                     throw new \Exception("Duplicate quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} at index {$index}.");
                                 }
                                 if (collect($fvSet)->pluck('value', 'product_field_id')->toArray() != $existingFieldValues[$quantityIndex]) {
-                                    Log::debug('Field value mismatch', [
-                                        'index' => $index,
-                                        'purchase_stock_product_id' => $purchaseProductId,
-                                        'quantity_index' => $quantityIndex,
-                                        'submitted' => collect($fvSet)->pluck('value', 'product_field_id')->toArray(),
-                                        'existing' => $existingFieldValues[$quantityIndex]
-                                    ]);
+                                   
                                     throw new \Exception("Field values for quantity_index {$quantityIndex} for purchase_stock_product_id {$purchaseProductId} do not match at index {$index}.");
                                 }
                                 $usedQuantityIndexes[$purchaseProductId][] = $quantityIndex;
@@ -488,14 +461,7 @@ class PosStoreController extends SaleController
                             $remainingRegularPieces -= $requestedRegularPieces;
                             $remainingFreePieces -= $requestedFreePieces;
 
-                            Log::debug('Allocation created', [
-                                'index' => $index,
-                                'purchase_stock_product_id' => $purchaseProductId,
-                                'quantity' => $allocateRegularQuantity,
-                                'free_quantity' => $allocateFreeQuantity,
-                                'remaining_regular_pieces' => $remainingRegularPieces,
-                                'remaining_free_pieces' => $remainingFreePieces
-                            ]);
+                           
                         }
 
                         if ($remainingRegularPieces > 0 || $remainingFreePieces > 0) {
@@ -520,11 +486,7 @@ class PosStoreController extends SaleController
                             return (object) ['quantity' => $unit->quantity ?? 1];
                         })->toArray();
 
-                        Log::debug('PurchaseProducts found', [
-                            'product_id' => $productId,
-                            'count' => $purchaseProducts->count(),
-                            'ids' => $purchaseProducts->pluck('id')->toArray()
-                        ]);
+                       
 
                         // Initialize allocations for this product
                         $allocations = [];
@@ -587,15 +549,7 @@ class PosStoreController extends SaleController
                                 $remainingRegularPieces -= $allocateRegularPieces;
                                 $remainingFreePieces -= $allocateFreePieces;
 
-                                Log::debug('FIFO allocation', [
-                                    'index' => $index,
-                                    'purchase_stock_product_id' => $purchaseProduct->id,
-                                    'quantity' => $allocateRegularQuantity,
-                                    'free_quantity' => $allocateFreeQuantity,
-                                    'remaining_regular_pieces' => $remainingRegularPieces,
-                                    'remaining_free_pieces' => $remainingFreePieces,
-                                    'global_allocated_pieces' => $globalStockAllocation[$purchaseProduct->id]
-                                ]);
+                               
                             }
                         }
 
@@ -627,13 +581,7 @@ class PosStoreController extends SaleController
                             'name' => $productModel->name,
                         ]);
 
-                        Log::debug('Sale product created', [
-                            'index' => $index,
-                            'sale_product_id' => $saleProduct->id,
-                            'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
-                            'quantity' => $allocation['quantity'],
-                            'free_quantity' => $allocation['free_quantity']
-                        ]);
+                       
 
                         if (!empty($allocation['field_values'])) {
                             foreach ($allocation['field_values'] as $fvSet) {
@@ -659,11 +607,7 @@ class PosStoreController extends SaleController
                                 }
                             }
 
-                            Log::debug('Field values inserted', [
-                                'index' => $index,
-                                'sale_product_id' => $saleProduct->id,
-                                'field_values' => $allocation['field_values']
-                            ]);
+                           
                         }
                     }
                 }
@@ -671,7 +615,7 @@ class PosStoreController extends SaleController
                 return $sale;
             });
 
-            Log::debug('Sale transaction completed', ['sale_id' => $sale->id]);
+        
 
             return response()->json([
                 'message' => 'Sale created successfully',
@@ -683,13 +627,13 @@ class PosStoreController extends SaleController
                 ])
             ], 201);
         } catch (ModelNotFoundException $e) {
-            Log::error('Model not found', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Resource not found'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error', ['error' => $e->getMessage(), 'sql' => $e->getSql(), 'trace' => $e->getTraceAsString()]);
+           
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
-            Log::error('Unexpected error', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }

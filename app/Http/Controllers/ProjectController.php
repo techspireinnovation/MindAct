@@ -223,7 +223,7 @@ class ProjectController extends Controller
                 'message' => 'Project not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e->getMessage()); // log exact SQL error
+         
             return response()->json([
                 'error' => 'query_error',
                 'message' => $e->getMessage() // careful, expose only in dev

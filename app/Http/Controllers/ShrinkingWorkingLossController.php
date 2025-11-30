@@ -132,13 +132,13 @@ class ShrinkingWorkingLossController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            \Log::error('Item not Found in getProductDetailsforShrinkingWorkingLoss', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
             return response()->json(['message' => 'Item not Found !!'], 404);
         } catch (QueryException $e) {
-            \Log::error('Database error in getProductDetailsforShrinkingWorkingLoss', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in getProductDetailsforShrinkingWorkingLoss', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+           
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -194,11 +194,11 @@ class ShrinkingWorkingLossController extends Controller
             ], 201);
 
         } catch (QueryException $e) {
-            \Log::error('Database error in Shrinking Working Loss  store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
 
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            \Log::error('Unexpected error in Shrinking Working Loss store', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -273,11 +273,11 @@ class ShrinkingWorkingLossController extends Controller
 
         } catch (QueryException $e) {
 
-            \Log::error('Database error in Shrinking Working Loss update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            // Log the error with sensitive data excluded
-            \Log::error('Unexpected error in Shrinking Working Loss update', ['error' => $e->getMessage(), 'request' => $request->except(['sensitive_field'])]);
+            
+            
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }

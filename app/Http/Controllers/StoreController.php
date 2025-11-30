@@ -253,7 +253,7 @@ class StoreController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-            \Log::error('Exception in activeStores: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
+          
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

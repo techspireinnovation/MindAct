@@ -280,7 +280,7 @@ class SalesmanController extends Controller
                     ->where('is_primary', true)
                     ->whereNull('deleted_at')
                     ->update(['is_primary' => false]);
-                \Log::info("Updated $affectedRows salesmen to is_primary = false for company_id: {$salesman->company_id}");
+               
             }
 
             $salesman->update($validated);

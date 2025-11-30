@@ -325,7 +325,7 @@ class SaleController extends Controller
             $companyId = $request->company_id;
             $branchId = $request->branch_id;
 
-            // Get all products (company-specific or global)
+           
             $products = Product::where(function ($q) use ($companyId) {
                 $q->where('company_id', $companyId)->orWhereNull('company_id');
             })

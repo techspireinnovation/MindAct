@@ -331,7 +331,7 @@ class SaleController extends Controller
             $includeDetails = $request->boolean('include_details', false);
             $purchaseType = $request->input('purchase_type', null);
 
-            
+
 
             if (!auth()->check()) {
                 return response()->json([
@@ -357,7 +357,7 @@ class SaleController extends Controller
                 'data' => $products
             ], 200);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'message' => 'Failed to retrieve available products',
                 'error' => config('app.debug') ? $e->getMessage() : null
@@ -2018,7 +2018,7 @@ class SaleController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         try {
-            // Define validation rules (same as store method)
+          
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer',
                 'customer_id' => 'nullable|integer|exists:customers,id',
@@ -2086,6 +2086,7 @@ class SaleController extends Controller
                     'array',
                     'min:1',
                 ],
+                'sale_products.*.id' => ['nullable', 'integer', Rule::exists('sale_products', 'id')->where('sale_id', $id)],
                 'sale_products.*.product_name' => 'required_without:sale_products.*.product_id|string|max:255',
                 'sale_products.*.product_id' => 'nullable|integer|exists:products,id',
                 'sale_products.*.purchase_stock_product_id' => 'nullable|integer|exists:purchase_stock_products,id',
@@ -2118,6 +2119,7 @@ class SaleController extends Controller
                 'sale_products.*.field_values.*.*.stock_adjustment_id' => 'nullable',
                 'sale_products.*.field_values.*.*.stock_transfer_id' => 'nullable',
                 'sale_additionals' => 'nullable|array',
+                'sale_additionals.id' => 'nullable|integer|exists:sale_additionals,id',
                 'sale_additionals.company_id' => 'nullable|integer|exists:companies,id',
                 'sale_additionals.sale_id' => 'nullable|string|max:255',
                 'sale_additionals.place' => 'nullable|string|max:255',
@@ -2201,31 +2203,54 @@ class SaleController extends Controller
                 $sale->save();
 
 
-                // Delete existing sale products and field values
-                DB::table('sales_product_field_values')
-                    ->whereIn('sale_product_id', SaleProduct::where('sale_id', $sale->id)->pluck('id'))
-                    ->delete();
-                SaleProduct::where('sale_id', $sale->id)->delete();
-                SaleAdditional::where('sale_id', $sale->id)->delete();
+
 
                 // Handle sale additionals
                 if (isset($validated['sale_additionals']) && !empty($validated['sale_additionals'])) {
-                    SaleAdditional::create([
-                        'company_id' => $validated['company_id'],
-                        'branch_id' => $validated['branch_id'],
-                        'sale_id' => $sale->id,
-                        'place' => $validated['sale_additionals']['place'] ?? null,
-                        'transport' => $validated['sale_additionals']['transport'] ?? null,
-                        'vehicle_number' => $validated['sale_additionals']['vehicle_number'] ?? null,
-                        'vehicle_name' => $validated['sale_additionals']['vehicle_name'] ?? null,
-                        'driver_name' => $validated['sale_additionals']['driver_name'] ?? null,
-                        'dispatch_code' => $validated['sale_additionals']['dispatch_code'] ?? null,
-                        'driver_contact_number' => $validated['sale_additionals']['driver_contact_number'] ?? null,
-                        'delivery_date' => $validated['sale_additionals']['delivery_date'] ?? null,
-                        'delivery_time' => $validated['sale_additionals']['delivery_time'] ?? null,
-                    ]);
+                    $saleAdditionalData = $validated['sale_additionals'];
 
+                    // Check if sale_additional exists (using id if provided)
+                    $saleAdditional = null;
+                    if (!empty($saleAdditionalData['id'])) {
+                        $saleAdditional = SaleAdditional::where('id', $saleAdditionalData['id'])
+                            ->where('sale_id', $sale->id)
+                            ->where('company_id', $validated['company_id'])
+                            ->where('branch_id', $validated['branch_id'])
+                            ->first();
+                    }
+
+                    if ($saleAdditional) {
+                        // Update existing record
+                        $saleAdditional->update([
+                            'place' => $saleAdditionalData['place'] ?? null,
+                            'transport' => $saleAdditionalData['transport'] ?? null,
+                            'vehicle_number' => $saleAdditionalData['vehicle_number'] ?? null,
+                            'vehicle_name' => $saleAdditionalData['vehicle_name'] ?? null,
+                            'driver_name' => $saleAdditionalData['driver_name'] ?? null,
+                            'dispatch_code' => $saleAdditionalData['dispatch_code'] ?? null,
+                            'driver_contact_number' => $saleAdditionalData['driver_contact_number'] ?? null,
+                            'delivery_date' => $saleAdditionalData['delivery_date'] ?? null,
+                            'delivery_time' => $saleAdditionalData['delivery_time'] ?? null,
+                        ]);
+                    } else {
+                        // Create new record
+                        SaleAdditional::create([
+                            'company_id' => $validated['company_id'],
+                            'branch_id' => $validated['branch_id'],
+                            'sale_id' => $sale->id,
+                            'place' => $saleAdditionalData['place'] ?? null,
+                            'transport' => $saleAdditionalData['transport'] ?? null,
+                            'vehicle_number' => $saleAdditionalData['vehicle_number'] ?? null,
+                            'vehicle_name' => $saleAdditionalData['vehicle_name'] ?? null,
+                            'driver_name' => $saleAdditionalData['driver_name'] ?? null,
+                            'dispatch_code' => $saleAdditionalData['dispatch_code'] ?? null,
+                            'driver_contact_number' => $saleAdditionalData['driver_contact_number'] ?? null,
+                            'delivery_date' => $saleAdditionalData['delivery_date'] ?? null,
+                            'delivery_time' => $saleAdditionalData['delivery_time'] ?? null,
+                        ]);
+                    }
                 }
+
 
                 $purchases = collect();
                 $consumed = [];   // running ledger: purchase_product_id → pieces used in this request
@@ -2501,58 +2526,105 @@ class SaleController extends Controller
 
                     foreach ($allocations as $allocation) {
                         $purchaseProduct = PurchaseStockProduct::findOrFail($allocation['purchase_stock_product_id']);
-                        $saleProduct = $sale->saleProducts()->create([
-                            'company_id' => $validated['company_id'],
-                            'branch_id' => $validated['branch_id'],
-                            'sale_id' => $sale->id,
-                            'product_id' => $productId,
-                            'purchase_type' => $validated['purchase_type'] ?? null,
-                            'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
-                            // 'purchase_product_id' => $productData['purchase_product_id'],
-                            // 'stock_product_id' => $productData['stock_product_id'],
-                            // 'stock_reconciliation_id' => $productData['stock_reconciliation_id'],
-                            // 'stock_transfer_id' => $productData['stock_transfer_id'],
-                            // 'stock_adjustment_id' => $productData['stock_adjustment_id'],
-                            'quantity' => $allocation['quantity'],
-                            'free_quantity' => $allocation['free_quantity'],
-                            'price' => $productData['price'],
-                            'amount' => ($productData['price'] * $allocation['quantity']) - ($productData['discount_amount'] ?? 0),
-                            'discount_percent' => $productData['discount_percent'] ?? 0,
-                            'discount_amount' => $productData['discount_amount'] ?? 0,
-                            'is_vatable' => $productData['is_vatable'] ?? false,
-                            'measure_unit_id' => $productData['measure_unit_id'],
-                            'mfd' => $allocation['mfd'],
-                            'batch_no' => $productData['batch_no'] ?? 'BATCH-' . $purchaseProduct->id . '-' . now()->format('Ymd'),
-                            'expiry_date' => $allocation['expiry_date'] ?? null,
-                            'name' => $productModel->name,
-                        ]);
+                        foreach ($validated['sale_products'] as $productData) {
+                            if (!empty($productData['id'])) {
+                                // Update existing sale product
+                                $saleProduct = SaleProduct::where('id', $productData['id'])->firstOrFail();
+                                $saleProduct->update([
+                                    'company_id' => $validated['company_id'],
+                                    'branch_id' => $validated['branch_id'],
+                                    'sale_id' => $sale->id,
+                                    'product_id' => $productId,
+                                    'purchase_type' => $validated['purchase_type'] ?? null,
+                                    'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
 
+                                    'quantity' => $allocation['quantity'],
+                                    'free_quantity' => $allocation['free_quantity'],
+                                    'price' => $productData['price'],
+                                    'amount' => ($productData['price'] * $allocation['quantity']) - ($productData['discount_amount'] ?? 0),
+                                    'discount_percent' => $productData['discount_percent'] ?? 0,
+                                    'discount_amount' => $productData['discount_amount'] ?? 0,
+                                    'is_vatable' => $productData['is_vatable'] ?? false,
+                                    'measure_unit_id' => $productData['measure_unit_id'],
+                                    'mfd' => $allocation['mfd'],
+                                    'batch_no' => $productData['batch_no'] ?? 'BATCH-' . $purchaseProduct->id . '-' . now()->format('Ymd'),
+                                    'expiry_date' => $allocation['expiry_date'] ?? null,
+                                    'name' => $productModel->name,
+                                ]);
 
+                                // Update field values
 
-                        if (!empty($allocation['field_values'])) {
-                            foreach ($allocation['field_values'] as $fvSet) {
-                                foreach ($fvSet as $fv) {
-                                    DB::table('sales_product_field_values')->insert([
-                                        'sale_product_id' => $saleProduct->id,
-                                        'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
-                                        'purchase_product_id' => $fv['purchase_product_id'] ?? null,
-                                        'stock_product_id' => $fv['stock_product_id'] ?? null,
-                                        'stock_reconciliation_id' => $fv['stock_reconciliation_id'] ?? null,
-                                        'stock_adjustment_id' => $fv['stock_adjustment_id'] ?? null,
-                                        'stock_transfer_id' => $fv['stock_transfer_id'] ?? null,
-                                        'product_id' => $productId,
-                                        'product_field_id' => $fv['product_field_id'],
-                                        'value' => $fv['value'],
-                                        'quantity_index' => $fv['quantity_index'],
-                                        'quantity_type' => $fv['quantity_type'],
-                                        'company_id' => $validated['company_id'],
-                                        'branch_id' => $validated['branch_id'],
-                                        'created_at' => now(),
-                                        'updated_at' => now(),
-                                    ]);
+                                foreach ($productData['field_values'] as $fvSet) {
+                                    foreach ($fvSet as $fv) {
+                                        DB::table('sales_product_field_values')->insert([
+                                            'sale_product_id' => $saleProduct->id,
+
+                                            'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
+                                            'purchase_product_id' => $fv['purchase_product_id'] ?? null,
+                                            'stock_product_id' => $fv['stock_product_id'] ?? null,
+                                            'stock_reconciliation_id' => $fv['stock_reconciliation_id'] ?? null,
+                                            'stock_adjustment_id' => $fv['stock_adjustment_id'] ?? null,
+                                            'stock_transfer_id' => $fv['stock_transfer_id'] ?? null,
+                                            'product_id' => $productId,
+                                            'product_field_id' => $fv['product_field_id'],
+                                            'value' => $fv['value'],
+                                            'quantity_index' => $fv['quantity_index'],
+                                            'quantity_type' => $fv['quantity_type'],
+                                            'company_id' => $validated['company_id'],
+                                            'branch_id' => $validated['branch_id'],
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ]);
+                                    }
+                                }
+                            } else {
+                                // Create new sale product
+                                $saleProduct = $sale->saleProducts()->create([
+                                    'company_id' => $validated['company_id'],
+                                    'branch_id' => $validated['branch_id'],
+                                    'sale_id' => $sale->id,
+                                    'product_id' => $productId,
+                                    'purchase_type' => $validated['purchase_type'] ?? null,
+                                    'purchase_stock_product_id' => $allocation['purchase_stock_product_id'],
+
+                                    'quantity' => $allocation['quantity'],
+                                    'free_quantity' => $allocation['free_quantity'],
+                                    'price' => $productData['price'],
+                                    'amount' => ($productData['price'] * $allocation['quantity']) - ($productData['discount_amount'] ?? 0),
+                                    'discount_percent' => $productData['discount_percent'] ?? 0,
+                                    'discount_amount' => $productData['discount_amount'] ?? 0,
+                                    'is_vatable' => $productData['is_vatable'] ?? false,
+                                    'measure_unit_id' => $productData['measure_unit_id'],
+                                    'mfd' => $allocation['mfd'],
+                                    'batch_no' => $productData['batch_no'] ?? 'BATCH-' . $purchaseProduct->id . '-' . now()->format('Ymd'),
+                                    'expiry_date' => $allocation['expiry_date'] ?? null,
+                                    'name' => $productModel->name,
+                                ]);
+
+                                foreach ($productData['field_values'] as $fvSet) {
+                                    foreach ($fvSet as $fv) {
+                                        DB::table('sales_product_field_values')->insert([
+                                            'sale_product_id' => $saleProduct->id,
+
+                                            'purchase_stock_product_id' => $fv['purchase_stock_product_id'],
+                                            'purchase_product_id' => $fv['purchase_product_id'] ?? null,
+                                            'stock_product_id' => $fv['stock_product_id'] ?? null,
+                                            'stock_reconciliation_id' => $fv['stock_reconciliation_id'] ?? null,
+                                            'stock_adjustment_id' => $fv['stock_adjustment_id'] ?? null,
+                                            'stock_transfer_id' => $fv['stock_transfer_id'] ?? null,
+                                            'product_id' => $productId,
+                                            'product_field_id' => $fv['product_field_id'],
+                                            'value' => $fv['value'],
+                                            'quantity_index' => $fv['quantity_index'],
+                                            'quantity_type' => $fv['quantity_type'],
+                                            'company_id' => $validated['company_id'],
+                                            'branch_id' => $validated['branch_id'],
+                                            'created_at' => now(),
+                                            'updated_at' => now(),
+                                        ]);
+                                    }
                                 }
                             }
-
                         }
                     }
                 }

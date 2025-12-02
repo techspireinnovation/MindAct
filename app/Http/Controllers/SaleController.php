@@ -2168,7 +2168,7 @@ class SaleController extends Controller
                 $deletedIds = array_diff($existingIds, $incomingIds);
 
                 if ($deletedIds) {
-                    // SalesProductFieldValue::whereIn('sale_product_id', $deletedIds)->delete();
+                   
                     SaleProduct::whereIn('id', $deletedIds)->delete();
                 }
 

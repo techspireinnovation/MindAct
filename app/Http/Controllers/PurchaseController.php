@@ -165,6 +165,7 @@ class PurchaseController extends Controller
     {
         $maxIndex = PurchaseProductFieldValue::where('purchase_product_id', $purchaseProductId)
             ->where('product_field_id', $productFieldId)
+             ->whereNull('deleted_at')
             ->max('quantity_index');
 
         return $maxIndex !== null ? $maxIndex + 1 : 0;
@@ -174,6 +175,7 @@ class PurchaseController extends Controller
     {
         $maxIndex = PurchaseStockProductFieldValue::where('purchase_product_id', $purchaseProductId)
             ->where('product_field_id', $productFieldId)
+            ->whereNull('deleted_at')
             ->max('quantity_index');
 
         return $maxIndex !== null ? $maxIndex + 1 : 0;
@@ -731,7 +733,7 @@ class PurchaseController extends Controller
                             'customer_id' => $validated['customer_id'],
                             'company_id' => $validated['company_id'],
                             'branch_id' => $branchId,
-                            'purchase_type' => $validated['purchase_type'] ?? null,
+                            'purchase_type' => $purchaseProductData['purchase_type'] ?? null,
                             'product_id' => $purchaseProductData['product_id'],
                             'product_name' => $purchaseProductData['product_name'] ?? null,
                             'product_code' => $purchaseProductData['product_code'] ?? null,

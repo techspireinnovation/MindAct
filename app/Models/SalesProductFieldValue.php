@@ -20,6 +20,7 @@ class SalesProductFieldValue extends BaseTenantModel
         'company_id',
         'product_field_id',
         'product_id',
+        'branch_id',
         'sale_product_id',
         'purchase_stock_product_id',
         'purchase_product_id',

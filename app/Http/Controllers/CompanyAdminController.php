@@ -44,7 +44,7 @@ class CompanyAdminController extends Controller
 
             $user = Auth::user();
 
-            $allowedRoles = ['company_admin', 'company_user', 'master_user'];
+            $allowedRoles = ['company_admin', 'company_user', 'master_user','user'];
             if (!$user->hasAnyRole($allowedRoles)) {
                 Auth::logout();
                 return response()->json(['success' => false, 'message' => 'Not authorised for company access'], 200);
@@ -53,6 +53,10 @@ class CompanyAdminController extends Controller
             $role = $user->getRoleNames()
                 ->intersect($allowedRoles)
                 ->first();
+
+
+                ///
+        //  
 
             $tempToken = $user->createToken(
                 'TempToken',
@@ -142,16 +146,16 @@ class CompanyAdminController extends Controller
             'headers' => $request->headers->all(),
             'payload' => $request->all(),
             'user' => Auth::user(),
-            'has_company_access' => Auth::user() ? Auth::user()->hasAnyRole(['company_admin', 'company_user', 'master_user']) : false,
+            'has_company_access' => Auth::user() ? Auth::user()->hasAnyRole(['company_admin', 'company_user', 'master_user','user']) : false,
         ]);
 
         try {
             $user = Auth::guard('api')->user();
 
-            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user','user'])) {
                 \Log::error('selectCompany Auth Failed', [
                     'user' => $user,
-                    'has_role' => $user ? $user->hasAnyRole(['company_admin', 'company_user', 'master_user']) : false,
+                    'has_role' => $user ? $user->hasAnyRole(['company_admin', 'company_user', 'master_user','user']) : false,
                 ]);
                 return response()->json([
                     'success' => false,
@@ -335,7 +339,7 @@ class CompanyAdminController extends Controller
             ]);
 
             // ✅ 4. Role check
-            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user','user'])) {
                 \Log::error('Profile: Unauthorized role', ['user_id' => $user->id]);
                 return response()->json(['success' => false, 'message' => 'Unauthorized role.'], 403);
             }
@@ -865,7 +869,7 @@ class CompanyAdminController extends Controller
         try {
             $user = Auth::guard('api')->user();
 
-            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user','user'])) {
                 return response()->json(['success' => false, 'message' => 'Unauthorised'], 200);
             }
 

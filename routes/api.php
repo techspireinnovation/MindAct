@@ -77,6 +77,7 @@ use App\Http\Controllers\CompanyDashboard\RecentInvoiceHistoryController;
 use App\Http\Controllers\CompanyDashboard\RecentSalesController;
 use App\Http\Controllers\CompanyDashboard\LowStockProductsController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AdminUserController;
 
 
 
@@ -145,7 +146,19 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/generateStockAdjustmentBillNumber', [GenerateCodeController::class, 'generateStockAdjustmentBillNumber']);
     Route::get('/generateStockEntryBillNumber', [GenerateCodeController::class, 'generateStockEntryBillNumber']);
     Route::get('/generatestockreconciliationnumber', [GenerateCodeController::class, 'generateStockReconciliationNumber']);////
-
+    Route::prefix('admin-users')->group(function () {
+            Route::get('/', [AdminUserController::class, 'index']);
+            Route::post('/', [AdminUserController::class, 'store']);
+            Route::get('/statistics', [AdminUserController::class, 'statistics']);
+            Route::get('/profile', [AdminUserController::class, 'profile']);
+            Route::get('/user/{userId}', [AdminUserController::class, 'findByUserId']);
+            Route::get('/email/{email}', [AdminUserController::class, 'findByEmail']);
+            Route::get('/{id}', [AdminUserController::class, 'show']);
+            Route::put('/{id}', [AdminUserController::class, 'update']);
+            Route::patch('/{id}', [AdminUserController::class, 'update']);
+            Route::delete('/{id}', [AdminUserController::class, 'destroy']);
+            Route::post('/{id}/restore', [AdminUserController::class, 'restore']);
+        });
 
 
 

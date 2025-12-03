@@ -602,7 +602,7 @@ class CompanyController extends Controller
                 return response()->json(['success' => false, 'message' => 'User not found in central DB.'], 404);
             }
 
-            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user','user'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: User lacks required role',
@@ -796,7 +796,7 @@ class CompanyController extends Controller
             if (!$user) {
                 return response()->json(['success' => false, 'message' => 'User not found in central DB.'], 404);
             }
-            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+            if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user','user'])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized: User lacks required role',

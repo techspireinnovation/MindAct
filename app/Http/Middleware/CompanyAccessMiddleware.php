@@ -42,7 +42,7 @@ class CompanyAccessMiddleware
             ], 401);
         }
 
-        if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
+        if (!$user->hasAnyRole(['company_admin', 'company_user', 'master_user','user'])) {
             Log::error('CompanyAccessMiddleware: User lacks required role', [
                 'user_id' => $user->id,
                 'roles' => $user->roles->pluck('name')->toArray(),

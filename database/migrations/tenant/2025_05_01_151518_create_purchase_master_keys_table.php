@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::connection('tenant')->create('purchase_master_keys', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->boolean('product_code')->default(false);
             $table->boolean('free')->default(false);
             $table->boolean('expiry_date')->default(false);

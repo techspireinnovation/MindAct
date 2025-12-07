@@ -20,7 +20,8 @@ class ProductCategory extends BaseTenantModel
 
     protected $fillable = [
         'name',
-        'company_id',
+       
+        'parent_id',
         'is_active',
         'is_primary',
         'deleted_at'
@@ -29,20 +30,14 @@ class ProductCategory extends BaseTenantModel
 
     protected $date = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
 
 
     public function products()
     {
         return $this->hasMany(Product::class, 'category_id');
     }
-    public function productSubCategory()
-    {
-        return $this->hasMany(ProductSubCategory::class, 'category_id');
-    }
+   
 
 
 }

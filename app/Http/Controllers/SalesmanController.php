@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Interfaces\SalesmanRepositoryInterface;
+use App\Http\Requests\SalesmanRequest\StoreRequest;
+use App\Http\Requests\SalesmanRequest\UpdateRequest;
 use App\Models\Salesman;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -13,15 +16,24 @@ use Illuminate\Http\Request;
 
 class SalesmanController extends Controller
 {
+
+    protected $repository;
+
+    public function __construct(SalesmanRepositoryInterface $repository)
+    {
+        $this->repository = $repository;
+    }
+
+
+
     public function index(Request $request): JsonResponse
     {
-        $query = Salesman::query();
+        $filters = $request->only('keywords');
 
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
+        $items = $this->repository->list($filters);
+       
 
-        return response()->json($query->paginate(50));
+        return response()->json($items, 200);
     }
 
 
@@ -30,26 +42,22 @@ class SalesmanController extends Controller
     {
         try {
 
-            $salesmen = Salesman::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->where('is_active', 1)
-                ->get(['id', 'name'])
-                ->map(fn($salesman) => ['id' => $salesman->id, 'name' => $salesman->name])
-                ->values()
-                ->toArray();
+            $salesmen = $this->repository->activeSalesmanList();
+
+
             return response()->json([
                 "message" => "Sales men List Received !!",
                 "data" => $salesmen
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(["error" => "Sales men not Found !!"], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -59,16 +67,11 @@ class SalesmanController extends Controller
     {
         try {
 
-            $companyId = $request->company_id;
-            if (!$companyId) {
-                return response()->json(["error" => "No Company Logged In !!"], 404);
-            }
+
 
             $salesman = $request->salesman_name;
-            $salesmanDetails = Salesman::where('company_id', $request->company_id)
-                ->where('name', $salesman)
-                ->whereNull('deleted_at')
-                ->firstorFail();
+            $salesmanDetails = $this->repository->salesmanDetails($salesman);
+
             return response()->json([
                 "message" => "Sales man Details Received !!",
                 "data" => $salesmanDetails
@@ -85,93 +88,24 @@ class SalesmanController extends Controller
     }
 
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'company_id' => 'nullable|required',
-                'salesman_id' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen')
 
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'pan_number' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen')
 
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'name' => 'required|string|max:255',
-                'address' => 'nullable|string',
-                'country' => 'nullable|string',
-                'state' => 'nullable|string',
-                'ward_no' => 'nullable|integer',
-                'is_active' => 'boolean',
-                'is_primary' => 'boolean',
-                'area' => 'nullable|string',
-                'mobile' => 'required|digits:10|unique:salesmen,mobile',
+            $data = $request->validated();
 
-                'email' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen')
-
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'working_office' => 'nullable|string|max:255',
-                'joining_date' => 'nullable|date',
-                'designation' => 'nullable|string|max:255',
-                'dob' => 'nullable|date',
-                'citizenship_number' => 'nullable|string|max:255|unique:salesmen,citizenship_number',
-
-                'nationality' => 'nullable|string|max:100',
-                'zone' => 'nullable|string|max:100',
-                'district' => 'nullable|string|max:100',
-                'vdc_municipality' => 'nullable|string|max:255',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $validated = $validator->validated();
-
-            if (!empty($validated['is_primary'])) {
-                Salesman::where('company_id', $validated['company_id'])
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            $salesman = Salesman::create($validated);
+            $salesman = $this->repository->create($data);
 
             return response()->json([
                 'message' => 'Salesman created successfully',
                 'data' => $salesman
             ], 201);
         } catch (QueryException $e) {
-           
 
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-           
+            dd($e->getMessage());
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -181,7 +115,7 @@ class SalesmanController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $item = Salesman::findOrFail($id);
+            $item = $this->repository->show($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -190,113 +124,27 @@ class SalesmanController extends Controller
         }
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $salesman = Salesman::findOrFail($id);
 
-            $validator = Validator::make($request->all(), [
-                'company_id' => 'nullable|required',
-                'salesman_id' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'pan_number' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'name' => 'sometimes|required|string|max:255',
-                'is_active' => 'nullable|boolean',
-                'is_primary' => 'nullable|boolean',
-                'address' => 'nullable|string',
-                'country' => 'nullable|string',
-                'state' => 'nullable|string',
-                'ward_no' => 'nullable|integer',
-                'area' => 'nullable|string',
-
-                'email' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'working_office' => 'nullable|string|max:255',
-                'joining_date' => 'nullable|date',
-                'designation' => 'nullable|string|max:255',
-                'dob' => 'nullable|date',
-                'mobile' => [
-                    'required',
-                    'digits:10',
-                   
-                    Rule::unique('salesmen', 'mobile')->ignore($id)
-                ],
-
-                'citizenship_number' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('salesmen', 'citizenship_number')->ignore($id)
-                ],
+            $data = $request->validated();
 
 
-
-                'nationality' => 'nullable|string|max:100',
-                'zone' => 'nullable|string|max:100',
-                'district' => 'nullable|string|max:100',
-                'vdc_municipality' => 'nullable|string|max:255',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-
-            $validated = $validator->validated();
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                $affectedRows = Salesman::where('company_id', $salesman->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->whereNull('deleted_at')
-                    ->update(['is_primary' => false]);
-               
-            }
-
-            $salesman->update($validated);
+            $salesman = $this->repository->update($id, $data);
 
             return response()->json([
                 'message' => 'Salesman updated successfully',
-                'data' => $salesman->fresh() // Reload the model to get the updated data
+                'data' => $salesman->fresh()
             ], 200);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Salesman not found.'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -305,23 +153,7 @@ class SalesmanController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $salesman = Salesman::findOrFail($id);
-
-            $usedIn = [];
-
-            if ($salesman->sales()->exists()) {
-                $usedIn[] = 'sales';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'cannot delete, in use',
-                    'message' => 'Salesman cannot be deleted because it is used in: ' . implode(', ', $usedIn),
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $salesman->delete();
+            $this->repository->delete($id);
 
             return response()->json([
                 'success' => true,
@@ -329,21 +161,21 @@ class SalesmanController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Salesman not found!'
             ], 404);
 
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the salesman.'
             ], 500);
 
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the salesman.'

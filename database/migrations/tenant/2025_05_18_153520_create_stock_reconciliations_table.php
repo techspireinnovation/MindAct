@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('stock_reconciliations', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+           
             $table->date('date_ad')->nullable();
             $table->date('date_bs')->nullable();
             $table->text('reconciliation_no')->nullable();

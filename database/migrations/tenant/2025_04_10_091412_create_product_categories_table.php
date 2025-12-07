@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::connection('tenant')->create('product_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->unsignedBigInteger('company_id')->nullable();
+           
+            $table->integer('parent_id')->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
             $table->softDeletes();

@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('shrinking_working_losses', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+           
             $table->date('date_from')->nullable();
             $table->date('date_to')->nullable();
             $table->foreignId('product_id')->constrained('products')->nullable();

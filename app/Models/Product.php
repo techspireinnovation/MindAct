@@ -35,7 +35,7 @@ class Product extends BaseTenantModel
         'is_active',
         'is_fixed_amount',
         'deleted_at',
-        'company_id',
+       
         'category_id',
         'sub_category_id',
         'brand_id',
@@ -60,10 +60,10 @@ class Product extends BaseTenantModel
     protected $dates = ['deleted_at'];
     protected $appends = ['primary_measure_unit'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    // protected static function booted()
+    // {
+    //     static::addGlobalScope(new CompanyIdScope());
+    // }
 
     public function productList()
     {

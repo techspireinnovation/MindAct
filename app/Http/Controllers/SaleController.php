@@ -2168,12 +2168,18 @@ class SaleController extends Controller
                 $deletedIds = array_diff($existingIds, $incomingIds);
 
                 if ($deletedIds) {
-                   
+
                     SaleProduct::whereIn('id', $deletedIds)->delete();
                 }
 
-                $consumed = []; // purchase_stock_product_id => pieces used in this transaction
 
+                $groupedByProduct = collect($validated['sale_products'])->groupBy(function ($item) {
+                    return $item['product_id'] ?? $item['product_name'];
+                });
+
+                // Reset FIFO state
+                $fifoState = [];
+                $measureUnitsCalc = null;
                 foreach ($validated['sale_products'] as $index => $productData) {
                     $productId = $productData['product_id'];
                     $product = Product::findOrFail($productId);
@@ -2272,106 +2278,181 @@ class SaleController extends Controller
 
                         // Clear old field values and insert new ones
 
-                    } else {
-                        // FIFO MODE — PERFECT UPDATE WITH RETURNS SUPPORTED
+                    } else {   // =====  NO field-values  (classic FIFO)  =====
+                        /* ---------- 1.  sale line → pieces ---------- */
+                        $saleUnit = MeasureUnit::find($productData['measure_unit_id']);
+                        $saleUnitQty = $saleUnit->quantity ?? 1;
+                        $regularPieces = $this->calculatePieces((string) ($productData['quantity'] ?? 0), $saleUnitQty);
+                        $freePieces = $this->calculatePieces((string) ($productData['free_quantity'] ?? 0), $saleUnitQty);
+
+                        /* ---------- 2.  collect lines per product ---------- */
+                        static $fifoState = [];
+                        if (!isset($fifoState[$productId])) {
+                            $fifoState[$productId] = ['lines' => [], 'consumed' => []]; // consumed => psp_id → pieces
+                        }
+                        $fifoState[$productId]['lines'][] = [
+                            'index' => $index,
+                            'regularPieces' => $regularPieces,
+                            'freePieces' => $freePieces,
+                            'data' => $productData,
+                            'saleUnitQty' => $saleUnitQty,
+                            'measure_unit_id' => $productData['measure_unit_id'],
+                        ];
+
+                        $isLastLine = ($index + 1 >= count($validated['sale_products'])) ||
+                            ($validated['sale_products'][$index + 1]['product_id'] ?? null) != $productId;
+                        if (!$isLastLine) {
+                            continue;
+                        }
+
+                        /* ---------- 3.  build DB queue (pieces)  –  with “give-back” for this sale ---------- */
+                        /* 3a.  what has this sale already consumed ?  (seed the shadow counter) */
+                        $alreadyInThisSale = SaleProduct::where('sale_id', $sale->id)
+                            ->whereNull('deleted_at')
+                            ->where('company_id', $validated['company_id'])
+                            ->where('branch_id', $validated['branch_id'])
+                            ->with('measureUnit')
+                            ->get()
+                            ->groupBy('purchase_stock_product_id')
+                            ->map(fn($group) => $group->sum(function ($sp) {
+                                $unitQty = (int) ($sp->measureUnit->quantity ?? 1);
+                                return $this->calculatePieces((string) ($sp->quantity ?? 0), $unitQty) +
+                                    $this->calculatePieces((string) ($sp->free_quantity ?? 0), $unitQty);
+                            }))
+                            ->toArray();
+
                         $stocks = PurchaseStockProduct::where('product_id', $productId)
                             ->where('company_id', $validated['company_id'])
                             ->where('branch_id', $validated['branch_id'])
                             ->whereNull('deleted_at')
                             ->with([
-                                'purchaseStockProductReturns',
-                                'saleProducts' => fn($q) => $q->whereNull('deleted_at')->with(['saleProductReturns', 'measureUnit'])
+                                'measureUnit',
+                                'purchaseStockProductReturns' => fn($q) => $q->whereNull('deleted_at')
+                                    ->where('company_id', $validated['company_id'])
+                                    ->where('branch_id', $validated['branch_id'])
+                                    ->with('measureUnit'),
+                                /* sales from OTHER sales only */
+                                'saleProducts' => fn($q) => $q->whereNull('deleted_at')
+                                    ->where('company_id', $validated['company_id'])
+                                    ->where('branch_id', $validated['branch_id'])
+                                    ->where('sale_id', '!=', $sale->id)
+                                    ->with([
+                                        'saleProductReturns' => fn($q) => $q->whereNull('deleted_at')
+                                            ->where('company_id', $validated['company_id'])
+                                            ->where('branch_id', $validated['branch_id']),
+                                        'measureUnit'
+                                    ]),
                             ])
-                            ->orderBy('created_at')
+                            ->orderBy('created_at', 'asc')
                             ->get();
 
-                        $remainingPieces = $regularPieces + $freePieces;
-
+                        $batchQueue = [];
                         foreach ($stocks as $stock) {
-                            if ($remainingPieces <= 0)
-                                break;
+                            $stockUnitQty = (int) ($stock->measureUnit->quantity ?? 1);
+                            $purchased = $this->calculatePieces((string) $stock->quantity, $stockUnitQty);
 
-                            // 1. Base available (includes returns from ANY sale)
-                            $available = $this->calculateAvailablePieces($stock, $unitQty, $validated['company_id'], $validated['branch_id']);
+                            $purchaseReturns = $stock->purchaseStockProductReturns->sum(function ($ret) use ($stockUnitQty) {
+                                $retUnitQty = (int) ($ret->measureUnit->quantity ?? 1);
+                                return $this->calculatePieces((string) $ret->quantity, $retUnitQty);
+                            });
 
-                            // 2. ADD BACK what THIS CURRENT SALE previously consumed from this batch
-                            // CORRECT WAY: Use ORIGINAL measure_unit_id of each SaleProduct row
-                            $previouslySoldByThisSale = SaleProduct::where('sale_id', $sale->id)
-                                ->where('purchase_stock_product_id', $stock->id)
-                                ->whereNull('deleted_at')
-                                ->with('measureUnit') // ← Eager load to avoid N+1
-                                ->get()
-                                ->sum(function ($sp) {
-                                    // Get the ORIGINAL unit used when this item was sold
-                                    $originalUnitQty = $sp->measureUnit?->quantity ?? 1;
+                            $sold = $stock->saleProducts->sum(function ($sp) use ($stockUnitQty) {
+                                $spUnitQty = (int) ($sp->measureUnit->quantity ?? 1);
+                                $soldPieces = $this->calculatePieces((string) ($sp->quantity ?? 0), $spUnitQty) +
+                                    $this->calculatePieces((string) ($sp->free_quantity ?? 0), $spUnitQty);
 
-                                    $reg = $this->calculatePieces($sp->quantity ?? '0', $originalUnitQty);
-                                    $free = $this->calculatePieces($sp->free_quantity ?? '0', $originalUnitQty);
-
-                                    return bcadd($reg, $free, 10); // or use your sumQuantityAndFree if you want
+                                $saleRetPieces = $sp->saleProductReturns->sum(function ($sr) use ($spUnitQty) {
+                                    return $this->calculatePieces((string) ($sr->quantity ?? 0), $spUnitQty);
                                 });
+                                return $soldPieces - $saleRetPieces;
+                            });
 
-                            $available += $previouslySoldByThisSale;
+                            $givenBack = $alreadyInThisSale[$stock->id] ?? 0;
 
-
-
-                            // 3. Subtract only what already consumed in this current loop
-                            $available -= ($consumed[$stock->id] ?? 0);
-
+                            $available = $purchased + $purchaseReturns - $sold + $givenBack;
                             if ($available > 0) {
-                                $take = min($available, $remainingPieces);
-                                $remainingPieces -= $take;
-                                $chosenPspId = $stock->id;
-                                $consumed[$stock->id] = ($consumed[$stock->id] ?? 0) + $take;
+                                $batchQueue[] = [
+                                    'psp_id' => $stock->id,
+                                    'available' => $available,
+                                    'stockUnitQty' => $stockUnitQty,
+                                    'mfd' => $stock->mfd,
+                                    'expiry' => $stock->expiry_date,
+                                ];
                             }
                         }
 
-                        if ($remainingPieces > 0) {
-                            throw new \Exception("Insufficient stock for product {$productId}.");
+                        /* ---------- 4.  seed shadow counter with the pieces we already took in the DB ---------- */
+                        $consumed = &$fifoState[$productId]['consumed'];
+                        foreach ($alreadyInThisSale as $pspId => $pieces) {
+                            $consumed[$pspId] = $pieces;
                         }
 
-                        // Create or update sale product
-                        $saleProduct = null;
+                        /* ---------- 5.  allocate every line ---------- */
+                        foreach ($fifoState[$productId]['lines'] as $line) {
+                            $needRegular = $line['regularPieces'];
+                            $needFree = $line['freePieces'];
 
-                        if (!empty($productData['id'])) {
-                            $saleProduct = SaleProduct::findOrFail($productData['id']);
-                        }
+                            while ($needRegular > 0 || $needFree > 0) {
+                                if (empty($batchQueue)) {
+                                    throw new \Exception("Insufficient stock for product.");
+                                }
+                                $batch = &$batchQueue[0];
 
-                        if ($saleProduct) {
-                            // UPDATE existing
-                            $saleProduct->update([
-                                'purchase_stock_product_id' => $chosenPspId,
-                                'quantity' => $regularQty,
-                                'free_quantity' => $freeQty,
-                                'price' => $productData['price'],
-                                'purchase_type' => $productData['purchase_type'],
-                                'amount' => $productData['amount'] ?? ($productData['price'] * $regularQty),
-                                'measure_unit_id' => $productData['measure_unit_id'],
-                                'mfd' => $productData['mfd'] ?? null,
-                                'expiry_date' => $productData['expiry_date'] ?? null,
-                                'product_name' => $productData['product_name'],
-                                'name' => $productData['product_name'],
-                            ]);
-                        } else {
-                            // CREATE new
-                            $saleProduct = $sale->saleProducts()->create([
-                                'company_id' => $validated['company_id'],
-                                'branch_id' => $validated['branch_id'],
-                                'sale_id' => $sale->id,
-                                'product_id' => $productId,
-                                'purchase_stock_product_id' => $chosenPspId,
-                                'quantity' => $regularQty,
-                                'free_quantity' => $freeQty,
-                                'purchase_type' => $productData['purchase_type'],
-                                'price' => $productData['price'],
-                                'amount' => $productData['amount'] ?? ($productData['price'] * $regularQty),
-                                'measure_unit_id' => $productData['measure_unit_id'],
-                                'mfd' => $productData['mfd'] ?? null,
-                                'expiry_date' => $productData['expiry_date'] ?? null,
-                                'product_name' => $productData['product_name'],
-                                'name' => $productData['product_name'],
-                            ]);
+                                $realAvail = $batch['available'] - ($consumed[$batch['psp_id']] ?? 0);
+                                if ($realAvail <= 0) {
+                                    array_shift($batchQueue);   // exhaust current PSP, next loop uses next one
+                                    continue;
+                                }
+
+                                $takeReg = min($needRegular, $realAvail);
+                                $remain = $realAvail - $takeReg;
+                                $takeFree = min($needFree, $remain);
+                                $totalTake = $takeReg + $takeFree;
+
+                                /* convert to SALE unit for the row we insert */
+                                [$outQty, $outFree] = $this->convertToTargetMeasureUnit($takeReg, $takeFree, $line['saleUnitQty']);
+
+                                $common = [
+                                    'purchase_stock_product_id' => $batch['psp_id'],
+                                    'quantity' => (string) $outQty,
+                                    'free_quantity' => (string) $outFree,
+                                    'price' => $line['data']['price'],
+                                    'amount' => bcmul($line['data']['price'], (string) $outQty, 6),
+                                    'measure_unit_id' => $line['measure_unit_id'],
+                                    'mfd' => $line['data']['mfd'] ?? $batch['mfd'],
+                                    'expiry_date' => $line['data']['expiry_date'] ?? $batch['expiry'],
+                                    'name' => $line['data']['product_name'],
+                                    'purchase_type' => $validated['purchase_type'] ?? 'inventory',
+                                ];
+
+                                /* first PSP of this line → reuse existing row if we have one */
+                                $existing = !empty($line['data']['id']) && empty($line['split'])
+                                    ? SaleProduct::find($line['data']['id'])
+                                    : null;
+
+                                if ($existing && $existing->sale_id == $sale->id) {
+                                    $existing->update($common);
+                                    $line['split'] = true;   // mark row as already used for splitting
+                                } else {
+                                    $sale->saleProducts()->create(array_merge($common, [
+                                        'company_id' => $validated['company_id'],
+                                        'branch_id' => $validated['branch_id'],
+                                        'sale_id' => $sale->id,
+                                        'product_id' => $productId,
+                                    ]));
+                                }
+
+                                /* book-keeping (in pieces) */
+                                $needRegular -= $takeReg;
+                                $needFree -= $takeFree;
+                                $consumed[$batch['psp_id']] = ($consumed[$batch['psp_id']] ?? 0) + $totalTake;
+
+                                if (($batch['available'] - $consumed[$batch['psp_id']]) <= 0) {
+                                    array_shift($batchQueue);   // <- exhaust PSP, next iteration uses next one
+                                }
+                            }
                         }
+                        unset($fifoState[$productId]);
                     }
                 }
 

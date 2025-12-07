@@ -12,9 +12,9 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('salesmen', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->unsignedBigInteger('salesman_id');
-            $table->string('pan_number');
+            
+            $table->unsignedBigInteger('salesman_id')->nullable();
+            $table->string('pan_number')->nullable();
             $table->string('name');
             $table->string('address')->nullable();
             $table->string('mobile')->nullable();

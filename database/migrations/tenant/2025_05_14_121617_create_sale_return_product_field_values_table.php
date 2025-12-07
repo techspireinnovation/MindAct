@@ -17,7 +17,7 @@ return new class extends Migration {
             $table->string('value');
             $table->integer('quantity_index');
             $table->foreignId('product_id')->constrained('products');
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->timestamps();
             $table->softDeletes();
         });

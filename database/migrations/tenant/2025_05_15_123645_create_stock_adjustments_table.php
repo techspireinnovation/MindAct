@@ -20,7 +20,7 @@ return new class extends Migration {
       $table->text('remarks')->nullable();
       $table->text('reasons')->nullable();
       $table->string('product_details')->nullable();
-      $table->unsignedBigInteger('company_id')->nullable();
+      
       $table->softDeletes();
       $table->timestamps();
     });

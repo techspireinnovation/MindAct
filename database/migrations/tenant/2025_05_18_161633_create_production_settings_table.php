@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('production_settings', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->date('date')->nullable();
             $table->text('document_no')->nullable();
             $table->foreignId('product_id')->nullable();

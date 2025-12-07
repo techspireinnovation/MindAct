@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('projects', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+           
             $table->text('name');
             $table->string('contact_details')->nullable();
             $table->date('starting_date')->nullable();

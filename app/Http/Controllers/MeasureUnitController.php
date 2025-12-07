@@ -2,6 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Interfaces\MeasureUnitRepositoryInterface;
+
+use App\Http\Requests\MeasureUnitRequest\StoreRequest;
+use App\Http\Requests\MeasureUnitRequest\UpdateRequest;
 use App\Models\MeasureUnit;
 use App\Models\ProductList;
 use App\Models\Product;
@@ -13,15 +17,25 @@ use Illuminate\Http\Request;
 
 class MeasureUnitController extends Controller
 {
+
+    protected $repository;
+
+
+    public function __construct(MeasureUnitRepositoryInterface $repository)
+    {
+
+        $this->repository = $repository;
+
+    }
+
     public function index(Request $request): JsonResponse
     {
-        $query = MeasureUnit::query();
+        $filters = $request->only('keywords');
 
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
 
-        return response()->json($query->paginate(50));
+        $items = $this->repository->list($filters);
+
+        return response()->json($items, 200);
     }
 
 
@@ -30,26 +44,20 @@ class MeasureUnitController extends Controller
     {
         try {
 
-            $units = MeasureUnit::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->where('is_active', 1)
-                ->get(['id', 'name'])
-                ->map(fn($unit) => ['id' => $unit->id, 'name' => $unit->name])
-                ->values()
-                ->toArray();
+            $units = $this->repository->measureUnitList();
             return response()->json([
                 "message" => "Measure Unit List Received !!",
                 "data" => $units
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(["error" => "Measure Unit not Found !!"], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -59,16 +67,10 @@ class MeasureUnitController extends Controller
     {
         try {
 
-            $companyId = $request->company_id;
-            if (!$companyId) {
-                return response()->json(["error" => "No Company Logged In !!"], 404);
-            }
+
 
             $unit = $request->measure_unit;
-            $unitDetails = MeasureUnit::where('company_id', $request->company_id)
-                ->where('name', $unit)
-                ->whereNull('deleted_at')
-                ->firstorFail();
+            $unitDetails = $this->repository->measureUnitDetails($unit);
             return response()->json([
                 "message" => "Measure Unit Details Received !!",
                 "data" => $unitDetails
@@ -84,47 +86,13 @@ class MeasureUnitController extends Controller
         }
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $item = MeasureUnit::findOrFail($id);
-            $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('measure_units')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $item->company_id))
-                                ->whereNull('deleted_at');
 
-                        }),
-                ],
-                'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
-                'quantity' => 'integer',
-                'symbol' => 'string|max:255',
-                'company_id' => 'nullable|integer'
-            ]);
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                MeasureUnit::where('company_id', $item->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
+            $data = $request->validated();
 
-            // Explicit boolean handling (optional, since validation ensures boolean)
-            if ($request->has('is_active')) {
-                $validated['is_active'] = (bool) $request->input('is_active');
-            }
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-
-            $item->update($validated);
-            $item->refresh();
-
+            $item = $this->repository->update($id, $data);
 
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
@@ -134,48 +102,23 @@ class MeasureUnitController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('measure_units')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id)
-                        ->whereNull('deleted_at');
-                }),
-            ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'string|max:255',
-            'company_id' => 'nullable|integer'
-        ]);
-        if (!empty($validated['is_primary'])) {
-            MeasureUnit::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
-        }
-
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-        $validated['is_active'] = $validated['is_active'] ?? true;
-
-
-        $item = MeasureUnit::create($validated);
+        $data = $request->validated();
+        $item = $this->repository->create($data);
         return response()->json($item, 201);
     }
 
     public function show($id): JsonResponse
     {
         try {
-            $item = MeasureUnit::findOrFail($id);
+            $item = $this->repository->show($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -183,38 +126,7 @@ class MeasureUnitController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $unit = MeasureUnit::findOrFail($id);
-
-            $usedIn = [];
-
-            if ($unit->products()->exists()) {
-                $usedIn[] = 'products';
-            }
-            if ($unit->productLists()->exists()) {
-                $usedIn[] = 'product lists';
-            }
-            if ($unit->productAssembleDetails()->exists()) {
-                $usedIn[] = 'production assemble details';
-            }
-            if ($unit->productionSettings()->exists()) {
-                $usedIn[] = 'production settings';
-            }
-            if ($unit->purchaseProducts()->exists()) {
-                $usedIn[] = 'purchase products';
-            }
-            if ($unit->saleProducts()->exists()) {
-                $usedIn[] = 'sale products';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'in_use',
-                    'message' => 'Measure Unit cannot be deleted because it is used in: ' . implode(', ', $usedIn),
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $unit->delete();
+            $this->repository->delete($id);
 
             return response()->json([
                 'success' => true,
@@ -222,21 +134,21 @@ class MeasureUnitController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Measure Unit not found!'
             ], 404);
 
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Measure Unit.'
             ], 500);
 
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Measure Unit.'
@@ -249,24 +161,7 @@ class MeasureUnitController extends Controller
     public function activeUnitList(Request $request): JsonResponse
     {
         try {
-            $units = MeasureUnit::where('company_id', $request->company_id)
-                ->where('is_active', 1)
-                ->whereNull('deleted_at')
-                ->get(['id', 'name', 'symbol', 'quantity']); 
-
-            if ($units->isEmpty()) {
-                return response()->json([
-                    "message" => "No active measure units found !!"
-                ], 404);
-            }
-
-            // Map response to keep it clean
-            $units = $units->map(fn($unit) => [
-                'id' => $unit->id,
-                'name' => $unit->name,
-                'symbol' => $unit->symbol,
-                'quantity' => $unit->quantity,
-            ])->values()->toArray();
+            $units = $this->repository->activeMeasureUnitList();
 
             return response()->json([
                 "message" => "Active measure units received !!",
@@ -274,10 +169,10 @@ class MeasureUnitController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-           
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }

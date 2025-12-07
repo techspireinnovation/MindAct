@@ -20,15 +20,12 @@ class Store extends BaseTenantModel
         'is_active',
         'is_primary',
         'deleted_at',
-        'company_id',
+        
     ];
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
 
     public function purchases()
     {

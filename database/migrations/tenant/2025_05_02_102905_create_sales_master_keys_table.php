@@ -13,7 +13,7 @@ return new class extends Migration
     {
        Schema::connection('tenant')->create('sales_master_keys', function (Blueprint $table) {
             $table->id();
-           $table->unsignedBigInteger('company_id')->nullable();
+         
             $table->boolean('salesman')->default(false);
             $table->boolean('credit_days')->default(false);
             $table->boolean('balance')->default(false);

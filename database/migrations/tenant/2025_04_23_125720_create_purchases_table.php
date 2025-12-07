@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('purchases', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+           
             $table->foreignID('customer_id')->constrained('customers');
             $table->string('customer_name')->nullable();
             $table->string('pan_number')->nulllable();

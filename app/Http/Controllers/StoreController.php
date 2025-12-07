@@ -1,7 +1,10 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Interfaces\StoreRepositoryInterface;
 use App\Models\Store;
+use App\Http\Requests\StoreRequest\StoreRequest;
+use App\Http\Requests\StoreRequest\UpdateRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
@@ -10,14 +13,21 @@ use Illuminate\Validation\Rule;
 
 class StoreController extends Controller
 {
+
+    protected $repository;
+
+    public function __construct(StoreRepositoryInterface $repository)
+    {
+
+        $this->repository = $repository;
+
+    }
     public function index(Request $request): JsonResponse
     {
-        $query = Store::query();
+        $filters = $request->only('keywords');
 
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
-        return response()->json($query->paginate(50));
+        $items = $this->repository->list($filters);
+        return response()->json($items, 200);
     }
 
 
@@ -27,26 +37,22 @@ class StoreController extends Controller
     {
         try {
 
-            $stores = Store::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->where('is_active', 1)
-                ->get(['id', 'name'])
-                ->map(fn($store) => ['id' => $store->id, 'name' => $store->name])
-                ->values()
-                ->toArray();
+            $stores = $this->repository->storeList();
+
+
             return response()->json([
                 "message" => "Store List Received !!",
                 "data" => $stores
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(["error" => "Store not Found !!"], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -56,16 +62,8 @@ class StoreController extends Controller
     {
         try {
 
-            $companyId = $request->company_id;
-            if (!$companyId) {
-                return response()->json(["error" => "No Company Logged In !!"], 404);
-            }
-
             $store = $request->store_name;
-            $storeDetails = Store::where('company_id', $request->company_id)
-                ->where('name', $store)
-                ->whereNull('deleted_at')
-                ->firstorFail();
+            $storeDetails = $this->storeDetails($store);
             return response()->json([
                 "message" => "Store Details Received !!",
                 "data" => $storeDetails
@@ -80,42 +78,13 @@ class StoreController extends Controller
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $item = Store::findOrFail($id);
 
-            $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('stores')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $item->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'is_active' => 'sometimes|boolean|required',
-                'quantity' => 'integer',
-                'is_primary' => 'boolean',
-                'symbol' => 'string|max:255',
-                'company_id' => 'integer'
-            ]);
+            $data = $request->validated();
 
-            // Use the existing company_id if not in request
-            $companyId = $validated['company_id'] ?? $item->company_id;
-
-            // If the request says this store should be primary, make others non-primary
-            if (isset($validated['is_primary']) && $validated['is_primary']) {
-                Store::where('company_id', $companyId)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            $item->update($validated);
+            $item = $this->repository->update($id, $data);
 
             return response()->json($item);
 
@@ -127,40 +96,19 @@ class StoreController extends Controller
     }
 
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('stores')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id)
-                        ->whereNull('deleted_at');
+        $data = $request->validated();
+        $item = $this->repository->create($data);
 
-                }),
-            ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'string|max:255',
-            'company_id' => 'integer'
-        ]);
 
-        if (!empty($validated['is_primary'])) {
-            Store::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
-        }
-
-        $item = Store::create($validated);
         return response()->json($item, 201);
     }
 
     public function show($id): JsonResponse
     {
         try {
-            $item = Store::findOrFail($id);
+            $item = $this->repository->show($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -174,27 +122,9 @@ class StoreController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $store = Store::findOrFail($id);
 
-            $usedIn = [];
+            $this->repository->delete($id);
 
-            if ($store->purchases()->exists()) {
-                $usedIn[] = 'purchases';
-            }
-
-            if ($store->sales()->exists()) {
-                $usedIn[] = 'sales';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'in_use',
-                    'message' => 'Store cannot be deleted because it is used in: ' . implode(', ', $usedIn),
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $store->delete();
 
             return response()->json([
                 'success' => true,
@@ -202,21 +132,21 @@ class StoreController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'true',
                 'message' => 'Store not found!'
             ], 404);
 
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Store.'
             ], 500);
 
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Store.'
@@ -228,24 +158,7 @@ class StoreController extends Controller
     public function activeStores(Request $request): JsonResponse
     {
         try {
-            $stores = Store::where('company_id', $request->company_id) // filter by company
-                ->where('is_active', 1) // only active
-                ->whereNull('deleted_at') // ignore deleted
-                ->get(['id', 'name', 'is_primary']); // ✅ include is_primary
-
-            if ($stores->isEmpty()) {
-                return response()->json([
-                    'message' => 'No active stores found',
-                    'data' => []
-                ], 200);
-            }
-
-            // Map to keep response clean
-            $stores = $stores->map(fn($store) => [
-                'id' => $store->id,
-                'name' => $store->name,
-                'is_primary' => $store->is_primary
-            ])->values()->toArray();
+            $stores = $this->repository->activeStoreList();
 
             return response()->json([
                 'message' => 'Active stores retrieved successfully',
@@ -253,7 +166,7 @@ class StoreController extends Controller
             ], 200);
 
         } catch (\Exception $e) {
-          
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

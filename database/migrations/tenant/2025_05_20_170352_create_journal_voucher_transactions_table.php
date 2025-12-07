@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('journal_voucher_transactions', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+           
             $table->foreignID('journal_voucher_id')->constrained('journal_vouchers')->nullable();
             $table->foreignID('main_group_id')->constrained('main_groups')->nullable();
             $table->foreignID('account_group_id')->constrained('account_groups')->nullable();

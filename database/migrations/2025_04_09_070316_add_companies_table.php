@@ -32,6 +32,7 @@ return new class extends Migration {
             $table->string('agreement_holder_name')->nullable();
             $table->string('phone')->nullable();
             $table->string('position')->nullable();
+            $table->boolean('is_vatable')->default(0)->nullable();
             $table->string('license_number')->nullable();
             $table->string('activation_key')->nullable();
             $table->string('url_link')->nullable();

@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::connection('tenant')->create('suppliers', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->string('email')->nullable();
             $table->string('mobile')->nullable();
             $table->text('address')->nullable();

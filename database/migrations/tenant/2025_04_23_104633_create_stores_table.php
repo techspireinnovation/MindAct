@@ -13,7 +13,7 @@ return new class extends Migration {
         Schema::connection('tenant')->create('stores', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->boolean('is_active')->default(true);
             $table->softDeletes();
             $table->timestamps();

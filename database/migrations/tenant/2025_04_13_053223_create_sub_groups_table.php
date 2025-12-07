@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::connection('tenant')->create('sub_groups', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->string('name');
             $table->string('main_group_id')->constrained('main_groups');
             $table->string('code')->nullable();

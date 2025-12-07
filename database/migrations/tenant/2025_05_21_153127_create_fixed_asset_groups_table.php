@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('fixed_asset_groups', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->foreignID('account_group_id')->constrained('account_groups')->nullable();
             $table->text('name');
             $table->text('code')->nullable();

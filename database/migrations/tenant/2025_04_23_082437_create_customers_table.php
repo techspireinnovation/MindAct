@@ -12,11 +12,12 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('customers', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->string('party_name');
             $table->string('billing_address')->nullable();
             $table->string('opening_balance')->nullable();
             $table->string('district')->nullable();
+            $table->string('vdc_municipality')->nullable();
             $table->text('pan_number')->nullable();
             $table->enum('ledger_type', ['customer', 'vendor', 'both']);
             $table->text('address')->nullable();
@@ -30,6 +31,7 @@ return new class extends Migration {
             $table->string('area')->nullable();
             $table->string('bank_name')->nullable();
             $table->string('bank_account_number')->nullable();
+
             $table->boolean('is_active')->default(true);
             $table->SoftDeletes();
             $table->timestamps();

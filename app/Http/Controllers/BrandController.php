@@ -1,7 +1,11 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Interfaces\BrandRepositoryInterface;
+use App\Http\Requests\BrandRequest\StoreRequest;
+use App\Http\Requests\BrandRequest\UpdateRequest;
 use App\Models\Brand;
+use App\Repositories\BrandRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use Sagautam5\LocalStateNepal\Entities\Province;
@@ -15,15 +19,21 @@ use Illuminate\Http\Request;
 
 class BrandController extends Controller
 {
+
+    protected $repository;
+
+    public function __construct(BrandRepositoryInterface $repository)
+    {
+
+        $this->repository = $repository;
+
+    }
     public function index(Request $request): JsonResponse
     {
-        $query = Brand::query();
-
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
-
-        return response()->json($query->paginate(50));
+        $filters = $request->only('keywords');
+        $brands = $this->repository->list($filters);
+      
+        return response()->json($brands);
     }
 
 
@@ -31,26 +41,21 @@ class BrandController extends Controller
     {
         try {
 
-            $brands = Brand::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->where('is_active', 1)
-                ->get(['id', 'name'])
-                ->map(fn($brand) => ['id' => $brand->id, 'name' => $brand->name])
-                ->values()
-                ->toArray();
+            $brands = $this->repository->brandList();
+
             return response()->json([
                 "message" => "Brand List Received !!",
                 "data" => $brands
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(["error" => "Brand not Found !!"], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -60,16 +65,10 @@ class BrandController extends Controller
     {
         try {
 
-            $companyId = $request->company_id;
-            if (!$companyId) {
-                return response()->json(["error" => "No Company Logged In !!"], 404);
-            }
 
-            $brand = $request->brand_name;
-            $brandDetails = Brand::where('company_id', $request->company_id)
-                ->where('name', $brand)
-                ->whereNull('deleted_at')
-                ->firstorFail();
+
+            $brandName = $request->brand_name;
+            $brandDetails = $this->repository->brandDetails($brandName);
             return response()->json([
                 "message" => "Sub Category Details Received !!",
                 "data" => $brandDetails
@@ -93,107 +92,42 @@ class BrandController extends Controller
 
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $item = Brand::findOrFail($id);
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('brands')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $item->company_id))
+            $validated = $request->validated();
+            $item = $this->repository->update($id,$validated);
 
-                                ->whereNull('deleted_at');
-
-                        }),
-                ],
-                'is_active' => 'sometimes|boolean|required',
-                'is_primary' => 'sometimes|boolean',
-                'quantity' => 'integer',
-                'symbol' => 'string|max:255',
-                'company_id' => 'required|integer'
-            ]);
-            if ($validator->fails()) {
-                return response()->json($validator->errors(), 422);
-            }
-            $validated = $validator->validated();
-
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                Brand::where('company_id', $item->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-            // Explicit boolean handling (optional, since validation ensures boolean)
-            if ($request->has('is_active')) {
-                $validated['is_active'] = (bool) $request->input('is_active');
-            }
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-
-
-            $item->update($validated);
-            $item->refresh();
-
-
-            return response()->json($item);
+            return response()->json($item,200);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('brands')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id)
 
-                        ->whereNull('deleted_at');
+        $validated = $request->validated();
 
-                }),
-            ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'string|max:255',
-            'company_id' => 'required|integer'
-        ]);
 
-        if (!empty($validated['is_primary'])) {
-            Brand::where('company_id', $validated['company_id'])
-                ->where('is_primary', true)
-                ->update(['is_primary' => false]);
-        }
 
-        $validated['is_primary'] = $validated['is_primary'] ?? false;
-        $validated['is_active'] = $validated['is_active'] ?? true;
 
-        $item = Brand::create($validated);
+        $item = $this->repository->create($validated);
         return response()->json($item, 201);
     }
 
     public function show($id): JsonResponse
     {
         try {
-            $item = Brand::findOrFail($id);
+            $item = $this->repository->show($id);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
@@ -205,43 +139,27 @@ class BrandController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $brand = Brand::findOrFail($id);
-
-            $usedIn = [];
-
-            if ($brand->products()->exists()) {
-                $usedIn[] = 'products';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'in_use',
-                    'message' => 'Brand cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $brand->delete();
+            $this->repository->delete($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Brand deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'true',
                 'message' => 'Brand not found!'
             ], 404);
         } catch (QueryException $e) {
-            \Log::error($e->getMessage()); // log exact SQL error
+            \Log::error($e->getMessage());
             return response()->json([
                 'error' => 'query_error',
-                'message' => $e->getMessage() // for debugging only
+                'message' => $e->getMessage()
             ], 500);
 
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the brand.'
@@ -252,17 +170,7 @@ class BrandController extends Controller
     public function activeBrandList(Request $request): JsonResponse
     {
         try {
-            $brands = Brand::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->where('is_active', true) 
-                ->get(['id', 'name', 'is_primary']) 
-                ->map(fn($brand) => [
-                    'id' => $brand->id,
-                    'name' => $brand->name,
-                    'is_primary' => $brand->is_primary, 
-                ])
-                ->values()
-                ->toArray();
+            $brands = $this->repository->activeBrandList();
 
             return response()->json([
                 "message" => "Active Brand List Received !!",

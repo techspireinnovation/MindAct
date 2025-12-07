@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('payment_vouchers', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+           
             $table->date('date_ad')->nullable();
             $table->date('date_bs')->nullable();
             $table->string('payment_voucher_number')->nullable();

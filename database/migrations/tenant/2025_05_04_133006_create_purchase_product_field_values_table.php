@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::connection('tenant')->create('purchase_product_field_values', function (Blueprint $table) {
             $table->id();
             
-            $table->unsignedBigInteger('company_id')->nullable();
+            
             $table->foreignId('product_field_id')->constrained('product_fields');
             $table->unsignedInteger('quantity_index')->nullable();
             $table->foreignId('product_id')->constrained('products');

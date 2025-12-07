@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->foreignID('product_id')->constrained('products');
             $table->text('product_code')->nullable();
             $table->string('product_name')->nullable();
-            $table->unsignedBigInteger('company_id')->nullable();
+            
 
             $table->foreignID('uom')->constrained('measure_units');
             $table->longText('batch_no')->nullable();

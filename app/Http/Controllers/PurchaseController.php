@@ -165,7 +165,7 @@ class PurchaseController extends Controller
     {
         $maxIndex = PurchaseProductFieldValue::where('purchase_product_id', $purchaseProductId)
             ->where('product_field_id', $productFieldId)
-             ->whereNull('deleted_at')
+            ->whereNull('deleted_at')
             ->max('quantity_index');
 
         return $maxIndex !== null ? $maxIndex + 1 : 0;
@@ -519,11 +519,6 @@ class PurchaseController extends Controller
             return response()->json(['error' => 'Something went wrong'], 500);
         }
     }
-
-
-
-
-
 
 
 

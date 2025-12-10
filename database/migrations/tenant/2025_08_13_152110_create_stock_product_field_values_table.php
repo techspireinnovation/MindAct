@@ -20,8 +20,7 @@ return new class extends Migration {
             $table->foreignId('stock_product_id')->constrained('stock_entries');
             $table->string('value');
 
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
 
         });
     }

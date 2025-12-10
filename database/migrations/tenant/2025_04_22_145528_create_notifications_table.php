@@ -10,14 +10,14 @@ return new class extends Migration {
      */
     public function up(): void
     {
-       Schema::connection('tenant')->create('notifications', function (Blueprint $table) {
+        Schema::connection('tenant')->create('notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('personal_access_tokens')->onDelete('cascade');
             $table->string('type', length: 20);
             $table->text('data');
             $table->timestamp('read_at')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->auditFields();
+
         });
     }
 

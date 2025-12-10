@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('shrinking_working_losses', function (Blueprint $table) {
             $table->id();
-           
+
             $table->date('date_from')->nullable();
             $table->date('date_to')->nullable();
             $table->foreignId('product_id')->constrained('products')->nullable();
@@ -23,8 +23,8 @@ return new class extends Migration {
             $table->json('product_details')->nullable();
             $table->double('total_purchase_quantity')->nullable();
             $table->double('total_loss_quantity')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

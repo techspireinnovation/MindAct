@@ -12,16 +12,14 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('sales_product_field_values', function (Blueprint $table) {
             $table->id();
-            
+
             $table->foreignId('product_field_id')->constrained('product_fields');
             $table->unsignedInteger('quantity_index')->nullable();
             $table->foreignId('product_id')->constrained('products');
             $table->foreignId('sale_product_id')->constrained('sale_products');
             $table->string('value');
 
-            $table->softDeletes();
-
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

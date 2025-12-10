@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('projects', function (Blueprint $table) {
             $table->id();
-           
+
             $table->text('name');
             $table->string('contact_details')->nullable();
             $table->date('starting_date')->nullable();
@@ -22,8 +22,8 @@ return new class extends Migration {
             $table->string('contact_number')->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->SoftDeletes();
+
+            $table->auditFields();
         });
     }
 

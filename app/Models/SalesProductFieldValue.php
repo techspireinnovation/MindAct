@@ -36,17 +36,7 @@ class SalesProductFieldValue extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-        static::creating(function ($model) {
-            // Only set if not already set
-            if (empty($model->company_id)) {
-                $headerValue = Request::input('company_id');
-                $model->company_id = $headerValue;
-            }
-        });
-    }
+   
 
     public function productField()
     {

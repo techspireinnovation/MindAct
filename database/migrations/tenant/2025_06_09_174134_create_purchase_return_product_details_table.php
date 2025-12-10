@@ -19,8 +19,7 @@ return new class extends Migration {
 
             $table->unsignedBigInteger('product_id')->nullable();
 
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

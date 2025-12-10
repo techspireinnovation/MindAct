@@ -13,11 +13,11 @@ return new class extends Migration {
         Schema::connection('tenant')->create('branches', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            
+
             $table->boolean('is_active')->default(true);
             $table->boolean('is_primary')->default(false);
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
+
         });
     }
 
@@ -26,6 +26,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('branches');
+        Schema::connection('tenant')->dropIfExists('branches');
     }
 };

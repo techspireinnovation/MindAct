@@ -20,8 +20,8 @@ return new class extends Migration {
             $table->string('due_sale_litre')->nullable();
             $table->string('type_of_fuel')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

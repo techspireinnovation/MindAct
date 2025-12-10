@@ -21,7 +21,7 @@ return new class extends Migration {
       $table->unsignedBigInteger('purchase_product_id')->nullable();
 
       $table->unsignedBigInteger('product_id');
-      $table->unsignedBigInteger('customer_id')->nullable();
+      $table->unsignedBigInteger(column: 'party_id')->nullable();
       $table->unsignedBigInteger('company_id')->nullable();
       $table->unsignedBigInteger('branch_id')->nullable();
       $table->string('product_name', 255);
@@ -36,8 +36,8 @@ return new class extends Migration {
       $table->double('amount')->nullable();
       $table->boolean('is_vatable')->nullable();
       $table->unsignedBigInteger('measure_unit_id');
-      $table->softDeletes();
-      $table->timestamps();
+
+      $table->auditFields();
 
     });
   }

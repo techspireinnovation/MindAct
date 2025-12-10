@@ -36,8 +36,7 @@ return new class extends Migration {
             $table->double('amount')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

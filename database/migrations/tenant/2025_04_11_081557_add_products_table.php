@@ -17,21 +17,21 @@ return new class extends Migration {
             $table->string('sku')->unique();
 
             $table->text('note')->nullable();
-        
-            
+
+
             $table->unsignedBigInteger('category_id')->nullable();
-          
+
             $table->unsignedBigInteger('brand_id')->nullable();
             $table->unsignedBigInteger('measure_unit_id')->nullable();
-          
+
             $table->boolean('is_vatable')->default(0);
             $table->unsignedBigInteger('product_type_id')->nullable();
-            $table->unsignedBigInteger('location_id')->nullable();
-            
-           
+
+
+
             $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->softDeletes();
+            $table->auditFields();
+
 
         });
     }

@@ -12,8 +12,8 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('purchase_products', function (Blueprint $table) {
             $table->id();
-            $table->foreignID('customer_id')->constrained('customers');
-           
+            $table->unsignedBigInteger('party_id')->nullable();
+
             $table->foreignID(column: 'purchase_id')->constrained('purchases');
             $table->foreignID(column: 'product_id')->constrained('products');
             $table->text('product_code')->constrained('products');
@@ -27,8 +27,7 @@ return new class extends Migration {
             $table->double('amount')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 
@@ -37,6 +36,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('purchase_products');
+        Schema::connection('tenant')->dropIfExists('purchase_products');
     }
 };

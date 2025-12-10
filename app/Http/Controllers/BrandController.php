@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Http\Resources\BrandCollection;
+use App\Http\Resources\BrandResource;
 use App\Interfaces\BrandRepositoryInterface;
 use App\Http\Requests\BrandRequest\StoreRequest;
 use App\Http\Requests\BrandRequest\UpdateRequest;
@@ -28,52 +30,31 @@ class BrandController extends Controller
         $this->repository = $repository;
 
     }
-    public function index(Request $request): JsonResponse
-    {
-        $filters = $request->only('keywords');
-        $brands = $this->repository->list($filters);
-      
-        return response()->json($brands);
-    }
-
-
-    public function brandList(Request $request)
+    public function index(Request $request)
     {
         try {
+            $filters = $request->only('keywords');
+            $brands = $this->repository->list($filters);
 
-            $brands = $this->repository->brandList();
 
-            return response()->json([
-                "message" => "Brand List Received !!",
-                "data" => $brands
-            ]);
+            return new BrandCollection($brands);
 
-        } catch (ModelNotFoundException $e) {
-
-            return response()->json(["error" => "Brand not Found !!"], 404);
-        } catch (QueryException $e) {
-
-            return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+            return response()->json([
+                'error' => 'An unexpected error occurred !!'
+            ], 500);
         }
     }
+
 
 
     public function brandDetails(Request $request)
     {
         try {
 
-
-
             $brandName = $request->brand_name;
             $brandDetails = $this->repository->brandDetails($brandName);
-            return response()->json([
-                "message" => "Sub Category Details Received !!",
-                "data" => $brandDetails
-            ], 200);
-
+            return new BrandResource($brandDetails);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Brand not Found !!"], 404);
@@ -96,9 +77,9 @@ class BrandController extends Controller
     {
         try {
             $validated = $request->validated();
-            $item = $this->repository->update($id,$validated);
+            $item = $this->repository->update($id, $validated);
 
-            return response()->json($item,200);
+            return response()->json($item, 200);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(['error' => 'Item not found'], 404);
@@ -124,11 +105,11 @@ class BrandController extends Controller
         return response()->json($item, 201);
     }
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return response()->json($item);
+            return new BrandResource($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
@@ -167,24 +148,25 @@ class BrandController extends Controller
         }
     }
 
-    public function activeBrandList(Request $request): JsonResponse
+    public function activeBrandList(Request $request)
     {
         try {
             $brands = $this->repository->activeBrandList();
+            return BrandResource::collection($brands)
+                ->map(fn($resource) => [
+                    'id' => $resource->id,
+                    'name' => $resource->name,
+                ]);
 
-            return response()->json([
-                "message" => "Active Brand List Received !!",
-                "data" => $brands
-            ], 200);
 
         } catch (ModelNotFoundException $e) {
-            Log::error($e);
-            return response()->json(["error" => "Brand not Found !!"], 404);
+
+            return response()->json(["error" => "Brand not Found !"], 404);
         } catch (QueryException $e) {
-            Log::error($e);
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            Log::error($e);
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }

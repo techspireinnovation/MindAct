@@ -11,7 +11,7 @@ return new class extends Migration {
     public function up(): void
     {
         Schema::table('sales_returns', function (Blueprint $table) {
-            $table->string('purchase_type')->nullable()->after('customer_id');
+            $table->string('purchase_type')->nullable()->after('party_id');
         });
     }
 

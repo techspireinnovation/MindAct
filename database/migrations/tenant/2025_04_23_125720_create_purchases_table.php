@@ -12,8 +12,8 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('purchases', function (Blueprint $table) {
             $table->id();
-           
-            $table->foreignID('customer_id')->constrained('customers');
+
+            $table->unsignedBigInteger('party_id')->nullable();
             $table->string('customer_name')->nullable();
             $table->string('pan_number')->nulllable();
             $table->double('balance')->nullable();
@@ -27,11 +27,11 @@ return new class extends Migration {
             $table->string('remarks')->nullable();
             $table->foreignID('store_id')->constrained('stores');
             $table->foreignID('location_id')->constrained('locations');
-            $table->enum('discount_type',['percent','amount'])->nullable();
+            $table->enum('discount_type', ['percent', 'amount'])->nullable();
             $table->double('discount_value')->nullable();
             $table->double('sub_total_before_discount')->nullable();
-             $table->double('taxable_amount')->nullable();
-            $table->double('non_taxable_amount')->nullable(); 
+            $table->double('taxable_amount')->nullable();
+            $table->double('non_taxable_amount')->nullable();
             $table->double('excise_duty')->nullable();
             $table->double('health_insurance')->nullable();
             $table->double('freight_amount')->nullable();
@@ -39,8 +39,8 @@ return new class extends Migration {
             $table->double('roundoff_amount')->nullable();
             $table->double('total_amount')->nullable();
             $table->json('payment')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->auditFields();
+
         });
     }
 
@@ -49,6 +49,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('purchases');
+        Schema::connection('tenant')->dropIfExists('purchases');
     }
 };

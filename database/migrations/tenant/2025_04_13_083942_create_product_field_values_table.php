@@ -10,14 +10,14 @@ return new class extends Migration {
      */
     public function up(): void
     {
-       Schema::connection('tenant')->create('product_field_values', function (Blueprint $table) {
+        Schema::connection('tenant')->create('product_field_values', function (Blueprint $table) {
             $table->id();
-            
+
             $table->foreignID('product_field_id')->constrained('product_fields');
             $table->foreignID('product_id')->constrained('products');
             $table->string('value');
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
+
         });
     }
 

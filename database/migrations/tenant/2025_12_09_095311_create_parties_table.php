@@ -10,16 +10,15 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::connection('tenant')->create('customers', function (Blueprint $table) {
+        Schema::create('parties', function (Blueprint $table) {
             $table->id();
-
-            $table->string('party_name');
+            $table->string('name');
             $table->string('billing_address')->nullable();
             $table->string('opening_balance')->nullable();
             $table->string('district')->nullable();
             $table->string('vdc_municipality')->nullable();
             $table->text('pan_number')->nullable();
-            $table->enum('ledger_type', ['customer', 'vendor', 'both']);
+            $table->tinyInteger('type')->default(1)->comment('1 = Customer, 2 = Supplier, 3 = Both');
             $table->text('address')->nullable();
             $table->string('phone');
             $table->string('email')->nullable();
@@ -29,12 +28,12 @@ return new class extends Migration {
             $table->string('state')->nullable();
             $table->string('city')->nullable();
             $table->string('area')->nullable();
-            $table->string('bank_name')->nullable();
+            $table->unsignedBigInteger('bank_id')->nullable();
             $table->string('bank_account_number')->nullable();
 
             $table->boolean('is_active')->default(true);
-            $table->SoftDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 
@@ -43,14 +42,8 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        // Disable foreign key constraints
-        Schema::connection('tenant')->disableForeignKeyConstraints();
-
-        // Drop the table
-        Schema::connection('tenant')->dropIfExists('customers');
-
-        // Re-enable foreign key constraints
-        Schema::connection('tenant')->enableForeignKeyConstraints();
-
+        Schema::dropIfExists('parties');
     }
 };
+
+

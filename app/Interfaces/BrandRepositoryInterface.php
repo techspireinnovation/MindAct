@@ -11,7 +11,7 @@ interface BrandRepositoryInterface
 
     public function list(array $filters);
 
-    public function brandList();
+   
 
 
     public function brandDetails($filters);

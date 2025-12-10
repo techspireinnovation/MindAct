@@ -22,17 +22,7 @@ class BrandRepository implements BrandRepositoryInterface
 
     }
 
-    public function brandList()
-    {
-        $brands = Brand::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($brand) => ['id' => $brand->id, 'name' => $brand->name])
-            ->values()
-            ->toArray();
-
-        return $brands;
-    }
+   
 
     public function brandDetails($filters)
     {
@@ -128,15 +118,8 @@ class BrandRepository implements BrandRepositoryInterface
     {
         $brands = Brand::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($brand) => [
-                'id' => $brand->id,
-                'name' => $brand->name,
-                'is_primary' => $brand->is_primary,
-            ])
-            ->values()
-            ->toArray();
-
+            ->get(['id', 'name']);
+           
         return $brands;
 
     }

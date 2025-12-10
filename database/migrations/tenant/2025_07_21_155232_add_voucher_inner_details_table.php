@@ -17,8 +17,7 @@ return new class extends Migration {
             $table->string('particulars')->nullable();
             $table->double('debit')->nullable();
             $table->double('credit')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->auditFields();
         });
     }
 

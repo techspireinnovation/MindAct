@@ -14,7 +14,8 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('company_id')->references('id')->on('companies')->cascadeOnDelete();
             $table->foreignId('user_id')->references('id')->on('users')->cascadeOnDelete();
-            $table->timestamps();
+            $table->auditFields();
+
         });
     }
 

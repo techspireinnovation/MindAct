@@ -17,9 +17,8 @@ return new class extends Migration {
             $table->string('value');
             $table->integer('quantity_index');
             $table->foreignId('product_id')->constrained('products');
-            
-            $table->timestamps();
-            $table->softDeletes();
+
+            $table->auditFields();
         });
     }
 

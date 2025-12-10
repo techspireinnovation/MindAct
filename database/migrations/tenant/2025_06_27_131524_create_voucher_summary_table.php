@@ -24,8 +24,8 @@ return new class extends Migration {
             $table->string('tr_bill_number')->nullable();
             $table->string('cheque_number')->nullable();
             $table->char('type', 50)->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+
+            $table->auditFields();
         });
     }
 

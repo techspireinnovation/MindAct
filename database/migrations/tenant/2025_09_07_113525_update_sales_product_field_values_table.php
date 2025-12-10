@@ -12,7 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::connection('tenant')->table('sales_product_field_values', function (Blueprint $table) {
-            $table->unsignedBigInteger('branch_id')->nullable()->after('company_id');
+            $table->unsignedBigInteger('branch_id')->nullable()->after('id');
       
             $table->unsignedBigInteger('purchase_stock_product_id')->nullable()->after('branch_id');
             $table->unsignedBigInteger('purchase_product_id')->nullable()->after('purchase_stock_product_id');

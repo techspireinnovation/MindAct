@@ -11,7 +11,7 @@ return new class extends Migration {
     public function up(): void
     {
       Schema::connection('tenant')->table('purchases', function (Blueprint $table) {
-            $table->unsignedBigInteger('branch_id')->after('company_id');
+            $table->unsignedBigInteger('branch_id')->after('id');
         });
     }
 

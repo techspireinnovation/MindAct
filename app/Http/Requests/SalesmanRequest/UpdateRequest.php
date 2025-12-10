@@ -27,7 +27,7 @@ class UpdateRequest extends FormRequest
         $id = $this->route('salesman');
 
         return [
-            'salesman_id' => [
+            'salesman_code' => [
                 'nullable',
                 'string',
                 'max:255',

@@ -17,7 +17,8 @@ return new class extends Migration {
             $table->double('shrinking_loss_percent')->nullable();
             $table->double('working_loss_percent')->nullable();
             $table->double('internal_loss_percent')->nullable();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

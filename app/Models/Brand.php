@@ -19,7 +19,7 @@ class Brand extends BaseTenantModel
 
     protected $fillable = [
         'name',
-        'company_id',
+        
         'is_primary',
         'is_active',
     ];

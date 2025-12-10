@@ -22,7 +22,7 @@ return new class extends Migration {
             $table->string('actual_stock')->nullable()->change();
 
             // Add missing fields
-            $table->foreignId('branch_id')->nullable()->after('company_id');
+            $table->foreignId('branch_id')->nullable()->after('id');
             $table->foreignId('purchase_stock_product_id')->nullable()->after('stock_reconciliation_id');
             $table->string('mfd')->nullable()->after('purchase_stock_product_id');
             $table->foreignId('purchase_product_id')->nullable()->after('mfd');

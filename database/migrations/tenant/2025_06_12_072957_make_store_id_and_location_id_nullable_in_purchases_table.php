@@ -57,17 +57,11 @@ return new class extends Migration {
                 ->whereNull('location_id')
                 ->update(['location_id' => $defaultLocationId]);
 
-            // Alternative: Delete rows with NULL values (uncomment if preferred)
-            // DB::table('purchases')
-            //     ->whereNull('store_id')
-            //     ->orWhereNull('location_id')
-            //     ->delete();
-
-            // Revert columns to NOT NULL
+           
             $table->unsignedBigInteger('store_id')->nullable(false)->change();
             $table->unsignedBigInteger('location_id')->nullable(false)->change();
 
-            // Re-add foreign key constraints
+           
             $table->foreign('store_id')->references('id')->on('stores');
             $table->foreign('location_id')->references('id')->on('locations');
         });

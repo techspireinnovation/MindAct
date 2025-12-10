@@ -47,10 +47,7 @@ class SaleProduct extends BaseTenantModel
     ];
     protected $dates = ['deleted_at'];
     protected $appends = ['created_at_bs'];
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
     public function sale()
     {
         return $this->belongsTo(Sale::class);

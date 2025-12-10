@@ -79,7 +79,13 @@ class RollbackTenants extends Command
                     $options['--step'] = $this->option('step');
                 }
 
+                DB::connection('tenant')->statement('SET FOREIGN_KEY_CHECKS=0;');
+
+
                 Artisan::call('migrate:rollback', $options);
+
+                DB::connection('tenant')->statement('SET FOREIGN_KEY_CHECKS=1;');
+
 
                 $this->info(Artisan::output());
 

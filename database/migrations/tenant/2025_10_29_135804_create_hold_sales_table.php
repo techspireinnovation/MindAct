@@ -14,8 +14,8 @@ return new class extends Migration {
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('branch_id')->nullable();
-            
-            $table->unsignedBigInteger('customer_id')->nullable();
+
+            $table->unsignedBigInteger(column: 'party_id')->nullable();
 
             $table->string('customer_name')->nullable();
             $table->string('customer_address')->nullable();
@@ -39,7 +39,7 @@ return new class extends Migration {
             $table->string('remarks')->nullable();
             $table->unsignedBigInteger('store_id');
             $table->foreignID('location_id')->constrained('locations')->nullable();
-           
+
             $table->double('sub_total_before_discount')->nullable();
             $table->double('discount')->nullable();
             $table->double('non_taxable_amount')->nullable();
@@ -60,9 +60,7 @@ return new class extends Migration {
             $table->boolean('abvt')->default(true);
             $table->boolean('is_whatsapp_notify')->default(false);
 
-            $table->softDeletes();
-
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

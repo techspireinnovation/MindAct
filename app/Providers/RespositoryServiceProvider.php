@@ -4,7 +4,7 @@ namespace App\Providers;
 
 
 
-use App\Models\ProductCategory; 
+use App\Models\ProductCategory;
 use Illuminate\Support\ServiceProvider;
 
 use App\Interfaces\ProductCategoryRepositoryInterface;
@@ -33,6 +33,17 @@ use App\Repositories\LocationRepository;
 
 use App\Interfaces\MeasureUnitRepositoryInterface;
 use App\Repositories\MeasureUnitRepository;
+
+
+use App\Interfaces\ProductRepositoryInterface;
+use App\Repositories\ProductRepository;
+
+use App\Interfaces\PartyRepositoryInterface;
+use App\Repositories\PartyRepository;
+
+
+use App\Interfaces\MeasureUnitConversionRepositoryInterface;
+use App\Repositories\MeasureUnitConversionRepository;
 class RespositoryServiceProvider extends ServiceProvider
 {
     /**
@@ -49,6 +60,9 @@ class RespositoryServiceProvider extends ServiceProvider
         $this->app->bind(StoreRepositoryInterface::class, StoreRepository::class);
         $this->app->bind(LocationRepositoryInterface::class, LocationRepository::class);
         $this->app->bind(MeasureUnitRepositoryInterface::class, MeasureUnitRepository::class);
+        $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
+        $this->app->bind(PartyRepositoryInterface::class, PartyRepository::class);
+        $this->app->bind(MeasureUnitConversionRepositoryInterface::class, MeasureUnitConversionRepository::class);
     }
 
     /**

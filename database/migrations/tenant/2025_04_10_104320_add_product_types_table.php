@@ -12,13 +12,12 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('product_types', function (Blueprint $table) {
             $table->id();
-           
+
             $table->string('name');
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
-            $table->softDeletes();
-            $table->timestamps();
-            // Adds the 'deleted_at' column
+            $table->auditFields();
+
         });
     }
 

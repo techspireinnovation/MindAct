@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('stock_reconciliations', function (Blueprint $table) {
             $table->id();
-           
+
             $table->date('date_ad')->nullable();
             $table->date('date_bs')->nullable();
             $table->text('reconciliation_no')->nullable();
@@ -20,8 +20,8 @@ return new class extends Migration {
             $table->foreignID('branch_id')->constrained('branches');
             $table->json('product_details')->nullable();
             $table->string('remarks')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

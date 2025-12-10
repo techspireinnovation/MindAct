@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('journal_voucher_transactions', function (Blueprint $table) {
             $table->id();
-           
+
             $table->foreignID('journal_voucher_id')->constrained('journal_vouchers')->nullable();
             $table->foreignID('main_group_id')->constrained('main_groups')->nullable();
             $table->foreignID('account_group_id')->constrained('account_groups')->nullable();
@@ -23,8 +23,8 @@ return new class extends Migration {
             $table->string('type')->nullable();
             $table->double('debit')->nullable();
             $table->double('credit')->nullable();
-            $table->timestamps();
-            $table->SoftDeletes();
+
+            $table->auditFields();
         });
     }
 

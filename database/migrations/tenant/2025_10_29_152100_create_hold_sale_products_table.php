@@ -3,8 +3,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     public function up(): void
     {
         Schema::connection('tenant')->create('hold_sale_products', function (Blueprint $table) {
@@ -27,9 +26,8 @@ return new class extends Migration
             $table->double('discount_amount')->nullable();
             $table->boolean('is_vatable')->default(true);
             $table->double('amount')->nullable();
-            $table->softDeletes();
 
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

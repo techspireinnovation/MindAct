@@ -25,15 +25,12 @@ class Branch extends BaseTenantModel
         'is_primary',
         'branch_type',
         'deleted_at',
-        'company_id',
+       
     ];
 
     protected $dates = ['deleted_at'];
 
-    // protected static function booted()
-    // {
-    //     static::addGlobalScope(new CompanyIdScope());
-    // }
+   
 
     public function company()
     {

@@ -12,8 +12,8 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('salesmen', function (Blueprint $table) {
             $table->id();
-            
-            $table->unsignedBigInteger('salesman_id')->nullable();
+
+            $table->unsignedBigInteger('salesman_code')->nullable();
             $table->string('pan_number')->nullable();
             $table->string('name');
             $table->string('address')->nullable();
@@ -28,8 +28,7 @@ return new class extends Migration {
             $table->string('zone')->nullable();
             $table->string('district')->nullable();
             $table->string('vdc/municipality')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 
@@ -38,10 +37,7 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        // Drop foreign keys in dependent tables
-        Schema::connection('tenant')->table('sales_returns', function (Blueprint $table) {
-            $table->dropForeign(['salesman_id']);
-        });
+
 
         Schema::connection('tenant')->dropIfExists('salesmen');
     }

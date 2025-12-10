@@ -327,59 +327,7 @@ public function index(Request $request): JsonResponse
         try {
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required',
-                'party_name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    // Rule::unique('customers')
-
-                    //     ->where(function ($query) use ($request) {
-                    //         return $query->where('company_id', $request->input('company_id', $request->company_id))
-                    //             ->whereNull('deleted_at');
-                    //     }),
-                ],
-                'pan_number' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                    Rule::unique('customers')
-
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'billing_address' => 'nullable|string',
-                'opening_balance' => 'nullable|string|max:255',
-                'district' => 'nullable|string|max:255',
-                'ledger_type' => 'nullable|in:customer,vendor,both',
-                'address' => 'nullable|string',
-                'phone' => 'nullable|digits:10',
-                'email' => [
-                    'nullable',
-                    'email',
-                    'string',
-                    'max:255',
-                    Rule::unique('customers')
-
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-                        }),
-                ],
-                'contact_person' => 'nullable|string|max:255',
-                'contact_person_phone' => 'nullable|string|max:20',
-                'country' => 'nullable|string|max:100',
-                'state' => 'nullable|string|max:100',
-                'city' => 'nullable|string|max:100',
-                'vdc_municipality' => 'nullable|string|max:255',
-                'ward_no' => 'nullable|string|max:255',
-                'area' => 'nullable|string|max:100',
-                'bank_name' => 'nullable|string|max:255',
-                'bank_id' => 'nullable|numeric',
-                'bank_account_number' => 'nullable|string|max:255',
-                'is_active' => 'nullable|boolean',
-            ]);
+                            ]);
 
             if ($validator->fails()) {
                 return response()->json([

@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('fixed_asset_groups', function (Blueprint $table) {
             $table->id();
-            
+
             $table->foreignID('account_group_id')->constrained('account_groups')->nullable();
             $table->text('name');
             $table->text('code')->nullable();
@@ -20,8 +20,8 @@ return new class extends Migration {
             $table->boolean('status')->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->SoftDeletes();
+
+            $table->auditFields();
         });
     }
 

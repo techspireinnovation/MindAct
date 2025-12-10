@@ -38,18 +38,7 @@ class PurchaseProduct extends BaseTenantModel
     protected $dates = ['deleted_at', 'created_at_bs'];
     protected $appends = ['created_at_bs'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-        static::creating(function ($model) {
-            // Only set if not already set
-            if (empty($model->company_id)) {
-                // Get the header value, fallback to 'US'
-                $headerValue = Request::input('company_id');
-                $model->company_id = $headerValue;
-            }
-        });
-    }
+   
 
     public function measureUnit()
     {

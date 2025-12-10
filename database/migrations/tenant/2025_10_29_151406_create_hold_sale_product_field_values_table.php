@@ -15,16 +15,14 @@ return new class extends Migration {
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('branch_id')->nullable();
             $table->foreignId('product_field_id')->constrained('product_fields');
-             $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
+            $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
             $table->unsignedInteger('quantity_index')->nullable();
             $table->string('quantity_type')->nullable();
             $table->foreignId('product_id')->constrained('products');
             $table->unsignedInteger('hold_sale_product_id')->nullable();
             $table->string('value');
 
-            $table->softDeletes();
-
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

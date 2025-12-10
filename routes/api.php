@@ -14,7 +14,7 @@ use App\Http\Controllers\AreaController;
 use App\Http\Controllers\PosStoreController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
-use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\PartyController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GenerateCodeController;
 use App\Http\Controllers\Master\SupplierController;
@@ -36,6 +36,7 @@ use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
 use App\Http\Controllers\Master\BranchController;
 use App\Http\Controllers\MeasureUnitController;
+use App\Http\Controllers\MeasureUnitConversionController;
 use App\Http\Controllers\NepalLocationPackageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentVoucherController;
@@ -124,7 +125,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::apiResource('products', ProductController::class);
     Route::post('products-import-excel', [ProductController::class, 'importExcel']);////
-    
+
 
     Route::get('/shrink-work-loss', [ShrinkWorkLossController::class, 'show']);
     Route::put('/shrink-work-loss', [ShrinkWorkLossController::class, 'update']);
@@ -204,7 +205,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
     Route::get('/customers-active-list', [CustomerController::class, 'activeCustomers']);////
     Route::post('/customers-import-excel', [CustomerController::class, 'importCustomerExcel']);////
-    Route::resource('customers', CustomerController::class);
+    Route::resource('parties', PartyController::class);
     Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
@@ -232,6 +233,9 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('sales-returns', SalesReturnController::class);
     Route::resource('sale-products', SaleProductController::class);
     Route::resource('measure-units', MeasureUnitController::class);
+    Route::resource('measure-unit-conversions', MeasureUnitConversionController::class);
+    Route::get('measure-unit-conversions-active-list', [MeasureUnitConversionController::class, 'activeMeasureUnitConversionList']);
+    Route::resource('measure-unit-conversions', MeasureUnitConversionController::class);
     Route::apiResource('products', ProductController::class);
     Route::post('/products-import', [ProductController::class, 'import'])->name('products.import');
 
@@ -274,7 +278,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('sub-groups-of-main', [MainGroupController::class, 'subGroupOfMainGroup']);
     Route::resource('purchase-returns', PurchaseReturnController::class);
     Route::apiResource('product-sub-categories', ProductSubCategoryController::class);
-    Route::get('brands-active-list', [BrandController::class, 'activeBrandList']);////
+    Route::get('active-brands-list', [BrandController::class, 'activeBrandList'])->name('brands.active');
     Route::apiResource('brands', BrandController::class);
     Route::resource('areas', AreaController::class);
     Route::get('cashes-active-list', [CashController::class, 'activeCashList']);////
@@ -371,9 +375,9 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
     //List and Detailss
     Route::get('change-test', [SaleController::class, 'changeDate']);
-    Route::get('get-all-customers', [CustomerController::class, 'customerList']);
-    Route::get('search-customers', [CustomerController::class, 'searchCustomerList']);
-    Route::get('get-customers-details', [CustomerController::class, 'customerDetails']);
+    Route::get('get-all-parties', [PartyController::class, 'activePartyList']);
+    Route::get('search-parties', [PartyController::class, 'searchPartyList']);
+    Route::get('get-party-details', [PartyController::class, 'partyDetails']);
 
     Route::get('get-area-list', [AreaController::class, 'categoryList']);
     Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
@@ -510,7 +514,7 @@ Route::middleware(['auth:sanctum'])->prefix('company')->group(function () {
     });
 
 
-    
+
 
 
     Route::middleware(['company.access'])->group(function () {

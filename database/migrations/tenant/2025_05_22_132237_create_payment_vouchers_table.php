@@ -17,8 +17,8 @@ return new class extends Migration {
             $table->date('date_bs')->nullable();
             $table->string('payment_voucher_number')->nullable();
             $table->string('reference_number')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+            
+            $table->auditFields();
         });
     }
 

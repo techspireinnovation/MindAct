@@ -16,8 +16,7 @@ return new class extends Migration {
             $table->string('name')->unique();
             $table->boolean('is_active')->default(true);
 
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

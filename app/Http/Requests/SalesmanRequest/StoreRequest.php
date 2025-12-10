@@ -24,7 +24,7 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'salesman_id' => [
+            'salesman_code' => [
                 'nullable',
                 'string',
                 'max:255',

@@ -20,8 +20,8 @@ class CreateTenantsTable extends Migration
             $table->unsignedBigInteger('company_id')->nullable();
             $table->string('database')->unique()->nullable();
             $table->json('data')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
+
 
         });
     }

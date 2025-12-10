@@ -77,20 +77,20 @@ class SetupTenantJob implements ShouldQueue
             // 4️⃣ Insert initial tenant data
             Branch::create([
                 'name' => $this->validated['name'],
-                'company_id' => $this->company->id,
+
                 'branch_type' => 'Main',
                 'is_active' => true,
                 'is_primary' => true,
             ]);
 
-            PurchaseMasterKey::create(['company_id' => $this->company->id]);
-            SalesMasterKey::create(['company_id' => $this->company->id]);
+            PurchaseMasterKey::create(['excise_duty' => 1]);
+            SalesMasterKey::create(['excise_duty' => 1]);
 
             ProductType::insert([
-                ['name' => 'Inventory', 'delete_status' => 0, 'is_primary' => true, 'company_id' => $this->company->id],
-                ['name' => 'Assets', 'delete_status' => 0, 'is_primary' => false, 'company_id' => $this->company->id],
-                ['name' => 'Service', 'delete_status' => 0, 'is_primary' => false, 'company_id' => $this->company->id],
-                ['name' => 'Raw Materials', 'delete_status' => 0, 'is_primary' => false, 'company_id' => $this->company->id],
+                ['name' => 'Inventory', 'delete_status' => 0, 'is_primary' => true],
+                ['name' => 'Assets', 'delete_status' => 0, 'is_primary' => false],
+                ['name' => 'Service', 'delete_status' => 0, 'is_primary' => false],
+                ['name' => 'Raw Materials', 'delete_status' => 0, 'is_primary' => false],
             ]);
 
 
@@ -98,10 +98,10 @@ class SetupTenantJob implements ShouldQueue
                 'name' => 'Piece',
                 'symbol' => 'Pcs',
                 'quantity' => 1,
-                'company_id' => $this->company->id,
+               
             ]);
-            MainGroupStub::createMainGroups($this->company->id);
-            Log::info('Chart of accounts seeded', ['company_id' => $this->company->id]);
+            MainGroupStub::createMainGroups();
+            Log::info('Chart of accounts seeded');
 
 
             Role::firstOrCreate([

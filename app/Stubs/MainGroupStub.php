@@ -13,10 +13,10 @@ use App\Models\SubGroup;
 class MainGroupStub
 {
 
-    public static function createMainGroups(int $companyId)
+    public static function createMainGroups()
     {
        
-        Log::info('Starting chart of accounts creation', ['company_id' => $companyId]);
+        Log::info('Starting chart of accounts creation.');
         $chartOfAccounts = [
             'Assets' => [
                 'Non-Current Asset' => [
@@ -410,7 +410,7 @@ class MainGroupStub
             $newMainGroup = MainGroup::firstOrCreate([
                 'name' => $key,
                 'is_active' => true,
-                'company_id' => $companyId,
+                
                 'is_primary' => true,
             ]);
 
@@ -419,7 +419,7 @@ class MainGroupStub
             foreach ($mainGroup as $mainGroupKey1 => $accountGroups) {
                 $subGroup = SubGroup::firstOrCreate([
                     'name' => ucfirst($mainGroupKey1),
-                    'company_id' => $companyId,
+                   
                     'main_group_id' => $newMainGroup->id,
                     'code' => $subGroupCode++,
                     'ranking_for_trial' => $subGroupRanking++,
@@ -433,7 +433,7 @@ class MainGroupStub
                     if (isset($accountGroup['group'])) {
                         $newAccountGroup = AccountGroup::firstOrCreate([
                             'name' => ucfirst($accountGroup['group']),
-                            'company_id' => $companyId,
+                            
                             'main_group_id' => $newMainGroup->id,
                             'sub_group_id' => $subGroup->id,
                             'code' => $accountGroupCode++,
@@ -446,7 +446,7 @@ class MainGroupStub
                         foreach ($accountGroup['heads'] as $accountHead) {
                             AccountHead::firstOrCreate([
                                 'name' => ucfirst($accountHead),
-                                'company_id' => $companyId,
+                              
                                 'account_group_id' => $newAccountGroup->id,
                                 'code' => $accountHeadCode++,
                                 'is_active' => true,
@@ -459,6 +459,6 @@ class MainGroupStub
             }
 
         }
-        Log::info('Chart of accounts seeding completed', ['company_id' => $companyId]);
+        Log::info('Chart of accounts seeding completed.');
     }
 }

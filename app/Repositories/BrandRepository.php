@@ -5,6 +5,7 @@ namespace App\Repositories;
 use App\Models\Brand;
 
 use App\Interfaces\BrandRepositoryInterface;
+use App\Http\Resources\BrandResource;
 
 class BrandRepository implements BrandRepositoryInterface
 {
@@ -117,10 +118,14 @@ class BrandRepository implements BrandRepositoryInterface
     public function activeBrandList()
     {
         $brands = Brand::whereNull('deleted_at')
-            ->where('is_active', true)
-            ->get(['id', 'name']);
-           
-        return $brands;
+        ->where('is_active', true)
+        ->paginate(10);
+    $response = ($brands->count() > 0) ? BrandResource::collection($brands)->map(function($brand) {
+            return collect($brand)->only(['id', 'name']);
+        }) : null;
+
+       //return  $this->paginated($brands, $response);
+        return $response;
 
     }
 

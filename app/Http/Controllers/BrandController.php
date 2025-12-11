@@ -151,12 +151,12 @@ class BrandController extends Controller
     public function activeBrandList(Request $request)
     {
         try {
-            $brands = $this->repository->activeBrandList();
-            return BrandResource::collection($brands)
-                ->map(fn($resource) => [
-                    'id' => $resource->id,
-                    'name' => $resource->name,
-                ]);
+            return $brands = $this->repository->activeBrandList();
+            // return BrandResource::collection($brands)
+            //     ->map(fn($resource) => [
+            //         'id' => $resource->id,
+            //         'name' => $resource->name,
+            //     ]);
 
 
         } catch (ModelNotFoundException $e) {

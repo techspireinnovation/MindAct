@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Master;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\BranchCollection;
+use App\Http\Resources\BranchResource;
 use App\Interfaces\BranchRepositoryInterface;
 use App\Http\Requests\BranchRequest\StoreRequest;
 use App\Http\Requests\BranchRequest\UpdateRequest;
@@ -28,13 +30,18 @@ class BranchController extends Controller
     }
 
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
+        try {
 
-        $filters = $request->only('keywords');
-        $branches = $this->repository->list($filters);
+            $filters = $request->only('keywords');
+            $branches = $this->repository->list($filters);
 
-        return response()->json($branches, 200);
+            return new BranchCollection($branches);
+
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
     }
 
     public function store(StoreRequest $request): JsonResponse
@@ -45,29 +52,6 @@ class BranchController extends Controller
         return response()->json($item, 201);
     }
 
-    public function branchList(Request $request)
-    {
-        try {
-
-            $branches = $this->repository->branchList();
-
-
-            return response()->json([
-                "message" => "Branch List Received !!",
-                "data" => $branches
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-
-            return response()->json(["error" => "Branch not Found !!"], 404);
-        } catch (QueryException $e) {
-
-            return response()->json(["error" => "Database error occurred !!"], 500);
-        } catch (\Exception $e) {
-
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
-        }
-    }
 
 
     public function branchDetails(Request $request)
@@ -77,10 +61,7 @@ class BranchController extends Controller
 
             $branchDetails = $this->repository->branchDetails($branch);
 
-            return response()->json([
-                "message" => "Branch Details Received !!",
-                "data" => $branchDetails
-            ], 200);
+            return new BranchResource($branchDetails);
 
 
         } catch (ModelNotFoundException $e) {
@@ -107,11 +88,11 @@ class BranchController extends Controller
 
 
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return response()->json($item);
+            return new BranchResource($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
@@ -167,14 +148,13 @@ class BranchController extends Controller
     public function activeBranchList(Request $request)
     {
         try {
-            $branches = Branch::where('is_active', 1)
-                ->whereNull('deleted_at')
-                ->get(['id', 'name', 'is_active']);
+            $branches = $this->repository->activeBranchList();
+            return BranchResource::collection($branches)
+                ->map(fn($branch) => [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
+                ]);
 
-            return response()->json([
-                'message' => 'Active Branch List Retrieved Successfully!',
-                'data' => $branches
-            ], 200);
 
         } catch (ModelNotFoundException $e) {
 
@@ -183,6 +163,7 @@ class BranchController extends Controller
 
             return response()->json(['error' => 'Database Error Occurred!'], 500);
         } catch (\Exception $e) {
+           
 
             return response()->json(['error' => 'Unexpected Error Occurred!'], 500);
         }

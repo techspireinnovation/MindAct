@@ -29,8 +29,7 @@ class UpdateRequest extends FormRequest
         return [
             'salesman_code' => [
                 'nullable',
-                'string',
-                'max:255',
+                
                 Rule::unique('salesmen')
                     ->ignore($id)
                     ->whereNull('deleted_at')

@@ -22,17 +22,7 @@ class StoreRepository implements StoreRepositoryInterface
 
     }
 
-    public function storeList()
-    {
-        $stores = Store::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($store) => ['id' => $store->id, 'name' => $store->name])
-            ->values()
-            ->toArray();
 
-        return $stores;
-    }
 
     public function storeDetails($filters)
     {
@@ -137,13 +127,7 @@ class StoreRepository implements StoreRepositoryInterface
 
         }
 
-        // Map to keep response clean
-        $stores = $stores->map(fn($store) => [
-            'id' => $store->id,
-            'name' => $store->name,
-            'is_primary' => $store->is_primary
-        ])->values()->toArray();
-
+       
 
         return $stores;
 

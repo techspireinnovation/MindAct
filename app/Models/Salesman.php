@@ -15,10 +15,10 @@ class Salesman extends BaseTenantModel
     
 
     protected $fillable = [
-        'company_id',
+       
         'email',
         'mobile',
-        'salesman_id',
+        'salesman_code',
         'pan_number',
         'name',
         'address',

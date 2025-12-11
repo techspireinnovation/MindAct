@@ -4,6 +4,10 @@ namespace App\Http\Controllers;
 use App\Interfaces\SalesmanRepositoryInterface;
 use App\Http\Requests\SalesmanRequest\StoreRequest;
 use App\Http\Requests\SalesmanRequest\UpdateRequest;
+
+use App\Http\Resources\SalesmanCollection;
+use App\Http\Resources\SalesmanResource;
+
 use App\Models\Salesman;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -26,14 +30,18 @@ class SalesmanController extends Controller
 
 
 
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        $filters = $request->only('keywords');
+        try {
+            $filters = $request->only('keywords');
 
-        $items = $this->repository->list($filters);
-       
+            $items = $this->repository->list($filters);
 
-        return response()->json($items, 200);
+
+            return new SalesmanCollection($items);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
     }
 
 
@@ -45,10 +53,11 @@ class SalesmanController extends Controller
             $salesmen = $this->repository->activeSalesmanList();
 
 
-            return response()->json([
-                "message" => "Sales men List Received !!",
-                "data" => $salesmen
-            ]);
+            return SalesmanResource::collection($salesmen)
+                ->map(fn($salesman) => [
+                    'id' => $salesman->id,
+                    'name' => $salesman->name,
+                ]);
 
         } catch (ModelNotFoundException $e) {
 
@@ -72,10 +81,7 @@ class SalesmanController extends Controller
             $salesman = $request->salesman_name;
             $salesmanDetails = $this->repository->salesmanDetails($salesman);
 
-            return response()->json([
-                "message" => "Sales man Details Received !!",
-                "data" => $salesmanDetails
-            ], 200);
+            return new SalesmanResource($salesmanDetails);
 
 
         } catch (ModelNotFoundException $e) {
@@ -103,20 +109,21 @@ class SalesmanController extends Controller
             ], 201);
         } catch (QueryException $e) {
 
+
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            dd($e->getMessage());
+
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
 
 
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return response()->json($item);
+            return new SalesmanResource($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {

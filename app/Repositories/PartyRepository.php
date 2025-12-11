@@ -12,20 +12,12 @@ class PartyRepository implements PartyRepositoryInterface
 
     public function list(array $filters, int $perPage = 50)
     {
-        $query = Party::whereNull('deleted_at');
+        $query = Party::query();
 
 
         $parties = $query->paginate($perPage);
 
-        return [
-            'data' => $parties->items(),
-            'pagination' => [
-                'current_page' => $parties->currentPage(),
-                'last_page' => $parties->lastPage(),
-                'per_page' => $parties->perPage(),
-                'total' => $parties->total(),
-            ]
-        ];
+        return $query->paginate(50);
     }
 
 
@@ -124,14 +116,8 @@ class PartyRepository implements PartyRepositoryInterface
     {
         $parties = Party::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name'])
-            ->map(fn($party) => [
-                'id' => $party->id,
-                'name' => $party->name,
-
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name']);
+           
 
         return $parties;
 

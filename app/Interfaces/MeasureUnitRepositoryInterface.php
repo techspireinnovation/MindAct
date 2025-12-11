@@ -11,7 +11,7 @@ interface MeasureUnitRepositoryInterface
 
     public function list(array $filters);
 
-    public function measureUnitList();
+    
 
 
     public function measureUnitDetails($filters);

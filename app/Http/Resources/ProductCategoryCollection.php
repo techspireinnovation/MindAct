@@ -3,11 +3,11 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
-use App\Http\Resources\BranchResource;
+use App\Http\Resources\ProductCategoryResource;
 use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
-class BranchCollection extends ResourceCollection
+class ProductCategoryCollection extends ResourceCollection
 {
     /**
      * Transform the resource collection into an array.
@@ -17,7 +17,7 @@ class BranchCollection extends ResourceCollection
     public function toArray(Request $request): array
     {
         return [
-            'data' => BranchResource::collection($this->collection),
+            'data' => ProductCategoryResource::collection($this->collection),
         ];
     }
 
@@ -48,7 +48,7 @@ class BranchCollection extends ResourceCollection
     public function toResponse($request)
     {
         $response = [
-            'success' => 'Branch List',
+            'success' => 'Product Category List',
             'data' => $this->toArray($request)['data'],
         ];
 

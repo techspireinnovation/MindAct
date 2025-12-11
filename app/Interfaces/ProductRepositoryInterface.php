@@ -12,7 +12,7 @@ interface ProductRepositoryInterface
     public function list(array $filters, int $perPage = 50);
     public function applyFilters($query, array $filters);
 
-    public function productList();
+  
 
 
     public function productDetails($productId = Null, $productName = Null);

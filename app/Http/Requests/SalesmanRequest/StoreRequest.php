@@ -26,8 +26,7 @@ class StoreRequest extends FormRequest
         return [
             'salesman_code' => [
                 'nullable',
-                'string',
-                'max:255',
+                
                 Rule::unique('salesmen')
                     ->whereNull('deleted_at')
 

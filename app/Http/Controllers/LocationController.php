@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 use App\Interfaces\LocationRepositoryInterface;
+use App\Http\Resources\LocationCollection;
+use App\Http\Resources\LocationResource;
 use App\Http\Requests\LocationRequest\StoreRequest;
 use App\Http\Requests\LocationRequest\UpdateRequest;
 use App\Models\Location;
@@ -24,48 +26,27 @@ class LocationController extends Controller
         $this->repository = $repository;
 
     }
-    public function index(Request $request): JsonResponse
-    {
-        $filters = $request->only('keywords');
-
-        $items = $this->repository->list($filters);
-        return response()->json($items, 200);
-    }
-    public function locationList(Request $request)
+    public function index(Request $request)
     {
         try {
+            $filters = $request->only('keywords');
 
-            $locations = $this->repository->locationList();
-            return response()->json([
-                "message" => "Location List Received !!",
-                "data" => $locations
-            ]);
-
-        } catch (ModelNotFoundException $e) {
-
-            return response()->json(["error" => "Location not Found !!"], 404);
-        } catch (QueryException $e) {
-
-            return response()->json(["error" => "Database error occurred !!"], 500);
+            $items = $this->repository->list($filters);
+            return new LocationCollection($items);
         } catch (\Exception $e) {
-
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
     }
+
 
 
     public function locationDetails(Request $request)
     {
         try {
 
-
-
             $location = $request->location_name;
             $locationDetails = $this->repository->locationDetails($location);
-            return response()->json([
-                "message" => "Location Details Received !!",
-                "data" => $locationDetails
-            ], 200);
+            return new LocationResource($locationDetails);
 
 
         } catch (ModelNotFoundException $e) {
@@ -117,11 +98,11 @@ class LocationController extends Controller
         }
     }
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return response()->json($item);
+            return new LocationResource($item);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(['error' => 'Location not found!!'], 404);
@@ -165,17 +146,19 @@ class LocationController extends Controller
 
 
 
-    public function activeLocations(Request $request): JsonResponse
+    public function activeLocationList(Request $request)
     {
         try {
             $locations = $this->repository->activeLocationList();
 
-            return response()->json([
-                'message' => 'Active locations retrieved successfully',
-                'data' => $locations
-            ], 200);
+            return LocationResource::collection($locations)
+                ->map(fn($location) => [
+                    'id' => $location->id,
+                    'name' => $location->name,
+                ]);
 
         } catch (\Exception $e) {
+          
 
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }

@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class BranchResource extends JsonResource
+class MeasureUnitConversionResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -17,10 +17,10 @@ class BranchResource extends JsonResource
         
         return [
             'id' => $this->id,
-            'name' => $this->name,
+            'product_id' => $this->product_id,
             'is_active' => $this->is_active,
-            'is_primary' => $this->is_primary,
-            'branch_type' => $this->branch_type,
+            'from_unit_id' => $this->from_unit_id,
+            'to_unit_id' => $this->to_unit_id,
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
 
@@ -30,7 +30,7 @@ class BranchResource extends JsonResource
     public function toResponse($request)
     {
         return response()->json([
-            'success' => 'Branch details received!',
+            'success' => 'Measure Unit Conversion details received!',
             'data' => $this->toArray($request),
         ]);
     }

@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class BranchResource extends JsonResource
+class LocationResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -30,7 +30,7 @@ class BranchResource extends JsonResource
     public function toResponse($request)
     {
         return response()->json([
-            'success' => 'Branch details received!',
+            'success' => 'Location details received!',
             'data' => $this->toArray($request),
         ]);
     }

@@ -14,7 +14,8 @@ class MeasureUnitConversion extends BaseTenantModel
         'product_id',
         'from_unit_id',
         'to_unit_id',
-        'conversion_factor'
+        'conversion_factor',
+        'is_active'
 
     ];
 

@@ -6,6 +6,9 @@ namespace App\Http\Controllers;
 use App\Helpers\Helper;
 use App\Interfaces\ProductRepositoryInterface;
 
+use App\Http\Resources\ProductCollection;
+use App\Http\Resources\ProductResource;
+
 use App\Http\Requests\ProductRequest\StoreRequest;
 use App\Http\Requests\ProductRequest\UpdateRequest;
 use App\Http\Requests\ProductRequest\SearchRequest;
@@ -52,15 +55,16 @@ class ProductController extends Controller
 
 
 
-    public function productList(Request $request)
+    public function activeProductList(Request $request)
     {
         try {
 
-            $products = $this->repository->productList();
-            return response()->json([
-                "message" => "Product List Received !!",
-                "data" => $products
-            ]);
+            $products = $this->repository->activeProductList();
+            return ProductResource::collection($products)
+                ->map(fn($product) => [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                ]);
 
         } catch (ModelNotFoundException $e) {
 
@@ -75,7 +79,7 @@ class ProductController extends Controller
     }
 
 
-    public function productDetails(Request $request): JsonResponse
+    public function productDetails(Request $request)
     {
         try {
 
@@ -88,9 +92,7 @@ class ProductController extends Controller
             $productDetail = $this->repository->productDetails($productId, $productName);
 
 
-            return response()->json([
-                'product' => $productDetail
-            ]);
+            return new ProductResource($productDetail);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product not found!'], 404);
         } catch (QueryException $e) {
@@ -101,7 +103,7 @@ class ProductController extends Controller
         }
     }
 
-    public function index(SearchRequest $request): JsonResponse
+    public function index(SearchRequest $request)
     {
         try {
 
@@ -113,7 +115,7 @@ class ProductController extends Controller
 
             $result = $this->repository->list($filters, $perPage);
 
-            return response()->json($result);
+            return new ProductCollection($result);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Server error occurred',
@@ -124,7 +126,7 @@ class ProductController extends Controller
 
 
 
-    public function search(Request $request): JsonResponse
+    public function search(SearchRequest $request)
     {
         try {
             $filters = $request->validated();
@@ -132,9 +134,7 @@ class ProductController extends Controller
 
             $products = $this->repository->search($filters);
 
-            return response()->json([
-                'data' => $products
-            ]);
+            return new ProductCollection($products);
 
         } catch (\Exception $e) {
 
@@ -157,7 +157,7 @@ class ProductController extends Controller
 
             return response()->json(['message' => 'Product Updated', 'product' => $item], 200);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not SaleCfound'], 404);
+            return response()->json(['error' => 'Item not Found'], 404);
         } catch (\Exception $e) {
 
             return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
@@ -183,15 +183,13 @@ class ProductController extends Controller
 
 
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
 
             $product = $this->repository->show($id);
 
-            return response()->json([
-                'product' => $product
-            ]);
+            return new ProductResource($product);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product not found!'], 404);
@@ -221,7 +219,7 @@ class ProductController extends Controller
             ], 404);
 
         } catch (QueryException $e) {
-            
+
 
             return response()->json([
                 'error' => 'query_error',
@@ -229,7 +227,7 @@ class ProductController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            
+
 
             return response()->json([
                 'error' => 'unexpected_error',

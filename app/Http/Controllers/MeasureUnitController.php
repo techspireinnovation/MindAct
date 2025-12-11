@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Interfaces\MeasureUnitRepositoryInterface;
 
+use App\Http\Resources\MeasureUnitCollection;
+use App\Http\Resources\MeasureUnitResource;
 use App\Http\Requests\MeasureUnitRequest\StoreRequest;
 use App\Http\Requests\MeasureUnitRequest\UpdateRequest;
 use App\Models\MeasureUnit;
@@ -28,39 +30,23 @@ class MeasureUnitController extends Controller
 
     }
 
-    public function index(Request $request): JsonResponse
-    {
-        $filters = $request->only('keywords');
-
-
-        $items = $this->repository->list($filters);
-
-        return response()->json($items, 200);
-    }
-
-
-
-    public function unitList(Request $request)
+    public function index(Request $request)
     {
         try {
+            $filters = $request->only('keywords');
 
-            $units = $this->repository->measureUnitList();
-            return response()->json([
-                "message" => "Measure Unit List Received !!",
-                "data" => $units
-            ]);
 
-        } catch (ModelNotFoundException $e) {
+            $items = $this->repository->list($filters);
 
-            return response()->json(["error" => "Measure Unit not Found !!"], 404);
-        } catch (QueryException $e) {
-
-            return response()->json(["error" => "Database error occurred !!"], 500);
+            return new MeasureUnitCollection($items);
         } catch (\Exception $e) {
-
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
     }
+
+
+
+
 
 
     public function unitDetails(Request $request)
@@ -71,10 +57,7 @@ class MeasureUnitController extends Controller
 
             $unit = $request->measure_unit;
             $unitDetails = $this->repository->measureUnitDetails($unit);
-            return response()->json([
-                "message" => "Measure Unit Details Received !!",
-                "data" => $unitDetails
-            ], 200);
+            return new MeasureUnitResource($unitDetails);
 
 
         } catch (ModelNotFoundException $e) {
@@ -94,7 +77,10 @@ class MeasureUnitController extends Controller
 
             $item = $this->repository->update($id, $data);
 
-            return response()->json($item);
+            return response()->json([
+                'success' => 'Updated Successfully !!',
+                'data' => $item
+            ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
@@ -109,11 +95,11 @@ class MeasureUnitController extends Controller
         return response()->json($item, 201);
     }
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return response()->json($item);
+            return new MeasureUnitResource($item);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(['error' => 'Item not found!!'], 404);
@@ -158,15 +144,16 @@ class MeasureUnitController extends Controller
 
 
 
-    public function activeUnitList(Request $request): JsonResponse
+    public function activeUnitList(Request $request)
     {
         try {
             $units = $this->repository->activeMeasureUnitList();
 
-            return response()->json([
-                "message" => "Active measure units received !!",
-                "data" => $units
-            ], 200);
+            return MeasureUnitResource::collection($units)
+                ->map(fn($unit) => [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                ]);
 
         } catch (QueryException $e) {
 

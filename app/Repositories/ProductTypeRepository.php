@@ -22,17 +22,7 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
 
     }
 
-    public function productTypeList()
-    {
-        $productTypes = ProductType::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($type) => ['id' => $type->id, 'name' => $type->name])
-            ->values()
-            ->toArray();
-
-        return $productTypes;
-    }
+   
 
     public function productTypeDetails($filters)
     {
@@ -132,14 +122,8 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
     {
         $productTypes = ProductType::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($type) => [
-                'id' => $type->id,
-                'name' => $type->name,
-                'is_primary' => $type->is_primary,
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name', 'is_primary']);
+            
 
         return $productTypes;
 

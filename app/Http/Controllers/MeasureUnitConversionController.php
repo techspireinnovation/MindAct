@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\MeasureUnitConversionCollection;
 use App\Interfaces\MeasureUnitConversionRepositoryInterface;
+
+use App\Http\Resources\MeasureUnitConversionResource;
 use App\Http\Requests\MeasureUnitConversionRequest\StoreRequest;
 use App\Http\Requests\MeasureUnitConversionRequest\UpdateRequest;
 use App\Models\MeasureUnitConversion;
@@ -33,16 +36,7 @@ class MeasureUnitConversionController extends Controller
 
             $filters = $request->only('kewords');
             $conversions = $this->repository->list($filters);
-            return response()->json([
-                'success' => 'Measure Unit Conversion List',
-                'data' => $conversions->items(),
-                'pagination' => [
-                    'current_page' => $conversions->currentPage(),
-                    'last_page' => $conversions->lastPage(),
-                    'per_page' => $conversions->perPage(),
-                    'total' => $conversions->total(),
-                ],
-            ], 200);
+            return new MeasureUnitConversionCollection($conversions);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);
         } catch (QueryException $e) {
@@ -99,10 +93,7 @@ class MeasureUnitConversionController extends Controller
 
             $conversion = $this->repository->show($id);
 
-            return response()->json([
-                'success' => 'Conversion retrieved successfully !!',
-                'data' => $conversion
-            ], 200);
+           return new MeasureUnitConversionResource($conversion);
 
 
         } catch (ModelNotFoundException $e) {
@@ -157,10 +148,11 @@ class MeasureUnitConversionController extends Controller
         try {
             $conversions = $this->repository->activeMeasureUnitConversionList();
 
-            return response()->json([
-                'success' => 'Conversion Deleted Successfully !!',
-                'data' => $conversions
-            ], 200);
+            return MeasureUnitConversionResource::collection($conversions)
+                ->map(fn($conversion) => [
+                    'id' => $conversion->id,
+                    'product_id' => $conversion->product_id,
+                ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);

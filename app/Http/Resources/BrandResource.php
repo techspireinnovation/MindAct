@@ -26,11 +26,11 @@ class BrandResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Brand details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+    // public function toResponse($request)
+    // {
+    //     return response()->json([
+    //         'success' => 'Brand details received!',
+    //         'data' => $this->toArray($request),
+    //     ]);
+    // }
 }

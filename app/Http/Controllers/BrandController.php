@@ -19,6 +19,8 @@ use Illuminate\Http\Request;
 
 
 
+
+
 class BrandController extends Controller
 {
 
@@ -97,10 +99,6 @@ class BrandController extends Controller
     {
 
         $validated = $request->validated();
-
-
-
-
         $item = $this->repository->create($validated);
         return response()->json($item, 201);
     }
@@ -150,25 +148,23 @@ class BrandController extends Controller
 
     public function activeBrandList(Request $request)
     {
-        try {
-            $brands = $this->repository->activeBrandList();
-            return BrandResource::collection($brands)
-                ->map(fn($resource) => [
-                    'id' => $resource->id,
-                    'name' => $resource->name,
-                ]);
+      
+            return $brands = $this->repository->activeBrandList();
+           
 
 
-        } catch (ModelNotFoundException $e) {
+            // BrandResource::collection($brands)->map(function($brand) {
+            //     return collect($brand)->only(['id', 'name']);
+            // });
+           
+            // return BrandResource::collection($brands)
+            //     ->map(fn($resource) => [
+            //         'id' => $resource->id,
+            //         'name' => $resource->name,
+            //     ]);
 
-            return response()->json(["error" => "Brand not Found !"], 404);
-        } catch (QueryException $e) {
 
-            return response()->json(["error" => "Database error occurred !!"], 500);
-        } catch (\Exception $e) {
-
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
-        }
+       
     }
 
 

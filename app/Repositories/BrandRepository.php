@@ -5,10 +5,12 @@ namespace App\Repositories;
 use App\Models\Brand;
 
 use App\Interfaces\BrandRepositoryInterface;
+use App\Http\Resources\BrandResource;
+use App\Traits\Paginator;
 
 class BrandRepository implements BrandRepositoryInterface
 {
-
+    use Paginator;
     public function list(array $filters)
     {
         $query = Brand::query();
@@ -118,9 +120,19 @@ class BrandRepository implements BrandRepositoryInterface
     {
         $brands = Brand::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name']);
+            ->paginate(10);
+        $response = ($brands->count() > 0) ? BrandResource::collection($brands)->map(function($brand) {
+                return collect($brand)->only(['id', 'name']);
+            }) : null;
+
+           //return  $this->paginated($brands, $response);
+            return $response;
            
-        return $brands;
+
+
+            
+           
+       
 
     }
 

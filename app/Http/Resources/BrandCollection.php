@@ -13,49 +13,28 @@ class BrandCollection extends ResourceCollection
      *
      * @return array<int|string, mixed>
      */
-    public function toArray(Request $request): array
+    public function toArray($request)
     {
         return [
             'data' => BrandResource::collection($this->collection),
         ];
     }
 
-
     public function with($request)
     {
-      
-        if ($this->resource instanceof AbstractPaginator) {
-            return [
-                'meta' => [
-                    'current_page' => $this->currentPage(),
-                    'per_page' => $this->perPage(),
-                    'total' => $this->total(),
-                    'last_page' => $this->lastPage(),
-                ],
-                'links' => [
-                    'first' => $this->url(1),
-                    'last' => $this->url($this->lastPage()),
-                    'prev' => $this->previousPageUrl(),
-                    'next' => $this->nextPageUrl(),
-                ],
-            ];
-        }
-
-
-        return [];
-    }
-    public function toResponse($request)
-    {
-        $response = [
-            'success' => 'Brand List',
-            'data' => $this->toArray($request)['data'],
+        return [
+            'meta' => [
+                'current_page' => $this->currentPage(),
+                'per_page'     => $this->perPage(),
+                'total'        => $this->total(),
+                'last_page'    => $this->lastPage(),
+            ],
+            'links' => [
+                'first' => $this->url(1),
+                'last'  => $this->url($this->lastPage()),
+                'prev'  => $this->previousPageUrl(),
+                'next'  => $this->nextPageUrl(),
+            ],
         ];
-
-        $with = $this->with($request);
-        if (!empty($with)) {
-            $response = array_merge($response, $with);
-        }
-
-        return response()->json($response);
     }
 }

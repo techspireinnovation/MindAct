@@ -29,20 +29,12 @@ class Product extends BaseTenantModel
     protected $fillable = [
         'name',
         'note',
-
         'product_code',
-
         'is_active',
-
         'deleted_at',
-
         'category_id',
-
         'brand_id',
-
         'measure_unit_id',
-
-
         'is_vatable',
         'product_type_id',
         'sku',

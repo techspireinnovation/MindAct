@@ -26,17 +26,7 @@ class BranchRepository implements BranchRepositoryInterface
 
     }
 
-    public function branchList()
-    {
-        $branches = Branch::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($brand) => ['id' => $brand->id, 'name' => $brand->name])
-            ->values()
-            ->toArray();
-
-        return $branches;
-    }
+  
 
     public function branchDetails($filters)
     {
@@ -160,14 +150,8 @@ class BranchRepository implements BranchRepositoryInterface
     {
         $branches = Branch::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($branch) => [
-                'id' => $branch->id,
-                'name' => $branch->name,
-                'is_primary' => $branch->is_primary,
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name', 'is_primary']);
+            
 
         return $branches;
 

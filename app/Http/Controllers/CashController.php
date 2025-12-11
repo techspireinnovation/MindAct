@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Interfaces\CashRepositoryInterface;
+use App\Http\Resources\CashCollection;
+use App\Http\Resources\CashResource;
 
 use App\Http\Requests\CashRequest\StoreRequest;
 use App\Http\Requests\CashRequest\UpdateRequest;
@@ -28,13 +30,17 @@ class CashController extends Controller
 
         $this->repository = $repository;
     }
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
-        $filters = $request->only('keywords');
+        try {
+            $filters = $request->only('keywords');
 
-        $cash = $this->repository->list($filters);
+            $cash = $this->repository->list($filters);
 
-        return response()->json($cash, 200);
+            return new CashCollection($cash);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
     }
 
 
@@ -52,10 +58,10 @@ class CashController extends Controller
 
             return response()->json(['error' => 'Cash not found!'], 404);
         } catch (QueryException $e) {
-             
+
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         } catch (\Exception $e) {
-            
+
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
@@ -76,16 +82,16 @@ class CashController extends Controller
 
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred!'], 500);
         }
     }
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
             $cash = $this->repository->show($id);
-            return response()->json($cash);
+            return new CashResource($cash);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(['error' => 'Cash not found!!'], 404);
@@ -110,15 +116,16 @@ class CashController extends Controller
         }
     }
 
-    public function activeCashList(Request $request): JsonResponse
+    public function activeCashList(Request $request)
     {
         try {
             $cashes = $this->repository->activeCashList();
 
-            return response()->json([
-                "message" => "Active Cash List Received !!",
-                "data" => $cashes
-            ]);
+            return CashResource::collection($cashes)
+                ->map(fn($cash) => [
+                    'id' => $cash->id,
+                    'name' => $cash->name,
+                ]);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(["error" => "Cash not Found !!"], 404);

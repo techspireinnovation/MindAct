@@ -11,7 +11,7 @@ interface ProductCategoryRepositoryInterface
 
     public function list(array $filters);
 
-    public function categoryList();
+   
 
 
     public function categoryDetails($filters);

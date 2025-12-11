@@ -22,17 +22,7 @@ class SalesmanRepository implements SalesmanRepositoryInterface
 
     }
 
-    public function salesmenList()
-    {
-        $salesmen = Salesman::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($salesman) => ['id' => $salesman->id, 'name' => $salesman->name])
-            ->values()
-            ->toArray();
 
-        return $salesmen;
-    }
 
     public function salesmanDetails($filters)
     {
@@ -117,14 +107,8 @@ class SalesmanRepository implements SalesmanRepositoryInterface
     {
         $salesmen = Salesman::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($salesman) => [
-                'id' => $salesman->id,
-                'name' => $salesman->name,
-                'is_primary' => $salesman->is_primary,
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name', 'is_primary']);
+           
 
         return $salesmen;
 

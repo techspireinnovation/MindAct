@@ -84,14 +84,8 @@ class CashRepository implements CashRepositoryInterface
     {
         $cash = Cash::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($cash) => [
-                'id' => $cash->id,
-                'name' => $cash->name,
-                'is_primary' => $cash->is_primary,
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name', 'is_primary']);
+          
 
         return $cash;
 

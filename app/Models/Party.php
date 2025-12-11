@@ -29,9 +29,8 @@ class Party extends BaseTenantModel
         'state',
         'city',
         'area',
-        'bank_name',
+        'bank_id',
         'bank_account_number',
-
         'is_active'
     ];
 

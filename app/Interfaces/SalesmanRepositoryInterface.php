@@ -11,8 +11,7 @@ interface SalesmanRepositoryInterface
 
     public function list(array $filters);
 
-    public function salesmenList();
-
+   
 
     public function salesmanDetails($filters);
 

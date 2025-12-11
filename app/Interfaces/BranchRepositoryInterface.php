@@ -11,7 +11,7 @@ interface BranchRepositoryInterface
 
     public function list(array $filters);
 
-    public function branchList();
+   
 
 
     public function branchDetails($filters);

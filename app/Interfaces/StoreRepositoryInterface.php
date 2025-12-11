@@ -11,7 +11,7 @@ interface StoreRepositoryInterface
 
     public function list(array $filters);
 
-    public function storeList();
+    
 
 
     public function storeDetails($filters);

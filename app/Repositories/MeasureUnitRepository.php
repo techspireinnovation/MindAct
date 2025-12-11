@@ -22,17 +22,7 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
 
     }
 
-    public function measureUnitList()
-    {
-        $measureUnits = MeasureUnit::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($brand) => ['id' => $brand->id, 'name' => $brand->name])
-            ->values()
-            ->toArray();
-
-        return $measureUnits;
-    }
+  
 
     public function measureUnitDetails($filters)
     {
@@ -147,13 +137,7 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
             throw new \Exception('No Measure Units.');
         }
 
-        // Map response to keep it clean
-        $measureUnits = $measureUnits->map(fn($unit) => [
-            'id' => $unit->id,
-            'name' => $unit->name,
-            'symbol' => $unit->symbol,
-            'quantity' => $unit->quantity,
-        ])->values()->toArray();
+        
 
         return $measureUnits;
 

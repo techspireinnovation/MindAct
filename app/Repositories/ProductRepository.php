@@ -14,15 +14,15 @@ class ProductRepository implements ProductRepositoryInterface
         if (!empty($filters['search_name'])) {
             $value = $filters['search_name'];
             $query->where(function ($q) use ($value) {
-                $q->where('name', 'LIKE', "%$value%")
-                    ->orWhere('product_code', 'LIKE', "%$value%")
-                    ->orWhere('barcode', 'LIKE', "%$value%");
+                $q->where('name', 'LIKE', "$value%")
+                    ->orWhere('product_code', 'LIKE', "$value%");
+                    // ->orWhere('barcode', 'LIKE', "%$value%");
             });
         }
 
-        if (!empty($filters['search_barcode'])) {
-            $query->where('barcode', 'LIKE', "%{$filters['search_barcode']}%");
-        }
+        // if (!empty($filters['search_barcode'])) {
+        //     $query->where('barcode', 'LIKE', "%{$filters['search_barcode']}%");
+        // }
 
         if (!empty($filters['search_product_code'])) {
             $query->where('product_code', 'LIKE', "%{$filters['search_product_code']}%");
@@ -30,19 +30,19 @@ class ProductRepository implements ProductRepositoryInterface
 
 
         if (!empty($filters['search_category'])) {
-            $query->whereHas('category', fn($q) => $q->where('name', 'LIKE', "%{$filters['search_category']}%"));
+            $query->whereHas('category', fn($q) => $q->where('name', 'LIKE', "{$filters['search_category']}%"));
         }
 
         if (!empty($filters['search_brand'])) {
-            $query->whereHas('brand', fn($q) => $q->where('name', 'LIKE', "%{$filters['search_brand']}%"));
+            $query->whereHas('brand', fn($q) => $q->where('name', 'LIKE', "{$filters['search_brand']}%"));
         }
 
         if (!empty($filters['search_measure_unit'])) {
-            $query->whereHas('measureUnit', fn($q) => $q->where('name', 'LIKE', "%{$filters['search_measure_unit']}%"));
+            $query->whereHas('measureUnit', fn($q) => $q->where('name', 'LIKE', "{$filters['search_measure_unit']}%"));
         }
 
         if (!empty($filters['search_product_type'])) {
-            $query->whereHas('productType', fn($q) => $q->where('name', 'LIKE', "%{$filters['search_product_type']}%"));
+            $query->whereHas('productType', fn($q) => $q->where('name', 'LIKE', "{$filters['search_product_type']}%"));
         }
 
 
@@ -52,7 +52,7 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function search(array $filters)
     {
-        $query = Product::select('id', 'name', 'barcode')
+        $query = Product::select('id', 'name')
             ->with(['category', 'brand', 'measureUnit', 'productType']);
 
         $query = $this->applyFilters($query, $filters);
@@ -65,31 +65,11 @@ class ProductRepository implements ProductRepositoryInterface
         $query = Product::whereNull('deleted_at');
         $query = $this->applyFilters($query, $filters);
 
-        $products = $query->paginate($perPage);
-
-        return [
-            'data' => $products->items(),
-            'pagination' => [
-                'current_page' => $products->currentPage(),
-                'last_page' => $products->lastPage(),
-                'per_page' => $products->perPage(),
-                'total' => $products->total(),
-            ]
-        ];
+        return $query->paginate($perPage);
     }
 
 
-    public function productList()
-    {
-        $products = Product::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($product) => ['id' => $product->id, 'name' => $product->name])
-            ->values()
-            ->toArray();
-
-        return $products;
-    }
+   
 
     public function productDetails($productId = Null, $productName = Null)
     {
@@ -158,13 +138,13 @@ class ProductRepository implements ProductRepositoryInterface
             $usedIn[] = 'purchase_products';
         }
 
-       
+
 
         if ($product->productionSettingsUse()->exists()) {
             $usedIn[] = 'production_settings';
         }
 
-       
+
 
         if (!empty($usedIn)) {
             throw new \Exception('in_use:' . implode(',', $usedIn));
@@ -189,14 +169,8 @@ class ProductRepository implements ProductRepositoryInterface
     {
         $products = Product::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($product) => [
-                'id' => $product->id,
-                'name' => $product->name,
-                'is_primary' => $product->is_primary,
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name']);
+
 
         return $products;
 

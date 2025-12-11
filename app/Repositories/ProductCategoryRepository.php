@@ -22,17 +22,7 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
 
     }
 
-    public function categoryList()
-    {
-        $categories = ProductCategory::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($category) => ['id' => $category->id, 'name' => $category->name])
-            ->values()
-            ->toArray();
 
-        return $categories;
-    }
 
     public function categoryDetails($filters)
     {
@@ -124,14 +114,8 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
     {
         $categories = ProductCategory::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary'])
-            ->map(fn($category) => [
-                'id' => $category->id,
-                'name' => $category->name,
-                'is_primary' => $category->is_primary,
-            ])
-            ->values()
-            ->toArray();
+            ->get(['id', 'name', 'is_primary']);
+
 
         return $categories;
 

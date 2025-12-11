@@ -5,7 +5,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-class BranchResource extends JsonResource
+class StoreResource extends JsonResource
 {
     /**
      * Transform the resource into an array.
@@ -18,9 +18,9 @@ class BranchResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'parent_id' => $this->parent_id,
             'is_active' => $this->is_active,
             'is_primary' => $this->is_primary,
-            'branch_type' => $this->branch_type,
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
 
@@ -30,7 +30,7 @@ class BranchResource extends JsonResource
     public function toResponse($request)
     {
         return response()->json([
-            'success' => 'Branch details received!',
+            'success' => 'Store details received!',
             'data' => $this->toArray($request),
         ]);
     }

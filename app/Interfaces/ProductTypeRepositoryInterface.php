@@ -11,7 +11,7 @@ interface ProductTypeRepositoryInterface
 
     public function list(array $filters);
 
-    public function productTypeList();
+   
 
 
     public function productTypeDetails($filters);

@@ -11,7 +11,7 @@ interface LocationRepositoryInterface
 
     public function list(array $filters);
 
-    public function locationList();
+   
 
 
     public function locationDetails($filters);

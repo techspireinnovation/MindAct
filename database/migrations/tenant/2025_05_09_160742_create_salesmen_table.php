@@ -27,7 +27,7 @@ return new class extends Migration {
             $table->string('nationality')->nullable();
             $table->string('zone')->nullable();
             $table->string('district')->nullable();
-            $table->string('vdc/municipality')->nullable();
+            $table->string('vdc_municipality')->nullable();
             $table->auditFields();
         });
     }

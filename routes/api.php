@@ -286,7 +286,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('cashes', CashController::class);
 
     Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
-    Route::get('stores-active-list', [StoreController::class, 'activeStores']);
+    Route::get('active-stores-list', [StoreController::class, 'activeStoreList']);
     Route::apiResource('stores', StoreController::class);
     Route::get('locations-active-list', [LocationController::class, 'activeLocations']);////
     Route::apiResource('locations', LocationController::class);
@@ -375,7 +375,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
     //List and Detailss
     Route::get('change-test', [SaleController::class, 'changeDate']);
-    Route::get('get-all-parties', [PartyController::class, 'activePartyList']);
+    Route::get('active-party-list', [PartyController::class, 'activePartyList']);
     Route::get('search-parties', [PartyController::class, 'searchPartyList']);
     Route::get('get-party-details', [PartyController::class, 'partyDetails']);
 
@@ -383,7 +383,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('get-area-details', [AreaController::class, 'categoryDetails']);
 
     Route::get('product-categories-list', [ProductCategoryController::class, 'categoryList']);
-    Route::get('categories-active-list', [ProductCategoryController::class, 'activeCategoryList']);/////
+    Route::get('categories-active-list', [ProductCategoryController::class, 'activeCategoryList']);
     Route::get('product-categories-details', [ProductCategoryController::class, 'categoryDetails']);
     Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
@@ -392,11 +392,11 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/product-types/getById/{id}', [ProductTypeController::class, 'getById']);
 
 
-    Route::get('product-types-active-list', [ProductTypeController::class, 'activeProductTypeList']);////
+    Route::get('active-product-types-list', [ProductTypeController::class, 'activeProductTypeList']);////
 
     Route::get('product-type-details', [ProductTypeController::class, 'productTypeDetails']);
 
-    Route::get('branch-list', [BranchController::class, 'branchList']);
+    Route::get('active-branch-list', [BranchController::class, 'activeBranchList']);
     Route::get('branch-details', [BranchController::class, 'branchDetails']);
     Route::get('branches-active-list', [BranchController::class, 'activeBranchList']);
 
@@ -406,7 +406,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('salesmen-details', [SalesmanController::class, 'salesmenDetails']);
 
     Route::get('measure-units-active-list', [MeasureUnitController::class, 'activeUnitList']);////
-    Route::get('unit-list', [MeasureUnitController::class, 'unitList']);
+    Route::get('active-unit-list', [MeasureUnitController::class, 'activeUnitList']);
     Route::get('unit-details', [MeasureUnitController::class, 'unitDetails']);
 
     Route::get('sub-category-list', [ProductSubCategoryController::class, 'subCategoryList']);
@@ -423,7 +423,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('supplier-list', [SupplierController::class, 'supplierList']);
     Route::get('supplier-details', [SupplierController::class, 'supplierDetails']);
 
-    Route::get('location-list', [LocationController::class, 'locationList']);
+    Route::get('active-location-list', [LocationController::class, 'activeLocationList']);
     Route::get('location-details', [LocationController::class, 'locationDetails']);
 
 
@@ -449,7 +449,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('product-field-value-details', [ProductFieldValueController::class, 'productFieldValueDetails']);
     Route::get('product-field-active', [ProductFieldController::class, 'activeProductFields']);
 
-    Route::get('product-list', [ProductController::class, 'productList']);
+    Route::get('active-product-list', [ProductController::class, 'activeProductList']);
     Route::get('product-details', [ProductController::class, 'productDetails']);
 
 

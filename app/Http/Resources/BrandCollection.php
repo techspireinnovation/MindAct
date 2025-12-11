@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use App\Http\Resources\BrandResource;
+use Illuminate\Pagination\AbstractPaginator;
 use Illuminate\Http\Resources\Json\ResourceCollection;
 
 class BrandCollection extends ResourceCollection

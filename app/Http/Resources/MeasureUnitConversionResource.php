@@ -27,11 +27,5 @@ class MeasureUnitConversionResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Measure Unit Conversion details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+   
 }

@@ -95,7 +95,9 @@ class BranchController extends Controller
 
             $item = $this->repository->update($id, $request->validated());
             return response()->json([
-                
+                'message' => 'Branch Updated !!',
+                'status' => 200,
+                'data' => $item
             ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);

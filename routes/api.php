@@ -188,8 +188,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('fixed-asset-accounts', FixedAssetAccountController::class);
     Route::apiResource('sale-additionals', SaleController::class);
 
-    // Route::apiResource('product-categories', ProductCategoryController::class);
-    // For both list and by id in same function
+
 
 
     Route::resource('product-types', ProductTypeController::class);

@@ -6,6 +6,8 @@ use App\Http\Resources\MeasureUnitConversionCollection;
 use App\Interfaces\MeasureUnitConversionRepositoryInterface;
 
 use App\Http\Resources\MeasureUnitConversionResource;
+use App\Http\Requests\MeasureUnitConversionRequest\ListRequest;
+use App\Http\Requests\MeasureUnitConversionRequest\DetailRequest;
 use App\Http\Requests\MeasureUnitConversionRequest\StoreRequest;
 use App\Http\Requests\MeasureUnitConversionRequest\UpdateRequest;
 use App\Models\MeasureUnitConversion;
@@ -29,14 +31,20 @@ class MeasureUnitConversionController extends Controller
         $this->repository = $repository;
 
     }
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
 
         try {
 
-            $filters = $request->only('kewords');
-            $conversions = $this->repository->list($filters);
-            return new MeasureUnitConversionCollection($conversions);
+
+            $conversions = $this->repository->list($request->validated());
+
+            return response()->json([
+                'message' => 'Measure Unit Conversin List',
+                'status' => 200,
+                'data' => $conversions
+            ]);
+
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);
         } catch (QueryException $e) {
@@ -63,9 +71,9 @@ class MeasureUnitConversionController extends Controller
     {
         try {
 
-            $data = $request->validated();
 
-            $conversion = $this->repository->create($data);
+
+            $conversion = $this->repository->create($request->validated());
 
             return response()->json([
                 'success' => 'Conversion created successfully !!',
@@ -93,7 +101,12 @@ class MeasureUnitConversionController extends Controller
 
             $conversion = $this->repository->show($id);
 
-           return new MeasureUnitConversionResource($conversion);
+            return response()->json([
+                'message' => 'Measure Unit Conversion Details !',
+                'status' => 200,
+                'data' => $conversion
+
+            ]);
 
 
         } catch (ModelNotFoundException $e) {
@@ -120,9 +133,7 @@ class MeasureUnitConversionController extends Controller
     {
         try {
 
-            $data = $request->validated();
-
-            $conversion = $this->repository->update($id, $data);
+            $conversion = $this->repository->update($id, $request->validated());
 
             return response()->json([
                 'success' => 'Conversion retrieved successfully !!',
@@ -148,11 +159,11 @@ class MeasureUnitConversionController extends Controller
         try {
             $conversions = $this->repository->activeMeasureUnitConversionList();
 
-            return MeasureUnitConversionResource::collection($conversions)
-                ->map(fn($conversion) => [
-                    'id' => $conversion->id,
-                    'product_id' => $conversion->product_id,
-                ]);
+            return response()->json([
+                'message' => 'Measure Unit List !',
+                'status' => 200,
+                'data' => $conversions
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);

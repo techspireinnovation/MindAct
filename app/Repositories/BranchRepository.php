@@ -16,7 +16,7 @@ class BranchRepository implements BranchRepositoryInterface
 {
     use Paginator;
 
-    public function list(array $filters)
+    public function list(?array $filters = [])
     {
         $query = Branch::query();
 

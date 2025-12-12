@@ -151,10 +151,10 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
-            // Validate company_id first (central database)
+           
             $rules = [
                 'company_id' => 'required|exists:companies,id,deleted_at,NULL',
-                'branch_id' => 'required|integer', // Simplified; we'll validate branch existence later
+                'branch_id' => 'required|integer', 
             ];
 
             $validator = Validator::make($request->all(), $rules);
@@ -168,7 +168,7 @@ class CompanyAdminController extends Controller
                 ], 422);
             }
 
-            // Check company association in central database
+         
             $companyUser = CompanyUser::where('user_id', $user->id)
                 ->where('company_id', $request->company_id)
                 ->first();
@@ -181,7 +181,7 @@ class CompanyAdminController extends Controller
                 ], 200);
             }
 
-            // Find tenant for the company
+         
             $tenant = Tenant::where('data->company_id', $request->company_id)->first();
             if (!$tenant) {
 
@@ -191,13 +191,12 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
 
-            // Switch to tenant database
-            // Switch to tenant DB
+            
             \App\Providers\TenantInitializer::switchTenant($tenant);
 
 
 
-            // Fetch branch inside tenant context
+           
             $branch = Branch::on('tenant')
                 ->where('id', $request->branch_id)
                 ->whereNull('deleted_at')
@@ -213,7 +212,7 @@ class CompanyAdminController extends Controller
             }
 
 
-            // Additional branch check for company_user role
+           
             if ($user->hasRole('company_user')) {
                 $userBranch = $user->branches()
                     ->where('branches.id', $request->branch_id)
@@ -231,7 +230,7 @@ class CompanyAdminController extends Controller
                 }
             }
 
-            // Fetch company details (from central database)
+           
             $company = Company::where('id', $request->company_id)
                 ->select('id', 'name', 'is_vatable')
                 ->first();
@@ -244,7 +243,7 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
 
-            // Generate new token with abilities
+           
             $user->tokens()->delete();
             $abilities = [
                 $user->hasRole('company_admin') ? 'company_admin' : ($user->hasRole('master_user') ? 'master_user' : 'company_user'),
@@ -252,8 +251,6 @@ class CompanyAdminController extends Controller
                 "branch:{$request->branch_id}"
             ];
             $token = $user->createToken('MatraErpToken', $abilities)->plainTextToken;
-
-
 
             return response()->json([
                 'success' => true,
@@ -443,9 +440,7 @@ class CompanyAdminController extends Controller
     public function getUserCompaniesAndBranches($userId)
     {
         try {
-            // -----------------------------
-            // 1. Fetch User
-            // -----------------------------
+          
             $user = User::find($userId);
 
             if (!$user) {
@@ -455,9 +450,7 @@ class CompanyAdminController extends Controller
                 ], 404);
             }
 
-            // -----------------------------
-            // 2. Fetch Companies assigned to the user
-            // -----------------------------
+            
             $companies = CompanyUser::where('user_id', $user->id)
                 ->with(['company:id,name,is_vatable'])
                 ->get()
@@ -473,9 +466,7 @@ class CompanyAdminController extends Controller
 
             $companiesWithBranches = [];
 
-            // -----------------------------
-            // 3. Loop through each company
-            // -----------------------------
+          
             foreach ($companies as $company) {
 
                 $tenant = Tenant::all()->first(function ($t) use ($company) {

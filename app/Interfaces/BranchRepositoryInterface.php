@@ -9,7 +9,7 @@ interface BranchRepositoryInterface
 
     public function update($id, array $data);
 
-    public function list(array $filters);
+    public function list(?array $filters = []);
 
    
 

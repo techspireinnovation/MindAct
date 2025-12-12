@@ -6,8 +6,14 @@ use App\Models\Party;
 
 use App\Interfaces\PartyRepositoryInterface;
 
+use App\Traits\Paginator;
+
+use App\Http\Resources\PartyResource;
+
 class PartyRepository implements PartyRepositoryInterface
 {
+
+    use Paginator;
 
 
     public function list(array $filters, int $perPage = 50)
@@ -17,21 +23,11 @@ class PartyRepository implements PartyRepositoryInterface
 
         $parties = $query->paginate($perPage);
 
-        return $query->paginate(50);
+        return $this->paginated($parties, PartyResource::collection($parties->items()));
     }
 
 
-    public function partyList()
-    {
-        $parties = Party::where('is_active', 1)
-            ->whereNull('deleted_at')
-            ->get(['id', 'name'])
-            ->map(fn($party) => ['id' => $party->id, 'name' => $party->name])
-            ->values()
-            ->toArray();
 
-        return $parties;
-    }
 
     public function partyDetails($partyId = Null, $partyName = Null)
     {
@@ -54,7 +50,7 @@ class PartyRepository implements PartyRepositoryInterface
         }
 
 
-        return $partyDetail;
+        return new PartyResource($partyDetail);
 
     }
 
@@ -106,7 +102,7 @@ class PartyRepository implements PartyRepositoryInterface
 
         $party = Party::findOrFail($id);
 
-        return $party;
+        return new PartyResource($party);
     }
 
 
@@ -117,9 +113,14 @@ class PartyRepository implements PartyRepositoryInterface
         $parties = Party::whereNull('deleted_at')
             ->where('is_active', true)
             ->get(['id', 'name']);
-           
 
-        return $parties;
+
+        $response = ($parties->count() > 0) ? PartyResource::collection($parties)->map(function ($party) {
+            return collect($party)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

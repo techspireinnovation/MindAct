@@ -12,7 +12,7 @@ interface PartyRepositoryInterface
     public function list(array $filters, int $perPage = 50);
    
 
-    public function partyList();
+   
 
 
     public function partyDetails($productId = Null, $productName = Null);

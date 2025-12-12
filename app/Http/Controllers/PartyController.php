@@ -7,6 +7,8 @@ use App\Interfaces\PartyRepositoryInterface;
 use App\Http\Resources\PartyCollection;
 use App\Http\Resources\PartyResource;
 
+use App\Http\Requests\PartyRequest\ListRequest;
+use App\Http\Requests\PartyRequest\DetailRequest;
 use App\Http\Requests\PartyRequest\StoreRequest;
 use App\Http\Requests\PartyRequest\UpdateRequest;
 use Exception;
@@ -25,16 +27,12 @@ class PartyController extends Controller
 
     }
 
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
 
         try {
 
-            $filters = $request->only('keywords');
-
-            $items = $this->repository->list($filters);
-
-            return new PartyCollection($items);
+            $items = $this->repository->list($request->validated());
 
 
         } catch (ModelNotFoundException $e) {
@@ -67,9 +65,9 @@ class PartyController extends Controller
         try {
 
 
-            $data = $request->validated();
 
-            $item = $this->repository->create($data);
+
+            $item = $this->repository->create($request->validated());
 
             return response()->json([
                 'success' => 'Created Successfully !!',
@@ -92,9 +90,9 @@ class PartyController extends Controller
     {
         try {
 
-            $data = $request->validated();
 
-            $item = $this->repository->update($id, $data);
+
+            $item = $this->repository->update($id, $request->validated());
 
             return response()->json([
                 'success' => 'Party Updated Sucessfully !',
@@ -116,7 +114,12 @@ class PartyController extends Controller
         try {
             $item = $this->repository->show($id);
 
-            return new PartyResource($item);
+            return response()->json([
+                'message' => 'Party Details Received !!',
+                'status' => 200,
+                'data' => $item
+            ]);
+
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found !'], 404);
@@ -134,11 +137,11 @@ class PartyController extends Controller
         try {
             $item = $this->repository->activePartyList();
 
-            return PartyResource::collection($item)
-                ->map(fn($item) => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                ]);
+            return response()->json([
+                'message' => 'Party List',
+                'status' => 200,
+                'data' => $item
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found !'], 404);
@@ -146,7 +149,7 @@ class PartyController extends Controller
 
             return response()->json(['error' => 'Database error occurred !'], 500);
         } catch (Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred !'], 500);
 
         }

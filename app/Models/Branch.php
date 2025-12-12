@@ -32,10 +32,7 @@ class Branch extends BaseTenantModel
 
    
 
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
-    }
+   
 
     public function users()
     {

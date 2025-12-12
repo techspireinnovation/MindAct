@@ -40,6 +40,7 @@ class StoreRequest extends FormRequest
             ],
             'billing_address' => 'nullable|string',
             'opening_balance' => 'nullable|numeric',
+            'balance_type' => 'nullable|numeric',
             'district' => 'nullable|string|max:255',
             'ledger_type' => 'nullable|in:customer,vendor,both',
             'address' => 'nullable|string',

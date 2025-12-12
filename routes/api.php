@@ -203,10 +203,9 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::apiResource('projects', ProjectController::class);
     Route::get('journal-vouchers/print', [JournalVoucherController::class, 'print']);
     Route::apiResource('journal-vouchers', JournalVoucherController::class);
-    Route::get('/customers-active-list', [CustomerController::class, 'activeCustomers']);////
-    Route::post('/customers-import-excel', [CustomerController::class, 'importCustomerExcel']);////
+
     Route::resource('parties', PartyController::class);
-    Route::get('/customer-balance/{customer_id}', [CustomerController::class, 'getCustomerBalance']);
+
     Route::get('sales/get-by-bill-number/{billNumber}', [SaleController::class, 'getItemByBillNumber']);
     Route::resource('sales', SaleController::class);
     Route::resource('hold-sales', HoldSaleController::class);

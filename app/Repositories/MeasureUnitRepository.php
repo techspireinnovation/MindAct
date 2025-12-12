@@ -6,8 +6,14 @@ use App\Models\MeasureUnit;
 
 use App\Interfaces\MeasureUnitRepositoryInterface;
 
+use App\Traits\Paginator;
+
+use App\Http\Resources\MeasureUnitResource;
+
 class MeasureUnitRepository implements MeasureUnitRepositoryInterface
 {
+
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,11 +24,13 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $measureUnits = $query->paginate(50);
+
+        return $this->paginated($measureUnits, MeasureUnitResource::collection($measureUnits->items()));
 
     }
 
-  
+
 
     public function measureUnitDetails($filters)
     {
@@ -31,7 +39,7 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $measureUnitDetail;
+        return new MeasureUnitResource($measureUnitDetail);
 
     }
 
@@ -123,7 +131,7 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
 
         $measureUnit = MeasureUnit::findOrFail($id);
 
-        return $measureUnit;
+        return new MeasureUnitResource($measureUnit);
     }
 
 
@@ -131,15 +139,20 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
     {
         $measureUnits = MeasureUnit::where('is_active', 1)
             ->whereNull('deleted_at')
-            ->get(['id', 'name', 'symbol']);
+            ->get();
 
         if ($measureUnits->isEmpty()) {
             throw new \Exception('No Measure Units.');
         }
 
-        
 
-        return $measureUnits;
+
+         $response = ($measureUnits->count() > 0) ? MeasureUnitResource::collection($measureUnits)->map(function ($measureUnit) {
+            return collect($measureUnit)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

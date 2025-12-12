@@ -6,36 +6,35 @@ use App\Models\MeasureUnitConversion;
 
 use App\Interfaces\MeasureUnitConversionRepositoryInterface;
 
+use App\Traits\Paginator;
+
+use App\Http\Resources\MeasureUnitConversionResource;
+
 class MeasureUnitConversionRepository implements MeasureUnitConversionRepositoryInterface
 {
+
+    use Paginator;
 
     public function list(array $filters)
     {
         $query = MeasureUnitConversion::query();
 
+        $conversions = $query->paginate(50);
 
-
-        return $query->paginate(50);
+        return $this->paginated($conversions, MeasureUnitConversionResource::collection($conversions->items()));
 
     }
 
-    public function measureUnitConversionList()
-    {
-        $MeasureUnitConversions = MeasureUnitConversion::whereNull('deleted_at')
-            ->get();
-
-
-        return $MeasureUnitConversions;
-    }
+  
 
     public function measureUnitConversionDetails($filters)
     {
 
-        $MeasureUnitConversionDetail = MeasureUnitConversion::where('name', $filters)
+        $measureUnitConversionDetail = MeasureUnitConversion::where('name', $filters)
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $MeasureUnitConversionDetail;
+        return new MeasureUnitConversionResource($measureUnitConversionDetail);
 
     }
 
@@ -76,25 +75,30 @@ class MeasureUnitConversionRepository implements MeasureUnitConversionRepository
     public function show($id)
     {
 
-        $MeasureUnitConversion = MeasureUnitConversion::findOrFail($id);
+        $measureUnitConversion = MeasureUnitConversion::findOrFail($id);
 
-        return $MeasureUnitConversion;
+        return new MeasureUnitConversionResource($measureUnitConversion );
     }
 
 
     public function activeMeasureUnitConversionList()
     {
-        $MeasureUnitConversions = MeasureUnitConversion::where('is_active', 1)
+        $measureUnitConversions = MeasureUnitConversion::where('is_active', 1)
             ->whereNull('deleted_at')
             ->get();
 
-        if ($MeasureUnitConversions->isEmpty()) {
-            throw new \Exception('No Measure Units.');
+        if ($measureUnitConversions->isEmpty()) {
+            throw new \Exception('No Measure Unit Conversions.');
         }
 
 
 
-        return $MeasureUnitConversions;
+        $response = ($measureUnitConversions->count() > 0) ? MeasureUnitConversionResource::collection($measureUnitConversions)->map(function ($measureUnitConversion) {
+            return collect($measureUnitConversion)->only(['id', 'product_id']);
+        }) : [];
+
+
+        return $response;
 
     }
 

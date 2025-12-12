@@ -4,13 +4,15 @@ namespace App\Repositories;
 
 use App\Models\Brand;
 
+use App\Traits\Paginator;
 use App\Interfaces\BrandRepositoryInterface;
 use App\Http\Resources\BrandResource;
 
 class BrandRepository implements BrandRepositoryInterface
 {
+    use Paginator;
 
-    public function list(array $filters)
+    public function list(array $filters): array
     {
         $query = Brand::query();
 
@@ -19,11 +21,13 @@ class BrandRepository implements BrandRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $brands = $query->paginate(50);
+       
+        return $this->paginated($brands, BrandResource::collection($brands->items()));
 
     }
 
-   
+
 
     public function brandDetails($filters)
     {
@@ -32,7 +36,7 @@ class BrandRepository implements BrandRepositoryInterface
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $brandDetail;
+        return new BrandResource($brandDetail);
 
     }
 
@@ -111,20 +115,21 @@ class BrandRepository implements BrandRepositoryInterface
 
         $brand = Brand::findOrFail($id);
 
-        return $brand;
+        return new BrandResource($brand);
     }
 
 
     public function activeBrandList()
     {
         $brands = Brand::whereNull('deleted_at')
-        ->where('is_active', true)
-        ->paginate(10);
-    $response = ($brands->count() > 0) ? BrandResource::collection($brands)->map(function($brand) {
-            return collect($brand)->only(['id', 'name']);
-        }) : null;
+            ->where('is_active', true)
+            ->get();
 
-       //return  $this->paginated($brands, $response);
+        $response = ($brands->count() > 0) ? BrandResource::collection($brands)->map(function ($brand) {
+            return collect($brand)->only(['id', 'name']);
+        }) : [];
+
+
         return $response;
 
     }

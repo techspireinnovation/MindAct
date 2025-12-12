@@ -31,6 +31,7 @@ class Party extends BaseTenantModel
         'area',
         'bank_id',
         'bank_account_number',
+        'balance_type',
         'is_active'
     ];
 
@@ -51,7 +52,7 @@ class Party extends BaseTenantModel
 
     public function salesUse()
     {
-        return $this->hasMany(Sales::class, 'party_id');
+        return $this->hasMany(Sale::class, 'party_id');
     }
     public function purchaseProductsUse()
     {

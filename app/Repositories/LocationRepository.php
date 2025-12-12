@@ -4,10 +4,15 @@ namespace App\Repositories;
 
 use App\Models\Location;
 
+use App\Traits\Paginator;
+
 use App\Interfaces\LocationRepositoryInterface;
+
+use App\Http\Resources\LocationResource;
 
 class LocationRepository implements LocationRepositoryInterface
 {
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,11 +23,13 @@ class LocationRepository implements LocationRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $locations = $query->paginate(50);
+
+        return $this->paginated($locations, LocationResource::collection($locations->items()));
 
     }
 
- 
+
 
     public function locationDetails($filters)
     {
@@ -31,7 +38,7 @@ class LocationRepository implements LocationRepositoryInterface
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $locatinoDetail;
+        return new LocationResource($locatinoDetail);
 
     }
 
@@ -119,7 +126,7 @@ class LocationRepository implements LocationRepositoryInterface
 
         $location = Location::findOrFail($id);
 
-        return $location;
+        return new LocationResource($location);
     }
 
 
@@ -127,10 +134,14 @@ class LocationRepository implements LocationRepositoryInterface
     {
         $locations = Location::whereNull('deleted_at')
             ->where('is_active', true)
-            ->get(['id', 'name', 'is_primary']);
+            ->get();
 
 
-        return $locations;
+        $response = ($locations->count() > 0) ? LocationResource::collection($locations)->map(function ($location) {
+            return collect($location)->only(['id', 'name']);
+        }) : [];
+
+        return $response;
 
     }
 

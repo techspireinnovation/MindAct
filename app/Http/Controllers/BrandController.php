@@ -4,10 +4,13 @@ namespace App\Http\Controllers;
 use App\Http\Resources\BrandCollection;
 use App\Http\Resources\BrandResource;
 use App\Interfaces\BrandRepositoryInterface;
+use App\Http\Requests\BrandRequest\ListRequest;
+use App\Http\Requests\BrandRequest\DetailRequest;
 use App\Http\Requests\BrandRequest\StoreRequest;
 use App\Http\Requests\BrandRequest\UpdateRequest;
 use App\Models\Brand;
 use App\Repositories\BrandRepository;
+
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Log;
 use Sagautam5\LocalStateNepal\Entities\Province;
@@ -22,6 +25,8 @@ use Illuminate\Http\Request;
 class BrandController extends Controller
 {
 
+
+
     protected $repository;
 
     public function __construct(BrandRepositoryInterface $repository)
@@ -30,14 +35,19 @@ class BrandController extends Controller
         $this->repository = $repository;
 
     }
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
         try {
-            $filters = $request->only('keywords');
-            $brands = $this->repository->list($filters);
 
+            $brands = $this->repository->list($request->validated());
 
-            return new BrandCollection($brands);
+            return response()->json([
+                'message' => 'Brand List!',
+                'status' => 200,
+                'data' => $brands['data'],
+                'meta' => $brands['meta'],
+            ]);
+
 
         } catch (\Exception $e) {
             return response()->json([
@@ -48,13 +58,17 @@ class BrandController extends Controller
 
 
 
-    public function brandDetails(Request $request)
+    public function brandDetails(DetailRequest $request)
     {
         try {
 
-            $brandName = $request->brand_name;
-            $brandDetails = $this->repository->brandDetails($brandName);
-            return new BrandResource($brandDetails);
+
+            $brandDetails = $this->repository->brandDetails($request->validated());
+            return response()->json([
+                'message' => 'Brand Details !',
+                'status' => 200,
+                'data' => $brandDetails
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Brand not Found !!"], 404);
@@ -76,8 +90,8 @@ class BrandController extends Controller
     public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $validated = $request->validated();
-            $item = $this->repository->update($id, $validated);
+            
+            $item = $this->repository->update($id, $request->validated());
 
             return response()->json($item, 200);
         } catch (ModelNotFoundException $e) {
@@ -96,20 +110,28 @@ class BrandController extends Controller
     public function store(StoreRequest $request): JsonResponse
     {
 
-        $validated = $request->validated();
+        try {
 
-
-
-
-        $item = $this->repository->create($validated);
-        return response()->json($item, 201);
+            $item = $this->repository->create($request->validated());
+            return response()->json($item, 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item Not Found !!'], 404);
+        } catch (QueryException) {
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
     }
 
     public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return new BrandResource($item);
+            return response()->json([
+                'message' => 'Brand Details !',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
@@ -151,12 +173,13 @@ class BrandController extends Controller
     public function activeBrandList(Request $request)
     {
         try {
-            return $brands = $this->repository->activeBrandList();
-            // return BrandResource::collection($brands)
-            //     ->map(fn($resource) => [
-            //         'id' => $resource->id,
-            //         'name' => $resource->name,
-            //     ]);
+
+            $brands = $this->repository->activeBrandList();
+            return response()->json([
+                'message' => 'Brand List !',
+                'status' => 200,
+                'data' => $brands
+            ]);
 
 
         } catch (ModelNotFoundException $e) {

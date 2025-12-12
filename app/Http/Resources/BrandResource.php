@@ -14,7 +14,7 @@ class BrandResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        
+
         return [
             'id' => $this->id,
             'name' => $this->name,
@@ -26,11 +26,5 @@ class BrandResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Brand details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+
 }

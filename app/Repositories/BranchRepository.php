@@ -6,12 +6,15 @@ use App\Models\Branch;
 
 
 
+use App\Traits\Paginator;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 use App\Interfaces\BranchRepositoryInterface;
+use App\Http\Resources\BranchResource;
 
 class BranchRepository implements BranchRepositoryInterface
 {
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -22,11 +25,13 @@ class BranchRepository implements BranchRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $branches = $query->paginate(50);
+
+        return $this->paginated($branches, BranchResource::collection($branches->items()));
 
     }
 
-  
+
 
     public function branchDetails($filters)
     {
@@ -35,7 +40,7 @@ class BranchRepository implements BranchRepositoryInterface
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $branchDetail;
+        return new BranchResource($branchDetail);
 
     }
 
@@ -142,7 +147,7 @@ class BranchRepository implements BranchRepositoryInterface
 
         $branch = Branch::findOrFail($id);
 
-        return $branch;
+        return new BranchResource($branch);
     }
 
 
@@ -151,9 +156,14 @@ class BranchRepository implements BranchRepositoryInterface
         $branches = Branch::whereNull('deleted_at')
             ->where('is_active', true)
             ->get(['id', 'name', 'is_primary']);
-            
 
-        return $branches;
+
+        $response = ($branches->count() > 0) ? BranchResource::collection($branches)->map(function ($branch) {
+            return collect($branch)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

@@ -27,11 +27,5 @@ class BranchResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Branch details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+   
 }

@@ -6,6 +6,8 @@ use App\Interfaces\MeasureUnitRepositoryInterface;
 
 use App\Http\Resources\MeasureUnitCollection;
 use App\Http\Resources\MeasureUnitResource;
+use App\Http\Requests\MeasureUnitRequest\ListRequest;
+use App\Http\Requests\MeasureUnitRequest\DetailRequest;
 use App\Http\Requests\MeasureUnitRequest\StoreRequest;
 use App\Http\Requests\MeasureUnitRequest\UpdateRequest;
 use App\Models\MeasureUnit;
@@ -30,15 +32,18 @@ class MeasureUnitController extends Controller
 
     }
 
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
         try {
-            $filters = $request->only('keywords');
 
+            $items = $this->repository->list($request->validated());
 
-            $items = $this->repository->list($filters);
-
-            return new MeasureUnitCollection($items);
+            return response()->json([
+                'message' => 'Measure Unit List!',
+                'status' => 200,
+                'data' => $items['data'],
+                'meta' => $items['meta'],
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
@@ -49,22 +54,23 @@ class MeasureUnitController extends Controller
 
 
 
-    public function unitDetails(Request $request)
+    public function unitDetails(DetailRequest $request)
     {
         try {
 
-
-
-            $unit = $request->measure_unit;
-            $unitDetails = $this->repository->measureUnitDetails($unit);
-            return new MeasureUnitResource($unitDetails);
-
+            $unitDetails = $this->repository->measureUnitDetails($request->validated());
+            return response()->json([
+                'message' => 'Measure Unit Details !',
+                'status' => 200,
+                'data' => $unitDetails
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Measure Unit not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -73,9 +79,7 @@ class MeasureUnitController extends Controller
     {
         try {
 
-            $data = $request->validated();
-
-            $item = $this->repository->update($id, $data);
+            $item = $this->repository->update($id, $request->validated());
 
             return response()->json([
                 'success' => 'Updated Successfully !!',
@@ -90,16 +94,28 @@ class MeasureUnitController extends Controller
 
     public function store(StoreRequest $request): JsonResponse
     {
-        $data = $request->validated();
-        $item = $this->repository->create($data);
-        return response()->json($item, 201);
+        try {
+
+            $item = $this->repository->create($request->validated());
+            return response()->json($item, 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
     }
 
     public function show($id)
     {
         try {
             $item = $this->repository->show($id);
-            return new MeasureUnitResource($item);
+            return response()->json([
+                'message' => 'Measure Unit Details !',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(['error' => 'Item not found!!'], 404);
@@ -149,11 +165,11 @@ class MeasureUnitController extends Controller
         try {
             $units = $this->repository->activeMeasureUnitList();
 
-            return MeasureUnitResource::collection($units)
-                ->map(fn($unit) => [
-                    'id' => $unit->id,
-                    'name' => $unit->name,
-                ]);
+            return response()->json([
+                'message' => 'Measure Unit List !',
+                'status' => 200,
+                'data' => $units
+            ]);
 
         } catch (QueryException $e) {
 

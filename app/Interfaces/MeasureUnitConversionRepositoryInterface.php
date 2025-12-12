@@ -11,8 +11,7 @@ interface MeasureUnitConversionRepositoryInterface
 
     public function list(array $filters);
 
-    public function measureUnitConversionList();
-
+ 
 
     public function measureUnitConversionDetails($filters);
 

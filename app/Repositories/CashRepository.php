@@ -4,10 +4,15 @@ namespace App\Repositories;
 
 use App\Models\Cash;
 
+use App\Traits\Paginator;
+
 use App\Interfaces\CashRepositoryInterface;
+
+use App\Http\Resources\CashResource;
 
 class CashRepository implements CashRepositoryInterface
 {
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,7 +23,9 @@ class CashRepository implements CashRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $cashes = $query->paginate(50);
+
+        return $this->paginated($cashes, CashResource::collection($cashes->items()));
 
     }
 
@@ -76,18 +83,25 @@ class CashRepository implements CashRepositoryInterface
 
         $cash = Cash::findOrFail($id);
 
-        return $cash;
+        return new CashResource($cash);
+
+       
     }
 
 
     public function activeCashList()
     {
-        $cash = Cash::whereNull('deleted_at')
+        $cashes = Cash::whereNull('deleted_at')
             ->where('is_active', true)
             ->get(['id', 'name', 'is_primary']);
           
 
-        return $cash;
+        $response = ($cashes->count() > 0) ? CashResource::collection($cashes)->map(function ($cash) {
+            return collect($cash)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

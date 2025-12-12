@@ -19,6 +19,8 @@ return new class extends Migration {
             $table->string('vdc_municipality')->nullable();
             $table->text('pan_number')->nullable();
             $table->tinyInteger('type')->default(1)->comment('1 = Customer, 2 = Supplier, 3 = Both');
+            $table->tinyInteger('balance_type')->nullable()
+                ->default(null)->comment('1 = Debit, 2 = Credit');
             $table->text('address')->nullable();
             $table->string('phone');
             $table->string('email')->nullable();

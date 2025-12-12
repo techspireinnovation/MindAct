@@ -6,8 +6,13 @@ use App\Models\Product;
 
 use App\Interfaces\ProductRepositoryInterface;
 
+use App\Http\Resources\ProductResource;
+
+use App\Traits\Paginator;
+
 class ProductRepository implements ProductRepositoryInterface
 {
+    use Paginator;
 
     public function applyFilters($query, array $filters)
     {
@@ -16,13 +21,10 @@ class ProductRepository implements ProductRepositoryInterface
             $query->where(function ($q) use ($value) {
                 $q->where('name', 'LIKE', "$value%")
                     ->orWhere('product_code', 'LIKE', "$value%");
-                    // ->orWhere('barcode', 'LIKE', "%$value%");
+                // ->orWhere('barcode', 'LIKE', "%$value%");
             });
         }
 
-        // if (!empty($filters['search_barcode'])) {
-        //     $query->where('barcode', 'LIKE', "%{$filters['search_barcode']}%");
-        // }
 
         if (!empty($filters['search_product_code'])) {
             $query->where('product_code', 'LIKE', "%{$filters['search_product_code']}%");
@@ -57,22 +59,29 @@ class ProductRepository implements ProductRepositoryInterface
 
         $query = $this->applyFilters($query, $filters);
 
-        return $query->get();
+        $products = $query->get();
+        
+        return new ProductResource($products);
     }
 
-    public function list(array $filters, int $perPage = 50)
+    public function list(array $filters)
     {
         $query = Product::whereNull('deleted_at');
         $query = $this->applyFilters($query, $filters);
 
-        return $query->paginate($perPage);
+        $products = $query->paginate(50);
+
+        return $this->paginated($products, ProductResource::collection($products->items()));
     }
 
 
-   
 
-    public function productDetails($productId = Null, $productName = Null)
+
+    public function productDetails(array $filters)
     {
+
+        $productId = $filters['product_id'] ?? null;
+        $productName = $filters['product_name'] ?? null;
 
         if ($productId) {
             $productDetail = Product::where('id', $productId)
@@ -92,7 +101,7 @@ class ProductRepository implements ProductRepositoryInterface
         }
 
 
-        return $productDetail;
+        return new ProductResource($productDetail);
 
     }
 
@@ -159,7 +168,7 @@ class ProductRepository implements ProductRepositoryInterface
 
         $product = Product::findOrFail($id);
 
-        return $product;
+        return new ProductResource($product);
     }
 
 
@@ -172,7 +181,12 @@ class ProductRepository implements ProductRepositoryInterface
             ->get(['id', 'name']);
 
 
-        return $products;
+        $response = ($products->count() > 0) ? ProductResource::collection($products)->map(function ($product) {
+            return collect($product)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

@@ -1,6 +1,9 @@
 <?php
 
 namespace App\Http\Controllers;
+
+use App\Http\Requests\ProductCategoryRequest\ListRequest;
+use App\Http\Requests\ProductCategoryRequest\DetailRequest;
 use App\Http\Requests\ProductCategoryRequest\StoreRequest;
 use App\Http\Requests\ProductCategoryRequest\UpdateRequest;
 use App\Interfaces\ProductCategoryRepositoryInterface;
@@ -29,14 +32,19 @@ class ProductCategoryController extends Controller
         $this->repository = $repository;
     }
 
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
         try {
-            $filters = $request->only('keywords');
 
-            $categories = $this->repository->list($filters);
 
-            return new ProductCategoryCollection($categories);
+            $categories = $this->repository->list($request->validated());
+
+            return response()->json([
+                'message' => 'Product Category List!',
+                'status' => 200,
+                'data' => $categories['data'],
+                'meta' => $categories['meta'],
+            ]);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
@@ -44,24 +52,26 @@ class ProductCategoryController extends Controller
 
 
 
-    public function categoryDetails(Request $request)
+    public function categoryDetails(DetailRequest $request)
     {
         try {
 
-
-            $categoryName = $request->category_name;
-
-            $categoryDetail = $this->repository->categoryDetails($categoryName);
+            $categoryDetail = $this->repository->categoryDetails($request->validated());
 
 
-            return new ProductCategoryResource($categoryDetail);
+            return response()->json([
+                'message' => 'Product Category Details !',
+                'status' => 200,
+                'data' => $categoryDetail
+            ]);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(["error" => "Catgory Not Found !!"], 404);
+           
+            return response()->json(["error" => "Product Catgory Not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-
+           
             return response()->json(["error" => "An unexpected error occurred"], 500);
         }
 
@@ -71,24 +81,22 @@ class ProductCategoryController extends Controller
 
 
 
-    
+
     public function store(StoreRequest $request): JsonResponse
     {
         try {
-            $validated = $request->validated();
 
-
-            $category = $this->repository->create($validated);
+            $category = $this->repository->create($request->validated());
 
             return response()->json($category, 201);
 
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Company not found'], 404);
+            return response()->json(['error' => 'Product Category not found'], 404);
         } catch (QueryException $e) {
 
 
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+            return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
 
 
@@ -96,12 +104,16 @@ class ProductCategoryController extends Controller
         }
     }
 
-    
+
     public function show($id)
     {
         try {
             $category = $this->repository->show($id);
-            return new ProductCategoryResource($category);
+            return response()->json([
+                'message' => 'Product Category Details !',
+                'status' => 200,
+                'data' => $category
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product Category not found!!'], 404);
         } catch (QueryException $e) {
@@ -177,11 +189,11 @@ class ProductCategoryController extends Controller
         try {
             $categories = $this->repository->activeCategoryList();
 
-            return ProductCategoryResource::collection($categories)
-                ->map(fn($category) => [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                ]);
+            return response()->json([
+                'message' => 'Product Category List !',
+                'status' => 200,
+                'data' => $categories
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Category Not Found !!"], 404);

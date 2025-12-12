@@ -5,6 +5,8 @@ namespace App\Http\Requests\MeasureUnitRequest;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
 class DetailRequest extends FormRequest
 {
@@ -27,5 +29,14 @@ class DetailRequest extends FormRequest
             'measure_unit_name' => 'required|string'
 
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'error' => 'Validation failed',
+            'messages' => $validator->errors(),
+            'status' => 422,
+        ], 422));
     }
 }

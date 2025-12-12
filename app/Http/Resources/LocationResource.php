@@ -27,11 +27,5 @@ class LocationResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Location details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+   
 }

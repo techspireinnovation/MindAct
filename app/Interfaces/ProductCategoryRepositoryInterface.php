@@ -14,7 +14,7 @@ interface ProductCategoryRepositoryInterface
    
 
 
-    public function categoryDetails($filters);
+    public function categoryDetails(array $filters);
 
     public function delete($id);
 

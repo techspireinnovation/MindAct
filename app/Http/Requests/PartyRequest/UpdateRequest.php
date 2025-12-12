@@ -5,6 +5,8 @@ namespace App\Http\Requests\PartyRequest;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
 class UpdateRequest extends FormRequest
 {
@@ -34,7 +36,7 @@ class UpdateRequest extends FormRequest
             'pan_number' => [
                 'nullable',
                 'numeric',
-                
+
                 Rule::unique('parties')
                     ->ignore($id)
                     ->whereNull('deleted_at')
@@ -70,5 +72,14 @@ class UpdateRequest extends FormRequest
             'is_active' => 'nullable|boolean',
 
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'error' => 'Validation failed',
+            'messages' => $validator->errors(),
+            'status' => 422,
+        ], 422));
     }
 }

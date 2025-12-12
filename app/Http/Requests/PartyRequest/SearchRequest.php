@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\ProductTypeRequest;
+namespace App\Http\Requests\PartyRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 
-class UpdateRequest extends FormRequest
+class SearchRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,26 +25,12 @@ class UpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-
-        $id = $this->route('product_type');
-
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('product_types')
-                    ->ignore($id)
-                    ->whereNull('deleted_at')
-            ],
-            'is_active' => 'sometimes|boolean|required',
-            'is_primary' => 'sometimes|boolean',
-
+            'party_name' => 'nullable|string',
 
 
         ];
     }
-
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([

@@ -5,6 +5,8 @@ namespace App\Http\Requests\PartyRequest;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
 class DetailRequest extends FormRequest
 {
@@ -24,8 +26,18 @@ class DetailRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'party_name' => 'required|string'
+            'party_id' => 'nullable|numeric',
+            'party_name' => 'nullable|string'
 
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'error' => 'Validation failed',
+            'messages' => $validator->errors(),
+            'status' => 422,
+        ], 422));
     }
 }

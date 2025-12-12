@@ -5,9 +5,15 @@ namespace App\Repositories;
 use App\Models\ProductCategory;
 
 use App\Interfaces\ProductCategoryRepositoryInterface;
+use App\Traits\Paginator;
+
+use App\Http\Resources\ProductCategoryResource;
+use Exception;
 
 class ProductCategoryRepository implements ProductCategoryRepositoryInterface
 {
+
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,20 +24,25 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $categories = $query->paginate(50);
+        return $this->paginated($categories, ProductCategoryResource::collection($categories->items()));
 
     }
 
 
 
-    public function categoryDetails($filters)
+    public function categoryDetails(array $filters)
     {
 
-        $categoryDetail = ProductCategory::where('name', $filters)
+        $partyName = $filters['category_name'] ?? null;
+
+        
+
+        $categoryDetail = ProductCategory::where('name', $partyName)
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $categoryDetail;
+        return new ProductCategoryResource($categoryDetail);
 
     }
 
@@ -46,7 +57,7 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
         $data['is_primary'] = $data['is_primary'] ?? false;
         $data['is_active'] = $data['is_active'] ?? true;
 
-        // Create and return the product category
+        
         return ProductCategory::create($data);
 
     }
@@ -106,7 +117,7 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
 
         $productCategory = ProductCategory::findOrFail($id);
 
-        return $productCategory;
+        return new ProductCategoryResource($productCategory);
     }
 
 
@@ -117,7 +128,12 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
             ->get(['id', 'name', 'is_primary']);
 
 
-        return $categories;
+        $response = ($categories->count() > 0) ? ProductCategoryResource::collection($categories)->map(function ($category) {
+            return collect($category)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

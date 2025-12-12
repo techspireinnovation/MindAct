@@ -15,9 +15,9 @@ interface PartyRepositoryInterface
    
 
 
-    public function partyDetails($productId = Null, $productName = Null);
+    public function partyDetails(array $filters);
 
-     public function search($partyName);
+     public function search(array $filters);
 
     public function delete($id);
 

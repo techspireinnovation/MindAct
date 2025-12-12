@@ -27,11 +27,5 @@ class ProductTypeResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Product Type details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+    
 }

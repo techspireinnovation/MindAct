@@ -14,7 +14,7 @@ interface ProductTypeRepositoryInterface
    
 
 
-    public function productTypeDetails($filters);
+    public function productTypeDetails(array $filters);
 
     public function delete($id);
 

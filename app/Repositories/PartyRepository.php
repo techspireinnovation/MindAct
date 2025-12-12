@@ -29,10 +29,14 @@ class PartyRepository implements PartyRepositoryInterface
 
 
 
-    public function partyDetails($partyId = Null, $partyName = Null)
+    public function partyDetails(array $filters)
     {
 
-        if ($partyId) {
+        $partyId = $filters['party_id'] ?? null;
+        $partyName = $filters['party_name'] ?? null;
+
+        // Search by ID first
+        if (!empty($partyId)) {
             $partyDetail = Party::where('id', $partyId)
                 ->whereNull('deleted_at')
                 ->first();
@@ -42,13 +46,14 @@ class PartyRepository implements PartyRepositoryInterface
             }
         }
 
-
-        if ($partyName) {
+        // Otherwise search by name
+        if (!empty($partyName)) {
             $partyDetail = Party::where('name', $partyName)
                 ->whereNull('deleted_at')
                 ->firstOrFail();
+        } else {
+            throw new \Illuminate\Database\Eloquent\ModelNotFoundException("Party not found");
         }
-
 
         return new PartyResource($partyDetail);
 
@@ -78,10 +83,13 @@ class PartyRepository implements PartyRepositoryInterface
 
     }
 
-    public function search($partyName)
+    public function search(array $filters)
     {
+        $partyName = $filters['party_name'] ?? null;
         return Party::select(['id', 'name'])
-            ->where('name', 'like', "%{$partyName}%")
+            ->when($partyName, function ($q) use ($partyName) {
+                $q->where('name', 'like', "%{$partyName}%");
+            })
             ->whereNull('deleted_at')
             ->get();
     }

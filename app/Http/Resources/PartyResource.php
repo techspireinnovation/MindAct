@@ -46,11 +46,5 @@ class PartyResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Party details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+  
 }

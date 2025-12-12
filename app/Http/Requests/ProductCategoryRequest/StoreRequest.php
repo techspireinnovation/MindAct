@@ -5,6 +5,8 @@ namespace App\Http\Requests\ProductCategoryRequest;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
 
 class StoreRequest extends FormRequest
 {
@@ -32,10 +34,19 @@ class StoreRequest extends FormRequest
                     ->whereNull('deleted_at')
 
             ],
-           
+
             'is_primary' => 'boolean',
             'is_active' => 'boolean'
 
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'error' => 'Validation failed',
+            'messages' => $validator->errors(),
+            'status' => 422,
+        ], 422));
     }
 }

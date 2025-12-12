@@ -5,9 +5,14 @@ namespace App\Repositories;
 use App\Models\ProductType;
 
 use App\Interfaces\ProductTypeRepositoryInterface;
+use App\Traits\Paginator;
+
+use App\Http\Resources\ProductTypeResource;
 
 class ProductTypeRepository implements ProductTypeRepositoryInterface
 {
+
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,20 +23,23 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $productTypes = $query->paginate(50);
+        return $this->paginated($productTypes, ProductTypeResource::collection($productTypes->items()));
 
     }
 
    
 
-    public function productTypeDetails($filters)
+    public function productTypeDetails(array $filters)
     {
 
-        $productTypeDetail = ProductType::where('name', $filters)
+        $name= $filters['type_name'] ?? null;
+
+        $productTypeDetail = ProductType::where('name', $name)
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $productTypeDetail;
+        return new ProductTypeResource($productTypeDetail );
 
     }
 
@@ -114,7 +122,7 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
 
         $productType = ProductType::findOrFail($id);
 
-        return $productType;
+        return new ProductTypeResource($productType);
     }
 
 
@@ -125,7 +133,12 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
             ->get(['id', 'name', 'is_primary']);
             
 
-        return $productTypes;
+        $response = ($productTypes->count() > 0) ? ProductTypeResource::collection($productTypes)->map(function ($productType) {
+            return collect($productType)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

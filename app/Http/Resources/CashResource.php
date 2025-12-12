@@ -27,11 +27,5 @@ class CashResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Cash details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+   
 }

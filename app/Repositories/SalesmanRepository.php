@@ -6,8 +6,14 @@ use App\Models\Salesman;
 
 use App\Interfaces\SalesmanRepositoryInterface;
 
+use App\Traits\Paginator;
+
+use App\Http\Resources\SalesmanResource;
+
 class SalesmanRepository implements SalesmanRepositoryInterface
 {
+
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,20 +24,24 @@ class SalesmanRepository implements SalesmanRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $salesmen = $query->paginate(50);
+
+        return $this->paginated($salesmen, SalesmanResource::collection($salesmen->items()));
 
     }
 
 
 
-    public function salesmanDetails($filters)
+    public function salesmanDetails(array $filters)
     {
 
-        $salesmanDetail = Salesman::where('name', $filters)
+        $name = $filters['name'] ?? null;
+
+        $salesmanDetail = Salesman::where('name', $name)
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $salesmanDetail;
+        return new SalesmanResource($salesmanDetail);
 
     }
 
@@ -99,7 +109,7 @@ class SalesmanRepository implements SalesmanRepositoryInterface
 
         $salesman = Salesman::findOrFail($id);
 
-        return $salesman;
+        return new SalesmanResource($salesman);
     }
 
 
@@ -108,9 +118,14 @@ class SalesmanRepository implements SalesmanRepositoryInterface
         $salesmen = Salesman::whereNull('deleted_at')
             ->where('is_active', true)
             ->get(['id', 'name', 'is_primary']);
-           
 
-        return $salesmen;
+
+        $response = ($salesmen->count() > 0) ? SalesmanResource::collection($salesmen)->map(function ($salesman) {
+            return collect($salesman)->only(['id', 'name']);
+        }) : [];
+
+
+        return $response;
 
     }
 

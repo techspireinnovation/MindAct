@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 use App\Interfaces\SalesmanRepositoryInterface;
+use App\Http\Requests\SalesmanRequest\ListRequest;
+use App\Http\Requests\SalesmanRequest\DetailRequest;
 use App\Http\Requests\SalesmanRequest\StoreRequest;
 use App\Http\Requests\SalesmanRequest\UpdateRequest;
 
@@ -30,15 +32,25 @@ class SalesmanController extends Controller
 
 
 
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
         try {
-            $filters = $request->only('keywords');
-
-            $items = $this->repository->list($filters);
 
 
-            return new SalesmanCollection($items);
+            $items = $this->repository->list($request->validated());
+            return response()->json([
+                'message' => 'Salesmen List!',
+                'status' => 200,
+                'data' => $items['data'],
+                'meta' => $items['meta'],
+            ]);
+
+
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred!!'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
@@ -53,11 +65,11 @@ class SalesmanController extends Controller
             $salesmen = $this->repository->activeSalesmanList();
 
 
-            return SalesmanResource::collection($salesmen)
-                ->map(fn($salesman) => [
-                    'id' => $salesman->id,
-                    'name' => $salesman->name,
-                ]);
+            return response()->json([
+                'message' => 'Salesmen List !',
+                'status' => 200,
+                'data' => $salesmen
+            ]);
 
         } catch (ModelNotFoundException $e) {
 
@@ -72,16 +84,17 @@ class SalesmanController extends Controller
     }
 
 
-    public function salesmenDetails(Request $request)
+    public function salesmenDetails(DetailRequest $request)
     {
         try {
 
+            $salesmanDetails = $this->repository->salesmanDetails($request->validated());
 
-
-            $salesman = $request->salesman_name;
-            $salesmanDetails = $this->repository->salesmanDetails($salesman);
-
-            return new SalesmanResource($salesmanDetails);
+            return response()->json([
+                'message' => 'Salesman Details !!',
+                'status' => 200,
+                'data' => $salesmanDetails
+            ]);
 
 
         } catch (ModelNotFoundException $e) {
@@ -99,12 +112,11 @@ class SalesmanController extends Controller
         try {
 
 
-            $data = $request->validated();
-
-            $salesman = $this->repository->create($data);
+            $salesman = $this->repository->create($request->validated());
 
             return response()->json([
                 'message' => 'Salesman created successfully',
+                'status' => 201,
                 'data' => $salesman
             ], 201);
         } catch (QueryException $e) {
@@ -123,10 +135,16 @@ class SalesmanController extends Controller
     {
         try {
             $item = $this->repository->show($id);
-            return new SalesmanResource($item);
+            return response()->json([
+                'message' => 'Salesman Details !',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        }catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -135,13 +153,11 @@ class SalesmanController extends Controller
     {
         try {
 
-            $data = $request->validated();
-
-
-            $salesman = $this->repository->update($id, $data);
+            $salesman = $this->repository->update($id, $request->validated());
 
             return response()->json([
                 'message' => 'Salesman updated successfully',
+                'status' => 200,
                 'data' => $salesman->fresh()
             ], 200);
 

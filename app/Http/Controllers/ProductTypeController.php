@@ -9,7 +9,8 @@ use App\Models\Product;
 use App\Http\Resources\ProductTypeCollection;
 use App\Http\Resources\ProductTypeResource;
 
-
+use App\Http\Requests\ProductTypeRequest\ListRequest;
+use App\Http\Requests\ProductTypeRequest\DetailRequest;
 use App\Http\Requests\ProductTypeRequest\StoreRequest;
 use App\Http\Requests\ProductTypeRequest\UpdateRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -28,14 +29,25 @@ class ProductTypeController extends Controller
     {
         $this->repository = $repository;
     }
-    public function index(Request $request)
+    public function index(ListRequest $request)
     {
         try {
-            $filters = $request->only('keywords');
 
-            $productTypes = $this->repository->list($filters);
 
-            return new ProductTypeCollection($productTypes);
+            $productTypes = $this->repository->list($request->validated());
+
+            return response()->json([
+                'message' => 'Product Type List!',
+                'status' => 200,
+                'data' => $productTypes['data'],
+                'meta' => $productTypes['meta'],
+            ]);
+        } catch (ModelNotFoundException $e) {
+
+            return response()->json(['error' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+
+            return response()->json(['error' => 'Database error occured !!'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexepected error occurred!!'], 500);
         }
@@ -43,18 +55,21 @@ class ProductTypeController extends Controller
 
 
 
-    public function productTypeDetails(Request $request)
+    public function productTypeDetails(DetailRequest $request)
     {
         try {
 
-            $type = $request->type_name;
 
-            $typeDetails = $this->repository->productTypeDetails($type);
+            $typeDetails = $this->repository->productTypeDetails($request->validated());
 
-            return new ProductTypeResource($typeDetails);
+            return response()->json([
+                'message' => 'Product Type Details !!',
+                'status' => 200,
+                'data' => $typeDetails
+            ]);
 
 
-        } catch (ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {          
 
             return response()->json(["error" => "Not Item Found !!"], 404);
         } catch (QueryException $e) {
@@ -71,11 +86,14 @@ class ProductTypeController extends Controller
     {
         try {
 
-            $data = $request->validated();
 
-            $item = $this->repository->update($id, $data);
+            $item = $this->repository->update($id, $request->validated());
 
-            return response()->json($item);
+            return response()->json([
+                'message' => 'Product Type Updated !!',
+                'status' => 200,
+                'data' => $item
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
@@ -91,10 +109,14 @@ class ProductTypeController extends Controller
     {
         try {
 
-            $data = $request->validated();
-            $item = $this->repository->create($data);
 
-            return response()->json($item, 201);
+            $item = $this->repository->create($request->validated());
+
+            return response()->json([
+                'message' => 'Product Type Created !!',
+                'status' => 201,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found !!'], 404);
         } catch (QueryException $e) {
@@ -111,10 +133,16 @@ class ProductTypeController extends Controller
     {
         try {
             $item = $this->repository->show($id);
-            return new ProductTypeResource($item);
+            return response()->json([
+                'message' => 'Product Type Details !',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred!!'], 500);
+        } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -160,12 +188,11 @@ class ProductTypeController extends Controller
         try {
             $types = $this->repository->activeProductTypeList();
 
-            return ProductTypeResource::collection($types)
-                ->map(fn($type) => [
-                    'id' => $type->id,
-                    'name' => $type->name,
-                ]);
-
+            return response()->json([
+                'message' => 'Product Type List !',
+                'status' => 200,
+                'data' => $types
+            ]);
         } catch (QueryException $e) {
 
             return response()->json(["error" => "Database error occurred !!"], 500);

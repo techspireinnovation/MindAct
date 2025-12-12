@@ -13,7 +13,7 @@ interface SalesmanRepositoryInterface
 
    
 
-    public function salesmanDetails($filters);
+    public function salesmanDetails(array $filters);
 
     public function delete($id);
 

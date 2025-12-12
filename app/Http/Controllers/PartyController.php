@@ -9,6 +9,7 @@ use App\Http\Resources\PartyResource;
 
 use App\Http\Requests\PartyRequest\ListRequest;
 use App\Http\Requests\PartyRequest\DetailRequest;
+use App\Http\Requests\PartyRequest\SearchRequest;
 use App\Http\Requests\PartyRequest\StoreRequest;
 use App\Http\Requests\PartyRequest\UpdateRequest;
 use Exception;
@@ -34,6 +35,12 @@ class PartyController extends Controller
 
             $items = $this->repository->list($request->validated());
 
+            return response()->json([
+                'message' => 'Party List !',
+                'status' => 200,
+                'data' => $items['data'],
+                'meta' => $items['meta'],
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json([
@@ -63,8 +70,6 @@ class PartyController extends Controller
     {
 
         try {
-
-
 
 
             $item = $this->repository->create($request->validated());
@@ -156,14 +161,12 @@ class PartyController extends Controller
     }
 
 
-    public function partyDetails(Request $request)
+    public function partyDetails(DetailRequest $request)
     {
         try {
 
-            $partyId = $request->party_id;
-            $partyName = $request->party_name;
-
-            $item = $this->repository->partyDetails($partyId, $partyName);
+           
+            $item = $this->repository->partyDetails($request->validated());
 
             return new PartyResource($item);
 
@@ -177,13 +180,13 @@ class PartyController extends Controller
         }
     }
 
-    public function searchPartyList(Request $request)
+    public function searchPartyList(SearchRequest $request)
     {
         try {
 
-            $partyName = $request->party_name;
 
-            $party = $this->repository->search($partyName);
+
+            $party = $this->repository->search($request->validated());
 
             return response()->json([
                 'success' => 'Party Name Retrieved !',
@@ -198,7 +201,8 @@ class PartyController extends Controller
 
             return response()->json(['error' => 'Database error occurred !!'], 500);
         } catch (Exception $e) {
-
+           
+              
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
     }

@@ -9,6 +9,8 @@ use App\Interfaces\ProductRepositoryInterface;
 use App\Http\Resources\ProductCollection;
 use App\Http\Resources\ProductResource;
 
+use App\Http\Requests\ProductRequest\ListRequest;
+use App\Http\Requests\ProductRequest\DetailRequest;
 use App\Http\Requests\ProductRequest\StoreRequest;
 use App\Http\Requests\ProductRequest\UpdateRequest;
 use App\Http\Requests\ProductRequest\SearchRequest;
@@ -60,11 +62,11 @@ class ProductController extends Controller
         try {
 
             $products = $this->repository->activeProductList();
-            return ProductResource::collection($products)
-                ->map(fn($product) => [
-                    'id' => $product->id,
-                    'name' => $product->name,
-                ]);
+            return response()->json([
+                'message' => 'Product List !!',
+                'status' => 200,
+                'data' => $products
+            ]);
 
         } catch (ModelNotFoundException $e) {
 
@@ -79,20 +81,18 @@ class ProductController extends Controller
     }
 
 
-    public function productDetails(Request $request)
+    public function productDetails(DetailRequest $request)
     {
         try {
 
-            $productId = $request->product_id;
-            $productName = $request->product_name;
-            if (!$productId && !$productName) {
-                return response()->json(['error' => 'Product Name of ID parameter is required'], 422);
-            }
-
-            $productDetail = $this->repository->productDetails($productId, $productName);
+            $productDetail = $this->repository->productDetails($request->validated());
 
 
-            return new ProductResource($productDetail);
+            return response()->json([
+                'message' => 'Product Details !',
+                'status' => 200,
+                'data' => $productDetail
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product not found!'], 404);
         } catch (QueryException $e) {
@@ -107,15 +107,14 @@ class ProductController extends Controller
     {
         try {
 
-            $filters = $request->validated();
+            $result = $this->repository->list($request->validated());
 
-
-            $perPage = $request->input('per_page', 50);
-
-
-            $result = $this->repository->list($filters, $perPage);
-
-            return new ProductCollection($result);
+            return response()->json([
+                'message' => 'Products List!',
+                'status' => 200,
+                'data' => $result['data'],
+                'meta' => $result['meta'],
+            ]);
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Server error occurred',
@@ -129,12 +128,15 @@ class ProductController extends Controller
     public function search(SearchRequest $request)
     {
         try {
-            $filters = $request->validated();
+        
 
+            $products = $this->repository->search($request->validated());
 
-            $products = $this->repository->search($filters);
-
-            return new ProductCollection($products);
+            return response()->json([
+                'message' => 'Product List',
+                'status' => 200,
+                'data' => $products
+            ]);
 
         } catch (\Exception $e) {
 
@@ -151,11 +153,15 @@ class ProductController extends Controller
     public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $data = $request->validated();
 
-            $item = $this->repository->update($id, $data);
 
-            return response()->json(['message' => 'Product Updated', 'product' => $item], 200);
+            $item = $this->repository->update($id, $request->validated());
+
+            return response()->json([
+                'message' => 'Product Updated !!',
+                'status' => 200,
+                'data' => $item
+            ], 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found'], 404);
         } catch (\Exception $e) {
@@ -167,18 +173,23 @@ class ProductController extends Controller
 
     public function store(StoreRequest $request)
     {
+        try {
 
-        $data = $request->validated();
+            $item = $this->repository->create($request->validated());
 
-        $item = $this->repository->create($data);
+            return response()->json([
+                'message' => 'Product Created !!',
+                'status' => 200,
+                'data' => $item
 
-
-
-        return response()->json([
-            'item' => $item,
-            'action' => 'created',
-
-        ], 201);
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
     }
 
 
@@ -189,7 +200,11 @@ class ProductController extends Controller
 
             $product = $this->repository->show($id);
 
-            return new ProductResource($product);
+            return response()->json([
+                'message' => 'Product Details !',
+                'status' => 200,
+                'data' => $product
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product not found!'], 404);

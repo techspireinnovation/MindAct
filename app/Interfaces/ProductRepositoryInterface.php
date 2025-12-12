@@ -9,13 +9,13 @@ interface ProductRepositoryInterface
 
     public function update($id, array $data);
 
-    public function list(array $filters, int $perPage = 50);
+    public function list(array $filters);
     public function applyFilters($query, array $filters);
 
   
 
 
-    public function productDetails($productId = Null, $productName = Null);
+    public function productDetails(array $filters);
 
     public function search(array $filters);
 

@@ -6,6 +6,9 @@ namespace App\Http\Requests\ProductRequest;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
+use Illuminate\Http\Exceptions\HttpResponseException;
+use Illuminate\Contracts\Validation\Validator;
+
 class SearchRequest extends FormRequest
 {
     /**
@@ -35,5 +38,14 @@ class SearchRequest extends FormRequest
             'per_page' => 'nullable|integer|min:1|max:100',
 
         ];
+    }
+
+    protected function failedValidation(Validator $validator)
+    {
+        throw new HttpResponseException(response()->json([
+            'error' => 'Validation failed',
+            'messages' => $validator->errors(),
+            'status' => 422,
+        ], 422));
     }
 }

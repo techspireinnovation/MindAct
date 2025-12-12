@@ -43,11 +43,5 @@ class SalesmanResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Salesman details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+   
 }

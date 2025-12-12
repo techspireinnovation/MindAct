@@ -27,11 +27,5 @@ class MeasureUnitResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Measure Unit details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+    
 }

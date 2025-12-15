@@ -14,7 +14,7 @@ interface StoreRepositoryInterface
     
 
 
-    public function storeDetails($filters);
+    public function storeDetails(array $filters);
 
     public function delete($id);
 

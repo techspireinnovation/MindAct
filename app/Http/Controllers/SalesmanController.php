@@ -7,7 +7,7 @@ use App\Http\Requests\SalesmanRequest\DetailRequest;
 use App\Http\Requests\SalesmanRequest\StoreRequest;
 use App\Http\Requests\SalesmanRequest\UpdateRequest;
 
-use App\Http\Resources\SalesmanCollection;
+
 use App\Http\Resources\SalesmanResource;
 
 use App\Models\Salesman;
@@ -36,7 +36,6 @@ class SalesmanController extends Controller
     {
         try {
 
-
             $items = $this->repository->list($request->validated());
             return response()->json([
                 'message' => 'Salesmen List!',
@@ -44,8 +43,6 @@ class SalesmanController extends Controller
                 'data' => $items['data'],
                 'meta' => $items['meta'],
             ]);
-
-
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);
@@ -63,7 +60,6 @@ class SalesmanController extends Controller
         try {
 
             $salesmen = $this->repository->activeSalesmanList();
-
 
             return response()->json([
                 'message' => 'Salesmen List !',
@@ -119,12 +115,11 @@ class SalesmanController extends Controller
                 'status' => 201,
                 'data' => $salesman
             ], 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not Found !!'], 404);
         } catch (QueryException $e) {
-
-
             return response()->json(['error' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-
             return response()->json(['error' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -144,7 +139,7 @@ class SalesmanController extends Controller
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database error occurred !!'], 500);
-        }catch (\Exception $e) {
+        } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

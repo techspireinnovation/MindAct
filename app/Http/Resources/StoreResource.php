@@ -27,11 +27,5 @@ class StoreResource extends JsonResource
         ];
     }
 
-    public function toResponse($request)
-    {
-        return response()->json([
-            'success' => 'Store details received!',
-            'data' => $this->toArray($request),
-        ]);
-    }
+    
 }

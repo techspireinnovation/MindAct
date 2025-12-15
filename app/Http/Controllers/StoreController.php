@@ -6,6 +6,8 @@ use App\Models\Store;
 use App\Http\Resources\StoreCollection;
 use App\Http\Resources\StoreResource;
 
+use App\Http\Requests\StoreRequest\ListRequest;
+use App\Http\Requests\StoreRequest\DetailRequest;
 use App\Http\Requests\StoreRequest\StoreRequest;
 use App\Http\Requests\StoreRequest\UpdateRequest;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -25,13 +27,20 @@ class StoreController extends Controller
         $this->repository = $repository;
 
     }
-    public function index(Request $request): JsonResponse
+    public function index(ListRequest $request): JsonResponse
     {
         try {
-            $filters = $request->only('keywords');
-
-            $items = $this->repository->list($filters);
-            return response()->json($items, 200);
+            $items = $this->repository->list($request->validated());
+            return response()->json([
+                'message' => 'Store List!',
+                'status' => 200,
+                'data' => $items['data'],
+                'meta' => $items['meta'],
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred !!'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
@@ -43,16 +52,18 @@ class StoreController extends Controller
 
 
 
-    public function storeDetails(Request $request)
+    public function storeDetails(DetailRequest $request)
     {
         try {
-
-            $store = $request->store_name;
-            $storeDetails = $this->repository->storeDetails($store);
-            return new StoreResource($storeDetails);
-
+            $storeDetails = $this->repository->storeDetails($request->validated());
+            return response()->json([
+                'message' => 'Store Details !!',
+                'status' => 200,
+                'data' => $storeDetails
+            ]);
 
         } catch (ModelNotFoundException $e) {
+
             return response()->json(["error" => "Store not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
@@ -64,12 +75,13 @@ class StoreController extends Controller
     {
         try {
 
-            $data = $request->validated();
+            $item = $this->repository->update($id, $request->validated());
 
-            $item = $this->repository->update($id, $data);
-
-            return response()->json($item);
-
+            return response()->json([
+                'message' => 'Store Updated !!',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
@@ -81,11 +93,16 @@ class StoreController extends Controller
     public function store(StoreRequest $request): JsonResponse
     {
         try {
-            $data = $request->validated();
-            $item = $this->repository->create($data);
+
+            $item = $this->repository->create($request->validated());
+            return response()->json([
+                'message' => 'Store Created !!',
+                'status' => 201,
+                'data' => $item
+            ]);
 
 
-            return response()->json($item, 201);
+
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found !!'], 404);
         } catch (QueryException $e) {
@@ -99,7 +116,11 @@ class StoreController extends Controller
     {
         try {
             $item = $this->repository->show($id);
-            return new StoreResource($item);
+            return response()->json([
+                'message' => 'Store Details !!',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
@@ -150,11 +171,11 @@ class StoreController extends Controller
         try {
             $stores = $this->repository->activeStoreList();
 
-            return StoreResource::collection($stores)
-                ->map(fn($store) => [
-                    'id' => $store->id,
-                    'name' => $store->name,
-                ]);
+            return response()->json([
+                'message' => 'Store List !',
+                'status' => 200,
+                'data' => $stores
+            ]);
 
         } catch (\Exception $e) {
 

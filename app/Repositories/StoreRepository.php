@@ -6,8 +6,14 @@ use App\Models\Store;
 
 use App\Interfaces\StoreRepositoryInterface;
 
+use App\Traits\Paginator;
+
+use App\Http\Resources\StoreResource;
+
 class StoreRepository implements StoreRepositoryInterface
 {
+
+    use Paginator;
 
     public function list(array $filters)
     {
@@ -18,20 +24,22 @@ class StoreRepository implements StoreRepositoryInterface
             $query->where('name', 'LIKE', '%' . $filters['keywords'] . '%');
         }
 
-        return $query->paginate(50);
+        $stores = $query->paginate(50);
+        return $this->paginated($stores, StoreResource::collection($stores->items()));
 
     }
 
 
 
-    public function storeDetails($filters)
+    public function storeDetails(array $filters)
     {
+        $name = $filters['store_name'] ?? null;
 
-        $storeDetail = Store::where('name', $filters)
+        $storeDetail = Store::where('name', $name)
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return $storeDetail;
+        return new StoreResource($storeDetail);
 
     }
 
@@ -112,7 +120,7 @@ class StoreRepository implements StoreRepositoryInterface
 
         $store = Store::findOrFail($id);
 
-        return $store;
+        return new StoreResource($store);
     }
 
 
@@ -127,14 +135,14 @@ class StoreRepository implements StoreRepositoryInterface
 
         }
 
-       
+        $response = ($stores->count() > 0) ? StoreResource::collection($stores)->map(function ($store) {
+            return collect($store)->only(['id', 'name']);
+        }) : [];
 
-        return $stores;
+
+        return $response;
 
     }
-
-
-
 
 }
 ?>

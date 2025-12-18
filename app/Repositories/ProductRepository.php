@@ -7,6 +7,9 @@ use App\Models\Product;
 use App\Interfaces\ProductRepositoryInterface;
 
 use App\Http\Resources\ProductResource;
+use DB;
+
+use Illuminate\Support\Arr;
 
 use App\Traits\Paginator;
 
@@ -60,7 +63,7 @@ class ProductRepository implements ProductRepositoryInterface
         $query = $this->applyFilters($query, $filters);
 
         $products = $query->get();
-        
+
         return new ProductResource($products);
     }
 
@@ -111,8 +114,18 @@ class ProductRepository implements ProductRepositoryInterface
     {
 
 
-        return Product::create($data);
+        return DB::transaction(function () use ($data) {
 
+            $product = Product::create($data);
+
+
+
+            if (!empty($data['product_list'])) {
+                $product->productLists()->createMany($data['product_list']);
+            }
+
+            return $product->load('productLists');
+        });
     }
 
 
@@ -120,11 +133,57 @@ class ProductRepository implements ProductRepositoryInterface
     public function update($id, array $data)
     {
 
-        $product = Product::findOrFail($id);
+        return DB::transaction(function () use ($id, $data) {
 
-        $product->update($data);
+            $product = Product::findOrFail($id);
 
-        return $product->fresh();
+           
+            $productData = Arr::except($data, ['product_list']);
+            $product->update($productData);
+
+           
+            if (isset($data['product_lists'])) {
+
+                $existingIds = $product->productLists()->pluck('id')->toArray();
+                $incomingIds = collect($data['product_lists'])
+                    ->pluck('id')
+                    ->filter()
+                    ->toArray();
+
+                foreach ($data['product_lists'] as $list) {
+
+                    if (!empty($list['id'])) {
+                      
+                        $product->productLists()
+                            ->where('id', $list['id'])
+                            ->update(Arr::except($list, ['id']));
+                    } else {
+                       
+                        $product->productLists()->create($list);
+                    }
+                }
+
+               
+                $deleteIds = array_diff($existingIds, $incomingIds);
+                if (!empty($deleteIds)) {
+                    $product->productLists()->whereIn('id', $deleteIds)->delete();
+                }
+
+               
+                $primaryId = collect($data['product_lists'])
+                    ->where('is_primary', true)
+                    ->pluck('id')
+                    ->first();
+
+                if ($primaryId) {
+                    $product->productLists()
+                        ->where('id', '!=', $primaryId)
+                        ->update(['is_primary' => false]);
+                }
+            }
+
+            return $product->fresh('productLists');
+        });
 
 
     }
@@ -166,7 +225,7 @@ class ProductRepository implements ProductRepositoryInterface
     public function show($id)
     {
 
-        $product = Product::findOrFail($id);
+        $product = Product::with('productLists')->findOrFail($id);
 
         return new ProductResource($product);
     }

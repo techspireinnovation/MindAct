@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Http\Requests\MeasureUnitRequest;
+namespace App\Http\Requests\FiscalYearRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
+
+
 
 class StoreRequest extends FormRequest
 {
@@ -30,21 +32,22 @@ class StoreRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('measure_units')
+                Rule::unique('fiscal_years')
                     ->whereNull('deleted_at')
 
 
             ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'nullable|string'
-
+            'name_np' => 'nullable|string|max:255',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
+            'is_active' => 'boolean|nullable',
+            
+           
 
         ];
     }
 
-    protected function failedValidation(Validator $validator)
+     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
             'error' => 'Validation failed',

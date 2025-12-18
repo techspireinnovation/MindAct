@@ -12,6 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('sales_returns', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('fiscal_year_id')->nullable();
 
             $table->unsignedBigInteger('party_id')->nullable();
             $table->unsignedBigInteger('salesman_id')->nullable();

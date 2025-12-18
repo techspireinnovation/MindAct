@@ -1,12 +1,14 @@
 <?php
 
-namespace App\Http\Requests\MeasureUnitRequest;
+namespace App\Http\Requests\AreaRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
+
+
 
 class StoreRequest extends FormRequest
 {
@@ -30,21 +32,20 @@ class StoreRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('measure_units')
+                Rule::unique('areas')
                     ->whereNull('deleted_at')
 
 
             ],
             'is_active' => 'boolean|required',
             'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'nullable|string'
-
+            'deletes_status' => 'nullable'
+           
 
         ];
     }
 
-    protected function failedValidation(Validator $validator)
+     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
             'error' => 'Validation failed',

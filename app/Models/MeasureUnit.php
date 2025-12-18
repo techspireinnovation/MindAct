@@ -22,15 +22,14 @@ class MeasureUnit extends BaseTenantModel
         'name',
         'is_active',
         'is_primary',
-        'deleted_at',
-       
+        'quantity',
+        'deleted_at',       
         'symbol',
         
     ];
 
 
     protected $dates = ['deleted_at'];
-
     
 
     public function productAssembleDetails()

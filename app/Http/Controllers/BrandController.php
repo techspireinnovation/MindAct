@@ -93,7 +93,11 @@ class BrandController extends Controller
             
             $item = $this->repository->update($id, $request->validated());
 
-            return response()->json($item, 200);
+             return response()->json([
+                'message' => 'Brand Updated !!',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
 
             return response()->json(['error' => 'Item not found'], 404);
@@ -113,7 +117,11 @@ class BrandController extends Controller
         try {
 
             $item = $this->repository->create($request->validated());
-            return response()->json($item, 201);
+            return response()->json([
+                'message' => 'Brand Created !!',
+                'status' => 201,
+                'data' =>$item 
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found !!'], 404);
         } catch (QueryException) {

@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->string('name');
             $table->string('symbol')->nullable();
             $table->integer('quantity')->nullable();
-
+            $table->boolean('is_countable')->default(true)->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
             $table->auditFields();

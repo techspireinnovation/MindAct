@@ -46,6 +46,11 @@ class Product extends BaseTenantModel
 
 
 
+    public function productLists()
+    {
+        return $this->hasMany(ProductList::class, 'product_id');
+    }
+
 
     public function unitConversions()
     {

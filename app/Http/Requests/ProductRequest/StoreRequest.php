@@ -30,7 +30,7 @@ class StoreRequest extends FormRequest
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('brands')
+                Rule::unique('products')
                     ->whereNull('deleted_at')
 
 
@@ -41,9 +41,28 @@ class StoreRequest extends FormRequest
             'category_id' => 'nullable|numeric',
             'brand_id' => 'nullable|numeric',
             'measure_unit_id' => 'nullable|numeric',
-            'is_vatable' =>'nullable',
+            'is_vatable' => 'nullable',
             'product_type_id' => 'nullable|numeric',
             'is_active' => 'boolean|required',
+            'product_lists' => 'nullable||array',
+            'product_lists.*.id' => 'nullable',
+
+            'product_lists.*.measure_unit_id' => 'nullable||integer|exists:measure_units,id',
+
+            'product_lists.*.barcode' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique('product_lists')->whereNull('deleted_at')
+
+
+            ],
+            'product_lists.*.is_primary' => 'boolean|nullable|',
+            'product_lists.*.hs_code' => 'nullable|string|max:255',
+            'product_lists.*.price' => 'nullable|numeric',
+            'product_lists.*.discount' => 'nullable|numeric',
+            'product_lists.*.final_price' => 'nullable|numeric',
+            'product_lists.*.primary_measure_unit_id' => 'nullable||integer|exists:measure_units,id',
 
         ];
     }

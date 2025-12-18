@@ -4,6 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use App\Interfaces\AreaRepositoryInterface;
+
+use App\Http\Requests\AreaRequest\ListRequest;
+use App\Http\Requests\AreaRequest\DetailRequest;
+use App\Http\Requests\AreaRequest\StoreRequest;
+use App\Http\Requests\AreaRequest\UpdateRequest;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use App\Models\Area;
@@ -12,190 +18,118 @@ use Illuminate\Validation\Rule;
 
 class AreaController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    protected $repository;
+
+    public function __construct(AreaRepositoryInterface $repository)
     {
-        $query = Area::query();
 
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
+        $this->repository = $repository;
+
+    }
+    public function index(ListRequest $request): JsonResponse
+    {
+        try {
+            $items = $this->repository->list($request->validated());
+            return response()->json([
+                'message' => 'Area List!',
+                'status' => 200,
+                'data' => $items['data'],
+                'meta' => $items['meta'],
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+
         }
-
-        return response()->json($query->paginate(50));
     }
 
-
-    public function areaList(Request $request): JsonResponse
+    public function activeAreaList(Request $request)
     {
         try {
 
-            $area = Area::where('company_id', $request->company_id)
-                ->where('is_active', 1)->get();
+            $areas = $this->repository->activeAreaList();
 
             return response()->json([
-                'message' => 'List Received Sucessfully !!',
-                'data' => $area
+                "message" => "Area List !!",
+                'status' => 200,
+                "data" => $areas
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+
+            return response()->json(["error" => "Area not Found !!"], 404);
+        } catch (QueryException $e) {
+
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+    public function areaDetails(DetailRequest $request)
+    {
+        try {
+            $areaDetails = $this->repository->areaDetails($request->validated());
+
+            return response()->json([
+                "message" => "Area Details !!",
+                'status' => 200,
+                "data" => $areaDetails
             ], 200);
 
+
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Item not Found !!'], 404);
+            return response()->json(["error" => "Area not Found !!"], 404);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database Error Ocurred!!'], 500);
+            return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An unexpected error Ocurred!!'], 500);
-        }
-
-    }
-    public function getAreaList(Request $request){
-        try{
-
-            $accountHeads = Area::where('company_id',$request->company_id)
-            ->whereNull('deleted_at')
-            ->where('is_active', 1)
-            ->get(['id', 'name'])
-            ->map(fn($accountHead) => ['id' => $accountHead->id, 'name' => $accountHead->name])
-            ->values()
-            ->toArray();
-            return response()->json(["message"=>"Area List Received !!",
-                                       "data"=>$accountHeads
-                                    ]);
-
-        }catch(ModelNotFoundException $e){
-           
-            return response()->json(["error"=>"Area not Found !!"],404);
-        }catch(QueryException $e){
-           
-            return response()->json(["error"=>"Database error occurred !!"],500);
-        }catch(\Exception $e){
-          
-            return response()->json(["error"=>"An unexpected error occurred !!"],500);
-        }
-    }
-    public function getAreaDetails(Request $request){
-        try{
-
-           $companyId  = $request->company_id;
-           if(!$companyId){
-            return response()->json(["error"=>"No Company Logged In !!"],404);
-           }
-
-           $accountHead = $request->account_head_name;
-           $accountHeadDetails = Area::where('company_id',$request->company_id)
-                                         ->where('name',$accountHead)
-                                       ->whereNull('deleted_at')
-                                       ->firstorFail();   
-           return response()->json(["message"=>"Area Details Received !!",
-                                    "data"=>$accountHeadDetails
-                                ],200);
-
-
-        }catch(ModelNotFoundException $e){
-            return response()->json(["error"=>"Area not Found !!"],404);
-        }catch(QueryException $e){
-            return response()->json(["error"=>"Database error occurred !!"],500);
-        }catch(\Exception $e){
-            return response()->json(["error"=>"An unexpected error occurred !!"],500);
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $area = Area::findOrFail($id);
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('areas')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->input('company_id', $request->company_id))
-                                ->whereNull('deleted_at');
-
-                        }),
-                ],
-
-                'company_id' => 'integer',
-                'is_primary' => 'boolean',
-                'is_active' => 'boolean|nullable',
+            $area = $this->repository->update($id, $request->validated());
+            return response()->json([
+                'message' => 'Area Updated !!',
+                'status' => 200,
+                'data' => $area
             ]);
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-            $validated = $validator->validated();
-
-            if (isset($validated['is_primary']) && $validated['is_primary'] == true) {
-                Area::where('company_id', $area->company_id)
-                    ->where('id', '!=', $id)
-
-                    ->update(['is_primary' => false]);
-            }
-
-            $area->update($validated);
-            return response()->json($area);
         } catch (ModelNotFoundException $e) {
-          
+           
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-          
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
         try {
 
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('areas')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
-
-                    }),
-
-                ],
-
-                'company_id' => 'integer',
-                'is_primary' => 'boolean',
-                'is_active' => 'boolean|nullable',
+            $area = $this->repository->create($request->validated());
+            return response()->json([
+                'message' => 'Area Created !!',
+                'status' => 201,
+                'data' => $area
             ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-
-            $validated = $validator->validated();
-
-            if (!empty($validated['is_primary']) && $validated['is_primary'] == 1) {
-                Area::where('company_id', $validated['company_id'])
-                    ->update(['is_primary' => 0]);
-            }
-
-            $area = Area::create($validated);
-            return response()->json($area, 201);
         } catch (ModelNotFoundException $e) {
-          
+
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
-          
+
+
             return response()->json(['error' => 'Database  error occurred!!'], 500);
         } catch (\Exception $e) {
-          
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -203,13 +137,17 @@ class AreaController extends Controller
     public function show($id): JsonResponse
     {
         try {
-            $area = Area::findOrFail($id);
-            return response()->json($area);
+            $item = $this->repository->show($id);
+            return response()->json([
+                'message' => 'Store Details !!',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -218,14 +156,21 @@ class AreaController extends Controller
     {
         try {
 
-            $area = Area::findOrFail($id);
-            $area->delete();
-            return response()->json(['message' => 'Area deleted!!']);
+            $this->repository->delete($id);
+
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Area deleted successfully!'
+            ]);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Area not found!!'], 404);
         } catch (QueryException $e) {
-           
+
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

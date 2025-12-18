@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\MeasureUnitRequest;
+namespace App\Http\Requests\FiscalYearRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 
-class StoreRequest extends FormRequest
+class UpdateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,20 +25,23 @@ class StoreRequest extends FormRequest
      */
     public function rules(): array
     {
+
+        $id = $this->route('fiscal_year');
+
         return [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('measure_units')
+                Rule::unique('fiscal_years')
+                    ->ignore($id)
                     ->whereNull('deleted_at')
-
-
             ],
+            'name_np' => 'nullable|string|max:255',
+            'start_date' => 'nullable|date',
+            'end_date' => 'nullable|date|after:start_date',
             'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'nullable|string'
+
 
 
         ];

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\MeasureUnitRequest;
+namespace App\Http\Requests\FiscalYearRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 
-class StoreRequest extends FormRequest
+class ListRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -26,25 +26,12 @@ class StoreRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('measure_units')
-                    ->whereNull('deleted_at')
-
-
-            ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'nullable|string'
-
+            'keywords' => 'sometimes'
 
         ];
     }
 
-    protected function failedValidation(Validator $validator)
+     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
             'error' => 'Validation failed',

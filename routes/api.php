@@ -8,6 +8,7 @@ use App\Http\Controllers\AutoNumberController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\FiscalYearController;
 use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
@@ -124,6 +125,8 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group(function () {
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::apiResource('products', ProductController::class);
+    Route::resource('fiscal-years', FiscalYearController::class);
+    Route::get('active-fiscal-years', [FiscalYearController::class, 'activeFiscalYearList']);
     Route::post('products-import-excel', [ProductController::class, 'importExcel']);////
 
 
@@ -223,7 +226,9 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('account-group-lists', [AccountGroupController::class, 'accountGroupList']);
     Route::get('account-head-lists', [AccountHeadController::class, 'accountHeadList']);
 
-    Route::get('areas-list', [AreaController::class, 'areaList']);
+    Route::get('active-areas-list', [AreaController::class, 'activeAreaList']);
+    Route::get('area-details', [AreaController::class, 'areaDetails']);
+
 
 
     Route::get('sales-returns/get-by-bill-number/{billNumber}', [SalesReturnController::class, 'getItemByBillNumber']);
@@ -453,7 +458,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
     Route::get('/banks-active-list', [BankController::class, 'activeBanks']);////
 
-    Route::get('bank-list', [BankController::class, 'bankList']);
+    Route::get('active-banks-lists', [BankController::class, 'activeBankList']);
     Route::get('bank-details', [BankController::class, 'bankDetails']);
 
     Route::resource('meter-readings', MeterReadingController::class);

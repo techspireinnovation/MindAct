@@ -39,6 +39,7 @@ class UpdateRequest extends FormRequest
             ],
             'is_active' => 'sometimes|boolean|required',
             'is_primary' => 'sometimes|boolean',
+            'quantity' => 'integer',
             'symbol' => 'nullable|string'
 
 

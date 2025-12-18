@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\MeasureUnitRequest;
+namespace App\Http\Requests\AreaRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 
-class StoreRequest extends FormRequest
+class UpdateRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,20 +25,22 @@ class StoreRequest extends FormRequest
      */
     public function rules(): array
     {
+
+        $id = $this->route('area');
+
         return [
             'name' => [
                 'required',
                 'string',
                 'max:255',
-                Rule::unique('measure_units')
+                Rule::unique('areas')
+                    ->ignore($id)
                     ->whereNull('deleted_at')
-
-
             ],
-            'is_active' => 'boolean|required',
-            'is_primary' => 'boolean',
-            'quantity' => 'integer',
-            'symbol' => 'nullable|string'
+            'is_active' => 'sometimes|boolean|required',
+            'is_primary' => 'sometimes|boolean',
+            'deletes_status' => 'nullable'
+
 
 
         ];

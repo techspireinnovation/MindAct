@@ -44,6 +44,18 @@ use App\Repositories\PartyRepository;
 
 use App\Interfaces\MeasureUnitConversionRepositoryInterface;
 use App\Repositories\MeasureUnitConversionRepository;
+
+use App\Interfaces\AreaRepositoryInterface;
+use App\Repositories\AreaRepository;
+
+
+use App\Interfaces\BankRepositoryInterface;
+use App\Repositories\BankRepository;
+
+
+use App\Interfaces\FiscalYearRepositoryInterface;
+use App\Repositories\FiscalYearRepository;
+
 class RespositoryServiceProvider extends ServiceProvider
 {
     /**
@@ -63,6 +75,9 @@ class RespositoryServiceProvider extends ServiceProvider
         $this->app->bind(ProductRepositoryInterface::class, ProductRepository::class);
         $this->app->bind(PartyRepositoryInterface::class, PartyRepository::class);
         $this->app->bind(MeasureUnitConversionRepositoryInterface::class, MeasureUnitConversionRepository::class);
+        $this->app->bind(AreaRepositoryInterface::class, AreaRepository::class);
+        $this->app->bind(BankRepositoryInterface::class, BankRepository::class);
+        $this->app->bind(FiscalYearRepositoryInterface::class, FiscalYearRepository::class);
     }
 
     /**

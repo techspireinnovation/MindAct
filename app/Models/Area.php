@@ -12,9 +12,15 @@ class Area extends BaseTenantModel
 {
 
     use softDeletes, HasFactory;
+
+    protected $casts = [
+    'is_active'  => 'boolean',
+    'is_primary' => 'boolean',
+];
+
     protected $fillable = [
         'name',
-        'company_id',
+       
         'is_active',
         'is_primary',
         'delete_status'
@@ -24,8 +30,5 @@ class Area extends BaseTenantModel
 
 
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+   
 }

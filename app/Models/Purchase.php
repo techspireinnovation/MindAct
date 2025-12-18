@@ -19,14 +19,14 @@ class Purchase extends BaseTenantModel
     protected $casts = [
         'payment' => 'array',
         'invoice_date' => 'date:Y-m-d',
-        'invoice_date_bs' => 'date:Y-m-d',
+       
     ];
 
     protected $fillable = [
         'customer_id',
-        'customer_name',
+        
         'pan_number',
-        'company_id',
+        
         'branch_id',
         'bank_id',
         'purchase_type',
@@ -39,7 +39,7 @@ class Purchase extends BaseTenantModel
         'deleted_at',
         'balance',
         'invoice_date',
-        'invoice_date_bs',
+       
         'batch_no',
         'payment',
         'remarks',
@@ -62,11 +62,7 @@ class Purchase extends BaseTenantModel
     use SoftDeletes;
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        self::observe(PurchaseObserver::class);
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
 
     public function location()
     {

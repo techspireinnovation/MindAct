@@ -32,6 +32,8 @@ use App\Http\Controllers\Event\ProductEventController;
 use App\Http\Controllers\FileUploadController;
 use App\Http\Controllers\FixedAssetAccountController;
 use App\Http\Controllers\FixedAssetGroupController;
+use App\Http\Controllers\StockController;
+use App\Http\Controllers\StockPurchaseController;
 use App\Http\Controllers\JournalVoucherController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
@@ -117,6 +119,14 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 
     Route::get('companies/list', [CompanyController::class, 'companyList'])->name('companies.list');
     Route::get('companies/details', [CompanyController::class, 'companyDetails'])->name('companies.details');
+    Route::resource('fiscal-years', FiscalYearController::class);
+    Route::get('active-fiscal-years', [FiscalYearController::class, 'activeFiscalYearList']);
+
+    Route::post('assign-fiscal-years', [FiscalYearController::class, 'createAssignFiscalYear']);
+    Route::get('assign-fiscal-year-list', [FiscalYearController::class, 'getAssignedFiscalYearCompanyList']);
+    Route::get('assign-fiscal-year-details/{companyId}', [FiscalYearController::class, 'getAssignFiscalYearDetails']);
+    Route::put('update-assign-fiscal-year/{companyId}', [FiscalYearController::class, 'updateAssignFiscalYear']);
+    Route::delete('delete-fiscal-year/{companyId}', [FiscalYearController::class, 'deleteFiscalYear']);
 
     Route::apiResource('companies', CompanyController::class)->only(['store', 'index', 'show', 'update', 'destroy',]);
 
@@ -125,8 +135,7 @@ Route::middleware(['auth:sanctum', 'super.admin'])->prefix('admin')->group(funct
 Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group(function () {
     Route::apiResource('product-categories', ProductCategoryController::class);
     Route::apiResource('products', ProductController::class);
-    Route::resource('fiscal-years', FiscalYearController::class);
-    Route::get('active-fiscal-years', [FiscalYearController::class, 'activeFiscalYearList']);
+
     Route::post('products-import-excel', [ProductController::class, 'importExcel']);////
 
 
@@ -228,6 +237,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
     Route::get('active-areas-list', [AreaController::class, 'activeAreaList']);
     Route::get('area-details', [AreaController::class, 'areaDetails']);
+    Route::get('products-fields', [ProductController::class, 'productFields']);
 
 
 
@@ -268,6 +278,8 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('/purchases/filter-by-barcode-id', [PurchaseController::class, 'filterbyBarcode']);////
     Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
     Route::resource('purchases', PurchaseController::class);
+    Route::resource('stocks', StockController::class);
+    Route::resource('stock-purchases', StockPurchaseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
 
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);

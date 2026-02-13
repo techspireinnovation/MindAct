@@ -35,6 +35,8 @@ class Product extends BaseTenantModel
         'category_id',
         'brand_id',
         'measure_unit_id',
+        'product_field_number',
+        'base_unit_id',
         'is_vatable',
         'product_type_id',
         'sku',

@@ -120,8 +120,8 @@ class ProductRepository implements ProductRepositoryInterface
 
 
 
-            if (!empty($data['product_list'])) {
-                $product->productLists()->createMany($data['product_list']);
+            if (!empty($data['product_lists'])) {
+                $product->productLists()->createMany($data['product_lists']);
             }
 
             return $product->load('productLists');
@@ -137,11 +137,11 @@ class ProductRepository implements ProductRepositoryInterface
 
             $product = Product::findOrFail($id);
 
-           
-            $productData = Arr::except($data, ['product_list']);
+
+            $productData = Arr::except($data, ['product_lists']);
             $product->update($productData);
 
-           
+
             if (isset($data['product_lists'])) {
 
                 $existingIds = $product->productLists()->pluck('id')->toArray();
@@ -153,23 +153,23 @@ class ProductRepository implements ProductRepositoryInterface
                 foreach ($data['product_lists'] as $list) {
 
                     if (!empty($list['id'])) {
-                      
+
                         $product->productLists()
                             ->where('id', $list['id'])
                             ->update(Arr::except($list, ['id']));
                     } else {
-                       
+
                         $product->productLists()->create($list);
                     }
                 }
 
-               
+
                 $deleteIds = array_diff($existingIds, $incomingIds);
                 if (!empty($deleteIds)) {
                     $product->productLists()->whereIn('id', $deleteIds)->delete();
                 }
 
-               
+
                 $primaryId = collect($data['product_lists'])
                     ->where('is_primary', true)
                     ->pluck('id')
@@ -247,6 +247,12 @@ class ProductRepository implements ProductRepositoryInterface
 
         return $response;
 
+    }
+
+    public function productFields()
+    {
+        $config = config('product_fields');
+        return $config;
     }
 
 

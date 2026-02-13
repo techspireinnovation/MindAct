@@ -925,13 +925,11 @@ class PurchaseController extends Controller
     }
 
 
-
-
     public function filterbyBarcode(Request $request): JsonResponse
     {
         try {
 
-            // Validate request
+            
             $validator = Validator::make($request->all(), [
                 'barcode' => 'required_without:product_unique_id',
                 'product_unique_id' => 'required_without:barcode',
@@ -944,10 +942,10 @@ class PurchaseController extends Controller
             $productList = null;
             $product = null;
 
-            // Search logic
+            
             if ($request->filled('barcode')) {
 
-                // Find product list by barcode
+              
                 $productList = ProductList::with([
                     'product.category',
                     'product.subCategory',

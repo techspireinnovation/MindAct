@@ -71,4 +71,9 @@ class Company extends Model
     }
 
 
+    public function assignFiscalYears(){
+        return $this->hasMany(AssignFiscalYear::class, 'company_id');
+    }
+
+
 }

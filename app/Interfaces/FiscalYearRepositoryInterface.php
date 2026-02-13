@@ -11,9 +11,6 @@ interface FiscalYearRepositoryInterface
 
     public function list(array $filters);
 
-   
-
-
     public function fiscalYearDetails($filters);
 
     public function delete($id);
@@ -22,6 +19,13 @@ interface FiscalYearRepositoryInterface
     public function show($id);
 
     public function activefiscalYearList();
+    public function createAssignFiscalYear(array $data);
+    public function getAssignFiscalYearList(array $data);
+    public function getAssignFiscalYearDetails($companyId);
+
+    public function deleteFiscalYear($companyId);
+
+    public function updateAssignFiscalYear($companyId, array $data);
 
 }
 

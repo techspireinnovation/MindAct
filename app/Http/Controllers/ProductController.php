@@ -128,7 +128,7 @@ class ProductController extends Controller
     public function search(SearchRequest $request)
     {
         try {
-        
+
 
             $products = $this->repository->search($request->validated());
 
@@ -174,6 +174,9 @@ class ProductController extends Controller
     public function store(StoreRequest $request)
     {
         try {
+
+
+
 
             $item = $this->repository->create($request->validated());
 
@@ -248,6 +251,27 @@ class ProductController extends Controller
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the product.'
             ], 500);
+        }
+    }
+
+    public function productFields()
+    {
+        try {
+
+        $data = $this->repository->productFields();
+
+        return response()->json([
+            'message' => 'Product Fields !',
+            'status' => 200,
+            'data' => $data
+        ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Product not found!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['error' => 'Database query error occurred!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }
 

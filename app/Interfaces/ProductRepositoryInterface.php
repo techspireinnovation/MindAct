@@ -16,6 +16,7 @@ interface ProductRepositoryInterface
 
 
     public function productDetails(array $filters);
+    public function productFields();
 
     public function search(array $filters);
 

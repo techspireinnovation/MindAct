@@ -56,6 +56,13 @@ use App\Repositories\BankRepository;
 use App\Interfaces\FiscalYearRepositoryInterface;
 use App\Repositories\FiscalYearRepository;
 
+use App\Interfaces\StockRepositoryInterface;
+use App\Repositories\StockRepository;
+
+use App\Interfaces\StockPurchaseRepositoryInterface;
+use App\Repositories\StockPurchaseRepository;
+
+
 class RespositoryServiceProvider extends ServiceProvider
 {
     /**
@@ -78,6 +85,9 @@ class RespositoryServiceProvider extends ServiceProvider
         $this->app->bind(AreaRepositoryInterface::class, AreaRepository::class);
         $this->app->bind(BankRepositoryInterface::class, BankRepository::class);
         $this->app->bind(FiscalYearRepositoryInterface::class, FiscalYearRepository::class);
+        $this->app->bind(StockRepositoryInterface::class, StockRepository::class);
+        $this->app->bind(StockPurchaseRepositoryInterface::class, StockPurchaseRepository::class);
+       
     }
 
     /**

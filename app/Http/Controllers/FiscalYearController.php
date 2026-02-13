@@ -7,12 +7,16 @@ use App\Http\Requests\FiscalYearRequest\ListRequest;
 use App\Http\Requests\FiscalYearRequest\DetailRequest;
 use App\Http\Requests\FiscalYearRequest\StoreRequest;
 use App\Http\Requests\FiscalYearRequest\UpdateRequest;
+use App\Http\Requests\FiscalYearRequest\ListAssignFiscalYearRequest;
+use App\Http\Requests\FiscalYearRequest\StoreAssignFiscalYearRequest;
+use App\Http\Requests\FiscalYearRequest\UpdateAssignFiscalYearRequest;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 
 use Illuminate\Http\Request;
+use PhpParser\Node\Expr\Assign;
 
 class FiscalYearController extends Controller
 {
@@ -39,7 +43,7 @@ class FiscalYearController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Fiscal Year Not Found !!'], 404);
         } catch (QueryException $e) {
-            return response()->json(['error' => 'Database error occurred !!'], 500);
+            return response()->json(['error' => 'Database error occurred !'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
@@ -204,6 +208,118 @@ class FiscalYearController extends Controller
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
+        }
+    }
+
+    public function createAssignFiscalYear(StoreAssignFiscalYearRequest $request)
+    {
+        try {
+            $data = $this->repository->createAssignFiscalYear($request->validated());
+            return response()->json([
+                'message' => 'Assigned Fiscal Year to Company !',
+                'status' => 200,
+                'data' => $data
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Data Not Found !!'], 404);
+        } catch (QueryException $e) {
+
+            return response()->json(['error' => 'Database error occurred !!', 'message' => $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error', 'message' => $e->getMessage()], 500);
+        }
+
+    }
+
+    public function getAssignedFiscalYearCompanyList(ListAssignFiscalYearRequest $request)
+    {
+        try {
+            $data = $this->repository->getAssignFiscalYearList($request->validated());
+            return response()->json([
+                'message' => 'Assigned Fiscal Year to Companies !',
+                'status' => 200,
+                'data' => $data
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Data Not Found !!'], 404);
+        } catch (QueryException $e) {
+            dd($e->getMessage());
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
+
+    }
+
+
+    public function getAssignFiscalYearDetails($companyId, Request $request)
+    {
+        try {
+            $data = $this->repository->getAssignFiscalYearDetails($companyId);
+            return response()->json([
+                'message' => 'Assigned Fiscal Year List !',
+                'status' => 200,
+                'data' => $data
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Data Not Found !!'], 404);
+        } catch (QueryException $e) {
+
+            return response()->json(['error' => 'Database error occurred !!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
+
+    }
+
+
+    public function updateAssignFiscalYear($companyId, UpdateAssignFiscalYearRequest $request)
+    {
+        try {
+            $data = $this->repository->updateAssignFiscalYear($companyId, $request->validated());
+            return response()->json([
+                'message' => 'Updated Assigned Fiscal Year to Company !',
+                'status' => 200,
+                'data' => $data
+            ]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Data Not Found !!'], 404);
+        } catch (QueryException $e) {
+
+            return response()->json(['error' => 'Database error occurred !!', 'message' => $e->getMessage()], 500);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Unexpected error', 'message' => $e->getMessage()], 500);
+        }
+
+    }
+
+
+    public function deleteFiscalYear($companyId)
+    {
+        try {
+            $this->repository->deleteFiscalYear($companyId);
+            return response()->json([
+                'success' => true,
+                'message' => 'Assigned Fiscal Year deleted successfully!'
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'error' => 'not_found',
+                'message' => 'Assigned Fiscal Year not found!'
+            ], 404);
+
+        } catch (QueryException $e) {
+            return response()->json([
+                'error' => 'query_error',
+                'message' => 'A database error occurred while deleting the Assigned Fiscal Year.'
+            ], 500);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'unexpected_error',
+                'message' => 'An unexpected error occurred while deleting the Assigned Fiscal Year.'
+            ], 500);
         }
     }
 }

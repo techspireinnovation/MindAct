@@ -38,6 +38,8 @@ class StoreRequest extends FormRequest
             'product_code' => 'nullable|string',
             'sku' => 'required|string',
             'note' => 'nullable|string',
+            'product_field_number' => 'nullable|numeric',
+            'base_unit_id' => 'nullable|numeric|exists:measure_units,id',
             'category_id' => 'nullable|numeric',
             'brand_id' => 'nullable|numeric',
             'measure_unit_id' => 'nullable|numeric',
@@ -45,7 +47,7 @@ class StoreRequest extends FormRequest
             'product_type_id' => 'nullable|numeric',
             'is_active' => 'boolean|required',
             'product_lists' => 'nullable||array',
-            'product_lists.*.id' => 'nullable',
+            
 
             'product_lists.*.measure_unit_id' => 'nullable||integer|exists:measure_units,id',
 

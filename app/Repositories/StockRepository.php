@@ -125,7 +125,7 @@ class StockRepository implements StockRepositoryInterface
                 'measure_unit_id' => $product['measure_unit_id'],
                 'type' => 'opening_stock',
                 'quantity' => $quantity,
-                // 'is_vatable' => $product['is_vatable'],
+               
 
                 'stock_type' => $product['stock_type'] ?? null,
             ]);

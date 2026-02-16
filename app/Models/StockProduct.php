@@ -35,7 +35,7 @@ class StockProduct extends Model
         'deleted_at',
     ];
 
-    public function stpock()
+    public function stock()
     {
         return $this->belongsTo(Stock::class);
     }
@@ -49,5 +49,10 @@ class StockProduct extends Model
     public function stockProductFieldValues()
     {
         return $this->hasMany(StockProductFieldValue::class);
+    }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class);
     }
 }

@@ -321,23 +321,23 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
                 foreach ($fieldValues as $group) {
 
-                    
+
                     $groupIndex = null;
 
-                    
+
                     foreach ($group as $field) {
                         if (isset($field['quantity_index'])) {
                             $groupIndex = (int) $field['quantity_index'];
-                            break; 
+                            break;
                         }
                     }
 
-                    
+
                     if ($groupIndex === null) {
                         $groupIndex = $this->quantityIndexService->getNextQuantityIndex($stockProduct->id);
                     }
 
-                   
+
                     foreach ($group as $field) {
                         $isFree = ($field['quantity_type'] ?? 'regular') === 'free';
 
@@ -352,7 +352,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                                 'stock_product_id' => $stockProduct->id,
                                 'stock_movement_id' => $isFree ? ($movement?->id ?? null) : null,
                                 'product_id' => $stockProduct->product_id,
-                                'quantity_index' => $groupIndex, 
+                                'quantity_index' => $groupIndex,
                                 'quantity_type' => $field['quantity_type'] ?? 'regular',
                                 'key' => $field['key'],
                                 'value' => $field['value'],
@@ -391,13 +391,61 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
     public function show($id)
     {
+        $stock = Stock::with([
+            'stockProducts' => function ($query) {
+                $query->whereNull('deleted_at')
+                    ->with([
+                        'stockProductFieldValues' => function ($q) {
+                            $q->whereNull('deleted_at');
+                        },
+                        'stockMovements' => function ($q) {
+                            $q->where('type', 'purchase')
+                                ->where('stock_type', 'free')
+                                ->whereNull('deleted_at');
+                        }
+                    ]);
+            }
+        ])
+            ->whereNull('deleted_at')
+            ->where('type', 'purchase')
+            ->findOrFail($id);
 
-        $stock = Stock::with('stockProducts.stockProductFieldValues')->whereNull('deleted_at')->findOrFail($id);
+
+        $stock->stockProducts->transform(function ($product) {
+
+            $freeQty = $product->stockMovements->sum('quantity') ?? 0;
+
+           
+            $attributes = $product->toArray();
+
+            
+            $fieldValues = $attributes['stock_product_field_values'] ?? [];
+
+            unset($attributes['stock_product_field_values']);
+            unset($attributes['stock_movements']);
+
+           
+            $newProduct = [];
+
+            foreach ($attributes as $key => $value) {
+
+                $newProduct[$key] = $value;
+
+               
+                if ($key === 'quantity') {
+                    $newProduct['free_quantity'] = $freeQty;
+                }
+            }
+
+           
+            $newProduct['field_values'] = $fieldValues;
+
+            return $newProduct;
+        });
+
         return $stock;
-
-
-
     }
+
 
     public function delete($id)
     {

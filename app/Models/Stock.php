@@ -17,15 +17,36 @@ class Stock extends Model
         'company_id',
         'branch_id',
         'store_id',
-
         'type',
-        'reference_no',
+        
         'bill_number',
-        'invice_date',
+        'invoice_date',
         'invoice_date_bs',
-
-        'deleted_at',
+        'party_id',
+        'location_id',
+        'batch_no',
+        'credit_days',
+        'balance',
+        'ref_bill_number',
+        'return_bill_number',
+        'reasons',
+        'discount_type',
+        'discount_value',
+        'discount_after_vat',
+        'sub_total_before_discount',
+        'taxable_amount',
+        'non_taxable_amount',
+        'excise_duty',
+        'vat_percent',
+        'health_insurance',
+        'freight_amount',
+        'roundoff_type',
+        'roundoff_amount',
+        'total_amount',
+        'payment',
+        'remarks',
     ];
+
 
     public function stockProducts()
     {

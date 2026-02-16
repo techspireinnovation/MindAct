@@ -297,7 +297,7 @@ class PurchaseController extends Controller
                 'purchase_products.*.field_values.*.*.id' => 'nullable|integer|exists:purchase_product_field_values,id',
                 'purchase_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
-                'purchase_products.*.field_values.*.*.quantity_type' => 'required|string|max:255',
+                'purchase_products.*.field_values.*.*.quantity_type' => 'required|numeric|max:255',
                 'purchase_products.*.field_values.*.*.quantity_index' => 'nullable|integer',
             ]);
 

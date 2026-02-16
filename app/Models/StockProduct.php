@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class StockProduct extends Model
 {
 
-use SoftDeletes;
+    use SoftDeletes;
     public $timestamps = false;
     protected $fillable = [
         'company_id',
@@ -20,7 +20,18 @@ use SoftDeletes;
         'measure_unit_id',
         'is_vatable',
         'quantity',
-        
+        'party_id',
+        'expiry_date',
+        'mfd',
+        'type',
+        'price',
+        'discount_percent',
+        'discount_amount',
+        'amount',
+        'batch_no',
+        'direction',
+        'measure_unit_id',
+        'quantity',
         'deleted_at',
     ];
 

@@ -39,7 +39,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
             'store_id' => $data['store_id'] ?? null,
-            'type' => 'opening_stock',
+            'type' => 'purchase',
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
@@ -415,29 +415,29 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
             $freeQty = $product->stockMovements->sum('quantity') ?? 0;
 
-           
+
             $attributes = $product->toArray();
 
-            
+
             $fieldValues = $attributes['stock_product_field_values'] ?? [];
 
             unset($attributes['stock_product_field_values']);
             unset($attributes['stock_movements']);
 
-           
+
             $newProduct = [];
 
             foreach ($attributes as $key => $value) {
 
                 $newProduct[$key] = $value;
 
-               
+
                 if ($key === 'quantity') {
                     $newProduct['free_quantity'] = $freeQty;
                 }
             }
 
-           
+
             $newProduct['field_values'] = $fieldValues;
 
             return $newProduct;
@@ -449,6 +449,34 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
     public function delete($id)
     {
+
+        $stock = Stock::where('type', 'purchase')
+            ->whereNull('deleted_at')
+            ->findOrFail($id);
+
+        $stockProductIds = StockProduct::where('stock_id', $stock->id)
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        StockProductFieldValue::whereIn('stock_product_id', $stockProductIds)
+            ->whereNull('deleted_at')
+            ->delete();
+
+        StockMovement::whereIn('stock_product_id', $stockProductIds)
+            ->where('type', 'purchase')
+            ->where('stock_type', 'free')
+            ->whereNull('deleted_at')
+            ->delete();
+
+        StockProduct::whereIn('id', $stockProductIds)
+            ->delete();
+
+        $stock->delete();
+        return true;
+
+
+
+
 
     }
 }

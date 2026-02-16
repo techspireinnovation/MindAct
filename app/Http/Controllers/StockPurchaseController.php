@@ -77,4 +77,28 @@ class StockPurchaseController extends Controller
             return response()->json(['message' => 'Database error occurred while creating the stock', 'error' => $e->getMessage()], 500);
         }
     }
+
+
+
+     public function destroy($id)
+    {
+
+        try {
+
+            $data = $this->repository->delete($id);
+            return response()->json([
+                'success' => true,
+                'message' => 'Stock Purchase Deleted Successfully !!',
+                'data' => $data,
+                
+            ],200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Stock Purchase not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An error occurred while creating the stock', 'error' => $e->getMessage()], 500);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database error occurred while creating the stock', 'error' => $e->getMessage()], 500);
+        }
+    }
 }

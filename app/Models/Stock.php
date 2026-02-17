@@ -20,6 +20,7 @@ class Stock extends Model
         'type',
         
         'bill_number',
+        'purchase_bill_number',
         'invoice_date',
         'invoice_date_bs',
         'party_id',
@@ -56,5 +57,10 @@ class Stock extends Model
     public function stockMovements()
     {
         return $this->hasMany(StockMovement::class);
+    }
+
+     public function stockTransactions()
+    {
+        return $this->hasMany(StockTransaction::class);
     }
 }

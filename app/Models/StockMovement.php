@@ -15,6 +15,7 @@ class StockMovement extends Model
         'branch_id',
         'stock_id',
         'stock_product_id',
+        'stock_transaction_id',
         'party_id',
         'product_id',
         'type',
@@ -37,6 +38,11 @@ class StockMovement extends Model
     {
         return $this->belongsTo(StockProduct::class);
 
+    }
+
+     public function transactionPivots()
+    {
+        return $this->hasMany(TransactionPivot::class);
     }
 
     

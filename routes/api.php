@@ -34,6 +34,7 @@ use App\Http\Controllers\FixedAssetAccountController;
 use App\Http\Controllers\FixedAssetGroupController;
 use App\Http\Controllers\StockController;
 use App\Http\Controllers\StockPurchaseController;
+use App\Http\Controllers\StockPurchaseReturnController;
 use App\Http\Controllers\JournalVoucherController;
 use App\Http\Controllers\LocationController;
 use App\Http\Controllers\MainGroupController;
@@ -280,6 +281,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('purchases', PurchaseController::class);
     Route::resource('stocks', StockController::class);
     Route::resource('stock-purchases', StockPurchaseController::class);
+    Route::resource('stock-purchase-returns', StockPurchaseReturnController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
 
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);

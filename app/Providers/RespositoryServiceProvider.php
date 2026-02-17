@@ -62,6 +62,9 @@ use App\Repositories\StockRepository;
 use App\Interfaces\StockPurchaseRepositoryInterface;
 use App\Repositories\StockPurchaseRepository;
 
+use App\Interfaces\StockPurchaseReturnRepositoryInterface;
+use App\Repositories\StockPurchaseReturnRepository;
+
 
 class RespositoryServiceProvider extends ServiceProvider
 {
@@ -87,7 +90,7 @@ class RespositoryServiceProvider extends ServiceProvider
         $this->app->bind(FiscalYearRepositoryInterface::class, FiscalYearRepository::class);
         $this->app->bind(StockRepositoryInterface::class, StockRepository::class);
         $this->app->bind(StockPurchaseRepositoryInterface::class, StockPurchaseRepository::class);
-       
+        $this->app->bind(StockPurchaseReturnRepositoryInterface::class, StockPurchaseReturnRepository::class);
     }
 
     /**

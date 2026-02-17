@@ -192,7 +192,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
             'store_id' => $data['store_id'] ?? null,
-            'type' => 'opening_stock',
+            'type' => 'purchase',
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
@@ -450,6 +450,8 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
     public function delete($id)
     {
 
+        DB::beginTransaction();
+
         $stock = Stock::where('type', 'purchase')
             ->whereNull('deleted_at')
             ->findOrFail($id);
@@ -472,6 +474,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             ->delete();
 
         $stock->delete();
+        DB::commit();
         return true;
 
 

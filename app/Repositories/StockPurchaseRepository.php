@@ -79,8 +79,8 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 $product['quantity']
             );
 
+            $stockValidated = [
 
-            $stockProduct = StockProduct::create([
                 'stock_id' => $stock->id,
                 'fiscal_year_id' => $fiscalYearId,
                 'product_id' => $product['product_id'],
@@ -100,7 +100,11 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 'discount_amount' => $product['discount_amount'] ?? 0,
                 'amount' => $product['amount'] ?? 0,
                 'batch_no' => $product['batch_no'] ?? null,
-            ]);
+
+            ];
+
+
+            $stockProduct = StockProduct::create($stockValidated);
 
 
             $stockMovementProduct = null;
@@ -110,7 +114,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     $product['free_quantity']
                 );
 
-                $stockMovementProduct = StockMovement::create([
+                $movementValidated = [
                     'stock_id' => $stock->id,
                     'stock_product_id' => $stockProduct->id,
                     'fiscal_year_id' => $fiscalYearId,
@@ -131,7 +135,9 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     'discount_amount' => $product['discount_amount'] ?? 0,
                     'amount' => $product['amount'] ?? 0,
                     'batch_no' => $product['batch_no'] ?? null,
-                ]);
+                ];
+
+                $stockMovementProduct = StockMovement::create($movementValidated);
             }
 
 
@@ -144,8 +150,8 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     foreach ($group as $field) {
 
                         $isFree = ($field['quantity_type'] ?? 'regular') === 'free';
+                        $fieldValueData = [
 
-                        StockProductFieldValue::create([
                             'stock_id' => $stock->id,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
@@ -156,7 +162,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                             'quantity_type' => $field['quantity_type'] ?? 'regular',
                             'key' => $field['key'],
                             'value' => $field['value'],
-                        ]);
+
+                        ];
+
+                        StockProductFieldValue::create($fieldValueData);
 
 
                     }
@@ -187,7 +196,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
-        $stock->update([
+        $stockValidated = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
@@ -219,7 +228,9 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'total_amount' => $data['total_amount'] ?? 0,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
-        ]);
+        ];
+
+        $stock->update($stockValidated);
 
         $incomingProductIds = [];
 
@@ -231,31 +242,34 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 $product['quantity'] ?? 0
             );
 
+            $stockProductData = [
+
+                'stock_id' => $stock->id,
+                'fiscal_year_id' => $fiscalYearId,
+                'company_id' => $data['company_id'],
+                'branch_id' => $data['branch_id'],
+                'product_id' => $product['product_id'],
+                'measure_unit_id' => $product['measure_unit_id'],
+                'type' => 'purchase',
+                'quantity' => $baseQty,
+                'is_vatable' => $product['is_vatable'] ?? 0,
+                'stock_type' => $product['stock_type'] ?? null,
+                'direction' => 'in',
+                'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
+                'expiry_date' => $product['expiry_date'] ?? null,
+                'mfd' => $product['mfd'] ?? null,
+                'price' => $product['price'] ?? 0,
+                'discount_percent' => $product['discount_percent'] ?? 0,
+                'discount_amount' => $product['discount_amount'] ?? 0,
+                'amount' => $product['amount'] ?? 0,
+                'batch_no' => $product['batch_no'] ?? null,
+            ];
+
             $stockProduct = StockProduct::updateOrCreate(
                 [
                     'id' => $product['id'] ?? null,
                 ],
-                [
-                    'stock_id' => $stock->id,
-                    'fiscal_year_id' => $fiscalYearId,
-                    'company_id' => $data['company_id'],
-                    'branch_id' => $data['branch_id'],
-                    'product_id' => $product['product_id'],
-                    'measure_unit_id' => $product['measure_unit_id'],
-                    'type' => 'purchase',
-                    'quantity' => $baseQty,
-                    'is_vatable' => $product['is_vatable'] ?? 0,
-                    'stock_type' => $product['stock_type'] ?? null,
-                    'direction' => 'in',
-                    'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
-                    'expiry_date' => $product['expiry_date'] ?? null,
-                    'mfd' => $product['mfd'] ?? null,
-                    'price' => $product['price'] ?? 0,
-                    'discount_percent' => $product['discount_percent'] ?? 0,
-                    'discount_amount' => $product['discount_amount'] ?? 0,
-                    'amount' => $product['amount'] ?? 0,
-                    'batch_no' => $product['batch_no'] ?? null,
-                ]
+                $stockProductData
             );
 
             $incomingProductIds[] = $stockProduct->id;
@@ -279,32 +293,37 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     $freeQtyInput
                 );
 
+                $movementValidatedData = [
+
+                    'stock_id' => $stock->id,
+                    'fiscal_year_id' => $fiscalYearId,
+                    'company_id' => $data['company_id'],
+                    'branch_id' => $data['branch_id'],
+                    'product_id' => $product['product_id'],
+                    'measure_unit_id' => $product['measure_unit_id'],
+                    'type' => 'purchase',
+                    'stock_type' => 'free',
+                    'quantity' => $freeQty,
+                    'direction' => 'in',
+                    'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
+                    'expiry_date' => $product['expiry_date'] ?? null,
+                    'mfd' => $product['mfd'] ?? null,
+                    'price' => $product['price'] ?? 0,
+                    'discount_percent' => $product['discount_percent'] ?? 0,
+                    'discount_amount' => $product['discount_amount'] ?? 0,
+                    'amount' => $product['amount'] ?? 0,
+                    'batch_no' => $product['batch_no'] ?? null,
+                    'is_vatable' => $product['is_vatable'] ?? 0,
+
+
+                ];
+
                 $movement = StockMovement::updateOrCreate(
                     [
                         'stock_product_id' => $stockProduct->id,
                         'stock_type' => 'free',
                     ],
-                    [
-                        'stock_id' => $stock->id,
-                        'fiscal_year_id' => $fiscalYearId,
-                        'company_id' => $data['company_id'],
-                        'branch_id' => $data['branch_id'],
-                        'product_id' => $product['product_id'],
-                        'measure_unit_id' => $product['measure_unit_id'],
-                        'type' => 'purchase',
-                        'stock_type' => 'free',
-                        'quantity' => $freeQty,
-                        'direction' => 'in',
-                        'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
-                        'expiry_date' => $product['expiry_date'] ?? null,
-                        'mfd' => $product['mfd'] ?? null,
-                        'price' => $product['price'] ?? 0,
-                        'discount_percent' => $product['discount_percent'] ?? 0,
-                        'discount_amount' => $product['discount_amount'] ?? 0,
-                        'amount' => $product['amount'] ?? 0,
-                        'batch_no' => $product['batch_no'] ?? null,
-                        'is_vatable' => $product['is_vatable'] ?? 0,
-                    ]
+                    $movementValidatedData
                 );
             } else {
 
@@ -341,22 +360,26 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     foreach ($group as $field) {
                         $isFree = ($field['quantity_type'] ?? 'regular') === 'free';
 
+                        $fieldValueData = [
+
+                            'stock_id' => $stock->id,
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
+                            'stock_product_id' => $stockProduct->id,
+                            'stock_movement_id' => $isFree ? ($movement?->id ?? null) : null,
+                            'product_id' => $stockProduct->product_id,
+                            'quantity_index' => $groupIndex,
+                            'quantity_type' => $field['quantity_type'] ?? 'regular',
+                            'key' => $field['key'],
+                            'value' => $field['value'],
+
+                        ];
+
                         $fieldValue = StockProductFieldValue::updateOrCreate(
                             [
                                 'id' => $field['id'] ?? null,
                             ],
-                            [
-                                'stock_id' => $stock->id,
-                                'company_id' => $data['company_id'],
-                                'branch_id' => $data['branch_id'],
-                                'stock_product_id' => $stockProduct->id,
-                                'stock_movement_id' => $isFree ? ($movement?->id ?? null) : null,
-                                'product_id' => $stockProduct->product_id,
-                                'quantity_index' => $groupIndex,
-                                'quantity_type' => $field['quantity_type'] ?? 'regular',
-                                'key' => $field['key'],
-                                'value' => $field['value'],
-                            ]
+                            $fieldValueData
                         );
 
                         $incomingFieldIds[] = $fieldValue->id;
@@ -386,6 +409,11 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
     public function list(array $filters)
     {
+
+        return Stock::where('type', 'purchase')
+            ->whereNull('deleted_at')
+            ->filter($filters)
+            ->get();
 
     }
 

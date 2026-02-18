@@ -45,6 +45,7 @@ use App\Http\Controllers\NepalLocationPackageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentVoucherController;
 use App\Http\Controllers\ProductCategoryController;
+use App\Http\Controllers\StockPurchaseReturnItemWiseController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProductFieldController;
 use App\Http\Controllers\ProductFieldValueController;
@@ -282,6 +283,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('stocks', StockController::class);
     Route::resource('stock-purchases', StockPurchaseController::class);
     Route::resource('stock-purchase-returns', StockPurchaseReturnController::class);
+    Route::resource('stock-purchases-itemwise-returns', StockPurchaseReturnItemWiseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
 
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);

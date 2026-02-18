@@ -59,7 +59,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             ->first();
 
         if (!$purchaseStock) {
-            throw new Exception('Purchase bill not found !');
+            throw new Exception('Purchase bill not found !!');
         }
 
 

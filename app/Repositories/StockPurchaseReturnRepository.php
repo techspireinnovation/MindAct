@@ -224,7 +224,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
                     if (!$isFree) {
 
-                        $stockRow = StockTransaction::create([
+                        $stockTransaction = StockTransaction::create([
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'product_id' => $product['product_id'],
@@ -235,7 +235,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'stock_type' => 'regular',
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'direction' => 'in',
+                            'direction' => 'out',
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -249,9 +249,9 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
                     } elseif ($isFree) {
 
-                        $stockRow = StockMovement::create([
+                        $stockMovement = StockMovement::create([
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $stockRow->id,
+                            'stock_transaction_id' => $stockTransaction->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
@@ -261,7 +261,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'quantity' => $quantity,
                             'stock_type' => 'free',
                             'is_vatable' => $product['is_vatable'],
-                            'direction' => 'in',
+                            'direction' => 'out',
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -283,8 +283,8 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'type' => 'purchase_return',
                             'direction' => 'out',
                             'stock_product_id' => $field['stock_product_id'],
-                            'stock_transaction_id' => $stockRow->id,
-                            'stock_movement_id' => $isFree ? $stockRow->id : null,
+                            'stock_transaction_id' => $stockTransaction->id,
+                            'stock_movement_id' => $isFree ? $stockMovement->id : null,
                             'product_id' => $product['product_id'],
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => $field['quantity_type'] ?? 'regular',
@@ -325,7 +325,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             throw new Exception('Purchase bill not found.');
         }
 
-        $purchase = Stock::findOrFail($id);
+        $stock = Stock::findOrFail($id);
 
 
 
@@ -365,10 +365,10 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             'remarks' => $data['remarks'] ?? null,
         ];
 
-        $purchase->update($stockData);
+        $stock->update($stockData);
 
-        $oldTransactionIds = StockTransaction::where('stock_id', $purchase->id)->pluck('id');
-        $oldMovementIds = StockMovement::where('stock_id', $purchase->id)->pluck('id');
+        $oldTransactionIds = StockTransaction::where('stock_id', $stock->id)->pluck('id');
+        $oldMovementIds = StockMovement::where('stock_id', $stock->id)->pluck('id');
 
 
         TransactionPivot::whereIn('stock_transaction_id', $oldTransactionIds)
@@ -376,14 +376,12 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             ->delete();
 
 
-        StockTransaction::where('stock_id', $purchase->id)->delete();
-        StockMovement::where('stock_id', $purchase->id)->delete();
+        StockTransaction::where('stock_id', $stock->id)->delete();
+        StockMovement::where('stock_id', $stock->id)->delete();
 
 
 
         foreach ($data['stock_transactions'] as $product) {
-
-
             if (empty($product['field_values'])) {
 
 
@@ -412,7 +410,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
                 foreach ($allocatedQtys as $alloc) {
                     $stockTransaction = StockTransaction::create([
-                        'stock_id' => $purchase->id,
+                        'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
                         'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
@@ -451,7 +449,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
                     foreach ($freeAllocated as $alloc) {
                         $stockMovementProduct = StockMovement::create([
-                            'stock_id' => $purchase->id,
+                            'stock_id' => $stock->id,
                             'stock_transaction_id' => $stockTransaction->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
@@ -505,8 +503,9 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                     $quantity = $groupData['quantity_sum'];
 
                     if (!$isFree) {
-                        $stockRow = StockTransaction::create([
-                            'stock_id' => $purchase->id,
+
+                        $stockTransaction = StockTransaction::create([
+                            'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
@@ -516,7 +515,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'stock_type' => 'regular',
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'direction' => 'in',
+                            'direction' => 'out',
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -530,10 +529,9 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
                     } elseif ($isFree) {
 
-
-                        $stockRow = StockMovement::create([
-                            'stock_id' => $purchase->id,
-                            'stock_transaction_id' => $stockRow->id,
+                        $stockMovement = StockMovement::create([
+                            'stock_id' => $stock->id,
+                            'stock_transaction_id' => $stockTransaction->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
@@ -543,7 +541,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'quantity' => $quantity,
                             'stock_type' => 'free',
                             'is_vatable' => $product['is_vatable'],
-                            'direction' => 'in',
+                            'direction' => 'out',
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -554,6 +552,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'batch_no' => $product['batch_no'] ?? null,
                             'stock_product_id' => $groupData['stock_product_id'],
                         ]);
+
                     }
 
 
@@ -564,8 +563,8 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'type' => 'purchase_return',
                             'direction' => 'out',
                             'stock_product_id' => $field['stock_product_id'],
-                            'stock_transaction_id' => $stockRow->id,
-                            'stock_movement_id' => $isFree ? $stockRow->id : null,
+                            'stock_transaction_id' => $stockTransaction->id,
+                            'stock_movement_id' => $isFree ? $stockMovement->id : null,
                             'product_id' => $product['product_id'],
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => $field['quantity_type'] ?? 'regular',
@@ -577,7 +576,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
         DB::commit();
 
-        return $purchase->load('stockTransactions');
+        return $stock->load('stockTransactions');
 
 
     }

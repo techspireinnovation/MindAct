@@ -87,7 +87,7 @@ class StockSaleController extends Controller
             $data = $this->repository->delete($id);
             return response()->json([
                 'success' => true,
-                'message' => 'Stock Sale Deleted Successfully !!',
+                'message' => 'Stock Sale Deleted Successfully .',
                 'data' => $data,
 
             ], 200);

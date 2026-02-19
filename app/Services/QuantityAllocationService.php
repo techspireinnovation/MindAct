@@ -4,7 +4,10 @@ namespace App\Services;
 
 use App\Models\StockProductFieldValue;
 use App\Models\StockProduct;
+use App\Models\StockTransaction;
+
 use App\Models\StockMovement;
+use Illuminate\Support\Facades\DB;
 class QuantityAllocationService
 {
 
@@ -142,6 +145,114 @@ class QuantityAllocationService
 
         return $allocated; 
     }
+
+    public function allocateSaleQuantity($productID, $baseQuantity)
+{
+    $allocated = [];
+    $remaining = $baseQuantity;
+
+   
+    $stockProductIds = StockProduct::where('product_id', $productID)
+        ->whereNull('deleted_at')
+        ->pluck('id')
+        ->toArray();
+
+    if (empty($stockProductIds)) {
+        throw new \Exception("No stock available for product ID: {$productID}");
+    }
+
+   
+    $transactions = StockTransaction::select(
+            'stock_product_id',
+            'type',
+            DB::raw('SUM(quantity) as total')
+        )
+        ->whereIn('stock_product_id', $stockProductIds)
+        ->groupBy('stock_product_id', 'type')
+        ->get()
+        ->groupBy('stock_product_id'); 
+   
+    StockProduct::whereIn('id', $stockProductIds)
+        ->whereNull('deleted_at')
+        ->orderBy('id', 'asc') 
+        ->chunk(1000, function($stockProductsChunk) use (&$allocated, &$remaining, $transactions) {
+
+            foreach ($stockProductsChunk as $sp) {
+                if ($remaining <= 0) break;
+
+                $txs = $transactions->get($sp->id);
+
+                $purchaseReturnQty = $txs ? $txs->where('type', 'purchase_return')->sum('total') : 0;
+                $saleQty = $txs ? $txs->where('type', 'sale')->sum('total') : 0;
+                $saleReturnQty = $txs ? $txs->where('type', 'sale_return')->sum('total') : 0;
+
+                $availableQty = $sp->quantity - $purchaseReturnQty - $saleQty + $saleReturnQty;
+
+                if ($availableQty <= 0) continue;
+
+                $useQty = min($availableQty, $remaining);
+
+                $allocated[] = [
+                    'source' => 'stock_product',
+                    'product_id' => $sp->product_id,
+                    'stock_product_id' => $sp->id,
+                    'batch_no' => $sp->batch_no,
+                    'expiry_date' => $sp->expiry_date,
+                    'stock_movement_id' => null,
+                    'quantity' => $useQty
+                ];
+
+                $remaining -= $useQty;
+            }
+        });
+
+   
+    $freeMovements = StockMovement::select(
+            'stock_product_id',
+            'direction',
+            DB::raw('SUM(quantity) as total')
+        )
+        ->where('product_id', $productID)
+        ->whereNull('deleted_at')
+        ->groupBy('stock_product_id', 'direction')
+        ->get()
+        ->groupBy('stock_product_id'); 
+
+    foreach ($freeMovements as $stockProductId => $movs) {
+        if ($remaining <= 0) break;
+
+        $totalIn = $movs->where('direction','in')->sum('total');
+        $totalOut = $movs->where('direction','out')->sum('total');
+
+        $availableQty = $totalIn - $totalOut;
+
+        if ($availableQty <= 0) continue;
+
+        $useQty = min($availableQty, $remaining);
+
+        $sp = StockProduct::find($stockProductId);
+
+        $allocated[] = [
+            'source' => 'stock_movement',
+            'product_id' => $sp ? $sp->product_id : $productID,
+            'stock_product_id' => $stockProductId,
+            'batch_no' => $sp->batch_no ?? null,
+            'expiry_date' => $sp->expiry_date ?? null,
+            'stock_movement_id' => null,
+            'quantity' => $useQty
+        ];
+
+        $remaining -= $useQty;
+    }
+
+   
+    if ($remaining > 0) {
+        throw new \Exception("Not enough stock available to allocate for product ID: {$productID}");
+    }
+
+    return $allocated;
+}
+
 
 
 }

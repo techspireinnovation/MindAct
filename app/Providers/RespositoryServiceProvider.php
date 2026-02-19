@@ -68,6 +68,9 @@ use App\Repositories\StockPurchaseReturnRepository;
 use App\Interfaces\StockPurchaseReturnItemWiseRepositoryInterface;
 use App\Repositories\StockPurchaseReturnItemWiseRepository;
 
+use App\Interfaces\StockSaleRepositoryInterface;
+use App\Repositories\StockSaleRepository;
+
 
 class RespositoryServiceProvider extends ServiceProvider
 {
@@ -95,6 +98,7 @@ class RespositoryServiceProvider extends ServiceProvider
         $this->app->bind(StockPurchaseRepositoryInterface::class, StockPurchaseRepository::class);
         $this->app->bind(StockPurchaseReturnRepositoryInterface::class, StockPurchaseReturnRepository::class);
         $this->app->bind(StockPurchaseReturnItemWiseRepositoryInterface::class, StockPurchaseReturnItemWiseRepository::class);
+        $this->app->bind(StockSaleRepositoryInterface::class, StockSaleRepository::class);
     }
 
     /**

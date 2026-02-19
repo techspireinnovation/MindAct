@@ -159,7 +159,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
                         $movementData = [
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $relatedTransaction?->id,
+                            'stock_transaction_id' => $transaction?->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
@@ -460,7 +460,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
                         $movementValidatedData = [
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $relatedTransaction?->id,
+                            'stock_transaction_id' => $transaction?->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],

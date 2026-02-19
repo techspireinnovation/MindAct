@@ -17,6 +17,7 @@ class StockTransaction extends Model
         'stock_product_id',
         'type',
         'direction',
+        'sales_bill_number',
         'measure_unit_id',
         'is_vatable',
         'quantity',

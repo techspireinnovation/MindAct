@@ -27,7 +27,7 @@ class StockSaleController extends Controller
         try {
             $validated = $request->all();
             $data = $this->repository->list($validated);
-            return response()->json(['message' => 'Stock Sale retrieved successfully', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock Sale retrieved successfully !!', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Item not Found !!'], 404);

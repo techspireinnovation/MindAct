@@ -641,51 +641,64 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                     ->with([
                         'transactionPivots' => function ($q) {
                             $q->whereNull('deleted_at');
-                        },
-                        'stockMovements' => function ($q) {
-                            $q->where('type', 'purchase_return')
-                                ->where('stock_type', 'free')
-                                ->whereNull('deleted_at');
                         }
                     ]);
+            },
+            'stockMovements' => function ($query) {
+                $query->where('type', 'purchase_return')
+                    ->where('stock_type', 'free')
+                    ->whereNull('deleted_at');
             }
         ])
             ->whereNull('deleted_at')
             ->where('type', 'purchase_return')
             ->findOrFail($id);
 
+        $mergedProducts = [];
 
-        $stock->stockTransactions->transform(function ($product) {
+        foreach ($stock->stockTransactions as $transaction) {
 
-            $freeQty = $product->stockMovements->sum('quantity') ?? 0;
+            $relatedMovements = $stock->stockMovements->filter(function ($movement) use ($transaction) {
+                return $movement->product_id === $transaction->product_id
+                    && $movement->measure_unit_id === $transaction->measure_unit_id;
+            });
 
+            $freeQty = $relatedMovements->sum('quantity');
 
-            $attributes = $product->toArray();
-
-
-            $fieldValues = $attributes['transaction_pivots'] ?? [];
-
-            unset($attributes['transaction_pivots']);
-            unset($attributes['stock_movements']);
-
-
-            $newProduct = [];
-
-            foreach ($attributes as $key => $value) {
-
-                $newProduct[$key] = $value;
+            $fieldValues = $transaction->transactionPivots->toArray();
 
 
-                if ($key === 'quantity') {
-                    $newProduct['free_quantity'] = $freeQty;
-                }
+            $key = $transaction->product_id . '_' . $transaction->measure_unit_id;
+
+            if (!isset($mergedProducts[$key])) {
+                $mergedProducts[$key] = [
+                    'product_id' => $transaction->product_id,
+                    'measure_unit_id' => $transaction->measure_unit_id,
+                    'quantity' => $transaction->quantity,
+                    'free_quantity' => $freeQty,
+                    'price' => $transaction->price,
+                    'discount_percent' => $transaction->discount_percent,
+                    'discount_amount' => $transaction->discount_amount,
+                    'amount' => $transaction->amount,
+                    'batch_no' => $transaction->batch_no,
+                    'expiry_date' => $transaction->expiry_date,
+                    'mfd' => $transaction->mfd,
+                    'field_values' => $fieldValues,
+                ];
+            } else {
+                $mergedProducts[$key]['quantity'] += $transaction->quantity;
+                $mergedProducts[$key]['free_quantity'] += $freeQty;
+                $mergedProducts[$key]['field_values'] = array_merge(
+                    $mergedProducts[$key]['field_values'],
+                    $fieldValues
+                );
             }
+        }
 
 
-            $newProduct['field_values'] = $fieldValues;
-
-            return $newProduct;
-        });
+        $stock->stock_transactions = array_values($mergedProducts);
+        unset($stock->stockTransactions);
+        unset($stock->stockMovements);
 
         return $stock;
     }

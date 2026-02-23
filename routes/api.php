@@ -71,6 +71,8 @@ use App\Http\Controllers\StockAdjustmentController;
 use App\Http\Controllers\StockEntryController;
 use App\Http\Controllers\StockReconciliationController;
 use App\Http\Controllers\StockTransferController;
+use App\Http\Controllers\StockSalesReturnController;
+use App\Http\Controllers\StockSalesReturnItemWiseController;
 use App\Http\Controllers\StoreController;
 use App\Http\Controllers\SubGroupController;
 use App\Http\Controllers\VoucherSummaryController;
@@ -286,6 +288,8 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('stock-purchase-returns', StockPurchaseReturnController::class);
     Route::resource('stock-purchases-itemwise-returns', StockPurchaseReturnItemWiseController::class);
     Route::resource('stock-sales', StockSaleController::class);
+    Route::resource('stock-sales-returns', StockSalesReturnController::class);
+    Route::resource('stock-sales-itemwise-returns', StockSalesReturnItemWiseController::class);
     Route::get('product-names-purchases', [PurchaseController::class, 'getProducts']);
 
     Route::get('generate-purchase-bill-number', [PurchaseController::class, 'generateUniquePurchaseBillNumber']);

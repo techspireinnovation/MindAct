@@ -29,7 +29,7 @@ class Stock extends Model
         'credit_days',
         'balance',
         'ref_bill_number',
-        'return_bill_number',
+        'return_bill_no',
         'reasons',
         'discount_type',
         'discount_value',

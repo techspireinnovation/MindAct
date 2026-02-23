@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\StockSaleRequest;
+namespace App\Http\Requests\StockSalesReturnItemWiseRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -90,8 +90,9 @@ class UpdateRequest extends FormRequest
             'stock_transactions.*.is_vatable' => 'required|boolean',
             'stock_transactions.*.field_values' => 'nullable|array',
             'stock_transactions.*.field_values.*' => 'array',
-            'stock_transactions.*.field_values.*.*.id' => 'nullable|integer',
             'stock_transactions.*.field_values.*.*.stock_product_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.stock_transaction_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.stock_movement_id' => 'nullable|integer',
             'stock_transactions.*.field_values.*.*.quantity_type' => 'nullable|string',
             'stock_transactions.*.field_values.*.*.quantity_index' => 'nullable|numeric',
 

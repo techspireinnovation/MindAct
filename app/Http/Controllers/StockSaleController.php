@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 
+
 use App\Interfaces\StockSaleRepositoryInterface;
 use App\Http\Requests\StockPurchaseReturnRequest\StoreRequest;
 use App\Http\Requests\StockPurchaseReturnRequest\UpdateRequest;
@@ -18,6 +19,23 @@ class StockSaleController extends Controller
     {
         $this->repository = $repository;
 
+    }
+
+
+    public function index(Request $request)
+    {
+        try {
+            $validated = $request->all();
+            $data = $this->repository->list($validated);
+            return response()->json(['message' => 'Stock Sale retrieved successfully', 'data' => $data], 201);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Item not Found !!'], 404);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database error occurred !!'], 500);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'An error occurred while listing the stock sale !!'], 500);
+        }
     }
 
     public function store(StoreRequest $request)
@@ -87,7 +105,7 @@ class StockSaleController extends Controller
             $data = $this->repository->delete($id);
             return response()->json([
                 'success' => true,
-                'message' => 'Stock Sale Deleted Successfully .',
+                'message' => 'Stock Sale Deleted Successfully !',
                 'data' => $data,
 
             ], 200);

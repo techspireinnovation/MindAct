@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\StockSaleRequest;
+namespace App\Http\Requests\StockSalesReturnRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -43,7 +43,7 @@ class UpdateRequest extends FormRequest
 
             'bill_number' => 'nullable|string',
             'ref_bill_number' => 'nullable|string|max:255',
-            'return_bill_number' => 'nullable|string|max:255',
+            'return_bill_no' => 'nullable|string|max:255',
             'reasons' => 'nullable|string|max:255',
             'discount_type' => 'nullable|string|max:255',
             'discount_value' => 'nullable',
@@ -90,8 +90,9 @@ class UpdateRequest extends FormRequest
             'stock_transactions.*.is_vatable' => 'required|boolean',
             'stock_transactions.*.field_values' => 'nullable|array',
             'stock_transactions.*.field_values.*' => 'array',
-            'stock_transactions.*.field_values.*.*.id' => 'nullable|integer',
             'stock_transactions.*.field_values.*.*.stock_product_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.stock_transaction_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.stock_movement_id' => 'nullable|integer',
             'stock_transactions.*.field_values.*.*.quantity_type' => 'nullable|string',
             'stock_transactions.*.field_values.*.*.quantity_index' => 'nullable|numeric',
 

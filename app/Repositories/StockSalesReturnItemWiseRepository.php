@@ -17,9 +17,9 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Exception;
 
-use App\Interfaces\StockSaleRepositoryInterface;
+use App\Interfaces\StockSalesReturnItemWiseRepositoryInterface;
 
-class StockSaleRepository implements StockSaleRepositoryInterface
+class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepositoryInterface
 {
 
     protected $unitConversionService;
@@ -45,12 +45,14 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
+
+
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
             'store_id' => $data['store_id'] ?? null,
-            'type' => 'sale',
+            'type' => 'sales_return',
 
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
@@ -61,7 +63,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             'credit_days' => $data['credit_days'] ?? null,
             'balance' => $data['balance'] ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
-            'return_bill_no' => $data['return_bill_no'] ?? null,
+
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
             'discount_value' => $data['discount_value'] ?? 0,
@@ -92,100 +94,140 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
             if (empty($fieldValues)) {
 
-                $baseQuantity = $this->unitConversionService->convertToBaseUnit(
-                    $product['measure_unit_id'],
-                    $product['quantity']
-                );
-
-                $allocatedQtys = $this->quantityAllocationService->allocateSaleQuantity(
-                    $product['product_id'],
-                    $baseQuantity
-                );
-
-                $totalAllocated = collect($allocatedQtys)->sum('quantity');
-
-                if ($totalAllocated < $baseQuantity) {
-                    DB::rollBack();
-                    throw new Exception('Return quantity cannot be greater than purchased quantity for product ID: ' . $product['product_id']);
-                }
-
-                $transactionMap = [];
-
-                foreach ($allocatedQtys as $alloc) {
-                    $transactionData = [
-                        'stock_id' => $stock->id,
-                        'fiscal_year_id' => $fiscalYearId,
-                        'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
-                        'product_id' => $product['product_id'],
-                        'measure_unit_id' => $product['measure_unit_id'],
-                        'type' => 'sale',
-                        'quantity' => $alloc['quantity'],
-                        'is_vatable' => $product['is_vatable'],
-                        'sales_bill_number' => $data['bill_number'] ?? null,
-                        'stock_type' => 'regular',
-                        'company_id' => $data['company_id'],
-                        'branch_id' => $data['branch_id'],
-                        'direction' => 'out',
-                        'party_id' => $data['party_id'] ?? null,
-                        'expiry_date' => $product['expiry_date'] ?? null,
-                        'mfd' => $product['mfd'] ?? null,
-                        'price' => $product['price'] ?? 0,
-                        'discount_percent' => $product['discount_percent'] ?? 0,
-                        'discount_amount' => $product['discount_amount'] ?? 0,
-                        'amount' => $product['amount'] ?? 0,
-                        'batch_no' => $product['batch_no'] ?? null,
-
-                    ];
-                    $transaction = StockTransaction::create($transactionData);
-
-                    $transactionMap[$alloc['stock_product_id']] = $transaction;
-                }
-
-
-                if (!empty($product['free_quantity']) && $product['free_quantity'] > 0) {
-                    $freeQuantity = $this->unitConversionService->convertToBaseUnit(
+                $regularBaseQty = $this->unitConversionService
+                    ->convertToBaseUnit(
                         $product['measure_unit_id'],
-                        $product['free_quantity']
+                        $product['quantity'] ?? 0
                     );
 
-                    $freeAllocated = $this->quantityAllocationService->allocateSaleQuantity(
+                $freeBaseQty = $this->unitConversionService
+                    ->convertToBaseUnit(
+                        $product['measure_unit_id'],
+                        $product['free_quantity'] ?? 0
+                    );
+
+                $totalReturnQty = $regularBaseQty + $freeBaseQty;
+
+                if ($totalReturnQty <= 0) {
+                    continue;
+                }
+
+
+                $allocatedRows = $this->quantityAllocationService
+                    ->allocateSalesReturnItemWiseQuantity(
+
                         $product['product_id'],
-                        $freeQuantity
+                        $totalReturnQty
                     );
 
-                    foreach ($freeAllocated as $alloc) {
-                        $relatedTransaction = $transactionMap[$alloc['stock_product_id']] ?? null;
+                $allocatedTotal = collect($allocatedRows)->sum('quantity');
 
-                        $movementData = [
+                if ($allocatedTotal < $totalReturnQty) {
+                    throw new Exception(
+                        'Return quantity exceeds sold quantity for product ID: '
+                        . $product['product_id']
+                    );
+                }
+
+                $regularRemaining = $regularBaseQty;
+                $freeRemaining = $freeBaseQty;
+
+                foreach ($allocatedRows as $alloc) {
+
+                    $available = $alloc['quantity'];
+
+
+                    if ($regularRemaining > 0) {
+
+                        $consume = min($regularRemaining, $available);
+
+                        $transactionValidated = [
+
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $transaction?->id,
                             'fiscal_year_id' => $fiscalYearId,
-                            'company_id' => $data['company_id'],
-                            'branch_id' => $data['branch_id'],
+
+                            'source_id' => $alloc['source_id'],
+                            'source_type' => $alloc['source_type'],
+
+                            'stock_product_id' => $alloc['stock_product_id'],
+
+                            'stock_movement_id' =>
+                                $alloc['source_type'] === 'stock_movement'
+                                ? $alloc['source_id']
+                                : null,
+
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-                            'sales_bill_number' => $data['bill_number'] ?? null,
-                            'type' => 'sale',
-                            'quantity' => $alloc['quantity'],
-                            'stock_type' => 'free',
-                            'is_vatable' => $product['is_vatable'],
-                            'direction' => 'out',
+
+                            'type' => 'sales_return',
+
+                            'direction' => 'in',
+                            'quantity' => $consume,
+
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
-                            'expiry_date' => $product['expiry_date'] ?? null,
-                            'mfd' => $product['mfd'] ?? null,
+                            'sales_bill_number' => $data['bill_number'] ?? null,
+
+                            'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $product['discount_amount'] ?? 0,
                             'amount' => $product['amount'] ?? 0,
+                            'expiry_date' => $product['expiry_date'] ?? null,
+                            'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
-                            'stock_product_id' => $alloc['stock_product_id'] ?? null,
-
                         ];
 
-                        StockMovement::create($movementData);
+                        $transaction = StockTransaction::create($transactionValidated);
+
+                        $regularRemaining -= $consume;
+                        $available -= $consume;
+                    }
+
+
+                    if ($available > 0 && $freeRemaining > 0) {
+
+                        $consume = min($freeRemaining, $available);
+
+                        $movementValidated = [
+                            'stock_id' => $stock->id,
+                            'fiscal_year_id' => $fiscalYearId,
+                            'stock_transaction_id' => $transaction->id ?? null,
+
+                            'source_id' => $alloc['source_id'],
+                            'source_type' => $alloc['source_type'],
+                            'stock_product_id' => $alloc['stock_product_id'],
+
+                            'product_id' => $product['product_id'],
+                            'measure_unit_id' => $product['measure_unit_id'],
+
+                            'type' => 'sales_return',
+                            'stock_type' => 'free',
+                            'direction' => 'in',
+                            'quantity' => $consume,
+
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
+                            'party_id' => $data['party_id'] ?? null,
+                            'sales_bill_number' => $data['bill_number'] ?? null,
+
+                            'is_vatable' => $product['is_vatable'],
+                            'price' => $product['price'] ?? 0,
+                            'discount_percent' => $product['discount_percent'] ?? 0,
+                            'discount_amount' => $product['discount_amount'] ?? 0,
+                            'amount' => $product['amount'] ?? 0,
+                            'expiry_date' => $product['expiry_date'] ?? null,
+                            'mfd' => $product['mfd'] ?? null,
+                            'batch_no' => $product['batch_no'] ?? null,
+                        ];
+
+                        StockMovement::create($movementValidated);
+
+                        $freeRemaining -= $consume;
                     }
                 }
+
 
             } else {
 
@@ -194,43 +236,69 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                 foreach ($product['field_values'] as $group) {
                     foreach ($group as $field) {
                         $stockProductId = $field['stock_product_id'];
+                        $stockTransactionId = $field['stock_transaction_id'] ?? null;
+                        $stockMovementId = $field['stock_movement_id'] ?? null;
                         $quantityType = $field['quantity_type'] ?? 'regular';
 
-                        if (!isset($grouped[$stockProductId])) {
-                            $grouped[$stockProductId] = [
+
+                        if ($stockTransactionId && $stockMovementId) {
+                            $sourceId = $stockMovementId;
+                            $sourceType = 'stock_movement';
+                        } elseif ($stockTransactionId) {
+                            $sourceId = $stockTransactionId;
+                            $sourceType = 'stock_transaction';
+                        } elseif ($stockMovementId) {
+                            $sourceId = $stockMovementId;
+                            $sourceType = 'stock_movement';
+                        } else {
+                            $sourceId = null;
+                            $sourceType = null;
+                        }
+
+
+                        $groupKey = $stockProductId . '_' . ($sourceId ?? 'null') . '_' . ($sourceType ?? 'null');
+
+                        if (!isset($grouped[$groupKey])) {
+                            $grouped[$groupKey] = [
+                                'stock_product_id' => $stockProductId,
+                                'source_id' => $sourceId,
+                                'source_type' => $sourceType,
                                 'regular' => ['quantity' => 0, 'fields' => []],
                                 'free' => ['quantity' => 0, 'fields' => []],
                             ];
                         }
 
-                        $grouped[$stockProductId][$quantityType]['quantity']++;
-                        $grouped[$stockProductId][$quantityType]['fields'][] = $field;
+                        $grouped[$groupKey][$quantityType]['quantity']++;
+                        $grouped[$groupKey][$quantityType]['fields'][] = $field;
                     }
                 }
 
-                foreach ($grouped as $stockProductId => $types) {
+                foreach ($grouped as $types) {
+                    $stockProductId = $types['stock_product_id'];
+                    $sourceId = $types['source_id'];
+                    $sourceType = $types['source_type'];
+
                     $stockTransaction = null;
                     $stockMovement = null;
 
 
                     if ($types['regular']['quantity'] > 0) {
-
-                        $stockTransactionData = [
+                        $transactionValidated = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_id' => $sourceId,
+                            'source_type' => $sourceType,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-                            'type' => 'sale',
+                            'type' => 'sales_return',
                             'quantity' => $types['regular']['quantity'],
-                            'stock_type' => 'regular',
-                            'direction' => 'out',
+                            'direction' => 'in',
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-                            'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                            'stock_movement_id' => null,
                             'is_vatable' => $product['is_vatable'],
-
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -240,23 +308,34 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'amount' => $product['amount'] ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
-                        $stockTransaction = StockTransaction::create($stockTransactionData);
+                        $stockTransaction = StockTransaction::create($transactionValidated);
+                    }
+
+                    $stockTransactionIdForFree = $stockTransaction?->id;
+
+                    if (!$stockTransactionIdForFree) {
+                        foreach ($types['free']['fields'] as $field) {
+                            if (!empty($field['stock_transaction_id'])) {
+                                $stockTransactionIdForFree = $field['stock_transaction_id'];
+                                break;
+                            }
+                        }
                     }
 
 
                     if ($types['free']['quantity'] > 0) {
-
-
-                        $movementData = [
+                        $movementValidated = [
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $stockTransaction->id ?? null,
+                            'stock_transaction_id' => $stockTransactionIdForFree ?? null,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_id' => $sourceId,
+                            'source_type' => $sourceType,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-                            'type' => 'sale',
+                            'type' => 'sales_return',
                             'quantity' => $types['free']['quantity'],
                             'stock_type' => 'free',
-                            'direction' => 'out',
+                            'direction' => 'in',
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
@@ -270,43 +349,39 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'amount' => $product['amount'] ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
-
-                        $stockMovement = StockMovement::create($movementData);
+                        $stockMovement = StockMovement::create($movementValidated);
                     }
 
 
                     foreach ($types['regular']['fields'] as $field) {
-
-                        $transactionPivotData = [
+                        TransactionPivot::create([
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'type' => 'sale',
-                            'direction' => 'out',
+                            'type' => 'sales_return',
+                            'direction' => 'in',
                             'stock_product_id' => $stockProductId,
                             'stock_transaction_id' => $stockTransaction?->id,
                             'stock_movement_id' => null,
                             'product_id' => $product['product_id'],
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => 'regular',
-                        ];
-                        TransactionPivot::create($transactionPivotData);
+                        ]);
                     }
 
 
                     foreach ($types['free']['fields'] as $field) {
-                        $transactionsPivotData = [
+                        TransactionPivot::create([
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'type' => 'sale',
-                            'direction' => 'out',
+                            'type' => 'sales_return',
+                            'direction' => 'in',
                             'stock_product_id' => $stockProductId,
                             'stock_transaction_id' => $stockTransaction?->id,
                             'stock_movement_id' => $stockMovement?->id,
                             'product_id' => $product['product_id'],
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => 'free',
-                        ];
-                        TransactionPivot::create($transactionsPivotData);
+                        ]);
                     }
                 }
             }
@@ -330,13 +405,14 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
+
+
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
-
             'store_id' => $data['store_id'] ?? null,
-            'type' => 'sale',
+            'type' => 'sales_return',
 
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
@@ -347,7 +423,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             'credit_days' => $data['credit_days'] ?? null,
             'balance' => $data['balance'] ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
-            'return_bill_no' => $data['return_bill_no'] ?? null,
+
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
             'discount_value' => $data['discount_value'] ?? 0,
@@ -367,11 +443,10 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
         ];
 
-        $stock = Stock::findOrFail($id);
+        $stock = Stock::find($id);
 
 
         $stock->update($stockData);
-
 
         $oldTransactionIds = StockTransaction::where('stock_id', $stock->id)->pluck('id');
         $oldMovementIds = StockMovement::where('stock_id', $stock->id)->pluck('id');
@@ -386,6 +461,8 @@ class StockSaleRepository implements StockSaleRepositoryInterface
         StockMovement::where('stock_id', $stock->id)->delete();
 
 
+
+
         foreach ($data['stock_transactions'] as $product) {
 
             $fieldValues = $product['field_values'] ?? [];
@@ -393,100 +470,139 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
             if (empty($fieldValues)) {
 
-                $baseQuantity = $this->unitConversionService->convertToBaseUnit(
-                    $product['measure_unit_id'],
-                    $product['quantity']
-                );
-
-                $allocatedQtys = $this->quantityAllocationService->allocateSaleQuantity(
-                    $product['product_id'],
-                    $baseQuantity
-                );
-
-                $totalAllocated = collect($allocatedQtys)->sum('quantity');
-
-                if ($totalAllocated < $baseQuantity) {
-                    DB::rollBack();
-                    throw new Exception('Return quantity cannot be greater than purchased quantity for product ID: ' . $product['product_id']);
-                }
-
-                $transactionMap = [];
-
-                foreach ($allocatedQtys as $alloc) {
-                    $transactionData = [
-                        'stock_id' => $stock->id,
-                        'fiscal_year_id' => $fiscalYearId,
-                        'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
-                        'product_id' => $product['product_id'],
-                        'measure_unit_id' => $product['measure_unit_id'],
-                        'type' => 'sale',
-                        'quantity' => $alloc['quantity'],
-                        'is_vatable' => $product['is_vatable'],
-                        'sales_bill_number' => $data['bill_number'] ?? null,
-                        'stock_type' => 'regular',
-                        'company_id' => $data['company_id'],
-                        'branch_id' => $data['branch_id'],
-                        'direction' => 'out',
-                        'party_id' => $data['party_id'] ?? null,
-                        'expiry_date' => $product['expiry_date'] ?? null,
-                        'mfd' => $product['mfd'] ?? null,
-                        'price' => $product['price'] ?? 0,
-                        'discount_percent' => $product['discount_percent'] ?? 0,
-                        'discount_amount' => $product['discount_amount'] ?? 0,
-                        'amount' => $product['amount'] ?? 0,
-                        'batch_no' => $product['batch_no'] ?? null,
-
-                    ];
-                    $transaction = StockTransaction::create($transactionData);
-
-                    $transactionMap[$alloc['stock_product_id']] = $transaction;
-                }
-
-
-                if (!empty($product['free_quantity']) && $product['free_quantity'] > 0) {
-                    $freeQuantity = $this->unitConversionService->convertToBaseUnit(
+                $regularBaseQty = $this->unitConversionService
+                    ->convertToBaseUnit(
                         $product['measure_unit_id'],
-                        $product['free_quantity']
+                        $product['quantity'] ?? 0
                     );
 
-                    $freeAllocated = $this->quantityAllocationService->allocateSaleQuantity(
+                $freeBaseQty = $this->unitConversionService
+                    ->convertToBaseUnit(
+                        $product['measure_unit_id'],
+                        $product['free_quantity'] ?? 0
+                    );
+
+                $totalReturnQty = $regularBaseQty + $freeBaseQty;
+
+                if ($totalReturnQty <= 0) {
+                    continue;
+                }
+
+
+                $allocatedRows = $this->quantityAllocationService
+                    ->allocateSalesReturnItemWiseQuantity(
+
                         $product['product_id'],
-                        $freeQuantity
+                        $totalReturnQty
                     );
 
-                    foreach ($freeAllocated as $alloc) {
-                        $relatedTransaction = $transactionMap[$alloc['stock_product_id']] ?? null;
+                $allocatedTotal = collect($allocatedRows)->sum('quantity');
 
-                        $movementData = [
+                if ($allocatedTotal < $totalReturnQty) {
+                    throw new Exception(
+                        'Return quantity exceeds sold quantity for product ID: '
+                        . $product['product_id']
+                    );
+                }
+
+                $regularRemaining = $regularBaseQty;
+                $freeRemaining = $freeBaseQty;
+
+                foreach ($allocatedRows as $alloc) {
+
+                    $available = $alloc['quantity'];
+
+
+                    if ($regularRemaining > 0) {
+
+                        $consume = min($regularRemaining, $available);
+
+                        $transactionValidated = [
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $transaction?->id,
                             'fiscal_year_id' => $fiscalYearId,
-                            'company_id' => $data['company_id'],
-                            'branch_id' => $data['branch_id'],
+
+                            'source_id' => $alloc['source_id'],
+                            'source_type' => $alloc['source_type'],
+
+                            'stock_product_id' => $alloc['stock_product_id'],
+
+                            'stock_movement_id' =>
+                                $alloc['source_type'] === 'stock_movement'
+                                ? $alloc['source_id']
+                                : null,
+
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-                            'sales_bill_number' => $data['bill_number'] ?? null,
-                            'type' => 'sale',
-                            'quantity' => $alloc['quantity'],
-                            'stock_type' => 'free',
-                            'is_vatable' => $product['is_vatable'],
-                            'direction' => 'out',
+
+                            'type' => 'sales_return',
+
+                            'direction' => 'in',
+                            'quantity' => $consume,
+
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
-                            'expiry_date' => $product['expiry_date'] ?? null,
-                            'mfd' => $product['mfd'] ?? null,
+                            'sales_bill_number' => $data['bill_number'] ?? null,
+
+                            'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $product['discount_amount'] ?? 0,
                             'amount' => $product['amount'] ?? 0,
+                            'expiry_date' => $product['expiry_date'] ?? null,
+                            'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
-                            'stock_product_id' => $alloc['stock_product_id'] ?? null,
-
                         ];
 
-                        StockMovement::create($movementData);
+                        $transaction = StockTransaction::create($transactionValidated);
+
+                        $regularRemaining -= $consume;
+                        $available -= $consume;
+                    }
+
+
+                    if ($available > 0 && $freeRemaining > 0) {
+
+                        $consume = min($freeRemaining, $available);
+
+                        $movementValidated = [
+                            'stock_id' => $stock->id,
+                            'fiscal_year_id' => $fiscalYearId,
+                            'stock_transaction_id' => $transaction->id ?? null,
+
+                            'source_id' => $alloc['source_id'],
+                            'source_type' => $alloc['source_type'],
+                            'stock_product_id' => $alloc['stock_product_id'],
+
+                            'product_id' => $product['product_id'],
+                            'measure_unit_id' => $product['measure_unit_id'],
+
+                            'type' => 'sales_return',
+                            'stock_type' => 'free',
+                            'direction' => 'in',
+                            'quantity' => $consume,
+
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
+                            'party_id' => $data['party_id'] ?? null,
+                            'sales_bill_number' => $data['bill_number'] ?? null,
+
+                            'is_vatable' => $product['is_vatable'],
+                            'price' => $product['price'] ?? 0,
+                            'discount_percent' => $product['discount_percent'] ?? 0,
+                            'discount_amount' => $product['discount_amount'] ?? 0,
+                            'amount' => $product['amount'] ?? 0,
+                            'expiry_date' => $product['expiry_date'] ?? null,
+                            'mfd' => $product['mfd'] ?? null,
+                            'batch_no' => $product['batch_no'] ?? null,
+                        ];
+
+                        StockMovement::create($movementValidated);
+
+                        $freeRemaining -= $consume;
                     }
                 }
+
 
             } else {
 
@@ -495,46 +611,70 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                 foreach ($product['field_values'] as $group) {
                     foreach ($group as $field) {
                         $stockProductId = $field['stock_product_id'];
+                        $stockTransactionId = $field['stock_transaction_id'] ?? null;
+                        $stockMovementId = $field['stock_movement_id'] ?? null;
                         $quantityType = $field['quantity_type'] ?? 'regular';
 
-                        if (!isset($grouped[$stockProductId])) {
-                            $grouped[$stockProductId] = [
+
+                        if ($stockTransactionId && $stockMovementId) {
+                            $sourceId = $stockMovementId;
+                            $sourceType = 'stock_movement';
+                        } elseif ($stockTransactionId) {
+                            $sourceId = $stockTransactionId;
+                            $sourceType = 'stock_transaction';
+                        } elseif ($stockMovementId) {
+                            $sourceId = $stockMovementId;
+                            $sourceType = 'stock_movement';
+                        } else {
+                            $sourceId = null;
+                            $sourceType = null;
+                        }
+
+
+                        $groupKey = $stockProductId . '_' . ($sourceId ?? 'null') . '_' . ($sourceType ?? 'null');
+
+                        if (!isset($grouped[$groupKey])) {
+                            $grouped[$groupKey] = [
+                                'stock_product_id' => $stockProductId,
+                                'source_id' => $sourceId,
+                                'source_type' => $sourceType,
                                 'regular' => ['quantity' => 0, 'fields' => []],
                                 'free' => ['quantity' => 0, 'fields' => []],
                             ];
                         }
 
-                        $grouped[$stockProductId][$quantityType]['quantity']++;
-                        $grouped[$stockProductId][$quantityType]['fields'][] = $field;
+                        $grouped[$groupKey][$quantityType]['quantity']++;
+                        $grouped[$groupKey][$quantityType]['fields'][] = $field;
                     }
                 }
 
-                foreach ($grouped as $stockProductId => $types) {
+                foreach ($grouped as $types) {
+                    $stockProductId = $types['stock_product_id'];
+                    $sourceId = $types['source_id'];
+                    $sourceType = $types['source_type'];
+
                     $stockTransaction = null;
                     $stockMovement = null;
 
 
                     if ($types['regular']['quantity'] > 0) {
 
-                        $stockTransactionData = [
+                        $transactionValidated = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_id' => $sourceId,
+                            'source_type' => $sourceType,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-                            'type' => 'sale',
+                            'type' => 'sales_return',
                             'quantity' => $types['regular']['quantity'],
-                            'stock_type' => 'regular',
-                            'direction' => 'out',
+                            'direction' => 'in',
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
-                            'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
-
-
+                            'stock_movement_id' => null,
                             'is_vatable' => $product['is_vatable'],
-
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -544,29 +684,39 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'amount' => $product['amount'] ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
-                        $stockTransaction = StockTransaction::create($stockTransactionData);
+                        $stockTransaction = StockTransaction::create($transactionValidated);
+                    }
+
+                    $stockTransactionIdForFree = $stockTransaction?->id;
+
+                    if (!$stockTransactionIdForFree) {
+                        foreach ($types['free']['fields'] as $field) {
+                            if (!empty($field['stock_transaction_id'])) {
+                                $stockTransactionIdForFree = $field['stock_transaction_id'];
+                                break;
+                            }
+                        }
                     }
 
 
                     if ($types['free']['quantity'] > 0) {
 
-
-                        $movementData = [
+                        $stockTransactionValidated = [
                             'stock_id' => $stock->id,
-                            'stock_transaction_id' => $stockTransaction->id ?? null,
+                            'stock_transaction_id' => $stockTransactionIdForFree ?? null,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_id' => $sourceId,
+                            'source_type' => $sourceType,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-                            'type' => 'sale',
+                            'type' => 'sales_return',
                             'quantity' => $types['free']['quantity'],
                             'stock_type' => 'free',
-                            'direction' => 'out',
+                            'direction' => 'in',
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
-
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -575,44 +725,41 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'discount_amount' => $product['discount_amount'] ?? 0,
                             'amount' => $product['amount'] ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
-                        ];
 
-                        $stockMovement = StockMovement::create($movementData);
+                        ];
+                        $stockMovement = StockMovement::create($stockTransactionValidated);
                     }
 
 
                     foreach ($types['regular']['fields'] as $field) {
-
-                        $transactionPivotData = [
+                        TransactionPivot::create([
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'type' => 'sale',
-                            'direction' => 'out',
+                            'type' => 'sales_return',
+                            'direction' => 'in',
                             'stock_product_id' => $stockProductId,
                             'stock_transaction_id' => $stockTransaction?->id,
                             'stock_movement_id' => null,
                             'product_id' => $product['product_id'],
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => 'regular',
-                        ];
-                        TransactionPivot::create($transactionPivotData);
+                        ]);
                     }
 
 
                     foreach ($types['free']['fields'] as $field) {
-                        $transactionsPivotData = [
+                        TransactionPivot::create([
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'type' => 'sale',
-                            'direction' => 'out',
+                            'type' => 'sales_return',
+                            'direction' => 'in',
                             'stock_product_id' => $stockProductId,
                             'stock_transaction_id' => $stockTransaction?->id,
                             'stock_movement_id' => $stockMovement?->id,
                             'product_id' => $product['product_id'],
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => 'free',
-                        ];
-                        TransactionPivot::create($transactionsPivotData);
+                        ]);
                     }
                 }
             }
@@ -622,6 +769,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
         return $stock->load('stockTransactions');
 
+
     }
 
 
@@ -629,10 +777,13 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
     public function list(array $filters)
     {
-        return Stock::where('type', 'sale')
+
+        return Stock::where('type', 'sales_return')
             ->whereNull('deleted_at')
 
             ->get();
+
+
 
     }
 
@@ -644,51 +795,64 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                     ->with([
                         'transactionPivots' => function ($q) {
                             $q->whereNull('deleted_at');
-                        },
-                        'stockMovements' => function ($q) {
-                            $q->where('type', 'sale')
-                                ->where('stock_type', 'free')
-                                ->whereNull('deleted_at');
                         }
                     ]);
+            },
+            'stockMovements' => function ($query) {
+                $query->where('type', 'sales_return')
+                    ->where('stock_type', 'free')
+                    ->whereNull('deleted_at');
             }
         ])
             ->whereNull('deleted_at')
-            ->where('type', 'sale')
+            ->where('type', 'sales_return')
             ->findOrFail($id);
 
+        $mergedProducts = [];
 
-        $stock->stockTransactions->transform(function ($product) {
+        foreach ($stock->stockTransactions as $transaction) {
 
-            $freeQty = $product->stockMovements->sum('quantity') ?? 0;
+            $relatedMovements = $stock->stockMovements->filter(function ($movement) use ($transaction) {
+                return $movement->product_id === $transaction->product_id
+                    && $movement->measure_unit_id === $transaction->measure_unit_id;
+            });
 
+            $freeQty = $relatedMovements->sum('quantity');
 
-            $attributes = $product->toArray();
-
-
-            $fieldValues = $attributes['transaction_pivots'] ?? [];
-
-            unset($attributes['transaction_pivots']);
-            unset($attributes['stock_movements']);
-
-
-            $newProduct = [];
-
-            foreach ($attributes as $key => $value) {
-
-                $newProduct[$key] = $value;
+            $fieldValues = $transaction->transactionPivots->toArray();
 
 
-                if ($key === 'quantity') {
-                    $newProduct['free_quantity'] = $freeQty;
-                }
+            $key = $transaction->product_id . '_' . $transaction->measure_unit_id;
+
+            if (!isset($mergedProducts[$key])) {
+                $mergedProducts[$key] = [
+                    'product_id' => $transaction->product_id,
+                    'measure_unit_id' => $transaction->measure_unit_id,
+                    'quantity' => $transaction->quantity,
+                    'free_quantity' => $freeQty,
+                    'price' => $transaction->price,
+                    'discount_percent' => $transaction->discount_percent,
+                    'discount_amount' => $transaction->discount_amount,
+                    'amount' => $transaction->amount,
+                    'batch_no' => $transaction->batch_no,
+                    'expiry_date' => $transaction->expiry_date,
+                    'mfd' => $transaction->mfd,
+                    'field_values' => $fieldValues,
+                ];
+            } else {
+                $mergedProducts[$key]['quantity'] += $transaction->quantity;
+                $mergedProducts[$key]['free_quantity'] += $freeQty;
+                $mergedProducts[$key]['field_values'] = array_merge(
+                    $mergedProducts[$key]['field_values'],
+                    $fieldValues
+                );
             }
+        }
 
 
-            $newProduct['field_values'] = $fieldValues;
-
-            return $newProduct;
-        });
+        $stock->stock_transactions = array_values($mergedProducts);
+        unset($stock->stockTransactions);
+        unset($stock->stockMovements);
 
         return $stock;
     }
@@ -699,7 +863,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
         Db::beginTransaction();
 
-        $stock = Stock::where('type', 'sale')
+        $stock = Stock::where('type', 'sales_return')
             ->whereNull('deleted_at')
             ->findOrFail($id);
 
@@ -719,7 +883,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             ->delete();
 
         StockMovement::where('stock_id', $stock->id)
-            ->where('type', 'sale')
+            ->where('type', 'sales_return')
             ->where('stock_type', 'free')
             ->whereNull('deleted_at')
             ->delete();
@@ -731,6 +895,8 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
         DB::commit();
         return true;
+
+
 
     }
 }

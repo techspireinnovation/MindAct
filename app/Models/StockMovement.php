@@ -17,6 +17,8 @@ class StockMovement extends Model
         'stock_product_id',
         'stock_transaction_id',
         'sales_bill_number',
+        'source_id',
+        'source_type',
         'party_id',
         'product_id',
         'type',

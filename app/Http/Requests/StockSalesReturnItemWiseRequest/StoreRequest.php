@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Requests\StockSaleRequest;
+namespace App\Http\Requests\StockSalesReturnItemWiseRequest;
 
 
 use Illuminate\Foundation\Http\FormRequest;
@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Contracts\Validation\Validator;
 
-class UpdateRequest extends FormRequest
+class StoreRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,8 +25,6 @@ class UpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('stock-sales');
-
         return [
 
 
@@ -64,12 +62,11 @@ class UpdateRequest extends FormRequest
 
             'stock_transactions' => 'required|array',
 
-
-            'stock_transactions.*.id' => 'nullable|integer',
             'stock_transactions.*.product_id' => 'required|integer|exists:products,id',
             'stock_transactions.*.stock_product_id' => 'nullable|integer',
             'stock_transactions.*.stock_movement_id' => 'nullable|integer',
-            'stock_transactions.*.party_id' => 'nullable|numeric',
+            'stock_transactions.*.party_id' => 'nullable|integer',
+
             'stock_transactions.*.expiry_date' => 'nullable|string',
             'stock_transactions.*.mfd' => 'nullable|string',
             'stock_transactions.*.type' => 'nullable|string',
@@ -80,7 +77,7 @@ class UpdateRequest extends FormRequest
             'stock_transactions.*.batch_no' => 'nullable|string',
 
 
-            'stock_transactions.*.stock_type' => 'nullable|string',
+            'stock_transactions.*.direction' => 'nullable|string',
 
             'stock_transactions.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
 
@@ -90,10 +87,11 @@ class UpdateRequest extends FormRequest
             'stock_transactions.*.is_vatable' => 'required|boolean',
             'stock_transactions.*.field_values' => 'nullable|array',
             'stock_transactions.*.field_values.*' => 'array',
-            'stock_transactions.*.field_values.*.*.id' => 'nullable|integer',
             'stock_transactions.*.field_values.*.*.stock_product_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.stock_transaction_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.stock_movement_id' => 'nullable|integer',
+            'stock_transactions.*.field_values.*.*.quantity_index' => 'required|integer',
             'stock_transactions.*.field_values.*.*.quantity_type' => 'nullable|string',
-            'stock_transactions.*.field_values.*.*.quantity_index' => 'nullable|numeric',
 
 
 

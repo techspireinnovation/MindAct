@@ -12,23 +12,21 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('purchase_products', function (Blueprint $table) {
             $table->id();
-            $table->foreignID('customer_id')->constrained('customers');
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->foreignID(column: 'purchase_id')->constrained('purchases');
-            $table->foreignID(column: 'product_id')->constrained('products');
-            $table->text('product_code')->constrained('products');
-            $table->text(column: 'product_name')->constrained('products');
+          
+
+            $table->foreignID(column: 'purchase_id')->constrained('purchases')->onDelete('cascade');
+            $table->foreignID(column: 'product_id')->constrained('products')->onDelete('cascade');            
             $table->date('expiry_date')->nullable();
-            $table->double('quantity')->nullable();
-            $table->double('free_quantity')->nullable();
-            $table->double('price')->nullable();
-            $table->double('discount_percent')->nullable();
-            $table->double('discount_amount')->nullable();
-            $table->double('amount')->nullable();
+            $table->date('mfd')->nullable();
+            $table->string('quantity')->nullable();
+            $table->string('free_quantity')->nullable();
+            $table->decimal('price',15,2)->nullable();
+            $table->decimal('discount_percent',15,2)->nullable();
+            $table->decimal('discount_amount',15,2)->nullable();
+            $table->decimal('amount',15,2)->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 
@@ -37,6 +35,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('purchase_products');
+        Schema::connection('tenant')->dropIfExists('purchase_products');
     }
 };

@@ -140,10 +140,10 @@ class PurchaseController extends Controller
 
             return response()->json($billNumbers);
         } catch (QueryException $e) {
-          
+
             return response()->json(['error' => 'A database error occurred'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred !'], 500);
         }
     }
@@ -159,6 +159,30 @@ class PurchaseController extends Controller
 
         return response()->json($names);
     }
+
+
+    private function getNextQuantityIndex($purchaseProductId, $productFieldId)
+    {
+        $maxIndex = PurchaseProductFieldValue::where('purchase_product_id', $purchaseProductId)
+            ->where('product_field_id', $productFieldId)
+            ->whereNull('deleted_at')
+            ->max('quantity_index');
+
+        return $maxIndex !== null ? $maxIndex + 1 : 0;
+    }
+
+    private function getNextStockQuantityIndex($purchaseProductId, $productFieldId)
+    {
+        $maxIndex = PurchaseStockProductFieldValue::where('purchase_product_id', $purchaseProductId)
+            ->where('product_field_id', $productFieldId)
+            ->whereNull('deleted_at')
+            ->max('quantity_index');
+
+        return $maxIndex !== null ? $maxIndex + 1 : 0;
+    }
+
+
+
 
 
     public function getProductDetailsByName(Request $request): JsonResponse
@@ -186,8 +210,6 @@ class PurchaseController extends Controller
 
 
 
-
-
     public function update(Request $request, $id): JsonResponse
     {
         try {
@@ -198,7 +220,8 @@ class PurchaseController extends Controller
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('purchases')->ignore($id)->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at'))
+                    Rule::unique('purchases')->ignore($id)
+                        ->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at'))
                 ],
                 'customer_id' => 'required|exists:customers,id',
                 'customer_name' => 'nullable|string|max:255',
@@ -213,7 +236,8 @@ class PurchaseController extends Controller
                     'required',
                     'string',
                     'max:255',
-                    Rule::unique('purchases')->ignore($id)->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at'))
+                    Rule::unique('purchases')->ignore($id)
+                        ->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at'))
                 ],
                 'balance' => 'nullable|numeric',
                 'invoice_date' => 'nullable|string|max:255',
@@ -222,7 +246,8 @@ class PurchaseController extends Controller
                     'nullable',
                     'string',
                     'max:255',
-                    Rule::unique('purchases')->ignore($id)->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at'))
+                    Rule::unique('purchases')->ignore($id)
+                        ->where(fn($q) => $q->where('company_id', $request->company_id)->whereNull('deleted_at'))
                 ],
                 'payment' => 'nullable|array',
                 'payment.cash' => 'nullable|numeric|min:0',
@@ -251,7 +276,7 @@ class PurchaseController extends Controller
                 'purchase_products.*.id' => ['nullable', 'integer', Rule::exists('purchase_products', 'id')->where('purchase_id', $id)],
                 'purchase_products.*.product_id' => 'required|integer|exists:products,id',
                 'purchase_products.*.product_name' => 'nullable|string|max:255',
-                'purchase_products.*.branch_id' => 'nullable|numeric|exists:branches,id',
+                'purchase_products.*.branch_id' => 'nullable|integer|exists:branches,id',
                 'purchase_products.*.purchase_type' => 'nullable|string',
                 'purchase_products.*.product_code' => 'nullable|string|max:255',
                 'purchase_products.*.hs_code' => 'nullable|string|max:255',
@@ -272,7 +297,8 @@ class PurchaseController extends Controller
                 'purchase_products.*.field_values.*.*.id' => 'nullable|integer|exists:purchase_product_field_values,id',
                 'purchase_products.*.field_values.*.*.product_field_id' => 'required|integer|exists:product_fields,id',
                 'purchase_products.*.field_values.*.*.value' => 'required|string|max:255',
-                'purchase_products.*.field_values.*.*.quantity_type' => 'required|string|max:255',
+                'purchase_products.*.field_values.*.*.quantity_type' => 'required|numeric|max:255',
+                'purchase_products.*.field_values.*.*.quantity_index' => 'nullable|integer',
             ]);
 
             if ($validator->fails()) {
@@ -292,76 +318,98 @@ class PurchaseController extends Controller
 
                 foreach ($validated['purchase_products'] as $productData) {
 
-                    // ── Handle PurchaseProduct (Update or Create) ──
-                    if (!empty($productData['id'])) {
-                        $purchaseProduct = PurchaseProduct::find($productData['id']);
-                        if ($purchaseProduct && $purchaseProduct->purchase_id === $purchase->id) {
-                            $purchaseProduct->update(array_merge(
-                                Arr::except($productData, ['id', 'field_values']),
-                                ['company_id' => $companyId, 'customer_id' => $validated['customer_id'], 'branch_id' => $branchId]
-                            ));
-                        } else {
-                            $purchaseProduct = null;
-                        }
-                    }
+                    // ── Update or Create PurchaseProduct ──
+                    $purchaseProduct = isset($productData['id']) ? PurchaseProduct::find($productData['id']) : null;
 
-                    if (empty($purchaseProduct)) {
-                        $purchaseProduct = PurchaseProduct::create(array_merge(
-                            Arr::except($productData, ['id', 'field_values']),
-                            [
-                                'purchase_id' => $purchase->id,
-                                'company_id' => $companyId,
-                                'customer_id' => $validated['customer_id'],
-                                'branch_id' => $branchId,
-                                'purchase_type' => $validated['purchase_type'] ?? null,
-                            ]
-                        ));
+                    if ($purchaseProduct && $purchaseProduct->purchase_id === $purchase->id) {
+                        $purchaseProduct->update([
+                            'product_id' => $productData['product_id'],
+                            'product_name' => $productData['product_name'] ?? null,
+                            'product_code' => $productData['product_code'] ?? null,
+                            'quantity' => $productData['quantity'],
+                            'free_quantity' => $productData['free_quantity'] ?? 0,
+                            'price' => $productData['price'] ?? 0,
+                            'discount_percent' => $productData['discount_percent'] ?? 0,
+                            'discount_amount' => $productData['discount_amount'] ?? 0,
+                            'amount' => $productData['amount'] ?? 0,
+                            'is_vatable' => $productData['is_vatable'],
+                            'measure_unit_id' => $productData['measure_unit_id'],
+                            'branch_id' => $productData['branch_id'] ?? $branchId,
+                            'purchase_type' => $productData['purchase_type'] ?? $validated['purchase_type'] ?? null,
+                            'company_id' => $companyId,
+                            'customer_id' => $validated['customer_id'],
+                        ]);
+                    } else {
+                        $purchaseProduct = PurchaseProduct::create([
+                            'purchase_id' => $purchase->id,
+                            'product_id' => $productData['product_id'],
+                            'product_name' => $productData['product_name'] ?? null,
+                            'product_code' => $productData['product_code'] ?? null,
+                            'quantity' => $productData['quantity'],
+                            'free_quantity' => $productData['free_quantity'] ?? 0,
+                            'price' => $productData['price'] ?? 0,
+                            'discount_percent' => $productData['discount_percent'] ?? 0,
+                            'discount_amount' => $productData['discount_amount'] ?? 0,
+                            'amount' => $productData['amount'] ?? 0,
+                            'is_vatable' => $productData['is_vatable'],
+                            'measure_unit_id' => $productData['measure_unit_id'],
+                            'branch_id' => $productData['branch_id'] ?? $branchId,
+                            'purchase_type' => $productData['purchase_type'] ?? $validated['purchase_type'] ?? null,
+                            'company_id' => $companyId,
+                            'customer_id' => $validated['customer_id'],
+                        ]);
                     }
 
                     $processedProductIds[] = $purchaseProduct->id;
 
-                   
-                    if ($product = Product::find($productData['product_id'] ?? null)) {
-                        $product->purchase_status = 'purchased';
-                        $product->save();
-                    }
-                    if (!empty($productData['hs_code'])) {
-                        ProductList::where('product_id', $productData['product_id'])
-                            ->where(fn($q) => $q->whereNull('hs_code')->orWhere('hs_code', '!=', $productData['hs_code']))
-                            ->update(['hs_code' => $productData['hs_code']]);
-                    }
-
-                    
+                    // ── Update or Create PurchaseStockProduct ──
                     $stockProduct = PurchaseStockProduct::updateOrCreate(
                         ['purchase_product_id' => $purchaseProduct->id],
-                        array_merge(
-                            Arr::except($productData, ['id', 'field_values']),
-                            [
-                                'purchase_id' => $purchase->id,
-                                'company_id' => $companyId,
-                                'branch_id' => $branchId,
-                            ]
-                        )
+                        [
+                            'purchase_id' => $purchase->id,
+                            'company_id' => $companyId,
+                            'branch_id' => $branchId,
+                            'customer_id' => $validated['customer_id'],
+                            'product_id' => $productData['product_id'],
+                            'product_name' => $productData['product_name'] ?? null,
+                            'product_code' => $productData['product_code'] ?? null,
+                            'purchase_type' => $productData['purchase_type'] ?? $validated['purchase_type'] ?? null,
+                            'quantity' => $productData['quantity'],
+                            'free_quantity' => $productData['free_quantity'] ?? 0,
+                            'price' => $productData['price'] ?? 0,
+                            'discount_percent' => $productData['discount_percent'] ?? 0,
+                            'discount_amount' => $productData['discount_amount'] ?? 0,
+                            'amount' => $productData['amount'] ?? 0,
+                            'is_vatable' => $productData['is_vatable'],
+                            'measure_unit_id' => $productData['measure_unit_id'],
+                        ]
                     );
 
-                   
+                    // ── Handle PurchaseProductFieldValue ──
                     $keepFieldValueIds = [];
 
                     if (!empty($productData['field_values']) && is_array($productData['field_values'])) {
-                        foreach ($productData['field_values'] as $quantityIndex => $fieldSet) {
+                        foreach ($productData['field_values'] as $fieldSet) {
                             foreach ($fieldSet as $field) {
+                                if (isset($field['quantity_index'])) {
+                                    $qIndex = (int) $field['quantity_index'];
+                                } else {
+                                    $qIndex = $this->getNextQuantityIndex(
+                                        $purchaseProduct->id,
+                                        $field['product_field_id']
+                                    );
+                                }
                                 $fvData = [
                                     'product_field_id' => $field['product_field_id'],
                                     'value' => $field['value'],
                                     'quantity_type' => $field['quantity_type'],
-                                    'quantity_index' => is_numeric($quantityIndex) ? (int) $quantityIndex : 0,
+                                    'quantity_index' => $qIndex,
                                     'product_id' => $purchaseProduct->product_id,
                                     'company_id' => $companyId,
                                     'branch_id' => $branchId,
                                     'purchase_product_id' => $purchaseProduct->id,
                                 ];
 
-                                // UPDATE existing
                                 if (!empty($field['id'])) {
                                     $fieldValue = PurchaseProductFieldValue::find($field['id']);
                                     if ($fieldValue && $fieldValue->purchase_product_id === $purchaseProduct->id) {
@@ -371,39 +419,76 @@ class PurchaseController extends Controller
                                     }
                                 }
 
-                                // CREATE new
                                 $newFv = PurchaseProductFieldValue::create($fvData);
                                 $keepFieldValueIds[] = $newFv->id;
                             }
                         }
                     }
 
-                    // DELETE field values that were removed from request
+                    // Delete removed field values
                     PurchaseProductFieldValue::where('purchase_product_id', $purchaseProduct->id)
                         ->whereNotIn('id', $keepFieldValueIds)
                         ->delete();
 
-                    // ── Sync to PurchaseStockProductFieldValue ──
-                    PurchaseStockProductFieldValue::where('purchase_stock_product_id', $stockProduct->id)->delete();
-
-                    PurchaseProductFieldValue::where('purchase_product_id', $purchaseProduct->id)
+                    // ── Sync Stock Product Field Values ──
+                    $existingStockFields = PurchaseStockProductFieldValue::where('purchase_stock_product_id', $stockProduct->id)
+                        ->where('purchase_product_id', $purchaseProduct->id)
                         ->get()
-                        ->each(function ($fv) use ($stockProduct) {
-                            PurchaseStockProductFieldValue::create([
-                                'purchase_stock_product_id' => $stockProduct->id,
-                                'purchase_product_id' => $fv->purchase_product_id,
-                                'product_id' => $fv->product_id,
-                                'company_id' => $fv->company_id,
-                                'branch_id' => $fv->branch_id,
-                                'product_field_id' => $fv->product_field_id,
-                                'value' => $fv->value,
-                                'quantity_type' => $fv->quantity_type,
-                                'quantity_index' => $fv->quantity_index,
-                            ]);
-                        });
+                        ->keyBy(fn($item) => $item->purchase_product_id . '-' . $item->product_field_id . '-' . $item->quantity_index);
+
+                    $keepStockFieldValueKeys = [];
+
+                    if (!empty($productData['field_values']) && is_array($productData['field_values'])) {
+                        foreach ($productData['field_values'] as $fieldSet) {
+                            foreach ($fieldSet as $field) {
+                                if (isset($field['quantity_index'])) {
+                                    $qIndex = (int) $field['quantity_index'];
+                                } else {
+                                    $qIndex = $this->getNextStockQuantityIndex(
+                                        $purchaseProduct->id,
+                                        $field['product_field_id']
+                                    );
+                                }
+
+                                $key = $purchaseProduct->id . '-' . $field['product_field_id'] . '-' . $qIndex;
+                                $keepStockFieldValueKeys[] = $key;
+
+                                $fvData = [
+                                    'purchase_stock_product_id' => $stockProduct->id,
+                                    'purchase_product_id' => $purchaseProduct->id,
+                                    'product_id' => $purchaseProduct->product_id,
+                                    'company_id' => $companyId,
+                                    'branch_id' => $branchId,
+                                    'product_field_id' => $field['product_field_id'],
+                                    'value' => $field['value'],
+                                    'quantity_type' => $field['quantity_type'],
+                                    'quantity_index' => $qIndex,
+                                ];
+
+                                PurchaseStockProductFieldValue::updateOrCreate(
+                                    [
+                                        'purchase_stock_product_id' => $stockProduct->id,
+                                        'purchase_product_id' => $purchaseProduct->id,
+                                        'product_field_id' => $field['product_field_id'],
+                                        'quantity_index' => $qIndex,
+                                    ],
+                                    $fvData
+                                );
+                            }
+                        }
+                    }
+
+                    // Delete old stock field values not in request
+                    foreach ($existingStockFields as $key => $stockField) {
+                        if (!in_array($key, $keepStockFieldValueKeys)) {
+                            $stockField->delete();
+                        }
+                    }
+
+
                 }
 
-                // ── Delete PurchaseProducts that were removed from the form ──
+                // ── Delete removed PurchaseProducts ──
                 $removedProductIds = PurchaseProduct::where('purchase_id', $purchase->id)
                     ->whereNotIn('id', $processedProductIds)
                     ->pluck('id');
@@ -411,10 +496,8 @@ class PurchaseController extends Controller
                 if ($removedProductIds->isNotEmpty()) {
                     PurchaseProduct::whereIn('id', $removedProductIds)->delete();
                     PurchaseStockProduct::whereIn('purchase_product_id', $removedProductIds)->delete();
-                    
                     PurchaseProductFieldValue::whereIn('purchase_product_id', $removedProductIds)->delete();
                     PurchaseStockProductFieldValue::whereIn('purchase_product_id', $removedProductIds)->delete();
-                    
                 }
 
                 return $purchase->fresh();
@@ -428,18 +511,14 @@ class PurchaseController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-          
             return response()->json(['error' => 'Purchase not found'], 404);
         } catch (QueryException $e) {
-          
+            Log::error('Database Error: ' . $e->getMessage());
             return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-           
             return response()->json(['error' => 'Something went wrong'], 500);
         }
     }
-
-
 
 
 
@@ -649,7 +728,7 @@ class PurchaseController extends Controller
                             'customer_id' => $validated['customer_id'],
                             'company_id' => $validated['company_id'],
                             'branch_id' => $branchId,
-                            'purchase_type' => $validated['purchase_type'] ?? null,
+                            'purchase_type' => $purchaseProductData['purchase_type'] ?? null,
                             'product_id' => $purchaseProductData['product_id'],
                             'product_name' => $purchaseProductData['product_name'] ?? null,
                             'product_code' => $purchaseProductData['product_code'] ?? null,
@@ -718,14 +797,14 @@ class PurchaseController extends Controller
                 'data' => $item->load('purchaseProducts', 'purchaseProducts.fieldValues'),
             ], 201);
         } catch (ModelNotFoundException $e) {
-            
+
             return response()->json(['error' => 'Resource not found'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'Database error occurred: ' . $e->getMessage()], 500);
         } catch (\Exception $e) {
 
-            
+
             return response()->json(['error' => 'Unexpected error occurred: ' . $e->getMessage()], 500);
         }
     }
@@ -737,13 +816,13 @@ class PurchaseController extends Controller
             $purchase = Purchase::where('purchase_bill_number', $billNumber)->firstOrFail();
             return $this->show($purchase->id);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -787,15 +866,15 @@ class PurchaseController extends Controller
 
             return response()->json($itemArray);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
 
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
 
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
@@ -825,19 +904,19 @@ class PurchaseController extends Controller
                 'message' => 'Purchase deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Purchase not found!'
             ], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the purchase.'
             ], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the purchase.'
@@ -845,14 +924,12 @@ class PurchaseController extends Controller
         }
     }
 
-    
-
 
     public function filterbyBarcode(Request $request): JsonResponse
     {
         try {
-          
-            // Validate request
+
+            
             $validator = Validator::make($request->all(), [
                 'barcode' => 'required_without:product_unique_id',
                 'product_unique_id' => 'required_without:barcode',
@@ -865,10 +942,10 @@ class PurchaseController extends Controller
             $productList = null;
             $product = null;
 
-            // Search logic
+            
             if ($request->filled('barcode')) {
-               
-                // Find product list by barcode
+
+              
                 $productList = ProductList::with([
                     'product.category',
                     'product.subCategory',
@@ -884,7 +961,7 @@ class PurchaseController extends Controller
                     $product = $productList->product;
                 }
             } else {
-                
+
 
                 // Try different approaches to find the product
                 $product = Product::with([
@@ -933,7 +1010,7 @@ class PurchaseController extends Controller
             }
 
             if (!$product) {
-              
+
 
                 // Provide more helpful error message
                 return response()->json([
@@ -943,9 +1020,9 @@ class PurchaseController extends Controller
                 ], 404);
             }
 
-            
 
-         
+
+
             $data = [
                 "id" => $product->id,
                 "name" => $product->name,
@@ -1020,7 +1097,7 @@ class PurchaseController extends Controller
                 "data" => $data
             ]);
         } catch (\Exception $e) {
-          
+
             return response()->json(['error' => 'Server error: ' . $e->getMessage()], 500);
         }
     }

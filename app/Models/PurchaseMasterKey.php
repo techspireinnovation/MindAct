@@ -17,7 +17,7 @@ class PurchaseMasterKey extends BaseTenantModel
 
     protected $fillable = [
 
-        'company_id',
+        
         'product_code',
         'free',
         'discount_percent',
@@ -34,14 +34,8 @@ class PurchaseMasterKey extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+   
 
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
-    }
+    
 
 }

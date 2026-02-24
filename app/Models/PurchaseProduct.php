@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Helpers\Helper;
 use App\Models\Scopes\CompanyIdScope;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Pratiksh\Nepalidate\Services\NepaliDate;
@@ -12,15 +13,13 @@ use Request;
 class PurchaseProduct extends BaseTenantModel
 {
 
+    use SoftDeletes, HasFactory;
+
     protected $fillable = [
-        'customer_id',
-        'company_id',
+        'party_id',
         'purchase_id',
-        'branch_id',
         'product_id',
-        'product_name',
         'purchase_type',
-        'product_code',
         'expiry_date',
         'quantity',
         'deleted_at',
@@ -38,18 +37,7 @@ class PurchaseProduct extends BaseTenantModel
     protected $dates = ['deleted_at', 'created_at_bs'];
     protected $appends = ['created_at_bs'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-        static::creating(function ($model) {
-            // Only set if not already set
-            if (empty($model->company_id)) {
-                // Get the header value, fallback to 'US'
-                $headerValue = Request::input('company_id');
-                $model->company_id = $headerValue;
-            }
-        });
-    }
+
 
     public function measureUnit()
     {
@@ -160,26 +148,4 @@ class PurchaseProduct extends BaseTenantModel
     }
 
 
-
-
-    // public function purchaseProductFieldValuesUse()
-    // {
-    //     return $this->hasMany(PurchaseProductFieldValue::class, 'purchase_product_id');
-    // }
-    // public function purchaseProductReturnsUse()
-    // {
-    //     return $this->hasMany(PurchaseProductReturn::class, 'purchase_product_id');
-    // }
-    // public function saleProductsUse()
-    // {
-    //     return $this->hasMany(SaleProduct::class, 'purchase_product_id');
-    // }
-    // public function salesReturnProductsUse()
-    // {
-    //     return $this->hasMany(SalesReturnProduct::class, 'purchase_product_id');
-    // }
-    // public function saleReturnProductFieldValuesUse()
-    // {
-    //     return $this->hasMany(SaleReturnProductFieldValue::class, 'purchase_product_id');
-    // }
 }

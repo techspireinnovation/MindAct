@@ -20,9 +20,8 @@ return new class extends Migration {
             $table->string('actual_stock')->nullable();
             $table->string('diff_stock')->nullable();
             $table->foreignId('unit_id')->nullable();
-            $table->softDeletes();
 
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

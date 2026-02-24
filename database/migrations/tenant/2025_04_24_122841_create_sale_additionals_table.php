@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -13,7 +12,7 @@ return new class extends Migration
     {
         Schema::connection('tenant')->create('sale_additionals', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->foreignID('sale_id')->constrained('sales');
             $table->string('place')->nullable();
             $table->string('transport')->nullable();
@@ -23,9 +22,8 @@ return new class extends Migration
             $table->string('dispatch_code');
             $table->string('driver_contact_number')->nullable();
             $table->date('delivery_date')->nullable();
-            $table->time('delivery_time')->nullable();                  
-            $table->softDeletes();
-            $table->timestamps();
+            $table->time('delivery_time')->nullable();
+            $table->auditFields();
         });
     }
 
@@ -34,6 +32,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('sale_additionals');
+        Schema::connection('tenant')->dropIfExists('sale_additionals');
     }
 };

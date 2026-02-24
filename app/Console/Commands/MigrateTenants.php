@@ -30,7 +30,7 @@ class MigrateTenants extends Command
      */
     public function handle()
     {
-        $this->info('Starting tenant migrations...');
+        $this->info('Starting tenant migrations....');
 
         $tenants = Tenant::all();
 

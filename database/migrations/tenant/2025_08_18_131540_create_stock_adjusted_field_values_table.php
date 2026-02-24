@@ -26,8 +26,7 @@ return new class extends Migration {
 
       $table->string('value');
 
-      $table->softDeletes();
-      $table->timestamps();
+      $table->auditFields();
     });
   }
 

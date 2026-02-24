@@ -3,7 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Scopes\CompanyIdScope;
+
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,10 +16,11 @@ class Cash extends BaseTenantModel
 
     protected $casts = [
 
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'is_primary' => 'boolean'
     ];
     protected $fillable = [
-        'company_id',
+        
         'name',
         'is_primary',
         'is_active',
@@ -29,13 +30,7 @@ class Cash extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
-    }
+   
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
 }

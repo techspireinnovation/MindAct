@@ -12,16 +12,13 @@ class Salesman extends BaseTenantModel
     use SoftDeletes, HasFactory;
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
 
     protected $fillable = [
-        'company_id',
+       
         'email',
         'mobile',
-        'salesman_id',
+        'salesman_code',
         'pan_number',
         'name',
         'address',

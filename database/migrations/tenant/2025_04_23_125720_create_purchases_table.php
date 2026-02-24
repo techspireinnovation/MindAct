@@ -12,35 +12,37 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('purchases', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->foreignID('customer_id')->constrained('customers');
-            $table->string('customer_name')->nullable();
-            $table->string('pan_number')->nulllable();
-            $table->double('balance')->nullable();
+            $table->unsignedBigInteger('fiscal_year_id')->nullable();
+            $table->unsignedBigInteger('branch_id')->constrained('branches')->onDelete('cascade');
+            $table->unsignedBigInteger('party_id')->nullable();
+            
             $table->string('batch_no')->nullable();
             $table->string('ref_bill_number')->nullable();
             $table->string('document_number')->nullable();
-            $table->string('address')->nullable();
-            $table->string('customer_contact')->nullable();
+            $table->string('purchase_type')->nullable();
             $table->date('invoice_date')->nullable();
             $table->string('purchase_bill_number')->nullable();
+           
+            $table->string('quantity')->nullable();
+            $table->string('free_quantity')->nullable();
+            $table->foreignID('store_id')->constrained('stores')->nullable();
+            $table->foreignID('location_id')->constrained('locations')->nullable();
+            $table->enum('discount_type', ['percent', 'amount'])->nullable();
+            $table->decimal('discount_value', 15, 2)->nullable();
+            $table->decimal('discount_after_vat',15,2)->nullable();
+            $table->decimal('sub_total_before_discount',15,2)->nullable();
+            $table->decimal('taxable_amount',15,2)->nullable();
+            $table->decimal('non_taxable_amount',15,2)->nullable();
+            $table->decimal('excise_duty',15,2)->nullable();
+            $table->decimal('health_insurance',15,2)->nullable();
+            $table->decimal('freight_amount',15,2)->nullable();
+           
+            $table->string('roundoff_type')->nullable();
+            $table->decimal('roundoff_amount',15,2)->nullable();
+            $table->decimal('total_amount',15,2)->nullable();
             $table->string('remarks')->nullable();
-            $table->foreignID('store_id')->constrained('stores');
-            $table->foreignID('location_id')->constrained('locations');
-            $table->enum('discount_type',['percent','amount'])->nullable();
-            $table->double('discount_value')->nullable();
-            $table->double('sub_total_before_discount')->nullable();
-             $table->double('taxable_amount')->nullable();
-            $table->double('non_taxable_amount')->nullable(); 
-            $table->double('excise_duty')->nullable();
-            $table->double('health_insurance')->nullable();
-            $table->double('freight_amount')->nullable();
-            $table->double('discount_after_vat')->nullable();
-            $table->double('roundoff_amount')->nullable();
-            $table->double('total_amount')->nullable();
-            $table->json('payment')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->auditFields();
+
         });
     }
 
@@ -49,6 +51,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('purchases');
+        Schema::connection('tenant')->dropIfExists('purchases');
     }
 };

@@ -1,6 +1,13 @@
 <?php
 
 namespace App\Http\Controllers;
+use App\Interfaces\LocationRepositoryInterface;
+use App\Http\Resources\LocationCollection;
+use App\Http\Resources\LocationResource;
+use App\Http\Requests\LocationRequest\ListRequest;
+use App\Http\Requests\LocationRequest\DetailRequest;
+use App\Http\Requests\LocationRequest\StoreRequest;
+use App\Http\Requests\LocationRequest\UpdateRequest;
 use App\Models\Location;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -12,62 +19,43 @@ use Illuminate\Http\Request;
 
 class LocationController extends Controller
 {
-    public function index(Request $request): JsonResponse
+
+    protected $repository;
+
+    public function __construct(LocationRepositoryInterface $repository)
     {
-        $query = Location::query();
 
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
+        $this->repository = $repository;
 
-        return response()->json($query->paginate(50));
     }
-    public function locationList(Request $request)
+    public function index(ListRequest $request)
     {
         try {
 
-            $locations = Location::where('company_id', $request->company_id)
-                ->whereNull('deleted_at')
-                ->get(['id', 'name'])
-                ->map(fn($location) => ['id' => $location->id, 'name' => $location->name])
-                ->values()
-                ->toArray();
+            $items = $this->repository->list($request->validated());
             return response()->json([
-                "message" => "Location List Received !!",
-                "data" => $locations
+                'message' => 'Location List!',
+                'status' => 200,
+                'data' => $items['data'],
+                'meta' => $items['meta'],
             ]);
-
-        } catch (ModelNotFoundException $e) {
-           
-            return response()->json(["error" => "Location not Found !!"], 404);
-        } catch (QueryException $e) {
-           
-            return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }
     }
 
 
-    public function locationDetails(Request $request)
+
+    public function locationDetails(DetailRequest $request)
     {
         try {
 
-            $companyId = $request->company_id;
-            if (!$companyId) {
-                return response()->json(["error" => "No Company Logged In !!"], 404);
-            }
-
-            $location = $request->location_name;
-            $locationDetails = Location::where('company_id', $request->company_id)
-                ->where('name', $location)
-                ->whereNull('deleted_at')
-                ->firstorFail();
+            $locationDetails = $this->repository->locationDetails($request->validated());
             return response()->json([
-                "message" => "Location Details Received !!",
-                "data" => $locationDetails
-            ], 200);
+                'message' => 'Brand Details !',
+                'status' => 200,
+                'data' => $locationDetails
+            ]);
 
 
         } catch (ModelNotFoundException $e) {
@@ -79,133 +67,57 @@ class LocationController extends Controller
         }
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $item = Location::findOrFail($id);
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('locations')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $item) {
-                            return $query->where('company_id', $request->input('company_id', $item->company_id))
-                                ->whereNull('deleted_at');
 
-                        }),
-                ],
-                'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
-                'company_id' => 'integer'
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $validated = $validator->validated();
-            // Explicit boolean handling (optional, since validation ensures boolean)
-            if ($request->has('is_active')) {
-                $validated['is_active'] = (bool) $request->input('is_active');
-            }
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                Location::where('company_id', $item->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-
-
-            $item->update($validated);
-            $item->refresh();
-
+            $item = $this->repository->update($id, $request->validated());
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
         try {
 
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('locations')
-
-                        ->where(function ($query) use ($request) {
-                            return $query->where('company_id', $request->company_id)
-                                ->whereNull('deleted_at');
-
-                        }),
-
-                ],
-                'is_active' => 'boolean|required',
-                'is_primary' => 'boolean',
-                'company_id' => 'integer'
-            ]);
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-            $validated = $validator->validated();
-
-            $validated['is_primary'] = $validated['is_primary'] ?? false;
-            $validated['is_active'] = $validated['is_active'] ?? true;
-
-            if (!empty($validated['is_primary'])) {
-                Location::where('company_id', $validated['company_id'])
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-
-
-            $item = Location::create($validated);
+            $item = $this->repository->create($request->validated());
             return response()->json($item, 201);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found'], 404);
         } catch (QueryException $e) {
-           
-           
+
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         } catch (\Exception $e) {
-           
-            
+
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
 
         }
     }
 
-    public function show($id): JsonResponse
+    public function show($id)
     {
         try {
-            $item = Location::findOrFail($id);
-            return response()->json($item);
+            $item = $this->repository->show($id);
+
+            return response()->json([
+                'message' => 'Location Details !',
+                'status' => 200,
+                'data' => $item
+            ]);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Location not found!!'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }
@@ -213,55 +125,27 @@ class LocationController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $location = Location::findOrFail($id);
 
-            // Track where it's being used
-            $usedIn = [];
-
-            if ($location->products()->exists()) {
-                $usedIn[] = 'products';
-            }
-            if ($location->purchases()->exists()) {
-                $usedIn[] = 'purchases';
-            }
-            if ($location->sales()->exists()) {
-                $usedIn[] = 'sales';
-            }
-            if ($location->productionAssembles()->exists()) {
-                $usedIn[] = 'production_assembles';
-            }
-            if ($location->stockAdjustments()->exists()) {
-                $usedIn[] = 'stock_adjustments';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'in_use',
-                    'message' => 'Location cannot be deleted because it is in use by: ' . implode(', ', $usedIn) . '.',
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $location->delete();
+            $this->repository->delete($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Location deleted successfully!'
             ]);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Location not found!'
             ], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the location.'
             ], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the location.'
@@ -272,35 +156,21 @@ class LocationController extends Controller
 
 
 
-    public function activeLocations(Request $request): JsonResponse
+    public function activeLocationList(Request $request)
     {
         try {
-            $locations = Location::where('company_id', $request->company_id) 
-                ->where('is_active', 1) // only active
-                ->whereNull('deleted_at') // ignore deleted
-                ->get(['id', 'name', 'is_primary'])
-                ->map(fn($location) => [
-                    'id' => $location->id,
-                    'name' => $location->name,
-                    'is_primary' => $location->is_primary, 
-                ])
-                ->values()
-                ->toArray();
-
-            if (empty($locations)) {
-                return response()->json([
-                    'message' => 'No active locations found',
-                    'data' => []
-                ], 200);
-            }
+            $locations = $this->repository->activeLocationList();
 
             return response()->json([
-                'message' => 'Active locations retrieved successfully',
+                'message' => 'Location List !',
+                'status' => 200,
                 'data' => $locations
-            ], 200);
+            ]);
+
 
         } catch (\Exception $e) {
-            
+
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

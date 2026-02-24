@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -13,9 +12,9 @@ return new class extends Migration
     {
         Schema::connection('tenant')->create('sales', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->foreignID('customer_id')->constrained('customers');
-         
+            $table->unsignedBigInteger('fiscal_year_id')->nullable();
+            $table->unsignedBigInteger('party_id')->nullable();
+
             $table->string('customer_name')->nullable();
             $table->string('customer_address')->nullable();
             $table->string('credit_days')->nullable();
@@ -49,10 +48,9 @@ return new class extends Migration
             $table->boolean('is_vatable')->default(true);
             $table->boolean('abvt')->default(true);
             $table->boolean('is_whatsapp_notify')->default(false);
-        
-            $table->softDeletes();
 
-            $table->timestamps();
+            $table->auditFields();
+
         });
     }
 

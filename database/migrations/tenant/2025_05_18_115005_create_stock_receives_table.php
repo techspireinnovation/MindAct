@@ -12,7 +12,8 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('stock_receives', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('branch_id')->nullable();
+
             $table->string('transfer_ref_no')->nullable();
             $table->string('reference_no')->nullable();
             $table->string('receive_from')->nullable();
@@ -26,7 +27,8 @@ return new class extends Migration {
             $table->json('product_details')->nullable();
             $table->string('reasons')->nullable();
             $table->string('remarks')->nullable();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

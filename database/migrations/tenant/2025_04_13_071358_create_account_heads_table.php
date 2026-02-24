@@ -12,14 +12,14 @@ return new class extends Migration {
   {
     Schema::connection('tenant')->create('account_heads', function (Blueprint $table) {
       $table->id();
-      $table->unsignedBigInteger('company_id')->nullable();
+
       $table->string('name');
       $table->foreignID('account_group_id')->constrained('account_groups');
       $table->string('code')->nullable();
       $table->boolean('is_active')->default(true);
       $table->boolean('is_primary')->default(false);
-      $table->softDeletes();
-      $table->timestamps();
+      $table->auditFields();
+
     });
   }
 

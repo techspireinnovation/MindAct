@@ -17,7 +17,7 @@ class Location extends BaseTenantModel
 
     protected $fillable = [
         'name',
-        'company_id',
+       
         'is_active',
         'is_primary',
         'deleted_at'
@@ -25,10 +25,7 @@ class Location extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    
 
 
     public function products()

@@ -4,8 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
@@ -13,7 +12,7 @@ return new class extends Migration
     {
         Schema::connection('tenant')->create('purchase_master_keys', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->boolean('product_code')->default(false);
             $table->boolean('free')->default(false);
             $table->boolean('expiry_date')->default(false);
@@ -26,8 +25,7 @@ return new class extends Migration
             $table->boolean('freight_charge')->default(false);
             $table->boolean('discount_after_vat')->default(false);
             $table->boolean('mfd')->default(false);
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

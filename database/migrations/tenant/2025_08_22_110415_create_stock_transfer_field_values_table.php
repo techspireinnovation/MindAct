@@ -10,9 +10,9 @@ return new class extends Migration {
      */
     public function up(): void
     {
-       Schema::connection('tenant')->create('stock_transfer_field_values', function (Blueprint $table) {
+        Schema::connection('tenant')->create('stock_transfer_field_values', function (Blueprint $table) {
             $table->id();
-             $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->foreignID('branch_id')->constrained('branches')->nullable();
             $table->unsignedBigInteger('purchase_stock_product_id')->nullable();
             $table->unsignedBigInteger('stock_product_id')->nullable();
@@ -26,8 +26,7 @@ return new class extends Migration {
 
             $table->string('value');
 
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

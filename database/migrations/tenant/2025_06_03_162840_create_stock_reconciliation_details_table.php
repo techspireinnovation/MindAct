@@ -18,8 +18,8 @@ return new class extends Migration {
             $table->string('product_name')->nullable();
             $table->double('available_stock')->nullable();
             $table->double('physical_stock')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+           
+            $table->auditFields();
         });
     }
 

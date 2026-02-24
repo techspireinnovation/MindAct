@@ -12,8 +12,9 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('purchase_returns', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->foreignID('customer_id')->constrained('customers');
+            $table->unsignedBigInteger('fiscal_year_id')->nullable();
+
+            $table->unsignedBigInteger('party_id')->nullable();
             $table->string('customer_name')->nullable();
             $table->foreignId('purchase_id')->constrained('purchases');
             $table->text('pan_number')->nullable();
@@ -41,8 +42,7 @@ return new class extends Migration {
             $table->double('roundoff_amount')->nullable();
             $table->double('total_amount')->nullable();
             $table->json('payment')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

@@ -4,16 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
+return new class extends Migration {
     /**
      * Run the migrations.
      */
     public function up(): void
     {
-       Schema::connection('tenant')->create('sales_master_keys', function (Blueprint $table) {
+        Schema::connection('tenant')->create('sales_master_keys', function (Blueprint $table) {
             $table->id();
-           $table->unsignedBigInteger('company_id')->nullable();
+
             $table->boolean('salesman')->default(false);
             $table->boolean('credit_days')->default(false);
             $table->boolean('balance')->default(false);
@@ -33,13 +32,12 @@ return new class extends Migration
             $table->boolean('expiry_date')->default(false);
             $table->boolean('batch_no')->default(false);
             $table->boolean('additional')->default(false);
-            
+
             $table->boolean('discount_amount')->default(false);
             $table->boolean('mfd')->default(false);
-            
-            
-            $table->softDeletes();
-            $table->timestamps();
+
+
+            $table->auditFields();
         });
     }
 
@@ -48,6 +46,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists('sales_master_keys');
+        Schema::connection('tenant')->dropIfExists('sales_master_keys');
     }
 };

@@ -12,14 +12,14 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('journal_vouchers', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->foreignID('project_id')->constrained('projects');
             $table->foreignID('salesman_id')->constrained('salesmen');
             $table->date('date')->nullable();
             $table->string('voucher_number')->nullable();
             $table->string('reference_number')->nullable();
-            $table->timestamps();
-            $table->SoftDeletes();
+
+            $table->auditFields();
         });
     }
 

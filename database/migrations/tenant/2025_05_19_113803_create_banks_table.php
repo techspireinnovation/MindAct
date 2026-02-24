@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('banks', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->text('name');
             $table->string('address')->nullable();
             $table->string('class')->nullable();
@@ -20,8 +20,8 @@ return new class extends Migration {
             $table->string('swift')->nullable();
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->SoftDeletes();
+
+            $table->auditFields();
 
 
         });

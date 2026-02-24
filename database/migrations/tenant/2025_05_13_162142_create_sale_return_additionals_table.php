@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('sale_return_additionals', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->foreignId('sales_return_id')->constrained('sales_returns');
             $table->string('place')->nullable();
             $table->string('transport')->nullable();
@@ -23,8 +23,7 @@ return new class extends Migration {
             $table->string('driver_contact_number')->nullable();
             $table->date('return_date')->nullable();
             $table->time('return_time')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

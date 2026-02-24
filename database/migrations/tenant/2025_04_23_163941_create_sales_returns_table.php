@@ -12,9 +12,10 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('sales_returns', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->foreignID('customer_id')->constrained('customers');
-            $table->unsignedBigInteger('salesman_id');
+            $table->unsignedBigInteger('fiscal_year_id')->nullable();
+
+            $table->unsignedBigInteger('party_id')->nullable();
+            $table->unsignedBigInteger('salesman_id')->nullable();
             $table->text('pan_number')->nullable();
             $table->string('customer_name')->nullable();
             $table->string('credit_days')->nullable();
@@ -42,8 +43,7 @@ return new class extends Migration {
             $table->double('total_amount')->nullable();
             $table->double('round_of_amount')->nullable();
             $table->json('payment')->nullable();
-            $table->SoftDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 
@@ -52,12 +52,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        // Check and drop the foreign key only if it exists
-        if (Schema::connection('tenant')->hasTable('sales_returns')) {
-            // This will prevent errors during rollback
-            DB::statement('ALTER TABLE `sales_returns` DROP FOREIGN KEY IF EXISTS `sales_returns_salesman_id_foreign`');
-        }
-
         Schema::connection('tenant')->dropIfExists('sales_returns');
     }
 

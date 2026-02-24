@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('stock_product_id')->nullable();
             $table->unsignedBigInteger('stock_adjustment_id')->nullable();
             $table->unsignedBigInteger('stock_reconciliation_id')->nullable();
-            $table->foreignID('customer_id')->nullable();
+            $table->unsignedBigInteger(column: 'party_id')->nullable();
 
             $table->unsignedBigInteger('company_id')->nullable();
             $table->foreignID('branch_id')->nullable();
@@ -33,8 +33,8 @@ return new class extends Migration {
             $table->double('amount')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
 
         });
     }

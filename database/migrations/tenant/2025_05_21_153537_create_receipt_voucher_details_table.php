@@ -12,8 +12,8 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('receipt_voucher_details', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
-            $table->foreignId('customer_id')->constrained('customers');
+
+            $table->unsignedBigInteger(column: 'party_id')->nullable();
             $table->foreignId('receipt_voucher_id')->constrained('receipt_vouchers')->nullable();
             $table->string('party_name')->nullable();
             $table->double('amount')->nullable();
@@ -21,7 +21,8 @@ return new class extends Migration {
             $table->string('remarks')->nullable();
             $table->string('cheque_slip')->nullable();
             $table->double('remaining_balance')->nullable();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

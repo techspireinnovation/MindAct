@@ -23,8 +23,8 @@ return new class extends Migration {
             $table->foreignID('branch_id')->constrained('branches')->nullable();
             $table->unsignedBigInteger(column: 'purchase_id')->nullable();
             $table->foreignID(column: 'product_id')->constrained('products');
-            $table->text('product_code')->constrained('products');
-            $table->text(column: 'product_name')->constrained('products');
+           
+           
             $table->date('expiry_date')->nullable();
             $table->string('mfd')->nullable();
             $table->string('quantity')->nullable();
@@ -36,8 +36,8 @@ return new class extends Migration {
             $table->double('amount')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
-            $table->softDeletes();
-            $table->timestamps();
+            
+            $table->auditFields();
         });
     }
 

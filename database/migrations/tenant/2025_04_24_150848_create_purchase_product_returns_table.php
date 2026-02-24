@@ -1,4 +1,5 @@
-`<?php
+`
+<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -10,14 +11,14 @@ return new class extends Migration {
      */
     public function up(): void
     {
-       Schema::connection('tenant')->create('purchase_product_returns', function (Blueprint $table) {
+        Schema::connection('tenant')->create('purchase_product_returns', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->foreignID(column: 'purchase_return_id')->constrained('purchase_returns')->onDelete('cascade');
             $table->foreignID(column: 'product_id')->constrained('products');
-            $table->foreignID(column: 'customer_id')->nullable();         
+            $table->unsignedBigInteger(column: 'party_id')->nullable();
             $table->foreignID(column: 'purchase_product_id')->constrained('purchase_products');
-             $table->string(column: 'product_name')->constrained('products');
+            $table->string(column: 'product_name')->constrained('products');
             $table->text(column: 'purchase_product_code')->nullable();
             $table->date('expiry_date')->nullable();
             $table->double('quantity')->nullable();
@@ -28,8 +29,7 @@ return new class extends Migration {
             $table->double('amount')->nullable();
             $table->boolean('is_vatable')->nullable();
             $table->foreignID(column: 'measure_unit_id')->constrained('measure_units');
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
         });
     }
 

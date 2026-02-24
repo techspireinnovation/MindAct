@@ -21,8 +21,8 @@ return new class extends Migration {
       $table->string('batch_no')->nullable();
       $table->double('price')->nullable();
       $table->double('amount')->nullable();
-      $table->softDeletes();
-      $table->timestamps();
+
+      $table->auditFields();
     });
   }
 

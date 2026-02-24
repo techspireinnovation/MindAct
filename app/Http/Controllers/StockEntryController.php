@@ -87,7 +87,7 @@ class StockEntryController extends Controller
             $createdEntries = [];
 
             DB::transaction(function () use ($request, &$createdEntries) {
-                // Create StockMain
+                
                 $stockMain = StockMain::create([
                     'name' => $request->name,
                     'code' => $request->code,
@@ -103,17 +103,17 @@ class StockEntryController extends Controller
                     $productVatabale = Product::where('id', $entry['product_id'])->value('is_vatable');
                     $entry['is_vatable'] = $productVatabale;
 
-                    // Create StockEntry
+                    
                     $stockEntry = StockEntry::create($entry);
 
-                    // Map uom to measure_unit_id for PurchaseStockProduct
+                    
                     $entry['stock_product_id'] = $stockEntry->id;
                     $entry['measure_unit_id'] = $entry['uom'];
 
-                    // Create PurchaseStockProduct
+                    
                     $purchaseStock = PurchaseStockProduct::create($entry);
 
-                    // Save field values
+                    
                     if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
                         foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
                             foreach ($fieldGroup as $fieldValue) {
@@ -149,11 +149,13 @@ class StockEntryController extends Controller
                 'data' => $createdEntries,
             ], 201);
 
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Related item not found.'], 404);
         } catch (QueryException $e) {
-          
+
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-            
+
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -272,10 +274,10 @@ class StockEntryController extends Controller
             ], 200);
 
         } catch (QueryException $e) {
-           
+
             return response()->json(['message' => 'Database error occurred.'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['message' => 'Unexpected error occurred.'], 500);
         }
     }
@@ -367,13 +369,13 @@ class StockEntryController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(['error' => 'Item not found !'], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(['error' => 'An unexpected query error occurred !'], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }

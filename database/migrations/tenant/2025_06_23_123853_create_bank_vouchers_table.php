@@ -23,8 +23,8 @@ return new class extends Migration {
             $table->double('amount')->nullable();
             $table->enum('options', ['deposit', 'withdrawal', 'transfer'])->nullable();
             $table->foreignID('bank_id')->nullable()->constrained('banks');
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

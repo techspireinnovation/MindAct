@@ -12,7 +12,7 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('production_settings', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->date('date')->nullable();
             $table->text('document_no')->nullable();
             $table->foreignId('product_id')->nullable();
@@ -20,8 +20,8 @@ return new class extends Migration {
             $table->double('quantity')->nullable();
             $table->foreignId('measure_unit_id')->constrained('measure_units');
             $table->json('product_details')->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

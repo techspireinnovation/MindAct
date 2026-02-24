@@ -27,8 +27,8 @@ return new class extends Migration {
             $table->char('type', 50)->nullable();
             $table->string('payment_type', 50)->nullable();
             $table->foreignId('account_group_id')->nullable()->constrained('account_groups');
-            $table->timestamps();
-            $table->softDeletes();
+
+            $table->auditFields();
         });
     }
 

@@ -1,6 +1,16 @@
 <?php
 
 namespace App\Http\Controllers;
+
+use App\Http\Requests\ProductCategoryRequest\ListRequest;
+use App\Http\Requests\ProductCategoryRequest\DetailRequest;
+use App\Http\Requests\ProductCategoryRequest\StoreRequest;
+use App\Http\Requests\ProductCategoryRequest\UpdateRequest;
+use App\Interfaces\ProductCategoryRepositoryInterface;
+
+use App\Http\Resources\ProductCategoryCollection;
+use App\Http\Resources\ProductCategoryResource;
+
 use App\Models\ProductCategory;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -15,86 +25,53 @@ use Illuminate\Support\Facades\Auth;
 class ProductCategoryController extends Controller
 {
 
-    // Display a listing
+    protected $repository;
 
-    public function index(Request $request): JsonResponse
+    public function __construct(ProductCategoryRepositoryInterface $repository)
     {
-        $query = ProductCategory::query();
-
-        // Check for 'keywords' and apply the filter if present
-        if ($request->has('keywords')) {
-            $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
-        }
-
-        // Check for 'company_id' and apply the filter if present
-        if ($request->has('company_id')) {
-            $query->where('company_id', $request->input('company_id'));
-        }
-
-        // Paginate the result, you can set the pagination size as needed
-        $categories = $query->paginate(50);
-
-        return response()->json($categories);
+        $this->repository = $repository;
     }
 
-
-    public function categoryList(Request $request): JsonResponse
-    {
-        try {
-            $companyId = $request->company_id;
-
-            if (!$companyId) {
-                return response()->json(["error" => "No Associated company Found !!"], 404);
-            }
-
-            $categories = ProductCategory::where('company_id', $companyId)
-                ->whereNull('deleted_at')
-                ->where('is_active', 1)
-                ->get(['id', 'name'])
-                ->map(fn($category) => ['id' => $category->id, 'name' => $category->name])
-                ->values()
-                ->toArray();
-
-            return response()->json([
-                "message" => "Category List Received",
-                "data" => $categories
-            ], 200);
-
-        } catch (ModelNotFoundException $e) {
-            return response()->json(["error" => "Category Not Found !!"], 404);
-        } catch (QueryException $e) {
-            return response()->json(["error" => "Database error occurred !!"], 500);
-        } catch (\Exception $e) {
-            return response()->json(["error" => "An unexpected error occurred !!"], 500);
-        }
-    }
-
-    public function categoryDetails(Request $request): JsonResponse
+    public function index(ListRequest $request)
     {
         try {
 
-            $companyId = $request->company_id;
-            $categoryName = $request->category_name;
 
-            if (!$companyId) {
-                return response()->json(["error" => "Company not Found"], 404);
-            }
-
-            $category = ProductCategory::where('company_id', $companyId)
-                ->where('name', $categoryName)
-                ->whereNull('deleted_at')
-                ->firstorFail();
+            $categories = $this->repository->list($request->validated());
 
             return response()->json([
-                "message" => "Category Details Received",
-                "data" => $category
-            ], 200);
+                'message' => 'Product Category List!',
+                'status' => 200,
+                'data' => $categories['data'],
+                'meta' => $categories['meta'],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'An unexpected error occurred !!'], 500);
+        }
+    }
+
+
+
+    public function categoryDetails(DetailRequest $request)
+    {
+        try {
+
+            $categoryDetail = $this->repository->categoryDetails($request->validated());
+
+
+            return response()->json([
+                'message' => 'Product Category Details !',
+                'status' => 200,
+                'data' => $categoryDetail
+            ]);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(["error" => "Catgory Not Found !!"], 404);
+           
+            return response()->json(["error" => "Product Catgory Not Found !!"], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
+           
             return response()->json(["error" => "An unexpected error occurred"], 500);
         }
 
@@ -105,68 +82,38 @@ class ProductCategoryController extends Controller
 
 
 
-
-
-    // Store a new resource
-    public function store(Request $request): JsonResponse
+    public function store(StoreRequest $request): JsonResponse
     {
         try {
 
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('product_categories')->where(function ($query) use ($request) {
-                        return $query->where('company_id', $request->company_id)
-                            ->whereNull('deleted_at');
-                    }),
-                ],
-                'company_id' => 'required',
-                'is_primary' => 'boolean',
-                'is_active' => 'boolean'
-            ]);
+            $category = $this->repository->create($request->validated());
+
+            return response()->json($category, 201);
 
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            $validated = $validator->validated();
-            if (!empty($validated['is_primary'])) {
-                ProductCategory::where('company_id', $validated['company_id'])
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-
-            $validated['is_primary'] = $validated['is_primary'] ?? false;
-            $validated['is_active'] = $validated['is_active'] ?? true;
-
-
-            $post = ProductCategory::create($validated);
-
-            return response()->json($post, 201);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Company not found'], 404);
+            return response()->json(['error' => 'Product Category not found'], 404);
         } catch (QueryException $e) {
-          
-            return response()->json(['error' => 'An unexpected error occurred'], 500);
+
+
+            return response()->json(['error' => 'Database error occurred'], 500);
         } catch (\Exception $e) {
-           
+
+
             return response()->json(['error' => 'An unexpected error occurred'], 500);
         }
     }
 
-    // Show a single resource
-    public function show($id): JsonResponse
+
+    public function show($id)
     {
         try {
-            $category = ProductCategory::findOrFail($id);
-            return response()->json($category);
+            $category = $this->repository->show($id);
+            return response()->json([
+                'message' => 'Product Category Details !',
+                'status' => 200,
+                'data' => $category
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product Category not found!!'], 404);
         } catch (QueryException $e) {
@@ -175,58 +122,16 @@ class ProductCategoryController extends Controller
     }
 
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateRequest $request, $id): JsonResponse
     {
         try {
-            $product_category = ProductCategory::findOrFail($id);
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'sometimes',
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('product_categories')
-                        ->ignore($id)
-                        ->where(function ($query) use ($request, $product_category) {
-                            return $query->where('company_id', $request->input('company_id', $product_category->company_id))
-                                ->whereNull('deleted_at');
-
-                        }),
-                ],
-                'company_id' => 'sometimes|required|integer',
-                'is_active' => 'sometimes|boolean',
-                'is_primary' => 'sometimes|boolean',
-            ]);
+            $validated = $request->validated();
 
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
 
-            $validated = $validator->validated();
+            $category = $this->repository->update($id, $validated);
 
-            if (isset($validated['is_primary']) && $validated['is_primary'] === true) {
-                ProductCategory::where('company_id', $product_category->company_id)
-                    ->where('id', '!=', $id)
-                    ->where('is_primary', true)
-                    ->update(['is_primary' => false]);
-            }
-
-
-            if ($request->has('is_active')) {
-                $validated['is_active'] = (bool) $request->input('is_active');
-            }
-            if ($request->has('is_primary')) {
-                $validated['is_primary'] = (bool) $request->input('is_primary');
-            }
-
-            $product_category->update($validated);
-            $product_category->refresh();
-
-            return response()->json($product_category);
+            return response()->json($category, 200);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Product Category not found!!'], 404);
         } catch (QueryException $e) {
@@ -237,81 +142,58 @@ class ProductCategoryController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-            $unit = ProductCategory::findOrFail($id);
-
-            $usedIn = [];
-
-            if ($unit->products()->exists()) {
-                $usedIn[] = 'products';
-            }
-            if ($unit->productSubCategory()->exists()) {
-                $usedIn[] = 'product sub categories';
-            }
-
-            if (!empty($usedIn)) {
-                return response()->json([
-                    'error' => 'in_use',
-                    'message' => 'Product Category cannot be deleted because it is used in: ' . implode(', ', $usedIn),
-                    'used_in' => $usedIn
-                ], 400);
-            }
-
-            $unit->delete();
-
+            $this->repository->delete($id);
             return response()->json([
                 'success' => true,
                 'message' => 'Product Category deleted successfully!'
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Product Category not found!'
             ], 404);
 
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Product Category.'
             ], 500);
 
         } catch (\Exception $e) {
-           
+
+            if (str_starts_with($e->getMessage(), 'in_use:')) {
+                $usedIn = explode(',', str_replace('in_use:', '', $e->getMessage()));
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Product Category cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'used_in' => $usedIn
+                ], 400);
+
+            }
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Product Category.'
             ], 500);
+
+
         }
     }
 
 
-    public function activeCategoryList(Request $request): JsonResponse
+    public function activeCategoryList(Request $request)
     {
         try {
-            $companyId = $request->company_id;
-
-            if (!$companyId) {
-                return response()->json(["error" => "No Associated company Found !!"], 404);
-            }
-
-            $categories = ProductCategory::where('company_id', $companyId)
-                ->whereNull('deleted_at')
-                ->where('is_active', true) // ✅ only active categories
-                ->get(['id', 'name', 'is_primary']) // ✅ also fetch is_primary
-                ->map(fn($category) => [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'is_primary' => $category->is_primary, // ✅ add to response
-                ])
-                ->values()
-                ->toArray();
+            $categories = $this->repository->activeCategoryList();
 
             return response()->json([
-                "message" => "Active Category List Received !!",
-                "data" => $categories
-            ], 200);
+                'message' => 'Product Category List !',
+                'status' => 200,
+                'data' => $categories
+            ]);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(["error" => "Category Not Found !!"], 404);

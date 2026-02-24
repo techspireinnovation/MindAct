@@ -15,7 +15,7 @@ return new class extends Migration {
 
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('branch_id')->nullable();
-            $table->unsignedBigInteger('customer_id');
+            $table->unsignedBigInteger(column: 'party_id')->nullable();
             $table->string('customer_name', 255)->nullable();
             $table->unsignedBigInteger('purchase_id')->nullable();
             $table->string('invoice_number', 255)->nullable();
@@ -48,8 +48,8 @@ return new class extends Migration {
             $table->double('total_amount')->nullable();
             $table->longText('payment')->nullable();
             $table->string('purchase_return_type', 255)->nullable();
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
 
         });
     }

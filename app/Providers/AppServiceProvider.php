@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
 
+use Illuminate\Database\Schema\Blueprint;
+
 class AppServiceProvider extends ServiceProvider
 {
     /**
@@ -19,6 +21,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        Blueprint::macro('auditFields', function () {
+            $this->unsignedBigInteger('created_by')->nullable();
+            $this->unsignedBigInteger('updated_by')->nullable();
+            $this->unsignedBigInteger('deleted_by')->nullable();
+
+            $this->timestamps();
+            $this->softDeletes();
+        });
     }
 }

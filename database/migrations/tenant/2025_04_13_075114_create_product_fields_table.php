@@ -12,14 +12,14 @@ return new class extends Migration {
     {
         Schema::connection('tenant')->create('product_fields', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->string('name');
             $table->enum('type', ['text', 'dropdown']);
             $table->json('values')->nullable();
             $table->boolean('is_active')->default(true);
 
-            $table->softDeletes();
-            $table->timestamps();
+            $table->auditFields();
+
         });
     }
 

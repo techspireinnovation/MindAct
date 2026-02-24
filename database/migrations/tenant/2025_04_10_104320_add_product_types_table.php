@@ -10,14 +10,14 @@ return new class extends Migration {
      */
     public function up(): void
     {
-       Schema::connection('tenant')->create('product_types', function (Blueprint $table) {
+        Schema::connection('tenant')->create('product_types', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('company_id')->nullable();
+
             $table->string('name');
             $table->boolean('is_primary')->default(false);
             $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->softDeletes(); // Adds the 'deleted_at' column
+            $table->auditFields();
+
         });
     }
 
@@ -26,6 +26,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-       Schema::connection('tenant')->dropIfExists(table: 'product_types');
+        Schema::connection('tenant')->dropIfExists(table: 'product_types');
     }
 };

@@ -18,7 +18,7 @@ class SalesMasterKey extends BaseTenantModel
 
     protected $fillable = [
 
-        'company_id',
+       
         'salesman_id',
         'salesman',
         'credit_days',
@@ -45,14 +45,8 @@ class SalesMasterKey extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+   
 
-    public function company()
-    {
-        return $this->belongsTo(Company::class);
-    }
+    
 
 }

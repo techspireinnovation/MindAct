@@ -48,12 +48,7 @@ class SalesReturnProduct extends BaseTenantModel
         'measure_unit_id',
     ];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
-
-    // Relationships
+   
 
     public function saleReturn()
     {

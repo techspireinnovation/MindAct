@@ -13,14 +13,15 @@ class Bank extends BaseTenantModel
     use SoftDeletes, HasFactory;
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'is_primary', 'boolean',
     ];
     protected $fillable = [
         'name',
         'is_primary',
         'is_active',
         'deleted_at',
-        'company_id',
+       
         'address',
         'class',
         'number',
@@ -29,11 +30,7 @@ class Bank extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        // self::observe(BankObserver::class);
-        static::addGlobalScope(new CompanyIdScope());
-    }
+   
 
     public function purchases()
     {

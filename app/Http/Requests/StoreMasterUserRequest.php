@@ -14,11 +14,11 @@ class StoreMasterUserRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'                   => 'required|string|max:255',
-            'email'                  => 'required|email|unique:users,email',
-            'password'               => 'required|string|min:6|confirmed',
-            'company_admin_ids'      => 'required|array',
-            'company_admin_ids.*'    => 'exists:users,id',
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:6|confirmed',
+            'company_admin_ids' => 'required|array',
+            'company_admin_ids.*' => 'exists:users,id',
         ];
     }
 }

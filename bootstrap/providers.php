@@ -4,6 +4,7 @@ return [
     App\Providers\AppServiceProvider::class,
     App\Providers\BroadcastServiceProvider::class,
     App\Providers\DropboxServiceProvider::class,
-    Maatwebsite\Excel\ExcelServiceProvider::class,
     
+    App\Providers\RespositoryServiceProvider::class,
+    Maatwebsite\Excel\ExcelServiceProvider::class,
 ];

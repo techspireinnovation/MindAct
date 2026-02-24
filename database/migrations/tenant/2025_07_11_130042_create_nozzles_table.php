@@ -17,8 +17,8 @@ return new class extends Migration {
             $table->string('nozzle_number')->nullable();
             $table->string('fuel_type')->nullable();
             $table->boolean('is_active')->default(true);
-            $table->softDeletes();
-            $table->timestamps();
+
+            $table->auditFields();
         });
     }
 

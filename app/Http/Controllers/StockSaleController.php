@@ -6,8 +6,8 @@ use Illuminate\Database\QueryException;
 
 
 use App\Interfaces\StockSaleRepositoryInterface;
-use App\Http\Requests\StockPurchaseReturnRequest\StoreRequest;
-use App\Http\Requests\StockPurchaseReturnRequest\UpdateRequest;
+use App\Http\Requests\StockSaleRequest\StoreRequest;
+use App\Http\Requests\StockSaleRequest\UpdateRequest;
 
 use Illuminate\Http\Request;
 
@@ -66,15 +66,17 @@ class StockSaleController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Sale not found'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while retrieving the stock sale', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Database error occurred while retrieving the stock sale', 'error' => $e->getMessage()], 500);
         }
     }
 
 
     public function update(UpdateRequest $request, $id)
     {
+
+    
 
         try {
 
@@ -89,9 +91,9 @@ class StockSaleController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Sale not found'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while updating the stock sale', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Database error occurred while updating the stock sale', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -113,9 +115,9 @@ class StockSaleController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Sale not found'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while deleting the stock sale', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Database error occurred while deleting the stock sale', 'error' => $e->getMessage()], 500);
         }
     }
 

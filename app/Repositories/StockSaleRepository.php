@@ -334,10 +334,8 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
             'branch_id' => $data['branch_id'],
-
             'store_id' => $data['store_id'] ?? null,
             'type' => 'sale',
-
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
@@ -369,22 +367,26 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
         $stock = Stock::findOrFail($id);
 
+        $incomingTransactionIds = collect($data['stock_transactions'])
+            ->pluck('id')
+            ->filter()
+            ->toArray();
 
-        $stock->update($stockData);
+        StockTransaction::where('stock_id', $stock->id)
+            ->whereNotIn('id', $incomingTransactionIds)
+            ->delete();
 
+        $incomingMovementIds = collect($data['stock_transactions'])
+            ->pluck('stock_movement_id')
+            ->filter()
+            ->toArray();
 
-        $oldTransactionIds = StockTransaction::where('stock_id', $stock->id)->pluck('id');
-        $oldMovementIds = StockMovement::where('stock_id', $stock->id)->pluck('id');
-
-
-        TransactionPivot::whereIn('stock_transaction_id', $oldTransactionIds)
-            ->orWhereIn('stock_movement_id', $oldMovementIds)
+        StockMovement::where('stock_id', $stock->id)
+            ->whereNotIn('id', $incomingMovementIds)
             ->delete();
 
 
-        StockTransaction::where('stock_id', $stock->id)->delete();
-        StockMovement::where('stock_id', $stock->id)->delete();
-
+        $stock->update($stockData);
 
         foreach ($data['stock_transactions'] as $product) {
 
@@ -413,7 +415,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                 $transactionMap = [];
 
                 foreach ($allocatedQtys as $alloc) {
+
                     $transactionData = [
+
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
@@ -438,7 +442,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                         'batch_no' => $product['batch_no'] ?? null,
 
                     ];
-                    $transaction = StockTransaction::create($transactionData);
+                    $transaction = StockTransaction::updateOrCreate([
+                        'id' => $product['id'] ?? null,
+                    ], $transactionData);
 
                     $transactionMap[$alloc['stock_product_id']] = $transaction;
                 }
@@ -456,6 +462,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                     );
 
                     foreach ($freeAllocated as $alloc) {
+
                         $relatedTransaction = $transactionMap[$alloc['stock_product_id']] ?? null;
 
                         $movementData = [
@@ -484,7 +491,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
                         ];
 
-                        StockMovement::create($movementData);
+                        StockMovement::updateOrCreate([
+                            'id' => $product['stock_movement_id'] ?? null,
+                        ], $movementData);
                     }
                 }
 
@@ -529,12 +538,8 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
-
-
                             'is_vatable' => $product['is_vatable'],
-
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -544,7 +549,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'amount' => $product['amount'] ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
-                        $stockTransaction = StockTransaction::create($stockTransactionData);
+                        $stockTransaction = StockTransaction::updateOrCreate([
+                            'id' => $product['id'] ?? null,
+                        ], $stockTransactionData);
                     }
 
 
@@ -565,8 +572,6 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
-
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
@@ -577,7 +582,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
 
-                        $stockMovement = StockMovement::create($movementData);
+                        $stockMovement = StockMovement::updateOrCreate([
+                            'id' => $product['stock_movement_id'] ?? null,
+                        ], $movementData);
                     }
 
 
@@ -595,7 +602,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => 'regular',
                         ];
-                        TransactionPivot::create($transactionPivotData);
+                        TransactionPivot::updateOrCreate([
+                            'id' => $field['id'] ?? null,
+                        ], $transactionPivotData);
                     }
 
 
@@ -612,7 +621,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'quantity_index' => $field['quantity_index'],
                             'quantity_type' => 'free',
                         ];
-                        TransactionPivot::create($transactionsPivotData);
+                        TransactionPivot::updateOrCreate([
+                            'id' => $field['id'] ?? null,
+                        ], $transactionsPivotData);
                     }
                 }
             }

@@ -269,7 +269,7 @@ class StockRepository implements StockRepositoryInterface
 
     public function list(array $filters)
     {
-        return Stock::where('type','opening_stock')->whereNull('deleted_at')->get();
+        return Stock::where('type', 'opening_stock')->whereNull('deleted_at')->get();
 
     }
 
@@ -299,7 +299,7 @@ class StockRepository implements StockRepositoryInterface
             ->whereNull('deleted_at')
             ->delete();
 
-        
+
         StockProduct::whereIn('id', $stockProductIds)
             ->delete();
 

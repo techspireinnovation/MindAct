@@ -158,30 +158,22 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                         $validatedTransactionData = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
-
                             'source_id' => $alloc['source_id'],
                             'source_type' => $alloc['source_type'],
-
                             'stock_product_id' => $alloc['stock_product_id'],
-
                             'stock_movement_id' =>
                                 $alloc['source_type'] === 'stock_movement'
                                 ? $alloc['source_id']
                                 : null,
-
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-
                             'type' => 'sales_return',
-
                             'direction' => 'in',
                             'quantity' => $consume,
-
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
@@ -208,24 +200,19 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'stock_transaction_id' => $transaction->id ?? null,
-
                             'source_id' => $alloc['source_id'],
                             'source_type' => $alloc['source_type'],
                             'stock_product_id' => $alloc['stock_product_id'],
-
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-
                             'type' => 'sales_return',
                             'stock_type' => 'free',
                             'direction' => 'in',
                             'quantity' => $consume,
-
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
@@ -431,7 +418,6 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             'branch_id' => $data['branch_id'],
             'store_id' => $data['store_id'] ?? null,
             'type' => 'sales_return',
-
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
@@ -537,30 +523,22 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                         $transactionData = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
-
                             'source_id' => $alloc['source_id'],
                             'source_type' => $alloc['source_type'],
-
                             'stock_product_id' => $alloc['stock_product_id'],
-
                             'stock_movement_id' =>
                                 $alloc['source_type'] === 'stock_movement'
                                 ? $alloc['source_id']
                                 : null,
-
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-
                             'type' => 'sales_return',
-
                             'direction' => 'in',
                             'quantity' => $consume,
-
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
@@ -589,20 +567,16 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'source_id' => $alloc['source_id'],
                             'source_type' => $alloc['source_type'],
                             'stock_product_id' => $alloc['stock_product_id'],
-
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-
                             'type' => 'sales_return',
                             'stock_type' => 'free',
                             'direction' => 'in',
                             'quantity' => $consume,
-
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
@@ -865,7 +839,6 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
 
     public function delete($id)
     {
-
         Db::beginTransaction();
 
         $stock = Stock::where('type', 'sales_return')
@@ -875,6 +848,7 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
         $stockTransactionIds = StockTransaction::where('stock_id', $stock->id)
             ->whereNull('deleted_at')
             ->pluck('id');
+
         $stockMovementIds = StockMovement::where('stock_id', $stock->id)
             ->whereNull('deleted_at')
             ->pluck('id');
@@ -899,9 +873,8 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
         $stock->delete();
 
         DB::commit();
+
         return true;
-
-
 
     }
 }

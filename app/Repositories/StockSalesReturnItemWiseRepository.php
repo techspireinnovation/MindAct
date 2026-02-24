@@ -413,7 +413,6 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
             'branch_id' => $data['branch_id'],
             'store_id' => $data['store_id'] ?? null,
             'type' => 'sales_return',
-
             'bill_number' => $data['bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
@@ -423,7 +422,6 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
             'credit_days' => $data['credit_days'] ?? null,
             'balance' => $data['balance'] ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
-
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
             'discount_value' => $data['discount_value'] ?? 0,
@@ -520,30 +518,22 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
                         $transactionValidated = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
-
                             'source_id' => $alloc['source_id'],
                             'source_type' => $alloc['source_type'],
-
                             'stock_product_id' => $alloc['stock_product_id'],
-
                             'stock_movement_id' =>
                                 $alloc['source_type'] === 'stock_movement'
                                 ? $alloc['source_id']
                                 : null,
-
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-
                             'type' => 'sales_return',
-
                             'direction' => 'in',
                             'quantity' => $consume,
-
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
@@ -569,24 +559,19 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'stock_transaction_id' => $transaction->id ?? null,
-
                             'source_id' => $alloc['source_id'],
                             'source_type' => $alloc['source_type'],
                             'stock_product_id' => $alloc['stock_product_id'],
-
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
-
                             'type' => 'sales_return',
                             'stock_type' => 'free',
                             'direction' => 'in',
                             'quantity' => $consume,
-
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-
                             'is_vatable' => $product['is_vatable'],
                             'price' => $product['price'] ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
@@ -733,6 +718,7 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
 
                     foreach ($types['regular']['fields'] as $field) {
                         TransactionPivot::create([
+
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'type' => 'sales_return',

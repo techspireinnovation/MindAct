@@ -65,6 +65,7 @@ class SetupTenantJob implements ShouldQueue
             DB::purge('tenant');
             DB::connection('tenant')->reconnect();
             Log::info('Connected to tenant database', ['database' => $this->databaseName]);
+            app()->register(\App\Providers\AppServiceProvider::class);
 
             // 3️⃣ Run tenant migrations
             \Artisan::call('migrate', [
@@ -98,7 +99,7 @@ class SetupTenantJob implements ShouldQueue
                 'name' => 'Piece',
                 'symbol' => 'Pcs',
                 'quantity' => 1,
-               
+
             ]);
             MainGroupStub::createMainGroups();
             Log::info('Chart of accounts seeded');

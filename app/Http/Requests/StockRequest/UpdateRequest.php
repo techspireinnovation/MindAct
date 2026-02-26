@@ -27,7 +27,7 @@ class UpdateRequest extends FormRequest
     {
         $id = $this->route('stock');
         return [
-            
+
             'company_id' => 'required|integer',
             'branch_id' => 'required|integer',
 
@@ -41,7 +41,35 @@ class UpdateRequest extends FormRequest
                     ->ignore($id)
                     ->whereNull('deleted_at')
             ],
+
+            
+            'party_id' => 'nullable|integer',
+            'location_id' => 'nullable|integer',
+           
+            'batch_no' => 'nullable|string|max:255',
+            'credit_days' => 'nullable|string|max:255',
+            'balance' => 'nullable|string|max:255',
+          
+            'ref_bill_number' => 'nullable|string|max:255',
+            'return_bill_number' => 'nullable|string|max:255',
+            'reasons' => 'nullable|string|max:255',
+            'discount_type' => 'nullable|string|max:255',
+            'discount_value' => 'nullable',
+            'discount_after_vat' => 'nullable',
+            'sub_total_before_discount' => 'nullable',
+            'taxable_amount' => 'nullable',
+            'non_taxable_amount' => 'nullable',
+            'excise_duty' => 'nullable',
+            'vat_percent' => 'nullable',
+            'health_insurance' => 'nullable',
+            'freight_amount' => 'nullable',
+            'roundoff_type' => 'nullable',
+            'roundoff_amount' => 'nullable',
+            'total_amount' => 'nullable',
+            'payment' => 'nullable',
+            'remarks' => 'nullable',
             'address' => 'nullable|string',
+           
             'stock_products' => 'required|array',
             'stock_products.*.id' => 'nullable|integer',
 
@@ -51,10 +79,24 @@ class UpdateRequest extends FormRequest
             'stock_products.*.stock_type' => 'nullable|string',
 
             'stock_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-           
+
             'stock_products.*.quantity' => 'required|numeric',
+            'stock_products.*.is_vatable' => 'required|boolean',           
+            'stock_products.*.stock_product_id' => 'nullable|integer',
+            'stock_products.*.stock_movement_id' => 'nullable|integer',
+            'stock_products.*.party_id' => 'nullable|integer',
+            'stock_products.*.expiry_date' => 'nullable|string',
+            'stock_products.*.mfd' => 'nullable|string',
+           
+            'stock_products.*.price' => 'nullable|string',
+            'stock_products.*.discount_percent' => 'nullable|string',
+            'stock_products.*.discount_amount' => 'nullable|string',
+            'stock_products.*.amount' => 'nullable|string',
+            'stock_products.*.batch_no' => 'nullable|string',
+        
           
-            // 'stock_products.*.is_vatable' => 'nullable|boolean',
+            'stock_products.*.direction' => 'nullable|string',
+
             'stock_products.*.field_values' => 'nullable|array',
             'stock_products.*.field_values.*' => 'array',
             'stock_products.*.field_values.*.*.id' => 'nullable|integer',

@@ -8,6 +8,10 @@ use App\Models\PaymentVoucher;
 use App\Models\Purchase;
 use App\Models\User;
 use App\Models\PurchaseReturn;
+use App\Services\GenerateBillNumbers;
+use Doctrine\DBAL\Query\QueryException;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use App\Models\ReceiptVoucher;
 use App\Models\Sale;
@@ -30,6 +34,160 @@ class GenerateCodeController extends Controller
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
+
+    protected $generateBillNumbers;
+
+    public function __construct(GenerateBillNumbers $generateBillNumbers)
+    {
+        $this->generateBillNumbers = $generateBillNumbers;
+
+    }
+
+    public function generateOpeningStockBillNumbers(Request $request): JsonResponse
+    {
+        try {
+
+            $data = $this->generateBillNumbers->getOpeningStockBillNumbers($request->branch_id);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No record found for the given criteria !'
+            ], 404);
+        } catch (QueryException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database query error: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+    public function generatePurchaseBillNumbers(Request $request): JsonResponse
+    {
+        try {
+
+            $data = $this->generateBillNumbers->getPurchaseBillNumber($request->branch_id);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No record found for the given criteria.'
+            ], 404);
+        } catch (QueryException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database query error: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function generatePurchaseReturnBillNumbers(Request $request): JsonResponse
+    {
+        try {
+
+            $data = $this->generateBillNumbers->getPurchaseReturnBillNumber($request->branch_id);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No record found for the given criteria.'
+            ], 404);
+        } catch (QueryException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database query error: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function generateSalesBillNumbers(Request $request): JsonResponse
+    {
+        try {
+
+            $data = $this->generateBillNumbers->getSalesBillNumber($request->branch_id);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No record found for the given criteria.'
+            ], 404);
+        } catch (QueryException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database query error: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+     public function generateSalesReturnBillNumbers(Request $request): JsonResponse
+    {
+        try {
+
+            $data = $this->generateBillNumbers->getSalesReturnBillNumber($request->branch_id);
+
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No record found for the given criteria.'
+            ], 404);
+        } catch (QueryException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database query error: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 
 
     public function generateProductID(Request $request): JsonResponse

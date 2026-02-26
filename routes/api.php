@@ -337,7 +337,11 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::put('sales-masters-update', [CompanyController::class, 'updateSaleMasterKey']);
     Route::get('/purchase-return/filter-by-barcode-id', [PurchaseReturnController::class, 'filterByBarcode']);////
 
-    Route::get('get-purchase-bill-numbers', [PurchaseReturnController::class, 'getPurchaseBillNumber']);
+    Route::get('get-purchase-bill-numbers', [GenerateCodeController::class, 'generatePurchaseBillNumbers']);
+    Route::get('get-sales-bill-numbers', [GenerateCodeController::class, 'generateSalesBillNumbers']);
+    Route::get('get-sales-return-bill-numbers', [GenerateCodeController::class, 'generateSalesReturnBillNumbers']);
+    Route::get('get-purchase-return-bill-numbers', [GenerateCodeController::class, 'generatePurchaseReturnBillNumbers']);
+    Route::get('get-opening-stock-bill-numbers', [GenerateCodeController::class, 'generateOpeningStockBillNumbers']);
     Route::get('get-purchase-by-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByBillNumber']);
     Route::get('get-ref-bill-numbers', [PurchaseController::class, 'getRefBillNumber']);
     Route::get('get-purchase-by-ref-bill-numbers', [PurchaseReturnController::class, 'getPurchaseByRefBillNumber']);

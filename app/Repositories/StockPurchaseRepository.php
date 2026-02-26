@@ -9,6 +9,7 @@ use App\Models\FiscalYear;
 use Illuminate\Support\Facades\Log;
 use App\Services\UnitConversionService;
 use App\Services\QuantityIndexService;
+use App\Services\CurrencyFormatService;
 use App\Models\StockProductFieldValue;
 
 use App\Interfaces\StockPurchaseRepositoryInterface;
@@ -19,10 +20,13 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
     protected $unitConversionService;
     protected $quantityIndexService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityIndexService $quantityIndexService)
+    protected $currencyFormatService;
+
+    public function __construct(UnitConversionService $unitConversionService, QuantityIndexService $quantityIndexService, CurrencyFormatService $currencyFormatService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityIndexService = $quantityIndexService;
+        $this->currencyFormatService = $currencyFormatService;
     }
     public function create(array $data)
     {
@@ -47,23 +51,23 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'location_id' => $data['location_id'] ?? null,
             'batch_no' => $data['batch_no'] ?? null,
             'credit_days' => $data['credit_days'] ?? null,
-            'balance' => $data['balance'] ?? 0,
+            'balance' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
             'return_bill_no' => $data['return_bill_no'] ?? null,
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
-            'discount_value' => $data['discount_value'] ?? 0,
-            'discount_after_vat' => $data['discount_after_vat'] ?? 0,
-            'sub_total_before_discount' => $data['sub_total_before_discount'] ?? 0,
-            'taxable_amount' => $data['taxable_amount'] ?? 0,
-            'non_taxable_amount' => $data['non_taxable_amount'] ?? 0,
-            'excise_duty' => $data['excise_duty'] ?? 0,
+            'discount_value' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'discount_after_vat' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'excise_duty' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'vat_percent' => $data['vat_percent'] ?? 0,
-            'health_insurance' => $data['health_insurance'] ?? 0,
-            'freight_amount' => $data['freight_amount'] ?? 0,
+            'health_insurance' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'freight_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
-            'roundoff_amount' => $data['roundoff_amount'] ?? 0,
-            'total_amount' => $data['total_amount'] ?? 0,
+            'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
@@ -72,6 +76,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
 
         foreach ($data['stock_products'] as $product) {
+
+            //@todo: move this logic to a service class and inject here for better separation of concerns
+
+            //check if there is quantity and measure unit, if not skip the product
 
 
             $quantity = $this->unitConversionService->convertToBaseUnit(
@@ -96,9 +104,9 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 'expiry_date' => $product['expiry_date'] ?? null,
                 'mfd' => $product['mfd'] ?? null,
                 'price' => $product['price'] ?? 0,
-                'discount_percent' => $product['discount_percent'] ?? 0,
-                'discount_amount' => $product['discount_amount'] ?? 0,
-                'amount' => $product['amount'] ?? 0,
+                'discount_percent' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+                'discount_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+                'amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
                 'batch_no' => $product['batch_no'] ?? null,
 
             ];
@@ -130,10 +138,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     'party_id' => $data['party_id'] ?? null,
                     'expiry_date' => $product['expiry_date'] ?? null,
                     'mfd' => $product['mfd'] ?? null,
-                    'price' => $product['price'] ?? 0,
+                    'price' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
                     'discount_percent' => $product['discount_percent'] ?? 0,
-                    'discount_amount' => $product['discount_amount'] ?? 0,
-                    'amount' => $product['amount'] ?? 0,
+                    'discount_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+                    'amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
                     'batch_no' => $product['batch_no'] ?? null,
                 ];
 
@@ -209,23 +217,23 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'location_id' => $data['location_id'] ?? null,
             'batch_no' => $data['batch_no'] ?? null,
             'credit_days' => $data['credit_days'] ?? null,
-            'balance' => $data['balance'] ?? 0,
+            'balance' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
             'return_bill_no' => $data['return_bill_no'] ?? null,
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
-            'discount_value' => $data['discount_value'] ?? 0,
-            'discount_after_vat' => $data['discount_after_vat'] ?? 0,
-            'sub_total_before_discount' => $data['sub_total_before_discount'] ?? 0,
-            'taxable_amount' => $data['taxable_amount'] ?? 0,
-            'non_taxable_amount' => $data['non_taxable_amount'] ?? 0,
-            'excise_duty' => $data['excise_duty'] ?? 0,
+            'discount_value' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'discount_after_vat' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'excise_duty' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'vat_percent' => $data['vat_percent'] ?? 0,
-            'health_insurance' => $data['health_insurance'] ?? 0,
-            'freight_amount' => $data['freight_amount'] ?? 0,
+            'health_insurance' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'freight_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
-            'roundoff_amount' => $data['roundoff_amount'] ?? 0,
-            'total_amount' => $data['total_amount'] ?? 0,
+            'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
@@ -258,10 +266,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
                 'expiry_date' => $product['expiry_date'] ?? null,
                 'mfd' => $product['mfd'] ?? null,
-                'price' => $product['price'] ?? 0,
+                'price' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
                 'discount_percent' => $product['discount_percent'] ?? 0,
-                'discount_amount' => $product['discount_amount'] ?? 0,
-                'amount' => $product['amount'] ?? 0,
+                'discount_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+                'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
                 'batch_no' => $product['batch_no'] ?? null,
             ];
 
@@ -308,10 +316,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
                     'expiry_date' => $product['expiry_date'] ?? null,
                     'mfd' => $product['mfd'] ?? null,
-                    'price' => $product['price'] ?? 0,
+                    'price' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
                     'discount_percent' => $product['discount_percent'] ?? 0,
-                    'discount_amount' => $product['discount_amount'] ?? 0,
-                    'amount' => $product['amount'] ?? 0,
+                    'discount_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+                    'amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
                     'batch_no' => $product['batch_no'] ?? null,
                     'is_vatable' => $product['is_vatable'] ?? 0,
 

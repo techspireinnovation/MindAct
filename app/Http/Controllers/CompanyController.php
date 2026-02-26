@@ -81,7 +81,7 @@ class CompanyController extends Controller
         if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Super admin required',
+                'message' => 'Unauthorized: Super admin required !',
             ], 403);
         }
 

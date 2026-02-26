@@ -57,7 +57,7 @@ class GenerateCodeController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'No record found for the given criteria.'
+                'message' => 'No record found for the given criteria !'
             ], 404);
         } catch (QueryException $e) {
             return response()->json([

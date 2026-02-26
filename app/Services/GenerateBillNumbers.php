@@ -87,7 +87,7 @@ class GenerateBillNumbers
         if (!$branchId) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Branch not provided.'
+                'message' => 'Branch not provided!'
             ], 400);
         }
 

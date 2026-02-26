@@ -95,7 +95,7 @@ class ProductSubCategoryController extends Controller
 
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(["error" => "Sub Category Found !!"], 404);
+            return response()->json(["error" => "Sub Category Found ."], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {

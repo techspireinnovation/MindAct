@@ -43,6 +43,9 @@ class GenerateCodeController extends Controller
 
     }
 
+
+
+
     public function generateOpeningStockBillNumbers(Request $request): JsonResponse
     {
         try {
@@ -160,7 +163,7 @@ class GenerateCodeController extends Controller
         }
     }
 
-     public function generateSalesReturnBillNumbers(Request $request): JsonResponse
+    public function generateSalesReturnBillNumbers(Request $request): JsonResponse
     {
         try {
 
@@ -192,37 +195,31 @@ class GenerateCodeController extends Controller
 
     public function generateProductID(Request $request): JsonResponse
     {
-        // Get the latest product for the given company (including soft-deleted ones)
+        try {
 
-        $companyId = $request->company_id;
-        $latestProduct = Product::withTrashed()
-            ->where('company_id', $companyId)
-            ->orderBy('id', 'desc')
-            ->first();
+            $data = $this->generateBillNumbers->getProductID($request->company_id);
 
-        // Determine the next number
-        if ($latestProduct && preg_match('/PID-(\d+)/', $latestProduct->product_unique_id, $matches)) {
-            $nextNumber = (int) $matches[1] + 1;
-        } else {
-            $nextNumber = 1;
+            return response()->json([
+                'status' => 'success',
+                'data' => $data
+            ]);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No record found for the given criteria.'
+            ], 404);
+        } catch (QueryException $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Database query error: ' . $e->getMessage()
+            ], 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred: ' . $e->getMessage()
+            ], 500);
         }
-
-
-        // Generate the unique ID string
-        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-
-        // Ensure uniqueness within the same company
-        while (
-            Product::withTrashed()
-                ->where('company_id', $companyId)
-                ->where('product_unique_id', $productID)
-                ->exists()
-        ) {
-            $nextNumber++;
-            $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
-        }
-
-        return response()->json(['product_id' => $productID]);
     }
     public function generatePurchaseBillNumber(Request $request)
     {

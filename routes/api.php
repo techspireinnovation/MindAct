@@ -12,6 +12,7 @@ use App\Http\Controllers\FiscalYearController;
 use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
 use App\Http\Controllers\AreaController;
+
 use App\Http\Controllers\PosStoreController;
 use App\Http\Controllers\CompanyAdminController;
 use App\Http\Controllers\CompanyController;
@@ -348,7 +349,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('get-purchase-product-names', [PurchaseReturnController::class, 'getProductNames']);
     Route::get('get-provinces', [NepalLocationPackageController::class, 'Province']);
     Route::get('get-provinces-with-districts', [NepalLocationPackageController::class, 'ProvinceWithDistrict']);
-    Route::get('generate-product-id', [ProductController::class, 'generateProductID']);
+    Route::get('generate-product-id', [GenerateCodeController::class, 'generateProductID']);
     Route::get('get-provinces-with-districts-municipality', [NepalLocationPackageController::class, 'ProvinceWithDistrictAndMunicipality']);
     Route::get('get-purchase-product-details-by-names', [PurchaseReturnController::class, 'getPurchaseProductDetails']);
     Route::get('get-sales-ref-numbers', [SalesReturnController::class, 'listAvailableRefNumbers']);
@@ -388,7 +389,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
     Route::get('products-active-list', [ProductController::class, 'activeProducts']);////
 
-    Route::post('generate-product-id', [ProductController::class, 'generateProductID']);
+    Route::post('generate-product-id', [GenerateCodeController::class, 'generateProductID']);
     Route::get('generate-unique-invoice-number', [SaleController::class, 'generateUniqueInvoiceNumber']);
     Route::get('get-all-purchase-product-names', [PurchaseReturnController::class, 'getPurchaseProductNames']);
     Route::get('get-all-purchase-product-code', [PurchaseReturnController::class, 'getPurchaseProductUniqueId']);

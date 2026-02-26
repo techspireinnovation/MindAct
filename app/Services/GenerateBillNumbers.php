@@ -4,12 +4,50 @@ namespace App\Services;
 use Exception;
 use Pratiksh\Nepalidate\Services\NepaliDate;
 use App\Models\StockProductFieldValue;
+use App\Models\Product;
 use Carbon\Carbon;
 
 use App\Models\Stock;
 
 class GenerateBillNumbers
 {
+
+
+    public function getProductID($companyId)
+    {
+        if (!$companyId) {
+            throw new Exception("Please provide company name!");
+        }
+        $latestProduct = Product::withTrashed()
+            ->where('company_id', $companyId)
+            ->orderBy('id', 'desc')
+            ->first();
+
+
+
+        if ($latestProduct && preg_match('/PID-(\d+)/', $latestProduct->product_unique_id, $matches)) {
+            $nextNumber = (int) $matches[1] + 1;
+        } else {
+            $nextNumber = 1;
+        }
+
+
+
+        $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+
+        while (
+            Product::withTrashed()
+                ->where('company_id', $companyId)
+                ->where('product_code', $productID)
+                ->exists()
+        ) {
+            $nextNumber++;
+            $productID = 'PID-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+        }
+
+        return $productID;
+    }
 
 
 
@@ -170,7 +208,6 @@ class GenerateBillNumbers
         $endYear = substr($fiscalYear + 1, -2);
 
         $fiscalYearCode = $startYear . $endYear;
-
 
 
         if (!$branchId) {

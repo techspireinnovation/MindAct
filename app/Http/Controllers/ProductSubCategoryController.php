@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Models\ProductSubCategory;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Validation\ValidationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -11,11 +12,12 @@ use Illuminate\Validation\Rule;
 
 class ProductSubCategoryController extends Controller
 {
-     public function index(Request $request): JsonResponse
+
+    public function index(Request $request): JsonResponse
     {
         $query = ProductSubCategory::with('category:id,name');
 
-       if ($request->has('keywords')) {
+        if ($request->has('keywords')) {
             $query->where('name', 'LIKE', '%' . $request->input('keywords') . '%');
         }
 
@@ -48,25 +50,25 @@ class ProductSubCategoryController extends Controller
         try {
 
             $subCategories = ProductSubCategory::where('company_id', $request->company_id)
-            ->whereNull('deleted_at')
-            ->where('is_active', 1)
-            ->get(['id', 'name'])
-            ->map(fn($subCategory) => ['id' => $subCategory->id, 'name' => $subCategory->name])
-            ->values()
-            ->toArray();
+                ->whereNull('deleted_at')
+                ->where('is_active', 1)
+                ->get(['id', 'name'])
+                ->map(fn($subCategory) => ['id' => $subCategory->id, 'name' => $subCategory->name])
+                ->values()
+                ->toArray();
             return response()->json([
                 "message" => "Sub Category List Received !!",
                 "data" => $subCategories
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json(["error" => "Sub Category not Found !!"], 404);
         } catch (QueryException $e) {
-           
+
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -93,7 +95,7 @@ class ProductSubCategoryController extends Controller
 
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(["error" => "Sub Category Found !!"], 404);
+            return response()->json(["error" => "Sub Category Found ."], 404);
         } catch (QueryException $e) {
             return response()->json(["error" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
@@ -136,38 +138,69 @@ class ProductSubCategoryController extends Controller
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not found!!'], 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed !!',
+                'errors' => $e->errors()
+            ], 422);
+
         } catch (QueryException $e) {
 
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An unexpected error occurred !!'], 500);
         }
     }
 
     public function store(Request $request): JsonResponse
     {
 
-        $validated = $request->validate([
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                Rule::unique('product_sub_categories')->where(function ($query) use ($request) {
-                    return $query->where('company_id', $request->company_id)
-                        ->where('category_id', $request->category_id)
-                        ->whereNull('deleted_at');
+        try {
 
-                }),
-            ],
-            'is_active' => 'boolean|required',
-            'category_id' => [
-                'required',
-                'integer',
-                Rule::exists('product_categories', 'id')->whereNull('deleted_at')
-            ],
-            'company_id' => 'integer'
-        ]);
+            $validated = $request->validate([
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    Rule::unique('product_sub_categories')->where(function ($query) use ($request) {
+                        return $query->where('company_id', $request->company_id)
+                            ->where('category_id', $request->category_id)
+                            ->whereNull('deleted_at');
 
-        $item = ProductSubCategory::create($validated);
-        return response()->json($item, 201);
+                    }),
+                ],
+                'is_active' => 'boolean|required',
+                'category_id' => [
+                    'required',
+                    'integer',
+                    Rule::exists('product_categories', 'id')->whereNull('deleted_at')
+                ],
+
+            ]);
+
+            $validated['company_id'] = $request->company_id;
+
+            $item = ProductSubCategory::create($validated);
+            return response()->json([
+                'message' => 'Product Sub Category created !!',
+                'data' => $item
+            ], 201);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Item not found !!'], 404);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Validation failed !!',
+                'errors' => $e->errors()
+            ], 422);
+
+        } catch (QueryException $e) {
+
+            return response()->json(['message' => 'Database error occurred !!'], 500);
+
+        } catch (Exception) {
+            return response()->json(['message' => 'An unexpected error occurred !!']);
+
+        }
     }
 
     public function show($id): JsonResponse
@@ -179,6 +212,8 @@ class ProductSubCategoryController extends Controller
             return response()->json(['error' => 'Item not found!!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An unexpected error occurred !!'], 500);
         }
     }
 
@@ -210,21 +245,17 @@ class ProductSubCategoryController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-           
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Product category not found!'
             ], 404);
-
         } catch (QueryException $e) {
-           
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Product category.'
             ], 500);
 
         } catch (\Exception $e) {
-           
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Product category.'
@@ -233,40 +264,40 @@ class ProductSubCategoryController extends Controller
     }
 
 
- public function activeSubCategoryList(Request $request): JsonResponse
-{
-    try {
-        $companyId = $request->company_id;
+    public function activeSubCategoryList(Request $request): JsonResponse
+    {
+        try {
+            $companyId = $request->company_id;
 
-        if (!$companyId) {
-            return response()->json(["error" => "No Associated company Found !!"], 404);
+            if (!$companyId) {
+                return response()->json(["error" => "No Associated company Found !!"], 404);
+            }
+
+            $subCategories = ProductSubCategory::where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->where('is_active', true)
+                ->get(['id', 'name', 'category_id'])
+                ->map(fn($subCategory) => [
+                    'id' => $subCategory->id,
+                    'name' => $subCategory->name,
+                    'category_id' => $subCategory->category_id
+                ])
+                ->values()
+                ->toArray();
+
+            return response()->json([
+                "message" => "Active Sub Category List Received !!",
+                "data" => $subCategories
+            ], 200);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(["error" => "Sub Category not Found !!"], 404);
+        } catch (QueryException $e) {
+            return response()->json(["error" => "Database error occurred !!"], 500);
+        } catch (\Exception $e) {
+            return response()->json(["error" => "An unexpected error occurred !!"], 500);
         }
-
-        $subCategories = ProductSubCategory::where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->where('is_active', true) 
-            ->get(['id', 'name', 'category_id']) 
-            ->map(fn($subCategory) => [
-                'id' => $subCategory->id,
-                'name' => $subCategory->name,
-                'category_id' => $subCategory->category_id 
-            ])
-            ->values()
-            ->toArray();
-
-        return response()->json([
-            "message" => "Active Sub Category List Received !!",
-            "data" => $subCategories
-        ], 200);
-
-    } catch (ModelNotFoundException $e) {
-        return response()->json(["error" => "Sub Category not Found !!"], 404);
-    } catch (QueryException $e) {
-        return response()->json(["error" => "Database error occurred !!"], 500);
-    } catch (\Exception $e) {
-        return response()->json(["error" => "An unexpected error occurred !!"], 500);
     }
-}
 
 
 

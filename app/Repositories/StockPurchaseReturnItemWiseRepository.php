@@ -5,6 +5,8 @@ use App\Services\CurrencyFormatService;
 use Illuminate\Support\Facades\DB;
 use App\Models\Stock;
 use App\Models\StockProduct;
+use App\Services\TransactionImplementService;
+use App\Models\Vat;
 use App\Models\StockTransaction;
 use App\Models\TransactionPivot;
 use App\Models\StockMovement;
@@ -27,12 +29,16 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
     protected $quantityAllocationService;
 
     protected $currencyFormatService;
+    protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService)
+
+
+    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityAllocationService = $quantityAllocationService;
         $this->currencyFormatService = $currencyFormatService;
+        $this->taxImplementService = $taxImplementService;
 
     }
 
@@ -53,8 +59,11 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
         //@todo: validate the requests and make sure the return quantities are not greater than the purchased quantities for each product
 
         //@todo: use the currency formatters to handle the amount fields in the payload
-        
+
         //@todo: generate bill numbers for this and it should be unique for the company and bill type
+
+        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+
 
 
         $stockData = [
@@ -87,7 +96,13 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
+
+            'total_amount' => $totalAmount + $vatAmount,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -191,7 +206,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'mfd' => $product['mfd'] ?? null,
                             'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' =>$this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
+                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
                             'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                             'stock_product_id' => $alloc['stock_product_id'] ?? null,

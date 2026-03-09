@@ -5,7 +5,10 @@ use Illuminate\Support\Facades\DB;
 use App\Models\Stock;
 use App\Models\StockProduct;
 use App\Models\StockTransaction;
+use App\Services\TransactionImplementService;
 use App\Models\TransactionPivot;
+
+use App\Models\Vat;
 use App\Models\StockMovement;
 use App\Models\FiscalYear;
 use Illuminate\Support\Facades\Log;
@@ -24,12 +27,14 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
     protected $unitConversionService;
     protected $quantityAllocationService;
     protected $currencyFormatService;
+    protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService)
+    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityAllocationService = $quantityAllocationService;
         $this->currencyFormatService = $currencyFormatService;
+        $this->taxImplementService = $taxImplementService;
 
     }
 
@@ -65,10 +70,13 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             throw new Exception('Purchase bill not found !!');
         }
 
-       
+
         //@todo: use the currency formatters to handle the amount fields in the payload
-        
+
         //@todo: generate bill numbers for this and it should be unique for the company and bill type
+
+        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+
 
 
         $stockData = [
@@ -100,7 +108,13 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
+
+            'total_amount' => $totalAmount + $vatAmount,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
@@ -110,11 +124,11 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
         foreach ($data['stock_transactions'] as $product) {
 
-        //@todo: handle case when field values are not present
+            //@todo: handle case when field values are not present
             if (empty($product['field_values'])) {
 
 
-          
+
 
                 $basequantity = $this->unitConversionService->convertToBaseUnit(
                     $product['measure_unit_id'],
@@ -123,9 +137,9 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
 
 
-               //@todo: allocate the quantity correctly based on the avaialble purhcased products for this bill
+                //@todo: allocate the quantity correctly based on the avaialble purhcased products for this bill
 
-               //@todo: also keep track of alreay used quanitity inside the payload to avoid reusing same quantity for multiple return products
+                //@todo: also keep track of alreay used quanitity inside the payload to avoid reusing same quantity for multiple return products
 
                 $allocatedQtys = $this->quantityAllocationService->allocateBillWiseQuantity(
                     $purchaseStock->id,
@@ -218,7 +232,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                 }
             } else {
 
-            //@todo: handle the case when field values are present and make sure the quantity allocation is done based on the field values and also the transaction pivots are created correctly based on the field values
+                //@todo: handle the case when field values are present and make sure the quantity allocation is done based on the field values and also the transaction pivots are created correctly based on the field values
                 $groupedFieldValues = [];
 
 

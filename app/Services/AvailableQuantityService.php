@@ -527,7 +527,7 @@ class AvailableQuantityService
 
                     return [
                         'purchase_stock_product_id' => $pp->purchase_stock_product_id,
-                      
+
                         'product_id' => $pp->product_id,
                         'product_name' => $pp->product_name,
                         'product_code' => $pp->product_code,

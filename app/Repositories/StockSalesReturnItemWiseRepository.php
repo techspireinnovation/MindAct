@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Log;
 use App\Services\UnitConversionService;
 use App\Services\QuantityAllocationService;
 use App\Models\StockProductFieldValue;
+use App\Services\TransactionImplementService;
+use App\Models\Vat;
 use Illuminate\Support\Facades\Cache;
 
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -27,12 +29,14 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
     protected $quantityAllocationService;
 
     protected $currencyFormatService;
+    protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService)
+    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityAllocationService = $quantityAllocationService;
         $this->currencyFormatService = $currencyFormatService;
+        $this->taxImplementService = $taxImplementService;
 
     }
 
@@ -55,6 +59,9 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
 
         //@todo: generate bill numbers for this and it should be unique for the company and bill type
 
+        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+
+
 
 
 
@@ -73,7 +80,7 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
             'location_id' => $data['location_id'] ?? null,
             'batch_no' => $data['batch_no'] ?? null,
             'credit_days' => $data['credit_days'] ?? null,
-            'balance' =>$this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
+            'balance' => $this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
 
             'reasons' => $data['reasons'] ?? null,
@@ -83,13 +90,19 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
             'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['sub_total_before_discount'] ?? 0) ?? 0,
             'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
             'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['non_taxable_amount'] ?? 0) ?? 0,
-            'excise_duty' =>$this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
+            'excise_duty' => $this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
             'vat_percent' => $data['vat_percent'] ?? 0,
             'health_insurance' => $this->currencyFormatService->cleanCurrency($data['health_insurance'] ?? 0) ?? 0,
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
+
+            'total_amount' => $totalAmount + $vatAmount,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -190,10 +203,10 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
                             'sales_bill_number' => $data['bill_number'] ?? null,
 
                             'is_vatable' => $product['is_vatable'],
-                            'price' =>$this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' =>$this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
@@ -446,7 +459,7 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
-            'discount_value' =>$this->currencyFormatService->cleanCurrency($data['discount_value'] ?? 0) ?? 0,
+            'discount_value' => $this->currencyFormatService->cleanCurrency($data['discount_value'] ?? 0) ?? 0,
             'discount_after_vat' => $this->currencyFormatService->cleanCurrency($data['discount_after_vat'] ?? 0) ?? 0,
             'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['sub_total_before_discount'] ?? 0) ?? 0,
             'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
@@ -688,7 +701,7 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
                             'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' =>$this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
                         $stockTransaction = StockTransaction::create($transactionValidated);
@@ -730,7 +743,7 @@ class StockSalesReturnItemWiseRepository implements StockSalesReturnItemWiseRepo
                             'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' =>$this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
 
                         ];

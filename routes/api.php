@@ -5,9 +5,11 @@ use App\Http\Controllers\AccountHeadController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AutoNumberController;
+use App\Http\Controllers\AvailableListController;
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BankVoucherController;
 use App\Http\Controllers\BrandController;
+use App\Http\Controllers\VatController;
 use App\Http\Controllers\FiscalYearController;
 use App\Http\Controllers\HoldSaleController;
 use App\Http\Controllers\CashController;
@@ -299,6 +301,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('show-avaialable-quantity-purhcase-return-bill-wise/{id}', action: [PurchaseReturnController::class, 'showQuantity']);
 
     Route::get('main-groups-list', [MainGroupController::class, 'mainGroupList']);
+    Route::resource('vats', VatController::class);
     Route::get('main-group-lists', [MainGroupController::class, 'mainGroupListDetails']);
     Route::post('sub-groups-update-ranking', [MainGroupController::class, 'draggable']);
     Route::get('sub-groups-of-main', [MainGroupController::class, 'subGroupOfMainGroup']);
@@ -310,7 +313,14 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('cashes-active-list', [CashController::class, 'activeCashList']);////
 
     Route::resource('cashes', CashController::class);
-
+    Route::get('available-products-list', [AvailableListController::class, 'productListAvaialable']);
+    Route::get('available-products-details', [AvailableListController::class, 'productListAvaialableDetails']);
+    Route::get('product-list-billwise-purchase-return-list', [AvailableListController::class, 'productListforTransactionBillWisePurchaseReturn']);
+    Route::get('product-list-billwise-purchase-return-details', [AvailableListController::class, 'productforTransactionBillWisePurchaseReturnDetails']);
+        Route::get('product-list-billwise-sales-return-list', [AvailableListController::class, 'productListforTransactionBillWiseSalesReturn']);
+    Route::get('product-list-billwise-sales-return-details', [AvailableListController::class, 'productforTransactionBillWiseSalesReturnDetails']);
+    Route::get('product-list-itemwise-sales-return-list', [AvailableListController::class, 'productListforTransactionItemWiseSalesReturn']);
+    Route::get('product-list-itemwise-sales-return-details', [AvailableListController::class, 'productListforTransactionItemWiseSalesReturnDetails']);
     Route::apiResource('suppliers', App\Http\Controllers\Master\SupplierController::class);
     Route::get('active-stores-list', [StoreController::class, 'activeStoreList']);
     Route::apiResource('stores', StoreController::class);

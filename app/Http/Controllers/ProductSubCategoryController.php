@@ -180,8 +180,6 @@ class ProductSubCategoryController extends Controller
 
             $validated['company_id'] = $request->company_id;
 
-
-
             $item = ProductSubCategory::create($validated);
             return response()->json([
                 'message' => 'Product Sub Category created !!',

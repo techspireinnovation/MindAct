@@ -74,13 +74,6 @@ class GenerateBillNumbers
 
 
 
-        if (!$branchId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Branch not provided.'
-            ], 400);
-        }
-
         $lastStock = Stock::where('type', 'opening_stock')
             ->where('bill_number', 'like', "OS{$fiscalYearCode}-{$branchId}-%")
             ->whereNull('deleted_at')
@@ -105,6 +98,10 @@ class GenerateBillNumbers
 
     public function getPurchaseBillNumber($branchId)
     {
+
+        if (!$branchId) {
+            throw new Exception("Branch Id is required.");
+        }
         $bsDate = NepaliDate::create(Carbon::now())->toBS();
         [$currentBsYear, $currentBsMonth] = explode('-', $bsDate);
 
@@ -122,12 +119,6 @@ class GenerateBillNumbers
 
 
 
-        if (!$branchId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Branch not provided!'
-            ], 400);
-        }
 
         $lastStock = Stock::where('type', 'purchase')
             ->where('bill_number', 'like', "P{$fiscalYearCode}-{$branchId}-%")
@@ -149,6 +140,10 @@ class GenerateBillNumbers
 
     function getPurchaseReturnBillNumber($branchId)
     {
+
+        if (!$branchId) {
+            throw new Exception("Branch Id is required.");
+        }
         $bsDate = NepaliDate::create(Carbon::now())->toBS();
         [$currentBsYear, $currentBsMonth] = explode('-', $bsDate);
 
@@ -166,12 +161,6 @@ class GenerateBillNumbers
 
 
 
-        if (!$branchId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Branch not provided.'
-            ], 400);
-        }
 
         $lastStock = Stock::where('type', 'purchase_return')
             ->where('bill_number', 'like', "PR{$fiscalYearCode}-{$branchId}-%")
@@ -194,6 +183,9 @@ class GenerateBillNumbers
 
     function getSalesBillNumber($branchId)
     {
+        if (!$branchId) {
+            throw new Exception("Branch Id is required.");
+        }
         $bsDate = NepaliDate::create(Carbon::now())->toBS();
         [$currentBsYear, $currentBsMonth] = explode('-', $bsDate);
 
@@ -210,12 +202,7 @@ class GenerateBillNumbers
         $fiscalYearCode = $startYear . $endYear;
 
 
-        if (!$branchId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Branch not provided.'
-            ], 400);
-        }
+        
 
         $lastStock = Stock::where('type', 'sale')
             ->where('bill_number', 'like', "S{$fiscalYearCode}-{$branchId}-%")
@@ -238,6 +225,9 @@ class GenerateBillNumbers
 
     function getSalesReturnBillNumber($branchId)
     {
+        if (!$branchId) {
+            throw new Exception("Branch Id is required.");
+        }
         $bsDate = NepaliDate::create(Carbon::now())->toBS();
         [$currentBsYear, $currentBsMonth] = explode('-', $bsDate);
 
@@ -255,12 +245,7 @@ class GenerateBillNumbers
 
 
 
-        if (!$branchId) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Branch not provided.'
-            ], 400);
-        }
+        
 
         $lastStock = Stock::where('type', 'sales_return')
             ->where('bill_number', 'like', "S{$fiscalYearCode}-{$branchId}-%")

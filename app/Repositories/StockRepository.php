@@ -1,12 +1,15 @@
 <?php
 
 namespace App\Repositories;
+use App\Services\TransactionImplementService;
 use Illuminate\Support\Facades\DB;
 use App\Models\Stock;
+use App\Models\Vat;
 use App\Models\StockProduct;
 use App\Models\FiscalYear;
 use App\Services\UnitConversionService;
 use App\Services\CurrencyFormatService;
+
 use App\Models\StockProductFieldValue;
 
 use App\Interfaces\StockRepositoryInterface;
@@ -16,11 +19,13 @@ class StockRepository implements StockRepositoryInterface
 
     protected $unitConversionService;
     protected $currencyFormatService;
+    protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, CurrencyFormatService $currencyFormatService)
+    public function __construct(UnitConversionService $unitConversionService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->currencyFormatService = $currencyFormatService;
+        $this->taxImplementService = $taxImplementService;
     }
     public function create(array $data)
     {
@@ -29,7 +34,7 @@ class StockRepository implements StockRepositoryInterface
         $fiscalYearId = FiscalYear::where('status', 1)
             ->whereNull('deleted_at')
             ->value('id');
-
+        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
         $stockValidated = [
 
             'fiscal_year_id' => $fiscalYearId,
@@ -62,7 +67,13 @@ class StockRepository implements StockRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
+
+            'total_amount' => $totalAmount + $vatAmount,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -139,6 +150,9 @@ class StockRepository implements StockRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
+        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+
+
         $stockValidated = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
@@ -153,7 +167,7 @@ class StockRepository implements StockRepositoryInterface
             'location_id' => $data['location_id'] ?? null,
             'batch_no' => $data['batch_no'] ?? null,
             'credit_days' => $data['credit_days'] ?? null,
-            'balance' =>$this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
+            'balance' => $this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
             'ref_bill_number' => $data['ref_bill_number'] ?? null,
             'return_bill_no' => $data['return_bill_no'] ?? null,
             'reasons' => $data['reasons'] ?? null,
@@ -169,7 +183,13 @@ class StockRepository implements StockRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
+
+            'total_amount' => $totalAmount + $vatAmount,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -306,6 +326,7 @@ class StockRepository implements StockRepositoryInterface
         DB::commit();
 
         return true;
+
 
 
     }

@@ -12,6 +12,8 @@ use App\Models\FiscalYear;
 use Illuminate\Support\Facades\Log;
 use App\Services\UnitConversionService;
 use App\Services\QuantityAllocationService;
+use App\Services\TransactionImplementService;
+use App\Models\Vat;
 use App\Models\StockProductFieldValue;
 use Illuminate\Support\Facades\Cache;
 
@@ -27,12 +29,14 @@ class StockSaleRepository implements StockSaleRepositoryInterface
     protected $quantityAllocationService;
 
     protected $currencyFormatService;
+    protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService)
+    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityAllocationService = $quantityAllocationService;
         $this->currencyFormatService = $currencyFormatService;
+        $this->taxImplementService = $taxImplementService;
 
     }
 
@@ -48,6 +52,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
         $fiscalYearId = FiscalYear::where('status', 1)
             ->whereNull('deleted_at')
             ->value('id');
+
+        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+
 
 
         //@todo: validate the requests and make sure the return quantities are not greater than the purchased quantities for each product
@@ -86,7 +93,13 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
+
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
+
+            'total_amount' => $totalAmount + $vatAmount,
             'payment' => $data['payment'] ?? null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -254,7 +267,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' =>$this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
                             'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
@@ -380,10 +393,10 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             'return_bill_no' => $data['return_bill_no'] ?? null,
             'reasons' => $data['reasons'] ?? null,
             'discount_type' => $data['discount_type'] ?? null,
-            'discount_value' =>$this->currencyFormatService->cleanCurrency($data['discount_value'] ?? 0) ?? 0,
+            'discount_value' => $this->currencyFormatService->cleanCurrency($data['discount_value'] ?? 0) ?? 0,
             'discount_after_vat' => $this->currencyFormatService->cleanCurrency($data['discount_after_vat'] ?? 0) ?? 0,
             'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['sub_total_before_discount'] ?? 0) ?? 0,
-            'taxable_amount' =>$this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+            'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
             'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['non_taxable_amount'] ?? 0) ?? 0,
             'excise_duty' => $this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
             'vat_percent' => $data['vat_percent'] ?? 0,
@@ -462,9 +475,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                         'party_id' => $data['party_id'] ?? null,
                         'expiry_date' => $product['expiry_date'] ?? null,
                         'mfd' => $product['mfd'] ?? null,
-                        'price' =>$this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
+                        'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                         'discount_percent' => $product['discount_percent'] ?? 0,
-                        'discount_amount' =>$this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
+                        'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
                         'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
                         'batch_no' => $product['batch_no'] ?? null,
 
@@ -599,7 +612,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' =>$this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
                             'discount_percent' => $product['discount_percent'] ?? 0,
                             'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
                             'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,

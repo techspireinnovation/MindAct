@@ -176,7 +176,7 @@ class AvailableListController extends Controller
             $billNumber = $request->bill_number;
             $data = $this->availableProductsService->productforTransactionBillWiseSalesReturnDetails($request->company_id, $request->branch_id, $billNumber);
             return response()->json([
-                "message" => "Sales Return Product Details Retrieved Successfully!!",
+                "message" => "Sales Return Product Details Retrieved Successfully !",
                 "data" => $data
             ]);
 

@@ -162,8 +162,9 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
+                        'source_id' => $alloc['source_id'] ?? null,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                        'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                         'product_id' => $product['product_id'],
                         'measure_unit_id' => $product['measure_unit_id'],
                         'type' => 'purchase_return',
@@ -259,11 +260,16 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                     $isFree = $groupData['quantity_type'] === 'free';
                     $quantity = $groupData['quantity_sum'];
 
+                    $sourceType = !empty($groupData['stock_movement_id']) ? 'stock_movement' : 'stock_product';
+                    $sourceId = !empty($groupData['stock_movement_id']) ? $groupData['stock_movement_id'] : $groupData['stock_product_id'];
+
                     if (!$isFree) {
 
                         $stockTransactionData = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_type' => $sourceType,
+                            'source_id' => $sourceId,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
                             'type' => 'purchase_return',
@@ -293,6 +299,8 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                             'stock_id' => $stock->id,
                             'stock_transaction_id' => $stockTransaction->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_type' => $sourceType,
+                            'source_id' => $sourceId,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'product_id' => $product['product_id'],
@@ -460,7 +468,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                        'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                         'product_id' => $product['product_id'],
                         'measure_unit_id' => $product['measure_unit_id'],
                         'type' => 'purchase_return',

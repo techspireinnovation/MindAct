@@ -102,13 +102,13 @@ class AvaialableProductsService
                 $join->on('p.id', '=', 'ti.product_id');
             })
             ->leftJoinSub($stockIn, 'si', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
+                $join->on('p.id', '=', 'si.product_id');
             })
             ->leftJoinSub($movementOut, 'mo', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
+                $join->on('p.id', '=', 'mo.product_id');
             })
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
+                $join->on('p.id', '=', 'rmi.product_id');
             })
 
             ->select(
@@ -196,13 +196,13 @@ class AvaialableProductsService
                 $join->on('p.id', '=', 'ti.product_id');
             })
             ->leftJoinSub($stockIn, 'si', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
+                $join->on('p.id', '=', 'si.product_id');
             })
             ->leftJoinSub($movementOut, 'mo', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
+                $join->on('p.id', '=', 'mo.product_id');
             })
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
+                $join->on('p.id', '=', 'rmi.product_id');
             })
 
             ->select(
@@ -384,52 +384,138 @@ class AvaialableProductsService
     public function productListforTransactionBillWisePurchaseReturn($companyId, $branchId)
     {
 
-        $stockIn = StockProduct::where('company_id', $companyId)
+        $stockIn = DB::table('stock_products')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->select(
+                'stock_id',
+                'id as stock_product_id',
+                'product_id',
+                DB::raw('SUM(quantity) as stock_in')
+            )
+            ->groupBy('stock_id', 'id', 'product_id');
+
+
+        $movementIn = DB::table('stock_movements')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'purchase')
             ->whereNull('deleted_at')
-            ->select('stock_id', 'product_id', DB::raw('SUM(quantity) as stock_in'))
-            ->groupBy('stock_id', 'product_id');
+            ->select(
+                'stock_id',
+                'id as movement_id',
+                'product_id',
+                DB::raw('SUM(quantity) as movement_in')
+            )
+            ->groupBy('stock_id', 'id', 'product_id');
 
 
-        $movementIn = StockMovement::where('company_id', $companyId)
+        $stockProductIds = DB::table('stock_products')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
-            ->where('type', 'purchase')
-            ->whereNull('deleted_at')
-            ->select('stock_id', 'product_id', DB::raw('SUM(quantity) as movement_in'))
-            ->groupBy('stock_id', 'product_id');
+            ->pluck('id');
+
+        $movementIds = DB::table('stock_movements')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->pluck('id');
 
 
-        $transactionOut = StockTransaction::where('company_id', $companyId)
+        $transactionOut = DB::table('stock_transactions')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->whereIn('type', ['sales', 'purchase_return'])
             ->whereNull('deleted_at')
-            ->select('stock_id', 'product_id', DB::raw('SUM(quantity) as transaction_out'))
-            ->groupBy('stock_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as transaction_out')
+            )
+            ->groupBy('product_id');
 
 
-        $movementOut = StockMovement::where('company_id', $companyId)
+        $movementOut = DB::table('stock_movements')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->whereIn('type', ['sales', 'purchase_return'])
             ->whereNull('deleted_at')
-            ->select('stock_id', 'product_id', DB::raw('SUM(quantity) as movement_out'))
-            ->groupBy('stock_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as movement_out')
+            )
+            ->groupBy('product_id');
 
 
-        $transactionIn = StockTransaction::where('company_id', $companyId)
+        $transactionIn = DB::table('stock_transactions')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
             ->whereNull('deleted_at')
-            ->select('stock_id', 'product_id', DB::raw('SUM(quantity) as transaction_in'))
-            ->groupBy('stock_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as transaction_in')
+            )
+            ->groupBy('product_id');
 
 
-        $returnMovementIn = StockMovement::where('company_id', $companyId)
+        $returnMovementIn = DB::table('stock_movements')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
             ->whereNull('deleted_at')
-            ->select('stock_id', 'product_id', DB::raw('SUM(quantity) as return_movement_in'))
-            ->groupBy('stock_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as return_movement_in')
+            )
+            ->groupBy('product_id');
 
 
         $bills = DB::table('stock_products as sp')
@@ -447,53 +533,35 @@ class AvaialableProductsService
             })
 
             ->leftJoinSub($transactionOut, 'to', function ($join) {
-                $join->on('sp.stock_id', '=', 'to.stock_id')
-                    ->on('sp.product_id', '=', 'to.product_id');
+                $join->on('sp.product_id', '=', 'to.product_id');
             })
 
             ->leftJoinSub($movementOut, 'mo', function ($join) {
-                $join->on('sp.stock_id', '=', 'mo.stock_id')
-                    ->on('sp.product_id', '=', 'mo.product_id');
+                $join->on('sp.product_id', '=', 'mo.product_id');
             })
 
             ->leftJoinSub($transactionIn, 'ti', function ($join) {
-                $join->on('sp.stock_id', '=', 'ti.stock_id')
-                    ->on('sp.product_id', '=', 'ti.product_id');
+                $join->on('sp.product_id', '=', 'ti.product_id');
             })
 
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
-                $join->on('sp.stock_id', '=', 'rmi.stock_id')
-                    ->on('sp.product_id', '=', 'rmi.product_id');
+                $join->on('sp.product_id', '=', 'rmi.product_id');
             })
 
             ->select(
                 's.bill_number',
                 DB::raw('
-                COALESCE(si.stock_in,0)
-                + COALESCE(mi.movement_in,0)
-                + COALESCE(ti.transaction_in,0)
-                + COALESCE(rmi.return_movement_in,0)
-                - COALESCE(to.transaction_out,0)
-                - COALESCE(mo.movement_out,0)
-                as available_quantity
-            ')
-            )
-
-            ->groupBy(
-                'sp.stock_id',
-                'sp.product_id',
-                's.bill_number',
-                'si.stock_in',
-                'mi.movement_in',
-                'ti.transaction_in',
-                'rmi.return_movement_in',
-                'to.transaction_out',
-                'mo.movement_out'
+            COALESCE(si.stock_in,0)
+            + COALESCE(mi.movement_in,0)
+            + COALESCE(ti.transaction_in,0)
+            + COALESCE(rmi.return_movement_in,0)
+            - COALESCE(to.transaction_out,0)
+            - COALESCE(mo.movement_out,0)
+            as available_quantity
+        ')
             )
 
             ->havingRaw('available_quantity > 0')
-
-
 
             ->pluck('s.bill_number')
             ->unique()
@@ -504,84 +572,167 @@ class AvaialableProductsService
 
     public function productforTransactionBillWisePurchaseReturnDetails($companyId, $branchId, $billNumber)
     {
-
         $stockId = DB::table('stocks')
             ->where('bill_number', $billNumber)
             ->value('id');
 
 
-        $stockIn = StockProduct::where('company_id', $companyId)
+        $stockIn = DB::table('stock_products')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('stock_id', $stockId)
             ->whereNull('deleted_at')
-            ->select('id as stock_product_id', 'product_id', DB::raw('SUM(quantity) as stock_in'))
+            ->select(
+                'id as stock_product_id',
+                'product_id',
+                DB::raw('SUM(quantity) as stock_in')
+            )
             ->groupBy('id', 'product_id');
 
 
-        $movementIn = StockMovement::where('company_id', $companyId)
+        $movementIn = DB::table('stock_movements')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'purchase')
             ->where('stock_id', $stockId)
             ->whereNull('deleted_at')
-            ->select('id as movement_id', 'product_id', DB::raw('SUM(quantity) as movement_in'))
+            ->select(
+                'id as movement_id',
+                'product_id',
+                DB::raw('SUM(quantity) as movement_in')
+            )
             ->groupBy('id', 'product_id');
 
+        $stockProductIds = $stockIn->pluck('stock_product_id');
+        $movementIds = $movementIn->pluck('movement_id');
 
-        $transactionOut = StockTransaction::where('company_id', $companyId)
+
+        $transactionOut = DB::table('stock_transactions')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->whereIn('type', ['sales', 'purchase_return'])
-            ->whereIn('stock_product_id', $stockIn->pluck('stock_product_id'))
             ->whereNull('deleted_at')
-            ->select('stock_product_id', 'product_id', DB::raw('SUM(quantity) as transaction_out'))
-            ->groupBy('stock_product_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as transaction_out')
+            )
+            ->groupBy('product_id');
 
 
-        $movementOut = StockMovement::where('company_id', $companyId)
+        $movementOut = DB::table('stock_movements')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->whereIn('type', ['sales', 'purchase_return'])
-            ->whereIn('stock_id', $movementIn->pluck('movement_id')) // link via movement IDs
             ->whereNull('deleted_at')
-            ->select('id as movement_id', 'product_id', DB::raw('SUM(quantity) as movement_out'))
-            ->groupBy('id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as movement_out')
+            )
+            ->groupBy('product_id');
 
 
-        $transactionIn = StockTransaction::where('company_id', $companyId)
+        $transactionIn = DB::table('stock_transactions')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
-            ->whereIn('source_id', $stockIn->pluck('stock_product_id'))
             ->whereNull('deleted_at')
-            ->select('source_id', 'product_id', DB::raw('SUM(quantity) as transaction_in'))
-            ->groupBy('source_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as transaction_in')
+            )
+            ->groupBy('product_id');
 
 
-        $returnMovementIn = StockMovement::where('company_id', $companyId)
+        $returnMovementIn = DB::table('stock_movements')
+            ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
-            ->whereIn('source_id', $movementIn->pluck('movement_id'))
             ->whereNull('deleted_at')
-            ->select('source_id', 'product_id', DB::raw('SUM(quantity) as return_movement_in'))
-            ->groupBy('source_id', 'product_id');
+            ->where(function ($q) use ($stockProductIds, $movementIds) {
+
+                $q->where(function ($sub) use ($stockProductIds) {
+                    $sub->where('source_type', 'stock_product')
+                        ->whereIn('source_id', $stockProductIds);
+                })
+
+                    ->orWhere(function ($sub) use ($movementIds) {
+                        $sub->where('source_type', 'stock_movement')
+                            ->whereIn('source_id', $movementIds);
+                    });
+
+            })
+            ->select(
+                'product_id',
+                DB::raw('SUM(quantity) as return_movement_in')
+            )
+            ->groupBy('product_id');
 
 
         $products = DB::table('products as p')
+
             ->leftJoinSub($stockIn, 'si', function ($join) {
                 $join->on('p.id', '=', 'si.product_id');
             })
+
             ->leftJoinSub($movementIn, 'mi', function ($join) {
                 $join->on('p.id', '=', 'mi.product_id');
             })
+
             ->leftJoinSub($transactionOut, 'to', function ($join) {
                 $join->on('p.id', '=', 'to.product_id');
             })
+
             ->leftJoinSub($movementOut, 'mo', function ($join) {
                 $join->on('p.id', '=', 'mo.product_id');
             })
+
             ->leftJoinSub($transactionIn, 'ti', function ($join) {
                 $join->on('p.id', '=', 'ti.product_id');
             })
+
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
                 $join->on('p.id', '=', 'rmi.product_id');
             })
+
             ->select(
                 'p.id',
                 'p.name',
@@ -595,6 +746,7 @@ class AvaialableProductsService
                 as available_quantity
             ')
             )
+
             ->havingRaw('available_quantity > 0')
             ->get();
 
@@ -667,7 +819,7 @@ class AvaialableProductsService
 
     public function productforTransactionBillWiseSalesReturnDetails($companyId, $branchId, $billNumber)
     {
-        
+
         $movementOut = StockMovement::where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sale')
@@ -675,7 +827,7 @@ class AvaialableProductsService
             ->select('id', 'stock_id', 'product_id', DB::raw('SUM(quantity) as movement_out'))
             ->groupBy('id', 'stock_id', 'product_id');
 
-        
+
         $transactionIn = StockTransaction::where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
@@ -684,7 +836,7 @@ class AvaialableProductsService
             ->select('source_id', DB::raw('SUM(quantity) as transaction_in'))
             ->groupBy('source_id');
 
-        
+
         $returnMovementIn = StockMovement::where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
@@ -693,10 +845,10 @@ class AvaialableProductsService
             ->select('source_id', DB::raw('SUM(quantity) as return_movement_in'))
             ->groupBy('source_id');
 
-        
+
         $products = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
-            ->join('products as p', 'st.product_id', '=', 'p.id') 
+            ->join('products as p', 'st.product_id', '=', 'p.id')
             ->leftJoinSub($movementOut, 'mo', function ($join) {
                 $join->on('st.stock_id', '=', 'mo.stock_id')
                     ->on('st.product_id', '=', 'mo.product_id');

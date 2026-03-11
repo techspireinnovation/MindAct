@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\AvaialableProductsService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+
 use Illuminate\Http\Request;
 
 class AvailableListController extends Controller
@@ -33,7 +34,7 @@ class AvailableListController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+
 
             return response()->json(["message" => "Database error occurred !!"], 500);
 
@@ -80,9 +81,9 @@ class AvailableListController extends Controller
             ]);
 
         } catch (ModelNotFoundException) {
+
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
 
             return response()->json(["message" => "Database error occurred !!"], 500);
 
@@ -159,7 +160,7 @@ class AvailableListController extends Controller
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
 
-            dd($e->getMessage());
+
             return response()->json(["message" => "Database error occurred !!"], 500);
 
         } catch (\Exception $e) {

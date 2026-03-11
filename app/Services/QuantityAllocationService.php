@@ -130,7 +130,8 @@ class QuantityAllocationService
             $useQty = min($availableQty, $remaining);
 
             $allocated[] = [
-                'source' => $row['source_type'],
+                'source_id' => $sourceId,
+                'source_type' => $row['source_type'],
                 'stock_product_id' => $row['stock_product_id'],
                 'stock_movement_id' => $row['stock_movement_id'],
                 'quantity' => $useQty,
@@ -266,7 +267,8 @@ class QuantityAllocationService
             $useQty = min($availableQty, $remaining);
 
             $allocated[] = [
-                'source' => $row['source_type'],
+                'source_id' => $sourceId,
+                'source_type' => $row['source_type'],
                 'stock_product_id' => $row['stock_product_id'],
                 'stock_movement_id' => $row['stock_movement_id'],
                 'quantity' => $useQty,

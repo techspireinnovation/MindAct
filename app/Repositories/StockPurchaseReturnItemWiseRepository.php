@@ -147,8 +147,10 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                     $transactionData = [
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
+                        'source_type' => $alloc['source_type'] ?? null,
+                        'source_id' => $alloc['source_id'] ?? null,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                        'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                         'product_id' => $product['product_id'],
                         'measure_unit_id' => $product['measure_unit_id'],
                         'type' => 'purchase_return',
@@ -190,6 +192,8 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
                         $movementData = [
                             'stock_id' => $stock->id,
+                            'source_type' => $alloc['source_type'] ?? null,
+                            'source_id' => $alloc['source_id'] ?? null,
                             'stock_transaction_id' => $transaction?->id,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
@@ -225,10 +229,12 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                 foreach ($product['field_values'] as $group) {
                     foreach ($group as $field) {
                         $stockProductId = $field['stock_product_id'];
+                        $stockMovementId = $field['stock_movement_id'] ?? null;
                         $quantityType = $field['quantity_type'] ?? 'regular';
 
                         if (!isset($grouped[$stockProductId])) {
                             $grouped[$stockProductId] = [
+                                'stock_movement_id' => $stockMovementId,
                                 'regular' => ['quantity' => 0, 'fields' => []],
                                 'free' => ['quantity' => 0, 'fields' => []],
                             ];
@@ -243,12 +249,19 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                     $stockTransaction = null;
                     $stockMovement = null;
 
+                    $stockMovementId = $types['stock_movement_id'] ?? null;
+
+                    $sourceType = $stockMovementId ? 'stock_movement' : 'stock_product';
+                    $sourceId = $stockMovementId ? $stockMovementId : $stockProductId;
+
 
                     if ($types['regular']['quantity'] > 0) {
 
                         $stockTransactionData = [
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_type' => $sourceType,
+                            'source_id' => $sourceId,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
                             'type' => 'purchase_return',
@@ -259,7 +272,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
 
-                            'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                            'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
 
 
                             'is_vatable' => $product['is_vatable'],
@@ -286,6 +299,8 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'stock_id' => $stock->id,
                             'stock_transaction_id' => $stockTransaction->id ?? null,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_type' => $sourceType,
+                            'source_id' => $sourceId,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
                             'type' => 'purchase_return',
@@ -451,7 +466,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                        'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                         'product_id' => $product['product_id'],
                         'measure_unit_id' => $product['measure_unit_id'],
                         'type' => 'purchase_return',
@@ -559,7 +574,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
 
-                            'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                            'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
 
 
                             'is_vatable' => $product['is_vatable'],

@@ -145,8 +145,10 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
+                        'source_id' => $alloc['source_id'],
+                        'source_type' => $alloc['source_type'],
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
-                        'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                        'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                         'product_id' => $product['product_id'],
                         'measure_unit_id' => $product['measure_unit_id'],
                         'type' => 'sale',
@@ -192,6 +194,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'stock_id' => $stock->id,
                             'stock_transaction_id' => $transaction?->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_id' => $alloc['source_id'],
+                            'source_type' => $alloc['source_type'],
+
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
                             'product_id' => $product['product_id'],
@@ -227,10 +232,12 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                 foreach ($product['field_values'] as $group) {
                     foreach ($group as $field) {
                         $stockProductId = $field['stock_product_id'];
+                        $stockMovementId = $field['stock_movement_id'] ?? null;
                         $quantityType = $field['quantity_type'] ?? 'regular';
 
                         if (!isset($grouped[$stockProductId])) {
                             $grouped[$stockProductId] = [
+                                'stock_movement_id' => $stockMovementId,
                                 'regular' => ['quantity' => 0, 'fields' => []],
                                 'free' => ['quantity' => 0, 'fields' => []],
                             ];
@@ -245,6 +252,11 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                     $stockTransaction = null;
                     $stockMovement = null;
 
+                    $stockMovementId = $types['stock_movement_id'] ?? null;
+
+                    $sourceType = $stockMovementId ? 'stock_movement' : 'stock_product';
+                    $sourceId = $stockMovementId ? $stockMovementId : $stockProductId;
+
 
                     if ($types['regular']['quantity'] > 0) {
 
@@ -252,6 +264,8 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
                             'stock_id' => $stock->id,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_type' => $sourceType,
+                            'source_id' => $sourceId,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
                             'type' => 'sale',
@@ -262,7 +276,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-                            'stock_movement_id' => $alloc['source'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                            'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                             'is_vatable' => $product['is_vatable'],
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
@@ -285,6 +299,8 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'stock_id' => $stock->id,
                             'stock_transaction_id' => $stockTransaction->id ?? null,
                             'fiscal_year_id' => $fiscalYearId,
+                            'source_type' => $sourceType,
+                            'source_id' => $sourceId,
                             'product_id' => $product['product_id'],
                             'measure_unit_id' => $product['measure_unit_id'],
                             'type' => 'sale',

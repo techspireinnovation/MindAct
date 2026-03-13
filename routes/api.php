@@ -277,12 +277,6 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
 
 
 
-
-
-
-
-
-
     Route::get('/purchases/filter-by-barcode-id', [PurchaseController::class, 'filterbyBarcode']);////
     Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
     Route::resource('purchases', PurchaseController::class);
@@ -315,9 +309,10 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::resource('cashes', CashController::class);
     Route::get('available-products-list', [AvailableListController::class, 'productListAvaialable']);
     Route::get('available-products-details', [AvailableListController::class, 'productListAvaialableDetails']);
+    Route::get('product-details-sku-code', [AvailableListController::class, 'productDetailsProductCodeSku']);
     Route::get('product-list-billwise-purchase-return-list', [AvailableListController::class, 'productListforTransactionBillWisePurchaseReturn']);
     Route::get('product-list-billwise-purchase-return-details', [AvailableListController::class, 'productforTransactionBillWisePurchaseReturnDetails']);
-        Route::get('product-list-billwise-sales-return-list', [AvailableListController::class, 'productListforTransactionBillWiseSalesReturn']);
+    Route::get('product-list-billwise-sales-return-list', [AvailableListController::class, 'productListforTransactionBillWiseSalesReturn']);
     Route::get('product-list-billwise-sales-return-details', [AvailableListController::class, 'productforTransactionBillWiseSalesReturnDetails']);
     Route::get('product-list-itemwise-sales-return-list', [AvailableListController::class, 'productListforTransactionItemWiseSalesReturn']);
     Route::get('product-list-itemwise-sales-return-details', [AvailableListController::class, 'productListforTransactionItemWiseSalesReturnDetails']);

@@ -32,8 +32,8 @@ class UpdateRequest extends FormRequest
 
             'company_id' => 'required|integer',
             'branch_id' => 'required|integer',
-            'invoice_date' => 'nullable|date',
-            'invoice_date_bs' => 'nullable|string|max:255',
+            'invoice_date' => 'nullable|date_format:Y-m-d',
+            'invoice_date_bs' => 'nullable|date_format:Y-m-d',
             'party_id' => 'nullable|integer',
             'location_id' => 'nullable|integer',
             'type' => 'nullable|string|max:255',

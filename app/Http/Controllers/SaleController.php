@@ -1319,12 +1319,12 @@ class SaleController extends Controller
     {
         $query = Sale::query();
 
-        // Filter by branch_id
+        
         if ($request->has('branch_id')) {
             $query->where('branch_id', $request->branch_id);
         }
 
-        // Filter by keywords
+        
         if ($request->has('keywords')) {
             $keywords = $request->input('keywords');
 

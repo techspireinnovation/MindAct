@@ -153,7 +153,7 @@ class AvaialableProductsService
 
         $transactionOut = StockTransaction::where('company_id', $companyId)
             ->where('branch_id', $branchId)
-            ->whereIn('type', ['sales', 'purchase_return'])
+            ->whereIn('type', ['sale', 'purchase_return'])
             ->where('product_id', $productId)
             ->whereNull('deleted_at')
             ->select('product_id', DB::raw('SUM(quantity) as transaction_out'))
@@ -161,7 +161,7 @@ class AvaialableProductsService
 
         $movementOut = StockMovement::where('company_id', $companyId)
             ->where('branch_id', $branchId)
-            ->whereIn('type', ['sales', 'purchase_return'])
+            ->whereIn('type', ['sale', 'purchase_return'])
             ->where('product_id', $productId)
             ->whereNull('deleted_at')
             ->select('product_id', DB::raw('SUM(quantity) as movement_out'))
@@ -222,7 +222,81 @@ class AvaialableProductsService
             ->havingRaw('available_quantity > 0')
             ->get();
 
+
+        $variantIndexes = DB::table('stock_product_field_values')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('product_id', $productId)
+            ->whereNull('deleted_at')
+            ->select('product_id', 'stock_product_id', 'quantity_index')
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->get();
+
+
+
+
+        $transactions = DB::table('transaction_pivots')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('product_id', $productId)
+            ->whereNull('deleted_at')
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'quantity_index',
+                DB::raw("
+                SUM(
+                    CASE
+                        WHEN type = 'sale' THEN -1
+                        WHEN type = 'purchase_return' THEN -1
+                        WHEN type = 'sales_return' THEN 1
+                        ELSE 0
+                    END
+                ) as effect
+            ")
+            )
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->get();
+
+
+
+        $variants = $variantIndexes->map(function ($variant) use ($transactions) {
+
+            $effect = $transactions
+                ->where('stock_product_id', $variant->stock_product_id)
+                ->where('quantity_index', $variant->quantity_index)
+                ->sum('effect');
+
+            $available = 1 + $effect;
+
+            if ($available > 0) {
+                return [
+                    "product_id" => $variant->product_id,
+                    "stock_product_id" => $variant->stock_product_id,
+                    "quantity_index" => $variant->quantity_index
+                ];
+            }
+
+            return null;
+
+        })->filter()->values();
+
+
+
+
+        $products->transform(function ($product) use ($variants) {
+
+            $product->field_values = $variants
+                ->where('product_id', $product->id)
+                ->values();
+
+            return $product;
+        });
+
+
         return $products;
+
+
     }
 
 
@@ -378,7 +452,97 @@ class AvaialableProductsService
             ->havingRaw('available_quantity > 0')
             ->get();
 
+        $variantIndexes = DB::table('stock_product_field_values')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('product_id', $productId)
+            ->whereNull('deleted_at')
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'quantity_index'
+            )
+            ->groupBy(
+                'product_id',
+                'stock_product_id',
+                'quantity_index'
+            )
+            ->get();
+
+
+
+
+        $transactions = DB::table('transaction_pivots')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('product_id', $productId)
+            ->whereNull('deleted_at')
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'stock_transaction_id',
+                'stock_movement_id',
+                'quantity_index',
+                DB::raw("
+                SUM(
+                    CASE
+                         WHEN type = 'sale' THEN 1
+                        WHEN type = 'sales_return' THEN -1
+                        ELSE 0
+                    END
+                ) as effect
+            ")
+            )
+            ->groupBy(
+                'product_id',
+                'stock_product_id',
+                'stock_transaction_id',
+                'stock_movement_id',
+                'quantity_index'
+            )
+            ->get();
+
+
+
+        $variants = $variantIndexes->map(function ($variant) use ($transactions) {
+
+            $effect = $transactions
+                ->where('stock_product_id', $variant->stock_product_id)
+                ->where('quantity_index', $variant->quantity_index)
+                ->sum('effect');
+
+            // $available = $effect;
+
+            if ($effect > 0) {
+                return [
+                    "product_id" => $variant->product_id,
+                    "stock_product_id" => $variant->stock_product_id,
+                    "stock_transaction_id" => $variant->stock_transaction_id ?? null,
+                    "stock_movement_id" => $variant->stock_movement_id ?? null,
+                    "quantity_index" => $variant->quantity_index
+                ];
+            }
+
+            return null;
+
+        })->filter()->values();
+
+
+
+
+        $products->transform(function ($product) use ($variants) {
+
+            $product->field_values = $variants
+                ->where('product_id', $product->id)
+                ->values();
+
+            return $product;
+        });
+
+
         return $products;
+
+
     }
 
     public function productListforTransactionBillWisePurchaseReturn($companyId, $branchId)
@@ -610,7 +774,7 @@ class AvaialableProductsService
         $transactionOut = DB::table('stock_transactions')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
-            ->whereIn('type', ['sales', 'purchase_return'])
+            ->whereIn('type', ['sale', 'purchase_return'])
             ->whereNull('deleted_at')
             ->where(function ($q) use ($stockProductIds, $movementIds) {
 
@@ -635,7 +799,7 @@ class AvaialableProductsService
         $movementOut = DB::table('stock_movements')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
-            ->whereIn('type', ['sales', 'purchase_return'])
+            ->whereIn('type', ['sale', 'purchase_return'])
             ->whereNull('deleted_at')
             ->where(function ($q) use ($stockProductIds, $movementIds) {
 
@@ -750,6 +914,86 @@ class AvaialableProductsService
             ->havingRaw('available_quantity > 0')
             ->get();
 
+        $stockProductIds = DB::table('stock_products')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('stock_id', $stockId)
+            ->pluck('id');
+
+
+
+        $variantIndexes = DB::table('stock_product_field_values')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereIn('stock_product_id', $stockProductIds)
+            ->whereNull('deleted_at')
+            ->select('product_id', 'stock_product_id', 'quantity_index')
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->get();
+
+
+
+        $transactions = DB::table('transaction_pivots')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereIn('stock_product_id', $stockProductIds)
+            ->whereNull('deleted_at')
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'quantity_index',
+                DB::raw("
+            SUM(
+                CASE
+                    WHEN type = 'sale' THEN -1
+                    WHEN type = 'purchase_return' THEN -1
+                    WHEN type = 'sales_return' THEN 1
+                    ELSE 0
+                END
+            ) as effect
+        ")
+            )
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->get();
+
+
+
+        $variants = $variantIndexes->map(function ($variant) use ($transactions) {
+
+            $effect = $transactions
+                ->where('stock_product_id', $variant->stock_product_id)
+                ->where('quantity_index', $variant->quantity_index)
+                ->sum('effect');
+
+            $available = 1 + $effect;
+
+            if ($available > 0) {
+                return [
+                    "product_id" => $variant->product_id,
+                    "stock_product_id" => $variant->stock_product_id,
+                    "quantity_index" => $variant->quantity_index
+                ];
+            }
+
+            return null;
+
+        })
+            ->filter()
+            ->unique(function ($item) {
+                return $item['stock_product_id'] . '-' . $item['quantity_index'];
+            })
+            ->values();
+
+
+
+        $products->transform(function ($product) use ($variants) {
+
+            $product->field_values = $variants
+                ->where('product_id', $product->id)
+                ->values();
+
+            return $product;
+        });
         return $products;
     }
 
@@ -828,6 +1072,8 @@ class AvaialableProductsService
             ->groupBy('id', 'stock_id', 'product_id');
 
 
+
+
         $transactionIn = StockTransaction::where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
@@ -835,7 +1081,6 @@ class AvaialableProductsService
             ->whereNull('deleted_at')
             ->select('source_id', DB::raw('SUM(quantity) as transaction_in'))
             ->groupBy('source_id');
-
 
         $returnMovementIn = StockMovement::where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -849,35 +1094,151 @@ class AvaialableProductsService
         $products = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
             ->join('products as p', 'st.product_id', '=', 'p.id')
+
             ->leftJoinSub($movementOut, 'mo', function ($join) {
                 $join->on('st.stock_id', '=', 'mo.stock_id')
                     ->on('st.product_id', '=', 'mo.product_id');
             })
+
             ->leftJoinSub($transactionIn, 'ti', function ($join) {
                 $join->on('st.id', '=', 'ti.source_id');
             })
+
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
                 $join->on('mo.id', '=', 'rmi.source_id');
             })
+
             ->where('st.company_id', $companyId)
             ->where('st.branch_id', $branchId)
             ->where('st.type', 'sale')
             ->whereNull('st.deleted_at')
             ->where('s.bill_number', $billNumber)
+
             ->select(
                 'st.product_id',
                 'p.name as product_name',
                 DB::raw('
                 SUM(st.quantity)
-                + COALESCE(SUM(mo.movement_out), 0)
-                - COALESCE(SUM(ti.transaction_in), 0)
-                - COALESCE(SUM(rmi.return_movement_in), 0)
+                + COALESCE(SUM(mo.movement_out),0)
+                - COALESCE(SUM(ti.transaction_in),0)
+                - COALESCE(SUM(rmi.return_movement_in),0)
                 as quantity
             ')
             )
+
             ->groupBy('st.product_id', 'p.name')
             ->havingRaw('quantity > 0')
             ->get();
+
+
+
+
+        $variantIndexes = DB::table('transaction_pivots as tp')
+            ->join('stock_transactions as st', 'tp.stock_transaction_id', '=', 'st.id')
+            ->join('stocks as s', 'st.stock_id', '=', 's.id')
+            ->where('tp.company_id', $companyId)
+            ->where('tp.branch_id', $branchId)
+            ->where('s.bill_number', $billNumber)
+            ->where('tp.type', 'sale')
+            ->whereNull('tp.deleted_at')
+
+            ->select(
+                'tp.product_id',
+                'tp.stock_product_id',
+                'tp.stock_transaction_id',
+                'tp.stock_movement_id',
+                'tp.quantity_index'
+            )
+
+            ->groupBy(
+                'tp.product_id',
+                'tp.stock_product_id',
+                'tp.stock_transaction_id',
+                'tp.stock_movement_id',
+                'tp.quantity_index'
+            )
+            ->get();
+
+
+
+
+
+        $transactions = DB::table('transaction_pivots')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'quantity_index',
+
+                DB::raw("
+                SUM(
+                    CASE
+                        WHEN direction = 'out' THEN 1
+                        WHEN direction = 'in' THEN -1
+                        ELSE 0
+                    END
+                ) as effect
+            ")
+            )
+
+            ->groupBy(
+                'product_id',
+                'stock_product_id',
+                'quantity_index'
+            )
+            ->get();
+
+
+
+
+
+        $variants = $variantIndexes->map(function ($variant) use ($transactions) {
+
+            $effect = $transactions
+                ->where('stock_product_id', $variant->stock_product_id)
+                ->where('quantity_index', $variant->quantity_index)
+                ->sum('effect');
+
+            if ($effect > 0) {
+
+                return [
+                    "product_id" => $variant->product_id,
+                    "stock_product_id" => $variant->stock_product_id,
+                    "stock_transaction_id" => $variant->stock_transaction_id ?? null,
+                    "stock_movement_id" => $variant->stock_movement_id ?? null,
+                    "quantity_index" => $variant->quantity_index
+                ];
+
+            }
+
+            return null;
+
+        })
+
+            ->filter()
+
+            ->unique(function ($item) {
+                return $item['stock_product_id'] . '-' . $item['quantity_index'];
+            })
+
+            ->values();
+
+
+
+
+        $products->transform(function ($product) use ($variants) {
+
+            $product->field_values = $variants
+                ->where('product_id', $product->product_id)
+                ->values();
+
+            return $product;
+
+        });
+
 
         return $products;
     }

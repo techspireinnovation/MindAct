@@ -288,119 +288,264 @@ class QuantityAllocationService
         return $allocated;
     }
 
+    // public function allocateSaleQuantity($productID, $baseQuantity)
+    // {
+    //     $allocated = [];
+    //     $remaining = $baseQuantity;
+
+
+    //     $stockProductIds = StockProduct::where('product_id', $productID)
+    //         ->whereNull('deleted_at')
+    //         ->pluck('id')
+    //         ->toArray();
+
+    //     if (empty($stockProductIds)) {
+    //         throw new \Exception("No stock available for product ID: {$productID}");
+    //     }
+
+
+    //     $transactions = StockTransaction::select(
+    //         'stock_product_id',
+    //         'type',
+    //         DB::raw('SUM(quantity) as total')
+    //     )
+    //         ->whereIn('stock_product_id', $stockProductIds)
+    //         ->groupBy('stock_product_id', 'type')
+    //         ->get()
+    //         ->groupBy('stock_product_id');
+
+    //     StockProduct::whereIn('id', $stockProductIds)
+    //         ->whereNull('deleted_at')
+    //         ->orderBy('id', 'asc')
+    //         ->chunk(1000, function ($stockProductsChunk) use (&$allocated, &$remaining, $transactions) {
+
+    //             foreach ($stockProductsChunk as $sp) {
+    //                 if ($remaining <= 0)
+    //                     break;
+
+    //                 $txs = $transactions->get($sp->id);
+
+    //                 $purchaseReturnQty = $txs ? $txs->where('type', 'purchase_return')->sum('total') : 0;
+    //                 $saleQty = $txs ? $txs->where('type', 'sale')->sum('total') : 0;
+    //                 $saleReturnQty = $txs ? $txs->where('type', 'sale_return')->sum('total') : 0;
+
+    //                 $availableQty = $sp->quantity - $purchaseReturnQty - $saleQty + $saleReturnQty;
+
+    //                 if ($availableQty <= 0)
+    //                     continue;
+
+    //                 $useQty = min($availableQty, $remaining);
+
+    //                 $allocated[] = [
+    //                     'source_type' => 'stock_product',
+    //                     'source_id' => $sp->id,
+    //                     'product_id' => $sp->product_id,
+    //                     'stock_product_id' => $sp->id,
+    //                     'batch_no' => $sp->batch_no,
+    //                     'expiry_date' => $sp->expiry_date,
+    //                     'stock_movement_id' => null,
+    //                     'quantity' => $useQty
+    //                 ];
+
+    //                 $remaining -= $useQty;
+    //             }
+    //         });
+
+
+    //     $freeMovements = StockMovement::select(
+    //         'stock_product_id',
+    //         'direction',
+    //         DB::raw('SUM(quantity) as total')
+    //     )
+    //         ->where('product_id', $productID)
+    //         ->whereNull('deleted_at')
+    //         ->groupBy('stock_product_id', 'direction')
+    //         ->get()
+    //         ->groupBy('stock_product_id');
+
+    //     foreach ($freeMovements as $stockProductId => $movs) {
+    //         if ($remaining <= 0)
+    //             break;
+
+    //         $totalIn = $movs->where('direction', 'in')->sum('total');
+    //         $totalOut = $movs->where('direction', 'out')->sum('total');
+
+    //         $availableQty = $totalIn - $totalOut;
+
+    //         if ($availableQty <= 0)
+    //             continue;
+
+    //         $useQty = min($availableQty, $remaining);
+
+    //         $sp = StockProduct::find($stockProductId);
+
+    //         $allocated[] = [
+    //             'source_type' => 'stock_movement',
+    //             'source_id' => $sp->id,
+    //             'product_id' => $sp ? $sp->product_id : $productID,
+    //             'stock_product_id' => $stockProductId,
+    //             'batch_no' => $sp->batch_no ?? null,
+    //             'expiry_date' => $sp->expiry_date ?? null,
+    //             'stock_movement_id' => null,
+    //             'quantity' => $useQty
+    //         ];
+
+    //         $remaining -= $useQty;
+    //     }
+
+
+    //     if ($remaining > 0) {
+    //         throw new \Exception("Not enough stock available to allocate for product ID: {$productID}");
+    //     }
+
+    //     return $allocated;
+    // }
+
+
     public function allocateSaleQuantity($productID, $baseQuantity)
     {
+        if ($productID <= 0 || $baseQuantity <= 0) {
+            throw new \Exception("Invalid product ID or quantity for allocation.");
+        }
+
         $allocated = [];
         $remaining = $baseQuantity;
 
+       
 
-        $stockProductIds = StockProduct::where('product_id', $productID)
+        $stockProducts = StockProduct::where('product_id', $productID)
             ->whereNull('deleted_at')
-            ->pluck('id')
-            ->toArray();
-
-        if (empty($stockProductIds)) {
-            throw new \Exception("No stock available for product ID: {$productID}");
-        }
-
-
-        $transactions = StockTransaction::select(
-            'stock_product_id',
-            'type',
-            DB::raw('SUM(quantity) as total')
-        )
-            ->whereIn('stock_product_id', $stockProductIds)
-            ->groupBy('stock_product_id', 'type')
             ->get()
-            ->groupBy('stock_product_id');
-
-        StockProduct::whereIn('id', $stockProductIds)
-            ->whereNull('deleted_at')
-            ->orderBy('id', 'asc')
-            ->chunk(1000, function ($stockProductsChunk) use (&$allocated, &$remaining, $transactions) {
-
-                foreach ($stockProductsChunk as $sp) {
-                    if ($remaining <= 0)
-                        break;
-
-                    $txs = $transactions->get($sp->id);
-
-                    $purchaseReturnQty = $txs ? $txs->where('type', 'purchase_return')->sum('total') : 0;
-                    $saleQty = $txs ? $txs->where('type', 'sale')->sum('total') : 0;
-                    $saleReturnQty = $txs ? $txs->where('type', 'sale_return')->sum('total') : 0;
-
-                    $availableQty = $sp->quantity - $purchaseReturnQty - $saleQty + $saleReturnQty;
-
-                    if ($availableQty <= 0)
-                        continue;
-
-                    $useQty = min($availableQty, $remaining);
-
-                    $allocated[] = [
-                        'source' => 'stock_product',
-                        'product_id' => $sp->product_id,
-                        'stock_product_id' => $sp->id,
-                        'batch_no' => $sp->batch_no,
-                        'expiry_date' => $sp->expiry_date,
-                        'stock_movement_id' => null,
-                        'quantity' => $useQty
-                    ];
-
-                    $remaining -= $useQty;
-                }
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'source_type' => 'stock_product',
+                    'source_id' => $item->id,
+                    'stock_product_id' => $item->id,
+                    'stock_movement_id' => null,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'batch_no' => $item->batch_no,
+                    'expiry_date' => $item->expiry_date,
+                    'created_at' => $item->created_at,
+                ];
             });
 
+       
 
-        $freeMovements = StockMovement::select(
-            'stock_product_id',
-            'direction',
-            DB::raw('SUM(quantity) as total')
-        )
-            ->where('product_id', $productID)
+        $stockMovements = StockMovement::where('product_id', $productID)
             ->whereNull('deleted_at')
-            ->groupBy('stock_product_id', 'direction')
+            ->where('direction', 'in')
             ->get()
-            ->groupBy('stock_product_id');
+            ->map(function ($item) {
+                return [
+                    'id' => $item->id,
+                    'source_type' => 'stock_movement',
+                    'source_id' => $item->id,
+                    'stock_product_id' => $item->stock_product_id,
+                    'stock_movement_id' => $item->id,
+                    'product_id' => $item->product_id,
+                    'quantity' => $item->quantity,
+                    'batch_no' => $item->batch_no,
+                    'expiry_date' => $item->expiry_date,
+                    'created_at' => $item->created_at,
+                ];
+            });
 
-        foreach ($freeMovements as $stockProductId => $movs) {
-            if ($remaining <= 0)
+       
+
+        $combined = $stockProducts
+            ->merge($stockMovements)
+            ->sortBy('created_at')
+            ->values();
+
+
+        $allTransactions = StockTransaction::where('product_id', $productID)
+            ->whereNull('deleted_at')
+            ->get()
+            ->groupBy(function ($tx) {
+                return $tx->source_type . '_' . $tx->source_id;
+            });
+
+       
+
+        foreach ($combined as $row) {
+
+            if ($remaining <= 0) {
                 break;
+            }
 
-            $totalIn = $movs->where('direction', 'in')->sum('total');
-            $totalOut = $movs->where('direction', 'out')->sum('total');
+            $key = $row['source_type'] . '_' . $row['source_id'];
 
-            $availableQty = $totalIn - $totalOut;
+           
+            $transactions = $allTransactions->get($key) ?? collect();
 
-            if ($availableQty <= 0)
+            if ($row['source_type'] === 'stock_product') {
+
+                $purchaseReturnQty = $transactions
+                    ->where('type', 'purchase_return')
+                    ->sum('quantity');
+
+                $saleQty = $transactions
+                    ->where('type', 'sale')
+                    ->sum('quantity');
+
+                $saleReturnQty = $transactions
+                    ->where('type', 'sale_return')
+                    ->sum('quantity');
+
+                $availableQty =
+                    $row['quantity']
+                    - $purchaseReturnQty
+                    - $saleQty
+                    + $saleReturnQty;
+
+            } else {
+
+                $outQty = $transactions
+                    ->whereIn('type', ['sale', 'purchase_return'])
+                    ->sum('quantity');
+
+                $inQty = $transactions
+                    ->where('type', 'sale_return')
+                    ->sum('quantity');
+
+                $availableQty =
+                    $row['quantity']
+                    - $outQty
+                    + $inQty;
+            }
+
+            if ($availableQty <= 0) {
                 continue;
+            }
 
             $useQty = min($availableQty, $remaining);
 
-            $sp = StockProduct::find($stockProductId);
-
             $allocated[] = [
-                'source' => 'stock_movement',
-                'product_id' => $sp ? $sp->product_id : $productID,
-                'stock_product_id' => $stockProductId,
-                'batch_no' => $sp->batch_no ?? null,
-                'expiry_date' => $sp->expiry_date ?? null,
-                'stock_movement_id' => null,
-                'quantity' => $useQty
+                'source_id' => $row['source_id'],
+                'source_type' => $row['source_type'],
+                'stock_product_id' => $row['stock_product_id'],
+                'stock_movement_id' => $row['stock_movement_id'],
+                'product_id' => $row['product_id'],
+                'batch_no' => $row['batch_no'],
+                'expiry_date' => $row['expiry_date'],
+                'quantity' => $useQty,
             ];
 
             $remaining -= $useQty;
         }
 
+       
 
         if ($remaining > 0) {
-            throw new \Exception("Not enough stock available to allocate for product ID: {$productID}");
+            throw new \Exception(
+                "Not enough stock available to allocate for product ID: {$productID}"
+            );
         }
 
         return $allocated;
     }
-
-
-
     public function allocateSalesReturnQuantity($salesStockId, $productID, $baseQuantity)
     {
         $allocated = [];

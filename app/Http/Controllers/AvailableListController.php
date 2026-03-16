@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Product;
 use App\Services\AvaialableProductsService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -84,6 +85,31 @@ class AvailableListController extends Controller
 
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
+
+            return response()->json(["message" => "Database error occurred !!"], 500);
+
+        } catch (\Exception $e) {
+            return response()->json(["message" => "An unexpected error occurred !!"], 500);
+
+        }
+    }
+
+    public function productListforTransactionItemWiseSalesReturnDetails(
+        Request
+        $request
+    ) {
+        try {
+            $productId = $request->product_id;
+            $data = $this->availableProductsService->productListforTransactionItemWiseSalesReturnDetails($request->company_id, $request->branch_id, $productId);
+            return response()->json([
+                "message" => "Product Details Retrieved Successfully!!",
+                "data" => $data
+            ]);
+
+        } catch (ModelNotFoundException) {
+            return response()->json(["message" => "Item not Found !!"], 404);
+        } catch (QueryException $e) {
+
 
             return response()->json(["message" => "Database error occurred !!"], 500);
 
@@ -178,6 +204,36 @@ class AvailableListController extends Controller
             $data = $this->availableProductsService->productforTransactionBillWiseSalesReturnDetails($request->company_id, $request->branch_id, $billNumber);
             return response()->json([
                 "message" => "Sales Return Product Details Retrieved Successfully !",
+                "data" => $data
+            ]);
+
+        } catch (ModelNotFoundException) {
+            return response()->json(["message" => "Item not Found !!"], 404);
+        } catch (QueryException $e) {
+
+            
+            return response()->json(["message" => "Database error occurred !!"], 500);
+
+        } catch (\Exception $e) {
+            return response()->json(["message" => "An unexpected error occurred !!"], 500);
+
+        }
+    }
+
+
+
+    public function productDetailsProductCodeSku(
+        Request
+        $request
+    ) {
+        try {
+            $productCode = $request->product_code;
+            $productSku = $request->sku;
+
+            $product = Product::where('product_code', $productCode)->orWhere('sku', $productSku)->first();
+            $data = $this->availableProductsService->productListforTransactionDetails($request->company_id, $request->branch_id, $product->id);
+            return response()->json([
+                "message" => "Product Details Retrieved Successfully!!",
                 "data" => $data
             ]);
 

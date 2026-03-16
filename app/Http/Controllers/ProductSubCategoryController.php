@@ -241,7 +241,7 @@ class ProductSubCategoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product category deleted successfully!'
+                'message' => 'Product category deleted successfully!!'
             ]);
 
         } catch (ModelNotFoundException $e) {
@@ -252,7 +252,7 @@ class ProductSubCategoryController extends Controller
         } catch (QueryException $e) {
             return response()->json([
                 'error' => 'query_error',
-                'message' => 'A database error occurred while deleting the Product category.'
+                'message' => 'A database error occurred while deleting the Product category !'
             ], 500);
 
         } catch (\Exception $e) {

@@ -148,7 +148,7 @@ class ProductSubCategoryController extends Controller
 
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An unexpected error occurred !!'], 500);
+            return response()->json(['message' => 'An unexpected error occurred !'], 500);
         }
     }
 

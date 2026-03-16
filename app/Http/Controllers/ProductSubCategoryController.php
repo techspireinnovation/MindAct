@@ -241,7 +241,7 @@ class ProductSubCategoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product category deleted successfully!'
+                'message' => 'Product category deleted successfully!!'
             ]);
 
         } catch (ModelNotFoundException $e) {

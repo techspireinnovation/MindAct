@@ -194,7 +194,7 @@ class ProductSubCategoryController extends Controller
             ], 422);
 
         } catch (QueryException $e) {
-
+            \Log::error('QueryException: ' . $e->getMessage());
             return response()->json(['message' => 'Database error occurred !!'], 500);
 
         } catch (Exception) {

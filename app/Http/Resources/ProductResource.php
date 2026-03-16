@@ -29,7 +29,13 @@ class ProductResource extends JsonResource
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
             'product_lists' => ProductListResource::collection($this->whenLoaded('productLists')),
-            
+            $this->mergeWhen(
+                $this->product_field_number && config("product_fields.$this->product_field_number"),
+                [
+                    'product_fields' => config("product_fields.$this->product_field_number")
+                ]
+            ),
+
 
         ];
     }

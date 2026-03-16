@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\UnitConversionService;
 use App\Services\QuantityIndexService;
 use App\Services\CurrencyFormatService;
+use App\Services\DateFormatService;
 use App\Models\StockProductFieldValue;
 
 use App\Interfaces\StockPurchaseRepositoryInterface;
@@ -24,13 +25,21 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
     protected $currencyFormatService;
 
+    protected $dateFormatService;
+
     protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityIndexService $quantityIndexService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
-    {
+    public function __construct(
+        UnitConversionService $unitConversionService,
+        QuantityIndexService $quantityIndexService,
+        CurrencyFormatService $currencyFormatService,
+        TransactionImplementService $taxImplementService,
+        
+    ) {
         $this->unitConversionService = $unitConversionService;
         $this->quantityIndexService = $quantityIndexService;
         $this->currencyFormatService = $currencyFormatService;
+        
         $this->taxImplementService = $taxImplementService;
     }
     public function create(array $data)
@@ -51,8 +60,8 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'store_id' => $data['store_id'] ?? null,
             'type' => 'purchase',
             'bill_number' => $data['bill_number'] ?? null,
-            'invoice_date' => $data['invoice_date'] ?? null,
-            'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
+            'invoice_date' => $data['invoice_date'] ?? 0,
+            'invoice_date_bs' => $data['invoice_date_bs'] ?? 0,
             'party_id' => $data['party_id'] ?? null,
             'location_id' => $data['location_id'] ?? null,
             'batch_no' => $data['batch_no'] ?? null,

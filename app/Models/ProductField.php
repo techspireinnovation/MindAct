@@ -29,10 +29,10 @@ class ProductField extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    // protected static function booted()
+    // {
+    //     static::addGlobalScope(new CompanyIdScope());
+    // }
 
 
 

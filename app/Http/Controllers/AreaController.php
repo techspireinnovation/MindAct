@@ -170,7 +170,7 @@ class AreaController extends Controller
 
             return response()->json(['error' => 'Database error occurred !!'], 500);
         } catch (\Exception $e) {
-
+              dd($e->getMessage());
             return response()->json(['error' => 'An unexpected error occurred!!'], 500);
         }
     }

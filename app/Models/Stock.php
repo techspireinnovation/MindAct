@@ -19,6 +19,7 @@ class Stock extends Model
         'store_id',
         'type',
         
+        
         'bill_number',
         'purchase_bill_number',
         'invoice_date',

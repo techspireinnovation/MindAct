@@ -28,6 +28,8 @@ class Area extends BaseTenantModel
     ];
     protected $dates = ['deleted_at'];
 
+   
+
 
 
    

@@ -93,18 +93,6 @@ class AreaRepository implements AreaRepositoryInterface
     {
         $area = Area::findOrFail($id);
 
-        $usedIn = [];
-
-        if ($area->products()->exists()) {
-            $usedIn[] = 'products';
-        }
-
-
-        if (!empty($usedIn)) {
-
-            throw new \Exception('in_use:' . implode(',', $usedIn));
-        }
-
         $area->delete();
 
         return true;

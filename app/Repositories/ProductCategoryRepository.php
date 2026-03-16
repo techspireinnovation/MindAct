@@ -36,7 +36,7 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
 
         $partyName = $filters['category_name'] ?? null;
 
-        
+
 
         $categoryDetail = ProductCategory::where('name', $partyName)
             ->whereNull('deleted_at')
@@ -57,7 +57,7 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
         $data['is_primary'] = $data['is_primary'] ?? false;
         $data['is_active'] = $data['is_active'] ?? true;
 
-        
+
         return ProductCategory::create($data);
 
     }
@@ -97,7 +97,11 @@ class ProductCategoryRepository implements ProductCategoryRepositoryInterface
         $usedIn = [];
 
         if ($category->products()->exists()) {
-            $usedIn[] = 'products';
+            $usedIn[] = 'Product';
+        }
+
+        if ($category->subCategory()->exists()) {
+            $usedIn[] = 'Sub Category';
         }
 
 

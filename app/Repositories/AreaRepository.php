@@ -92,7 +92,6 @@ class AreaRepository implements AreaRepositoryInterface
     public function delete($id)
     {
         $area = Area::findOrFail($id);
-
         $area->delete();
 
         return true;

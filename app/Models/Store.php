@@ -29,12 +29,14 @@ class Store extends BaseTenantModel
 
     public function purchases()
     {
-        return $this->hasMany(Purchase::class, 'store_id');
+        return $this->hasMany(Stock::class, 'store_id')->where('type','purchase');
     }
 
     public function sales()
     {
-        return $this->hasMany(Sale::class, 'store_id');
+        return $this->hasMany(Stock::class, 'store_id')->where('type','sale');
     }
+
+   
 
 }

@@ -20,7 +20,7 @@ class ProductCategory extends BaseTenantModel
 
     protected $fillable = [
         'name',
-       
+
         'parent_id',
         'is_active',
         'is_primary',
@@ -30,14 +30,19 @@ class ProductCategory extends BaseTenantModel
 
     protected $date = ['deleted_at'];
 
-    
+
 
 
     public function products()
     {
-        return $this->hasMany(Product::class, 'category_id');
+        return $this->hasMany(Product::class, 'category_id')->whereNull('deleted_at');
     }
-   
+
+    public function subCategory()
+    {
+        return $this->hasMany(ProductSubCategory::class, 'category_id')->whereNull('deleted_at');
+    }
+
 
 
 }

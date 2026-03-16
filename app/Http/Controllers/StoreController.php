@@ -150,8 +150,9 @@ class StoreController extends Controller
             ], 404);
 
         } catch (QueryException $e) {
-
+            dd($e->getMessage());
             return response()->json([
+
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Store.'
             ], 500);

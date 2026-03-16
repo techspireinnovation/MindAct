@@ -137,7 +137,7 @@ class ProductSubCategoryController extends Controller
             $item->update($validated);
             return response()->json($item);
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Item not found!!'], 404);
+            return response()->json(['error' => 'Item not found!'], 404);
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => 'Validation failed !!',

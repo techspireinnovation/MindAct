@@ -18,6 +18,7 @@ class MeasureUnitResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'quantity' => $this->quantity,
             'is_active' => $this->is_active,
             'is_primary' => $this->is_primary,
             'symbol' => $this->symbol,

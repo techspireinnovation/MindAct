@@ -100,6 +100,20 @@ class PartyRepository implements PartyRepositoryInterface
     {
         $party = Party::findOrFail($id);
 
+
+        $usedIn = [];
+
+        if ($party->stocks()->exists()) {
+            $usedIn[] = 'Stock';
+        }
+
+        if (!empty($usedIn)) {
+
+            throw new \Exception('in_use:' . implode(',', $usedIn));
+        }
+
+
+
         $party->delete();
 
         return true;

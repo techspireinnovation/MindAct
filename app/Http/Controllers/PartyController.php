@@ -49,7 +49,7 @@ class PartyController extends Controller
             ], 404);
         } catch (QueryException $e) {
             return response()->json([
-                'error' => 'Database error occurred !'
+                'error' => 'Database error occurred !!'
 
             ], 500);
 

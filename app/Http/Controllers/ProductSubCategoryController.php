@@ -232,7 +232,7 @@ class ProductSubCategoryController extends Controller
             if (!empty($usedIn)) {
                 return response()->json([
                     'error' => 'in_use',
-                    'message' => 'Product category cannot be deleted because it is used in: ' . implode(', ', $usedIn),
+                    'message' => 'Product sub category cannot be deleted because it is used in: ' . implode(', ', $usedIn),
                     'used_in' => $usedIn
                 ], 400);
             }
@@ -241,7 +241,7 @@ class ProductSubCategoryController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Product category deleted successfully!!'
+                'message' => 'Product sub category deleted successfully!!'
             ]);
 
         } catch (ModelNotFoundException $e) {

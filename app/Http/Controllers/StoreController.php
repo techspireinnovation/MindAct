@@ -5,7 +5,7 @@ use App\Interfaces\StoreRepositoryInterface;
 use App\Models\Store;
 use App\Http\Resources\StoreCollection;
 use App\Http\Resources\StoreResource;
-
+use Illuminate\Support\Facades\Log;
 use App\Http\Requests\StoreRequest\ListRequest;
 use App\Http\Requests\StoreRequest\DetailRequest;
 use App\Http\Requests\StoreRequest\StoreRequest;
@@ -143,14 +143,14 @@ class StoreController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-
+            Log::error('Store not found: ' . $e->getMessage());
             return response()->json([
                 'error' => 'true',
                 'message' => 'Store not found!'
             ], 404);
 
         } catch (QueryException $e) {
-            dd($e->getMessage());
+            Log::error('Store not found: ' . $e->getMessage());
             return response()->json([
 
                 'error' => 'query_error',
@@ -158,7 +158,7 @@ class StoreController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-
+            Log::error('Store not found: ' . $e->getMessage());
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Store.'

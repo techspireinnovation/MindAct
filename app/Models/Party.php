@@ -64,4 +64,9 @@ class Party extends BaseTenantModel
         return $this->hasMany(PaymentVoucherDetail::class, 'party_id');
     }
 
+    public function stocks()
+    {
+        return $this->belongsTo(Stock::class, 'party_id')->whereNull('deleted_at');
+    }
+
 }

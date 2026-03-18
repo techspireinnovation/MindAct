@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Product;
+use App\Models\MeasureUnit;
 
 use App\Interfaces\ProductRepositoryInterface;
 
@@ -110,14 +111,43 @@ class ProductRepository implements ProductRepositoryInterface
 
 
 
+
     public function create(array $data): Product
     {
-
-
         return DB::transaction(function () use ($data) {
 
-            $product = Product::create($data);
 
+            $listUnitIds = collect($data['product_lists'] ?? [])
+                ->pluck('measure_unit_id')
+                ->toArray();
+
+
+            $allUnitIds = array_merge(
+                $listUnitIds,
+                [$data['measure_unit_id'] ?? null]
+            );
+
+
+            $allUnitIds = array_filter(array_unique($allUnitIds));
+
+            if (empty($allUnitIds)) {
+                throw new \Exception("No measure units provided.");
+            }
+
+
+            $baseUnitId = MeasureUnit::whereIn('id', $allUnitIds)
+                ->orderBy('quantity', 'asc')
+                ->value('id');
+
+            if (!$baseUnitId) {
+                throw new \Exception("No valid measure units found.");
+            }
+
+
+            $data['base_unit_id'] = $baseUnitId;
+
+
+            $product = Product::create($data);
 
 
             if (!empty($data['product_lists'])) {
@@ -181,6 +211,39 @@ class ProductRepository implements ProductRepositoryInterface
                         ->update(['is_primary' => false]);
                 }
             }
+
+          
+            $allUnitIds = $product->productLists()
+                ->pluck('measure_unit_id')
+                ->toArray();
+
+           
+            if (!empty($data['measure_unit_id'])) {
+                $allUnitIds[] = $data['measure_unit_id'];
+            } else {
+                $allUnitIds[] = $product->measure_unit_id;
+            }
+
+            $allUnitIds = array_filter(array_unique($allUnitIds));
+
+            if (empty($allUnitIds)) {
+                throw new \Exception("No measure units available.");
+            }
+
+            $baseUnitId = MeasureUnit::whereIn('id', $allUnitIds)
+                ->orderBy('quantity', 'asc')
+                ->value('id');
+
+            if (!$baseUnitId) {
+                throw new \Exception("No valid measure units found.");
+            }
+
+          
+            $productData = Arr::except($data, ['product_lists']);
+            $productData['base_unit_id'] = $baseUnitId;
+
+            $product->update($productData);
+
 
             return $product->fresh('productLists');
         });

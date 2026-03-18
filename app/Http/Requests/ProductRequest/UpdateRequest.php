@@ -76,7 +76,7 @@ class UpdateRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
-            'error' => 'Validation failed',
+            'error' => 'Validation failed !',
             'messages' => $validator->errors(),
             'status' => 422,
         ], 422));

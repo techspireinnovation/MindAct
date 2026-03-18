@@ -142,13 +142,13 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
             ->get();
 
         if ($measureUnits->isEmpty()) {
-            throw new \Exception('No Measure Units.');
+            throw new \Exception('No Measure Units!');
         }
 
 
 
-         $response = ($measureUnits->count() > 0) ? MeasureUnitResource::collection($measureUnits)->map(function ($measureUnit) {
-            return collect($measureUnit)->only(['id', 'name']);
+        $response = ($measureUnits->count() > 0) ? MeasureUnitResource::collection($measureUnits)->map(function ($measureUnit) {
+            return collect($measureUnit)->only(['id', 'name', 'quantity']);
         }) : [];
 
 

@@ -212,12 +212,12 @@ class ProductRepository implements ProductRepositoryInterface
                 }
             }
 
-          
+
             $allUnitIds = $product->productLists()
                 ->pluck('measure_unit_id')
                 ->toArray();
 
-           
+
             if (!empty($data['measure_unit_id'])) {
                 $allUnitIds[] = $data['measure_unit_id'];
             } else {
@@ -238,7 +238,7 @@ class ProductRepository implements ProductRepositoryInterface
                 throw new \Exception("No valid measure units found.");
             }
 
-          
+
             $productData = Arr::except($data, ['product_lists']);
             $productData['base_unit_id'] = $baseUnitId;
 

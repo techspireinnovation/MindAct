@@ -15,7 +15,7 @@ return new class extends Migration {
             $table->string('name');
             $table->unsignedBigInteger('company_id');
             $table->string('product_code')->nullable();
-           
+
 
 
             $table->text('note')->nullable();
@@ -29,11 +29,16 @@ return new class extends Migration {
 
             $table->boolean('is_vatable')->default(0);
             $table->unsignedBigInteger('product_type_id')->nullable();
-            $table->decimal('price', 14, 4)->nullable();
+            $table->decimal('purchase_rate', 14, 4)->nullable();
+            $table->decimal('purchase_rate_vat', 14, 4)->nullable();
             $table->decimal('wholesale_price', 14, 4)->nullable();
+            $table->decimal('wholesale_price_vat', 14, 4)->nullable();
+            $table->decimal('retail_price_vat', 14, 4)->nullable();
             $table->decimal('retail_price', 14, 4)->nullable();
             $table->decimal('mrp_price', 14, 4)->nullable();
             $table->decimal('minimum_stock', 14, 4)->nullable();
+            $table->decimal('retail_sales_price_profit_percent', 14, 4)->nullable();
+            $table->decimal('wholesales_price_profit_percent', 14, 4)->nullable();
 
 
 

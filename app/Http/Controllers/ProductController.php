@@ -175,7 +175,7 @@ class ProductController extends Controller
     {
         try {
 
-   
+
             $item = $this->repository->create($request->validated());
 
             return response()->json([
@@ -187,8 +187,8 @@ class ProductController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);
         } catch (QueryException $e) {
-           
-            return response()->json(['error' => 'Database error occurred !!'], 500);
+            dd($e->getMessage());
+            return response()->json(['error' => 'Database error occurred !'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
         }

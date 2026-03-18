@@ -16,13 +16,13 @@ class ProductListResource extends JsonResource
     public function toArray(Request $request): array
     {
 
-    $quantity = MeasureUnit::where('id', $this->measure_unit_id)
-        ->value('quantity');
+        $quantity = MeasureUnit::where('id', $this->measure_unit_id)
+            ->value('quantity');
 
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
-            'measure_unit_id' => $this->measure_unit_id,           
+            'measure_unit_id' => $this->measure_unit_id,
             'quantity' => $quantity,
             'barcode' => $this->barcode,
             'hs_code' => $this->hs_code,
@@ -33,7 +33,7 @@ class ProductListResource extends JsonResource
             'primary_measure_unit_id' => $this->primary_measure_unit_id,
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
-            
+
 
         ];
     }

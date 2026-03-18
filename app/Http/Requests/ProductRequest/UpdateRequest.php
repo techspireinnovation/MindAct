@@ -40,7 +40,8 @@ class UpdateRequest extends FormRequest
 
             ],
             'product_code' => 'nullable|string',
-            'sku' => 'required|string',
+           
+            'company_id' => 'required|integer',
             'note' => 'nullable|string',
             'product_field_number' => 'nullable|numeric',
             'base_unit_id' => 'nullable|numeric|exists:measure_units,id',
@@ -75,7 +76,7 @@ class UpdateRequest extends FormRequest
     protected function failedValidation(Validator $validator)
     {
         throw new HttpResponseException(response()->json([
-            'error' => 'Validation failed',
+            'error' => 'Validation failed !',
             'messages' => $validator->errors(),
             'status' => 422,
         ], 422));

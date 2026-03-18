@@ -22,8 +22,7 @@ class ProductListResource extends JsonResource
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
-            'measure_unit_id' => $this->measure_unit_id,
-           
+            'measure_unit_id' => $this->measure_unit_id,           
             'quantity' => $quantity,
             'barcode' => $this->barcode,
             'hs_code' => $this->category_id,

@@ -166,7 +166,7 @@ class ProductController extends Controller
             return response()->json(['error' => 'Item not Found'], 404);
         } catch (\Exception $e) {
 
-            return response()->json(['error' => 'Update failed: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Update failed !: ' . $e->getMessage()], 500);
         }
 
     }

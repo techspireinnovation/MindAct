@@ -142,7 +142,7 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
             ->get();
 
         if ($measureUnits->isEmpty()) {
-            throw new \Exception('No Measure Units.');
+            throw new \Exception('No Measure Units!');
         }
 
 

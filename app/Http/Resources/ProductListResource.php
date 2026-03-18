@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\MeasureUnit;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,10 +16,14 @@ class ProductListResource extends JsonResource
     public function toArray(Request $request): array
     {
 
+    $quantity = MeasureUnit::where('id', $this->measure_unit_id)
+        ->value('quantity');
+
         return [
             'id' => $this->id,
             'product_id' => $this->product_id,
-            'measure_unit_id' => $this->measure_unit_id,
+            'measure_unit_id' => $this->measure_unit_id,           
+            'quantity' => $quantity,
             'barcode' => $this->barcode,
             'hs_code' => $this->category_id,
             'price' => $this->price,

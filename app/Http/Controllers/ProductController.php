@@ -203,7 +203,7 @@ class ProductController extends Controller
             $product = $this->repository->show($id);
 
             return response()->json([
-                'message' => 'Product Details !',
+                'message' => 'Product Details !!',
                 'status' => 200,
                 'data' => $product
             ]);

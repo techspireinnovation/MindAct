@@ -40,7 +40,8 @@ class UpdateRequest extends FormRequest
 
             ],
             'product_code' => 'nullable|string',
-           
+            'barcode' => 'nullable|string',
+            'hs_code' => 'nullable|string',
             'company_id' => 'required|integer',
             'note' => 'nullable|string',
             'product_field_number' => 'nullable|numeric',
@@ -56,15 +57,9 @@ class UpdateRequest extends FormRequest
 
             'product_lists.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
             'product_lists.*.quantity' => 'nullable|integer',
-            'product_lists.*.barcode' => [
-                'nullable',
-                'string',
-                'max:255',
-                Rule::unique('product_lists')
-                    ->ignore($id, 'product_id')
-            ],
+            
             'product_lists.*.is_primary' => 'boolean',
-            'product_lists.*.hs_code' => 'nullable|string|max:255',
+            
             'product_lists.*.price' => 'nullable|numeric',
             'product_lists.*.discount' => 'nullable|numeric',
             'product_lists.*.final_price' => 'nullable|numeric',

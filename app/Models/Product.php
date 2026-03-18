@@ -30,6 +30,8 @@ class Product extends BaseTenantModel
         'name',
         'note',
         'product_code',
+        'barcode',
+        'hs_code',
         'company_id',
         'is_active',
         'deleted_at',

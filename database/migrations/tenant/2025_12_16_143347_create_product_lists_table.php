@@ -17,8 +17,7 @@ return new class extends Migration
             $table->foreignID('product_id')->constrained('products');
             $table->foreignID('measure_unit_id')->constrained('measure_units');
 
-            $table->string('barcode')->nullable();
-            $table->string('hs_code')->nullable();
+          
             $table->decimal('price',15,2)->nullable();
             $table->decimal('discount',15,2)->nullable();
             $table->decimal('final_price',15,2)->nullable();

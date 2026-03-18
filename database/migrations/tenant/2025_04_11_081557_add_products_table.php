@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::connection('tenant')->create('products', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->unsignedBigInteger('company_id');
             $table->string('product_code')->nullable();
             $table->string('sku')->unique();
 

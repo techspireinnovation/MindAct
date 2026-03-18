@@ -147,8 +147,8 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
 
 
 
-         $response = ($measureUnits->count() > 0) ? MeasureUnitResource::collection($measureUnits)->map(function ($measureUnit) {
-            return collect($measureUnit)->only(['id', 'name']);
+        $response = ($measureUnits->count() > 0) ? MeasureUnitResource::collection($measureUnits)->map(function ($measureUnit) {
+            return collect($measureUnit)->only(['id', 'name', 'quantity']);
         }) : [];
 
 

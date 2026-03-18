@@ -25,7 +25,7 @@ class ProductListResource extends JsonResource
             'measure_unit_id' => $this->measure_unit_id,           
             'quantity' => $quantity,
             'barcode' => $this->barcode,
-            'hs_code' => $this->category_id,
+            'hs_code' => $this->hs_code,
             'price' => $this->price,
             'discount' => $this->discount,
             'final_price' => $this->final_price,

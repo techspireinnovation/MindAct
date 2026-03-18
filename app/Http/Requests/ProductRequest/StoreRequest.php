@@ -36,26 +36,31 @@ class StoreRequest extends FormRequest
 
             ],
             'product_code' => 'nullable|string',
-            'barcode' => 'nullable|string',
-            'hs_code' => 'nullable|string',
+
             'company_id' => 'required|integer',
             'note' => 'nullable|string',
             'product_field_number' => 'nullable|numeric',
             'base_unit_id' => 'nullable|numeric|exists:measure_units,id',
             'category_id' => 'nullable|numeric',
             'brand_id' => 'nullable|numeric',
+            'price' => 'nullable|numeric',
+            'minimum_stock' => 'nullable|numeric',
+            'wholesale_price' => 'nullable|numeric',
+            'retail_price' => 'nullable|numeric',
+            'mrp_price' => 'nullable|numeric',
             'measure_unit_id' => 'nullable|numeric',
             'is_vatable' => 'nullable',
             'product_type_id' => 'nullable|numeric',
             'is_active' => 'boolean|required',
             'product_lists' => 'nullable||array',
-            
+
 
             'product_lists.*.measure_unit_id' => 'nullable||integer|exists:measure_units,id',
 
-           
+
             'product_lists.*.is_primary' => 'boolean|nullable|',
-           
+            'product_lists.*.barcode' => 'nullable|string',
+            'product_lists.*.hs_code' => 'nullable|string',
             'product_lists.*.price' => 'nullable|numeric',
             'product_lists.*.discount' => 'nullable|numeric',
             'product_lists.*.final_price' => 'nullable|numeric',

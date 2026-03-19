@@ -44,9 +44,17 @@ class ProductResource extends JsonResource
             'product_lists' => ProductListResource::collection($this->whenLoaded('productLists')),
             $this->mergeWhen(
                 $this->product_field_number && config("product_fields.$this->product_field_number"),
-                [
-                    'product_fields' => config("product_fields.$this->product_field_number")
-                ]
+                function () {
+                    $field = config("product_fields.$this->product_field_number");
+
+                    return [
+                        'product_fields' => [
+                            'key' => (string) $this->product_field_number, // 👈 ID (1,2,3)
+                            'label' => $field['label'],                  // 👈 Bike, Computer
+                            'fields' => $field['fields'],                // 👈 same fields
+                        ]
+                    ];
+                }
             ),
 
 

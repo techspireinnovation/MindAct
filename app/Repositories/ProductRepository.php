@@ -314,8 +314,15 @@ class ProductRepository implements ProductRepositoryInterface
 
     public function productFields()
     {
-        $config = config('product_fields');
-        return $config;
+        return collect(config('product_fields'))
+            ->map(function ($item, $id) {
+                return [
+                    'key' => (string) $id,
+                    'label' => $item['label'],
+                    // 'fields' => $item['fields'],
+                ];
+            })
+            ->values();
     }
 
 

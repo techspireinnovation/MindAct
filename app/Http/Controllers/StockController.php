@@ -62,7 +62,7 @@ class StockController extends Controller
             $data = $this->repository->show($id);
             return response()->json(['message' => 'Stock retrieved successfully', 'data' => $data], 201);
 
-        } catch (ModelNotFoundException $e) {
+       } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock not found'], 404);
         } catch (\Exception $e) {
             return response()->json(['message' => 'An error occurred while creating the stock', 'error' => $e->getMessage()], 500);

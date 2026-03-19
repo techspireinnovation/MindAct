@@ -47,6 +47,7 @@ class UpdateRequest extends FormRequest
             'base_unit_id' => 'nullable|numeric|exists:measure_units,id',
             'category_id' => 'nullable|numeric',
             'brand_id' => 'nullable|numeric',
+            'location_id' => 'nullable|integer',
             'measure_unit_id' => 'nullable|numeric',
             'purchase_rate' => 'nullable|numeric',
             'purchase_rate_vat' => 'nullable|numeric',

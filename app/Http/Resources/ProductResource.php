@@ -23,6 +23,8 @@ class ProductResource extends JsonResource
             'barcode' => $this->barcode,
             'hs_code' => $this->hs_code,
             'category_id' => $this->category_id,
+            'location_id' => $this->location_id,
+            'minimum_stock' => $this->minimum_stock,
             'brand_id' => $this->brand_id,
             'measure_unit_id' => $this->measure_unit_id,
             'is_vatable' => $this->is_vatable,

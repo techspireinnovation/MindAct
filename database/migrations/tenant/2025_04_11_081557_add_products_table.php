@@ -26,7 +26,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('brand_id')->nullable();
             $table->unsignedBigInteger('measure_unit_id')->nullable();
             $table->unsignedBigInteger('base_unit_id')->nullable();
-
+            $table->unsignedBigInteger('location_id')->nullable();
             $table->boolean('is_vatable')->default(0);
             $table->unsignedBigInteger('product_type_id')->nullable();
             $table->decimal('purchase_rate', 14, 4)->nullable();

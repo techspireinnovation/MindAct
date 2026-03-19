@@ -70,9 +70,11 @@ class ProductResource extends JsonResource
 
                     return [
                         'product_fields' => [
-                            'key' => (string) $this->product_field_number,
-                            'label' => $field['label'],
-                            'fields' => $field['fields'],
+                            [
+                                'key' => (string) $this->product_field_number,
+                                'label' => $field['label'],
+                                'fields' => $field['fields'],
+                            ]
                         ]
                     ];
                 }

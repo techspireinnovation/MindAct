@@ -25,6 +25,7 @@ class ProductResource extends JsonResource
             'category_id' => $this->category_id,
             'location_id' => $this->location_id,
             'minimum_stock' => $this->minimum_stock,
+            'product_field_number' => $this->product_field_number,
             'brand_id' => $this->brand_id,
             'measure_unit_id' => $this->measure_unit_id,
             'is_vatable' => $this->is_vatable,
@@ -49,9 +50,9 @@ class ProductResource extends JsonResource
 
                     return [
                         'product_fields' => [
-                            'key' => (string) $this->product_field_number, // 👈 ID (1,2,3)
-                            'label' => $field['label'],                  // 👈 Bike, Computer
-                            'fields' => $field['fields'],                // 👈 same fields
+                            'key' => (string) $this->product_field_number,
+                            'label' => $field['label'],                 
+                            'fields' => $field['fields'],                
                         ]
                     ];
                 }

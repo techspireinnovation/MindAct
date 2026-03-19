@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
+use App\Models\MeasureUnit;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class ProductResource extends JsonResource
@@ -14,6 +15,24 @@ class ProductResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+
+
+        $unitIds = collect([$this->measure_unit_id]);
+
+        $productListUnitIds = $this->productLists->pluck('measure_unit_id');
+        $allUnitIds = $unitIds->merge($productListUnitIds)->unique()->values();
+
+        $measureUnits = MeasureUnit::whereIn('id', $allUnitIds)
+            // ->where('company_id', $this->company_id) 
+            ->whereNull('deleted_at')
+            ->get(['id', 'name', 'quantity'])
+            ->map(function ($unit) {
+                return [
+                    'id' => $unit->id,
+                    'name' => $unit->name,
+                    'measure_unit_quantity' => $unit->quantity ?? null,
+                ];
+            });
 
         return [
             'id' => $this->id,
@@ -42,6 +61,7 @@ class ProductResource extends JsonResource
             'mrp_price' => $this->mrp_price,
             'created_at' => $this->created_at?->toDateTimeString(),
             'updated_at' => $this->updated_at?->toDateTimeString(),
+            'measure_units' => $measureUnits,
             'product_lists' => ProductListResource::collection($this->whenLoaded('productLists')),
             $this->mergeWhen(
                 $this->product_field_number && config("product_fields.$this->product_field_number"),
@@ -51,8 +71,8 @@ class ProductResource extends JsonResource
                     return [
                         'product_fields' => [
                             'key' => (string) $this->product_field_number,
-                            'label' => $field['label'],                 
-                            'fields' => $field['fields'],                
+                            'label' => $field['label'],
+                            'fields' => $field['fields'],
                         ]
                     ];
                 }

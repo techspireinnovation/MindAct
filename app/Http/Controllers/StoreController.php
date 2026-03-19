@@ -158,7 +158,7 @@ class StoreController extends Controller
             ], 500);
 
         } catch (\Exception $e) {
-            Log::error('Store not found: ' . $e->getMessage());
+
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Store.'

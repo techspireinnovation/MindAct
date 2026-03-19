@@ -66,7 +66,7 @@ class UpdateRequest extends FormRequest
             'product_lists.*.id' => 'nullable|nullable',
 
             'product_lists.*.measure_unit_id' => 'nullable|integer|exists:measure_units,id',
-            'product_lists.*.quantity' => 'nullable|integer',
+            // 'product_lists.*.quantity' => 'nullable|integer',
             'product_lists.*.barcode' => 'nullable|string',
             'product_lists.*.hs_code' => 'nullable|string',
             'product_lists.*.is_primary' => 'boolean',

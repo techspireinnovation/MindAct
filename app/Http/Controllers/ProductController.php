@@ -179,7 +179,7 @@ class ProductController extends Controller
             $item = $this->repository->create($request->validated());
 
             return response()->json([
-                'message' => 'Product Created !!',
+                'message' => 'Product Created !',
                 'status' => 200,
                 'data' => $item
 

@@ -94,11 +94,14 @@ class ProductController extends Controller
                 'data' => $productDetail
             ]);
         } catch (ModelNotFoundException $e) {
+            Log::error('Error: ' . $e->getMessage());
             return response()->json(['error' => 'Product not found!'], 404);
         } catch (QueryException $e) {
+            dd($e->getMessage());
             return response()->json(['error' => 'Database query error occurred!'], 500);
 
         } catch (\Exception $e) {
+            Log::error('Error: ' . $e->getMessage());
             return response()->json(['error' => 'Unexpected error occurred!'], 500);
         }
     }

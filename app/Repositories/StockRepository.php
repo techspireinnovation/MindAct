@@ -7,6 +7,9 @@ use App\Models\Stock;
 use App\Models\Vat;
 use App\Models\StockProduct;
 use App\Models\FiscalYear;
+use App\Models\Product;
+use App\Models\MeasureUnit;
+use App\Models\ProductList;
 use App\Services\UnitConversionService;
 use App\Services\CurrencyFormatService;
 
@@ -300,11 +303,47 @@ class StockRepository implements StockRepositoryInterface
             ->whereNull('deleted_at')
             ->findOrFail($id);
 
-       
-        $stock->stockProducts->map(function ($product) {
-            $product->field_values = $product->stockProductFieldValues;
-            unset($product->stockProductFieldValues);
-            return $product;
+        $stock->stockProducts->map(function ($stockProduct) {
+
+            
+            $stockProduct->field_values = $stockProduct->stockProductFieldValues;
+            unset($stockProduct->stockProductFieldValues);
+
+           
+            $productId = $stockProduct->product_id;
+
+            
+            $productUnitIds = Product::where('id', $productId)
+                ->pluck('measure_unit_id');
+
+            
+            $productListUnitIds = ProductList::where('product_id', $productId)
+                ->pluck('measure_unit_id');
+
+           
+            $unitIds = collect()
+                ->merge($productUnitIds)
+                ->merge($productListUnitIds)
+                ->filter()
+                ->unique()
+                ->values();
+
+            
+            $measureUnits = MeasureUnit::whereIn('id', $unitIds)
+                ->whereNull('deleted_at')
+                ->get(['id', 'name', 'quantity'])
+                ->map(function ($unit) {
+                    return [
+                        'id' => $unit->id,
+                        'name' => $unit->name,
+                        'measure_unit_quantity' => $unit->quantity ?? null,
+                    ];
+                });
+
+           
+            $stockProduct->measure_units = $measureUnits;
+
+            return $stockProduct;
         });
 
         return $stock;

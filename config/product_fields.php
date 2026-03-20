@@ -16,7 +16,7 @@ return [
                 'name' => 'Color',
                 'label' => 'color',
                 'type' => 'dropdown',
-                'options' => ['Red', 'Blue', 'Green']
+                'options' => ['Red', 'Blue', 'Green', 'Black']
             ],
         ],
     ],

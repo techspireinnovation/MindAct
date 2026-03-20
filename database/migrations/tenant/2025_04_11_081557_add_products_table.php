@@ -15,14 +15,8 @@ return new class extends Migration {
             $table->string('name');
             $table->unsignedBigInteger('company_id');
             $table->string('product_code')->nullable();
-
-
-
             $table->text('note')->nullable();
-
-
             $table->unsignedBigInteger('category_id')->nullable();
-
             $table->unsignedBigInteger('brand_id')->nullable();
             $table->unsignedBigInteger('measure_unit_id')->nullable();
             $table->unsignedBigInteger('base_unit_id')->nullable();
@@ -39,9 +33,6 @@ return new class extends Migration {
             $table->decimal('minimum_stock', 14, 4)->nullable();
             $table->decimal('retail_sales_price_profit_percent', 14, 4)->nullable();
             $table->decimal('wholesales_price_profit_percent', 14, 4)->nullable();
-
-
-
             $table->boolean('is_active')->default(true);
             $table->auditFields();
 

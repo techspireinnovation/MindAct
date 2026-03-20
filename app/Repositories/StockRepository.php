@@ -124,8 +124,8 @@ class StockRepository implements StockRepositoryInterface
 
                         StockProductFieldValue::create([
                             'stock_id' => $stock->id,
-                            'company_id'=> $data['company_id'],
-                            'branch_id'=> $data['branch_id'],
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProduct->id,
                             'product_id' => $stockProduct->product_id,
                             'quantity_index' => $quantityIndex,
@@ -296,12 +296,18 @@ class StockRepository implements StockRepositoryInterface
 
     public function show($id)
     {
+        $stock = Stock::with('stockProducts.stockProductFieldValues')
+            ->whereNull('deleted_at')
+            ->findOrFail($id);
 
-        $stock = Stock::with('stockProducts.stockProductFieldValues')->whereNull('deleted_at')->findOrFail($id);
+       
+        $stock->stockProducts->map(function ($product) {
+            $product->field_values = $product->stockProductFieldValues;
+            unset($product->stockProductFieldValues);
+            return $product;
+        });
+
         return $stock;
-
-
-
     }
 
     public function delete($id)

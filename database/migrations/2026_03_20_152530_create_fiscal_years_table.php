@@ -13,10 +13,7 @@ return new class extends Migration
     {
         Schema::create('fiscal_years', function (Blueprint $table) {
             $table->id();
-            $table->string('year_en', 20);
-            $table->string('year_np', 20)->nullable();             
-            $table->boolean('status')->default(false);
-            $table->auditFields();
+            $table->timestamps();
         });
     }
 

@@ -22,9 +22,6 @@ class StockController extends Controller
     {
 
         try {
-
-
-
             $data = $this->repository->list($request->all());
             return response()->json(['message' => 'Stocks retrieved successfully', 'data' => $data], 201);
 
@@ -41,7 +38,6 @@ class StockController extends Controller
     {
 
         try {
-
             $data = $this->repository->create($request->validated());
             return response()->json(['message' => 'Stock created successfully !', 'data' => $data], 201);
 
@@ -56,9 +52,7 @@ class StockController extends Controller
 
     public function show(Request $request, $id)
     {
-
         try {
-
             $data = $this->repository->show($id);
             return response()->json(['message' => 'Stock retrieved successfully !!', 'data' => $data], 201);
 
@@ -99,9 +93,8 @@ class StockController extends Controller
         try {
             $data = $this->repository->delete($id);
             return response()->json(['message' => 'Stock deleted successfully', 'data' => $data], 201);
-
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stock not found'], 404);
+            return response()->json(['message' => 'Stock not found !'], 404);
         } catch (\Exception $e) {
             return response()->json(['message' => 'An error occurred while creating the stock', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {

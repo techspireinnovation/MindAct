@@ -123,6 +123,9 @@ class StockRepository implements StockRepositoryInterface
                     foreach ($group as $field) {
 
                         StockProductFieldValue::create([
+                            'stock_id' => $stock->id,
+                            'company_id'=> $data['company_id'],
+                            'branch_id'=> $data['branch_id'],
                             'stock_product_id' => $stockProduct->id,
                             'product_id' => $stockProduct->product_id,
                             'quantity_index' => $quantityIndex,

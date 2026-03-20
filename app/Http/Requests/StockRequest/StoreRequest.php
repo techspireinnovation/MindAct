@@ -61,41 +61,25 @@ class StoreRequest extends FormRequest
             'roundoff_amount' => 'nullable',
             'total_amount' => 'nullable',
             'payment' => 'nullable',
-            'remarks' => 'nullable',
-           
+            'remarks' => 'nullable',           
             'stock_products' => 'required|array',
-
             'stock_products.*.product_id' => 'required|integer|exists:products,id',
-
             'stock_products.*.type' => 'nullable|string',
             'stock_products.*.stock_type' => 'nullable|string',
-
             'stock_products.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
-
             'stock_products.*.quantity' => 'required|numeric',
-
-            'stock_products.*.is_vatable' => 'required|boolean',
-            
+            'stock_products.*.is_vatable' => 'required|boolean',            
             'stock_products.*.stock_product_id' => 'nullable|integer',
             'stock_products.*.stock_movement_id' => 'nullable|integer',
             'stock_products.*.party_id' => 'nullable|integer',
             'stock_products.*.expiry_date' => 'nullable|string',
-            'stock_products.*.mfd' => 'nullable|string',
-           
+            'stock_products.*.mfd' => 'nullable|string',           
             'stock_products.*.price' => 'nullable|string',
             'stock_products.*.discount_percent' => 'nullable|string',
             'stock_products.*.discount_amount' => 'nullable|string',
             'stock_products.*.amount' => 'nullable|string',
-            'stock_products.*.batch_no' => 'nullable|string',
-        
-          
-            'stock_products.*.direction' => 'nullable|string',
-
-          
-
-          
-
-            
+            'stock_products.*.batch_no' => 'nullable|string',          
+            'stock_products.*.direction' => 'nullable|string',            
             'stock_products.*.field_values' => 'nullable|array',
             'stock_products.*.field_values.*' => 'array',
             'stock_products.*.field_values.*.*.key' => 'required|string',

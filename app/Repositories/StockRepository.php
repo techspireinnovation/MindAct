@@ -305,22 +305,23 @@ class StockRepository implements StockRepositoryInterface
 
         $stock->stockProducts->map(function ($stockProduct) {
 
-            
+
             $stockProduct->field_values = $stockProduct->stockProductFieldValues;
             unset($stockProduct->stockProductFieldValues);
+            $stockProduct->product_name = $stockProduct->product->name ?? null;
+            unset($stockProduct->product);
 
-           
             $productId = $stockProduct->product_id;
 
-            
+
             $productUnitIds = Product::where('id', $productId)
                 ->pluck('measure_unit_id');
 
-            
+
             $productListUnitIds = ProductList::where('product_id', $productId)
                 ->pluck('measure_unit_id');
 
-           
+
             $unitIds = collect()
                 ->merge($productUnitIds)
                 ->merge($productListUnitIds)
@@ -328,7 +329,7 @@ class StockRepository implements StockRepositoryInterface
                 ->unique()
                 ->values();
 
-            
+
             $measureUnits = MeasureUnit::whereIn('id', $unitIds)
                 ->whereNull('deleted_at')
                 ->get(['id', 'name', 'quantity'])
@@ -340,7 +341,7 @@ class StockRepository implements StockRepositoryInterface
                     ];
                 });
 
-           
+
             $stockProduct->measure_units = $measureUnits;
 
             return $stockProduct;

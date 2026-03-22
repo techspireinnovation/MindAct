@@ -109,10 +109,10 @@ class StockRepository implements StockRepositoryInterface
                 'party_id' => $data['party_id'] ?? null,
                 'expiry_date' => $product['expiry_date'] ?? null,
                 'mfd' => $product['mfd'] ?? null,
-                'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
+                'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0),
                 'discount_percent' => $product['discount_percent'] ?? 0,
-                'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0),
+                'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0),
                 'batch_no' => $product['batch_no'] ?? null,
             ];
 
@@ -235,10 +235,10 @@ class StockRepository implements StockRepositoryInterface
                 'party_id' => $data['party_id'] ?? null,
                 'expiry_date' => $product['expiry_date'] ?? null,
                 'mfd' => $product['mfd'] ?? null,
-                'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
+                'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
                 'discount_percent' => $product['discount_percent'] ?? 0,
-                'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
+                'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
                 'batch_no' => $product['batch_no'] ?? null,
 
             ];

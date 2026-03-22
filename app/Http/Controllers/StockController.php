@@ -92,7 +92,7 @@ class StockController extends Controller
     {
         try {
             $data = $this->repository->delete($id);
-            return response()->json(['message' => 'Stock deleted successfully', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock deleted successfully !', 'data' => $data], 201);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock not found !'], 404);
         } catch (\Exception $e) {

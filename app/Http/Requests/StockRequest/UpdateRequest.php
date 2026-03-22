@@ -88,7 +88,7 @@ class UpdateRequest extends FormRequest
             'stock_products.*.expiry_date' => 'nullable|string',
             'stock_products.*.mfd' => 'nullable|string',
            
-            'stock_products.*.price' => 'nullable|string',
+            'stock_products.*.price' => 'nullable|numeric',
             'stock_products.*.discount_percent' => 'nullable|string',
             'stock_products.*.discount_amount' => 'nullable|string',
             'stock_products.*.amount' => 'nullable|string',

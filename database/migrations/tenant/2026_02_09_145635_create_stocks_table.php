@@ -50,7 +50,7 @@ return new class extends Migration {
             $table->decimal('discount_value', 15, 2)->nullable();
             $table->decimal('discount_after_vat', 15, 2)->nullable();
             $table->decimal('sub_total_before_discount', 15, 2)->nullable();
-            $table->decimal('discount_after_vat', 15, 2)->nullable();
+
             $table->decimal('taxable_amount', 15, 2)->nullable();
             $table->decimal('non_taxable_amount', 15, 2)->nullable();
             $table->decimal('excise_duty', 15, 2)->nullable();
@@ -69,7 +69,7 @@ return new class extends Migration {
             $table->text('remarks')->nullable();
 
 
-            $table->timestamps();
+
             $table->auditFields();
         });
     }

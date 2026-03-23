@@ -41,7 +41,7 @@ return new class extends Migration {
             $table->decimal('amount', 14, 4)->nullable();
             $table->boolean('is_vatable')->default(1)->nullable();
             $table->string('batch_no')->nullable();
-            $table->timestamps();
+
             $table->auditFields();
         });
     }

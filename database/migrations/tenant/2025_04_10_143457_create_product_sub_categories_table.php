@@ -16,7 +16,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('company_id');
             $table->unsignedBigInteger('category_id')->constrained('product_categories')->onDelete('cascade');
             $table->boolean('is_active')->default(1);
-            $table->timestamps();
+          
             $table->auditFields();
         });
     }

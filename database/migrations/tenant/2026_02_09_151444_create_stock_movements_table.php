@@ -10,7 +10,7 @@ return new class extends Migration {
      */
     public function up(): void
     {
-        Schema::create('stock_transactions', function (Blueprint $table) {
+        Schema::create('stock_movements', function (Blueprint $table) {
             $table->id();
             $table->unsignedInteger('company_id');
             $table->foreignId('branch_id')
@@ -19,9 +19,10 @@ return new class extends Migration {
             $table->foreignId('stock_id')
                 ->constrained('stocks')
                 ->onDelete('cascade');
-            $table->foreignId('stock_product_id')
+            $table->foreignId('stock_product_id')->nullable()
                 ->constrained('stock_products')
                 ->onDelete('cascade');
+            $table->unsignedBigInteger('stock_transaction_id')->nullable();
             $table->foreignId('party_id')
                 ->constrained('parties')
                 ->onDelete('cascade');
@@ -31,8 +32,9 @@ return new class extends Migration {
                 ->constrained('products')
                 ->onDelete('cascade');
             $table->string('type')->nullable();
-            $table->string('direction')->nullable();
+            $table->string('stock_type')->nullable();
             $table->decimal('quantity', 14, 4);
+            $table->string('direction')->nullable();
             $table->unsignedInteger('measure_unit_id')->constrained('measure_units')->onDelete('cascade');
             $table->string('batch_no')->nullable();
             $table->boolean('is_vatable')->default(1)->nullable();
@@ -42,9 +44,8 @@ return new class extends Migration {
             $table->decimal('discount_percent', 14, 4)->nullable();
             $table->decimal('discount_amount', 14, 4)->nullable();
             $table->decimal('amount', 14, 4)->nullable();
-            $table->timestamps();
-            $table->auditFields();
 
+            $table->auditFields();
         });
     }
 
@@ -53,6 +54,6 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('stock_transactions');
+        Schema::dropIfExists('stock_movements');
     }
 };

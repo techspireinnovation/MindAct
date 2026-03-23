@@ -76,7 +76,7 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             DB::rollBack();
             throw new Exception('Sales bill number is required for creating a sales return.');
         }
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,

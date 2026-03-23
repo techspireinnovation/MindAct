@@ -53,7 +53,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
 
 

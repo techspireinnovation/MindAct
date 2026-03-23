@@ -37,7 +37,7 @@ class StockRepository implements StockRepositoryInterface
         $fiscalYearId = FiscalYear::where('status', 1)
             ->whereNull('deleted_at')
             ->value('id');
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
         $stockValidated = [
 
             'fiscal_year_id' => $fiscalYearId,
@@ -156,7 +156,7 @@ class StockRepository implements StockRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
 
         $stockValidated = [

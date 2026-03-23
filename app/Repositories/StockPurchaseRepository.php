@@ -51,7 +51,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
@@ -225,7 +225,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             ->whereNull('deleted_at')
             ->value('id');
 
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
 
         $stockValidated = [

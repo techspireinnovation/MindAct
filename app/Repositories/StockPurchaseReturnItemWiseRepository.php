@@ -62,7 +62,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
         //@todo: generate bill numbers for this and it should be unique for the company and bill type
 
-        $appliedVat = Vat::where('status', 1)->pluck('vat_percent')->first() ?? 0;
+        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
 
 

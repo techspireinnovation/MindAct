@@ -176,7 +176,7 @@ class VatController extends Controller
 
             return response()->json([
                 'error' => 'unexpected_error',
-                'message' => 'An unexpected error occurred while deleting the brand.'
+                'message' => 'An unexpected error occurred while deleting the brand !!'
             ], 500);
         }
     }

@@ -21,6 +21,22 @@ class StockPurchaseController extends Controller
 
     }
 
+    public function index(Request $request)
+    {
+
+        try {
+            $data = $this->repository->list($request->all());
+            return response()->json(['message' => 'Stock Purchase retrieved successfully !', 'data' => $data], 201);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Stock Purchase not found'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An error occurred while creating the stock', 'error' => $e->getMessage()], 500);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database error occurred while creating the stock !!', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function store(StoreRequest $request)
     {
 

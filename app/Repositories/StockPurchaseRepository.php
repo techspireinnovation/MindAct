@@ -452,10 +452,12 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
         return Stock::where('type', 'purchase')
             ->whereNull('deleted_at')
-            ->filter($filters)
+           
             ->get();
 
     }
+
+    
 
     public function show($id)
     {

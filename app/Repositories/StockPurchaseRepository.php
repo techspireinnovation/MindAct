@@ -229,7 +229,11 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
+        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
 
+        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+
+        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
         $stockValidated = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
@@ -259,14 +263,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
 
-            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
-
-            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => $data['payment'] ?? null,
+            'payment' => json_encode($data['payment']) ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
 
@@ -452,12 +452,12 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
         return Stock::where('type', 'purchase')
             ->whereNull('deleted_at')
-           
+
             ->get();
 
     }
 
-    
+
 
     public function show($id)
     {

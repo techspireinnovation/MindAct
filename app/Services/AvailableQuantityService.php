@@ -39,18 +39,18 @@ class AvailableQuantityService
         $quantity = (string) ($quantity ?? '0');
         $freeQuantity = (string) ($freeQuantity ?? '0');
 
-        // Determine max number of decimals
+       
         $decimals = max(
             strlen(explode('.', $quantity)[1] ?? ''),
             strlen(explode('.', $freeQuantity)[1] ?? '')
         );
 
-        return bcadd($quantity, $freeQuantity, $decimals); // string with preserved decimals
+        return bcadd($quantity, $freeQuantity, $decimals); 
     }
     public static function getProductDetailsByInput(Request $request, $productIds): JsonResponse
     {
         try {
-            // Validate input
+           
 
             $validator = Validator::make($request->all(), [
                 'company_id' => 'required|integer',

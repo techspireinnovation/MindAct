@@ -102,7 +102,7 @@ class AvailableListController extends Controller
             $productId = $request->product_id;
             $data = $this->availableProductsService->productListforTransactionItemWiseSalesReturnDetails($request->company_id, $request->branch_id, $productId);
             return response()->json([
-                "message" => "Product Details Retrieved Successfully!!",
+                "message" => "Product Details Retrieved Successfully !!",
                 "data" => $data
             ]);
 

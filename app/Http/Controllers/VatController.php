@@ -127,7 +127,7 @@ class VatController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item Not Found !!'], 404);
         } catch (QueryException $e) {
-            dd($e->getMessage());
+            
             return response()->json(['error' => 'Database error occurred !!'], 500);
         } catch (\Exception $e) {
             return response()->json(['error' => 'An unexpected error occurred !!'], 500);
@@ -181,11 +181,11 @@ class VatController extends Controller
         }
     }
 
-    public function activeBrandList(Request $request)
+    public function activeVatList(Request $request)
     {
         try {
 
-            $brands = $this->repository->activeBrandList();
+            $brands = $this->repository->activeVatList();
             return response()->json([
                 'message' => 'Vat List !',
                 'status' => 200,
@@ -195,7 +195,7 @@ class VatController extends Controller
 
         } catch (ModelNotFoundException $e) {
 
-            return response()->json(["error" => "Brand not Found !"], 404);
+            return response()->json(["error" => "Vat not Found !"], 404);
         } catch (QueryException $e) {
 
             return response()->json(["error" => "Database error occurred !!"], 500);

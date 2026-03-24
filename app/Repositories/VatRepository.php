@@ -98,7 +98,7 @@ class VatRepository implements VatRepositoryInterface
     public function activeVatList()
     {
         $vats = Vat::whereNull('deleted_at')
-            ->where('status', 1)
+            ->where('is_active', 1)
             ->get();
 
         $response = ($vats->count() > 0) ? VatResource::collection($vats)->map(function ($vat) {

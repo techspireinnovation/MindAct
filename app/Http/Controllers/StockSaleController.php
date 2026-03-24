@@ -27,7 +27,7 @@ class StockSaleController extends Controller
         try {
             $validated = $request->all();
             $data = $this->repository->list($validated);
-            return response()->json(['message' => 'Stock Sale retrieved successfully !!', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock Sales retrieved successfully !!', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Item not Found !!'], 404);
@@ -44,10 +44,10 @@ class StockSaleController extends Controller
         try {
 
             $data = $this->repository->create($request->validated());
-            return response()->json(['message' => 'Stock Sale created successfully', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock Sales created successfully', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stock Sale not found'], 404);
+            return response()->json(['message' => 'Stock Sales not found'], 404);
         } catch (\Exception $e) {
             return response()->json(['message' => 'An error occurred while creating the stock sale', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
@@ -61,14 +61,14 @@ class StockSaleController extends Controller
         try {
 
             $data = $this->repository->show($id);
-            return response()->json(['message' => 'Stock Sale retrieved successfully', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock Sales retrieved successfully', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stock Sale not found'], 404);
+            return response()->json(['message' => 'Stock Sales not found'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while retrieving the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while retrieving the stock sales', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database error occurred while retrieving the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Database error occurred while retrieving the stock sales', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -83,17 +83,17 @@ class StockSaleController extends Controller
             $data = $this->repository->update($id, $request->validated());
             return response()->json([
                 'success' => true,
-                'message' => 'Stock Sale Updated Successfully !!',
+                'message' => 'Stock Sales Updated Successfully !!',
                 'data' => $data,
                 200
             ]);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stock Sale not found'], 404);
+            return response()->json(['message' => 'Stock Sales not found'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while updating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while updating the stock sales', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database error occurred while updating the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Database error occurred while updating the stock sales', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -107,17 +107,17 @@ class StockSaleController extends Controller
             $data = $this->repository->delete($id);
             return response()->json([
                 'success' => true,
-                'message' => 'Stock Sale Deleted Successfully !',
+                'message' => 'Stock Sales Deleted Successfully !',
                 'data' => $data,
 
             ], 200);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stock Sale not found'], 404);
+            return response()->json(['message' => 'Stock Sales not found'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while deleting the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while deleting the stock sales', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
-            return response()->json(['message' => 'Database error occurred while deleting the stock sale', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Database error occurred while deleting the stock sales', 'error' => $e->getMessage()], 500);
         }
     }
 

@@ -60,4 +60,9 @@ class StockProduct extends Model
     {
         return $this->hasMany(StockTransaction::class);
     }
+
+    public function measureUnit()
+    {
+        return $this->belongsTo(MeasureUnit::class, 'measure_unit_id');
+    }
 }

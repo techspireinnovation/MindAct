@@ -414,7 +414,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
             'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
-            'payment' => $data['payment'] ?? null,
+            'payment' => json_encode($data['payment']) ?? null,
             'remarks' => $data['remarks'] ?? null,
         ];
 
@@ -442,7 +442,6 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                     $product['measure_unit_id'],
                     $product['quantity']
                 );
-
 
 
 

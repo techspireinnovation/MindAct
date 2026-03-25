@@ -91,8 +91,6 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-
-
             'total_amount' => $totalAmount + $vatAmount,
             'payment' => json_encode($data['payment']) ?? null,
             'remarks' => $data['remarks'] ?? null,
@@ -164,10 +162,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     'party_id' => $data['party_id'] ?? null,
                     'expiry_date' => $product['expiry_date'] ?? null,
                     'mfd' => $product['mfd'] ?? null,
-                    'price' => $this->currencyFormatService->cleanCurrency($product['total_amount'] ?? 0) ?? 0,
-                    'discount_percent' => $product['discount_percent'] ?? 0,
-                    'discount_amount' => $this->currencyFormatService->cleanCurrency($product['total_amount'] ?? 0) ?? 0,
-                    'amount' => $this->currencyFormatService->cleanCurrency($product['total_amount'] ?? 0) ?? 0,
+                    'price' => null,
+                    'discount_percent' => null,
+                    'discount_amount' => null,
+                    'amount' => null,
                     'batch_no' => $product['batch_no'] ?? null,
                 ];
 
@@ -301,10 +299,10 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 'party_id' => $product['party_id'] ?? $data['party_id'] ?? null,
                 'expiry_date' => $product['expiry_date'] ?? null,
                 'mfd' => $product['mfd'] ?? null,
-                'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
-                'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
-                'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
-                'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
+                'price' => null,
+                'discount_percent' => null,
+                'discount_amount' => null,
+                'amount' => null,
                 'batch_no' => $product['batch_no'] ?? null,
             ];
 
@@ -455,7 +453,6 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
         return Stock::where('type', 'purchase')
             ->whereNull('deleted_at')
-
             ->get();
 
     }
@@ -476,7 +473,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                                 ->where('stock_type', 'free')
                                 ->whereNull('deleted_at');
                         },
-                      
+
                     ]);
             }
         ])

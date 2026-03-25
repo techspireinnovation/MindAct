@@ -26,7 +26,7 @@ class StockPurchaseController extends Controller
 
         try {
             $data = $this->repository->list($request->all());
-            return response()->json(['message' => 'Stock Purchase retrieved successfully !!', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock Purchase retrieved successfully !', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Purchase not found'], 404);

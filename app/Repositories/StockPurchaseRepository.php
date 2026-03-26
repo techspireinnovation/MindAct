@@ -460,149 +460,150 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
 
     public function show($id)
-{
-    $stock = Stock::with([
-        'stockProducts' => function ($query) {
-            $query->whereNull('deleted_at')
-                ->with([
-                    'stockProductFieldValues' => function ($q) {
-                        $q->whereNull('deleted_at');
-                    },
-                    'stockMovements' => function ($q) {
-                        $q->where('type', 'purchase')
-                            ->where('stock_type', 'free')
-                            ->whereNull('deleted_at');
-                    },
-                    
-                ]);
-        }
-    ])
-        ->whereNull('deleted_at')
-        ->where('type', 'purchase')
-        ->findOrFail($id);
+    {
+        $stock = Stock::with([
+            'stockProducts' => function ($query) {
+                $query->whereNull('deleted_at')
+                    ->with([
+                        'stockProductFieldValues' => function ($q) {
+                            $q->whereNull('deleted_at');
+                        },
+                        'stockMovements' => function ($q) {
+                            $q->where('type', 'purchase')
+                                ->where('stock_type', 'free')
+                                ->whereNull('deleted_at');
+                        },
 
-    $stock->stockProducts->transform(function ($product) {
-
-        /*
-        |---------------------------------------------
-        | FREE QUANTITY
-        |---------------------------------------------
-        */
-        $freeQty = $product->stockMovements->sum('quantity') ?? 0;
-
-        $attributes = $product->toArray();
-
-        $fieldValues = $attributes['stock_product_field_values'] ?? [];
-
-        unset($attributes['stock_product_field_values']);
-        unset($attributes['stock_movements']);
-
-        $newProduct = [];
-
-        foreach ($attributes as $key => $value) {
-            $newProduct[$key] = $value;
-
-            if ($key === 'quantity') {
-                $newProduct['free_quantity'] = $freeQty;
+                    ]);
             }
-        }
-
-        /*
-        |---------------------------------------------
-        | PRODUCT NAME
-        |---------------------------------------------
-        */
-        $newProduct['product_name'] = $product->product->name ?? null;
-
-        /*
-        |---------------------------------------------
-        | CONFIG LOAD
-        |---------------------------------------------
-        */
-        $productFieldNumber = $product->product->product_field_number ?? null;
-
-        $config = $productFieldNumber
-            ? config("product_fields.{$productFieldNumber}")
-            : null;
-
-        $configFields = collect($config['fields'] ?? [])
-            ->keyBy('name');
-
-        /*
-        |---------------------------------------------
-        | FIELD VALUES (FULL RAW + ENRICHED)
-        |---------------------------------------------
-        */
-        $newProduct['field_values'] = collect($fieldValues)
-            ->map(function ($item) use ($configFields) {
-
-                $fieldConfig = $configFields[$item['key']] ?? null;
-
-                $isDropdown = ($fieldConfig['type'] ?? null) === 'dropdown';
-
-                return [
-                    // ✅ FULL ORIGINAL DATABASE ROW
-                    'id' => $item['id'] ?? null,
-                    'stock_id' => $item['stock_id'] ?? null,
-                    'company_id' => $item['company_id'] ?? null,
-                    'branch_id' => $item['branch_id'] ?? null,
-                    'stock_product_id' => $item['stock_product_id'] ?? null,
-                    'stock_movement_id' => $item['stock_movement_id'] ?? null,
-                    'product_id' => $item['product_id'] ?? null,
-                    'quantity_index' => $item['quantity_index'] ?? null,
-                    'quantity_type' => $item['quantity_type'] ?? null,
-                    'key' => $item['key'] ?? null,
-                    'value' => $item['value'] ?? null,
-                    'created_at' => $item['created_at'] ?? null,
-                    'updated_at' => $item['updated_at'] ?? null,
-                    'deleted_at' => $item['deleted_at'] ?? null,
-
-                    // 🔥 CONFIG ADDED (YOUR REQUIREMENT)
-                    'type' => $fieldConfig['type'] ?? 'text',
-                    'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
-                ];
-            })
-            ->values()
-            ->toArray();
-
-        /*
-        |---------------------------------------------
-        | MEASURE UNITS
-        |---------------------------------------------
-        */
-        $productId = $product->product_id;
-
-        $productUnitIds = Product::where('id', $productId)
-            ->pluck('measure_unit_id');
-
-        $productListUnitIds = ProductList::where('product_id', $productId)
-            ->pluck('measure_unit_id');
-
-        $unitIds = collect()
-            ->merge($productUnitIds)
-            ->merge($productListUnitIds)
-            ->filter()
-            ->unique()
-            ->values();
-
-        $measureUnits = MeasureUnit::whereIn('id', $unitIds)
+        ])
             ->whereNull('deleted_at')
-            ->get(['id', 'name', 'quantity'])
-            ->map(function ($unit) {
-                return [
-                    'id' => $unit->id,
-                    'name' => $unit->name,
-                    'measure_unit_quantity' => $unit->quantity ?? null,
-                ];
-            });
+            ->where('type', 'purchase')
+            ->findOrFail($id);
 
-        $newProduct['measure_units'] = $measureUnits;
+        $stock->stockProducts->transform(function ($product) {
 
-        return $newProduct;
-    });
+            /*
+            |---------------------------------------------
+            | FREE QUANTITY
+            |---------------------------------------------
+            */
+            $freeQty = $product->stockMovements->sum('quantity') ?? 0;
 
-    return $stock;
-}
+            $attributes = $product->toArray();
+
+            $fieldValues = $attributes['stock_product_field_values'] ?? [];
+
+            unset($attributes['stock_product_field_values']);
+            unset($attributes['stock_movements']);
+
+            $newProduct = [];
+
+            foreach ($attributes as $key => $value) {
+                $newProduct[$key] = $value;
+
+                if ($key === 'quantity') {
+                    $newProduct['free_quantity'] = $freeQty;
+                }
+            }
+
+            /*
+            |---------------------------------------------
+            | PRODUCT NAME
+            |---------------------------------------------
+            */
+            $newProduct['product_name'] = $product->product->name ?? null;
+
+            /*
+            |---------------------------------------------
+            | CONFIG LOAD
+            |---------------------------------------------
+            */
+            $productFieldNumber = $product->product->product_field_number ?? null;
+
+            $config = $productFieldNumber
+                ? config("product_fields.{$productFieldNumber}")
+                : null;
+
+            $configFields = collect($config['fields'] ?? [])
+                ->keyBy('name');
+
+            // $configFields = collect($config['fields'] ?? [])
+            //     ->mapWithKeys(function ($field) {
+
+            //         
+            //         $key = strtolower($field['name'] ?? $field['label'] ?? '');
+
+            //         return [$key => $field];
+            //     });
+
+           
+            $newProduct['field_values'] = collect($fieldValues)
+                ->map(function ($item) use ($configFields) {
+
+                    $fieldConfig = $configFields[$item['key']] ?? null;
+
+                    $isDropdown = ($fieldConfig['type'] ?? null) === 'dropdown';
+
+                    return [
+                      
+                        'id' => $item['id'] ?? null,
+                        'stock_id' => $item['stock_id'] ?? null,
+                        'company_id' => $item['company_id'] ?? null,
+                        'branch_id' => $item['branch_id'] ?? null,
+                        'stock_product_id' => $item['stock_product_id'] ?? null,
+                        'stock_movement_id' => $item['stock_movement_id'] ?? null,
+                        'product_id' => $item['product_id'] ?? null,
+                        'quantity_index' => $item['quantity_index'] ?? null,
+                        'quantity_type' => $item['quantity_type'] ?? null,
+                        'key' => $item['key'] ?? null,
+                        'value' => $item['value'] ?? null,
+                        'created_at' => $item['created_at'] ?? null,
+                        'updated_at' => $item['updated_at'] ?? null,
+                        'deleted_at' => $item['deleted_at'] ?? null,
+
+                       
+                        'type' => $fieldConfig['type'] ?? 'text',
+                        'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
+                    ];
+                })
+                ->values()
+                ->toArray();
+
+          
+            $productId = $product->product_id;
+
+            $productUnitIds = Product::where('id', $productId)
+                ->pluck('measure_unit_id');
+
+            $productListUnitIds = ProductList::where('product_id', $productId)
+                ->pluck('measure_unit_id');
+
+            $unitIds = collect()
+                ->merge($productUnitIds)
+                ->merge($productListUnitIds)
+                ->filter()
+                ->unique()
+                ->values();
+
+            $measureUnits = MeasureUnit::whereIn('id', $unitIds)
+                ->whereNull('deleted_at')
+                ->get(['id', 'name', 'quantity'])
+                ->map(function ($unit) {
+                    return [
+                        'id' => $unit->id,
+                        'name' => $unit->name,
+                        'measure_unit_quantity' => $unit->quantity ?? null,
+                    ];
+                });
+
+            $newProduct['measure_units'] = $measureUnits;
+
+            return $newProduct;
+        });
+
+        return $stock;
+    }
     public function delete($id)
     {
 

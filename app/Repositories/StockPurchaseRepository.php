@@ -473,7 +473,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                                 ->where('stock_type', 'free')
                                 ->whereNull('deleted_at');
                         },
-                        'product' // eager load to avoid N+1 ⚠️
+                        'product' 
                     ]);
             }
         ])
@@ -483,7 +483,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
         $stock->stockProducts->transform(function ($product) {
 
-            // ✅ Free quantity
+           
             $freeQty = $product->stockMovements->sum('quantity') ?? 0;
 
             $attributes = $product->toArray();
@@ -494,7 +494,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             unset($attributes['stock_movements']);
             unset($attributes['product']);
 
-            // ✅ FIXED GROUPING (important 🔥)
+           
             $fieldValues = collect($fieldValuesRaw)
                 ->groupBy(function ($item) {
                     return
@@ -518,13 +518,13 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 }
             }
 
-            // ✅ Assign grouped field values
+           
             $newProduct['field_values'] = $fieldValues;
 
-            // ✅ Product name (no extra query now)
+          
             $newProduct['product_name'] = $product->product->name ?? null;
 
-            // ✅ Measure units (still optimized a bit)
+            
             $productId = $product->product_id;
 
             $unitIds = collect()

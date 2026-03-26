@@ -172,7 +172,7 @@ class StockAdjustmentController extends Controller
             );
 
 
-        // SUPER SIMPLE: Get pre-calculated subtracted pieces from attribute
+        
         $adjustedPieces = $purchaseProduct->stockAdjusted()
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)

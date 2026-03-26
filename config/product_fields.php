@@ -28,6 +28,7 @@ return [
             ['name' => 'ram', 'label' => 'RAM', 'type' => 'text'],
             ['name' => 'rom', 'label' => 'ROM', 'type' => 'text'],
             ['name' => 'processor', 'label' => 'Processor', 'type' => 'text'],
+            
         ],
     ],
 

@@ -526,7 +526,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 : null;
 
             $configFields = collect($config['fields'] ?? [])
-                ->keyBy('name');
+                ->keyBy('key');
 
             // $configFields = collect($config['fields'] ?? [])
             //     ->mapWithKeys(function ($field) {
@@ -543,7 +543,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
                     $fieldConfig = $configFields[$item['key']] ?? null;
 
-                    $isDropdown = ($fieldConfig['type'] ?? null) === 'dropdown';
+                    $isDropdown = ($fieldConfig['type'] ?? null) == 'dropdown';
 
                     return [
                       

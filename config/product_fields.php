@@ -8,12 +8,12 @@ return [
         'key' => 'bike',
         'label' => 'Bike',
         'fields' => [
-            ['name' => 'engine_capacity', 'label' => 'Engine Capacity', 'type' => 'number'],
-            ['name' => 'engine_no', 'label' => 'Engine Number', 'type' => 'text'],
-            ['name' => 'serial_no', 'label' => 'Engine Number', 'type' => 'text'],
-            ['name' => 'vin_number', 'label' => 'VIN Number', 'type' => 'text'],
+            ['key' => 'engine_capacity', 'label' => 'Engine Capacity', 'type' => 'number'],
+            ['key' => 'engine_no', 'label' => 'Engine Number', 'type' => 'text'],
+            ['key' => 'serial_no', 'label' => 'Engine Number', 'type' => 'text'],
+            ['key' => 'vin_number', 'label' => 'VIN Number', 'type' => 'text'],
             [
-                'name' => 'color',
+                'key' => 'color',
                 'label' => 'color',
                 'type' => 'dropdown',
                 'options' => ['Red', 'Blue', 'Green', 'Black']
@@ -25,9 +25,9 @@ return [
         'key' => 'computer',
         'label' => 'Computer',
         'fields' => [
-            ['name' => 'ram', 'label' => 'RAM', 'type' => 'text'],
-            ['name' => 'rom', 'label' => 'ROM', 'type' => 'text'],
-            ['name' => 'processor', 'label' => 'Processor', 'type' => 'text'],
+            ['key' => 'ram', 'label' => 'RAM', 'type' => 'text'],
+            ['key' => 'rom', 'label' => 'ROM', 'type' => 'text'],
+            ['key' => 'processor', 'label' => 'Processor', 'type' => 'text'],
             
         ],
     ],
@@ -36,10 +36,10 @@ return [
         'key' => 'mobile',
         'label' => 'Mobile',
         'fields' => [
-            ['name' => 'storage', 'label' => 'Storage', 'type' => 'text'],
-            ['name' => 'ram', 'label' => 'RAM', 'type' => 'text'],
-            ['name' => 'battery', 'label' => 'Battery Capacity', 'type' => 'number'],
-            ['name' => 'color', 'label' => 'Color', 'type' => 'text'],
+            ['key' => 'storage', 'label' => 'Storage', 'type' => 'text'],
+            ['key' => 'ram', 'label' => 'RAM', 'type' => 'text'],
+            ['key' => 'battery', 'label' => 'Battery Capacity', 'type' => 'number'],
+            ['key' => 'color', 'label' => 'Color', 'type' => 'text'],
         ],
     ],
 

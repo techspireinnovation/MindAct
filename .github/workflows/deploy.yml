@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [main, test-sever] # or your deployment branch
+    branches: [main, test-server] # or your deployment branch
 
 jobs:
   deploy:
@@ -39,23 +39,37 @@ jobs:
 
             
       - name: Deploy to VPS 2 via SSH KEY
-        if: github.ref == 'refs/heads/test-sever'
+        if: github.ref == 'refs/heads/test-server'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER2_HOST }}
           username: ${{ secrets.SERVER2_USERNAME }}
           key: ${{ secrets.SERVER2_SSH_KEY }}
           port: 22
+          command_timeout: 20m
           script: |
-            cd ${{ secrets.PROJECT2_PATH }}
+            echo "Starting deployment VPS 2"
 
+            cd ${{ secrets.PROJECT2_PATH }} || exit 1
+
+            echo "📥 Pulling latest code..."
+            git fetch origin
+            git reset --hard origin/test-server
+
+            echo "Fix permissions..."
             chmod -R 775 storage bootstrap/cache
-            
-            git pull origin test-sever
+
+            echo "Installing dependencies..."
             composer install --no-interaction --prefer-dist --optimize-autoloader
+
+            echo "🗄 Running migrations..."
             php artisan migrate --force --database=mysql
             php artisan app:migrate-tenants
-            php artisan optimize
+
+            echo "Optimizing Laravel..."
+            php artisan optimize:clear
             php artisan config:cache
             php artisan route:cache
             php artisan view:cache
+
+            echo "Deployment finished VPS 2"

@@ -199,7 +199,7 @@ class StockAdjustmentController extends Controller
 
        
 
-        return max(0, (int) $availablePieces); // Remove floor, cast to int
+        return max(0, (int) $availablePieces); 
     }
 
 

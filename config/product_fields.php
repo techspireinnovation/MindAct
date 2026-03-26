@@ -13,7 +13,7 @@ return [
             ['name' => 'serial_no', 'label' => 'Engine Number', 'type' => 'text'],
             ['name' => 'vin_number', 'label' => 'VIN Number', 'type' => 'text'],
             [
-                'name' => 'Color',
+                'name' => 'color',
                 'label' => 'color',
                 'type' => 'dropdown',
                 'options' => ['Red', 'Blue', 'Green', 'Black']

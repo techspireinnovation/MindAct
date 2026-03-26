@@ -473,7 +473,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                                 ->where('stock_type', 'free')
                                 ->whereNull('deleted_at');
                         },
-                        'product' 
+
                     ]);
             }
         ])
@@ -483,30 +483,16 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
         $stock->stockProducts->transform(function ($product) {
 
-           
+            // Calculate free_quantity from stockMovements
             $freeQty = $product->stockMovements->sum('quantity') ?? 0;
 
             $attributes = $product->toArray();
 
-            $fieldValuesRaw = $attributes['stock_product_field_values'] ?? [];
+            // Get field values
+            $fieldValues = $attributes['stock_product_field_values'] ?? [];
 
             unset($attributes['stock_product_field_values']);
             unset($attributes['stock_movements']);
-            unset($attributes['product']);
-
-           
-            $fieldValues = collect($fieldValuesRaw)
-                ->groupBy(function ($item) {
-                    return
-                        ($item['stock_product_id'] ?? 'null') . '_' .
-                        ($item['stock_movement_id'] ?? 'null') . '_' .
-                        ($item['quantity_type'] ?? 'null') . '_' .
-                        ($item['quantity_index'] ?? '0');
-                })
-                ->map(function ($group) {
-                    return array_values($group->toArray());
-                })
-                ->values();
 
             $newProduct = [];
 
@@ -518,22 +504,29 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 }
             }
 
-           
+            // Add field values
             $newProduct['field_values'] = $fieldValues;
 
-          
+            // Add product name
             $newProduct['product_name'] = $product->product->name ?? null;
 
-            
+            // Get measure unit IDs from Product and ProductList
             $productId = $product->product_id;
 
+            $productUnitIds = Product::where('id', $productId)
+                ->pluck('measure_unit_id');
+
+            $productListUnitIds = ProductList::where('product_id', $productId)
+                ->pluck('measure_unit_id');
+
             $unitIds = collect()
-                ->merge(Product::where('id', $productId)->pluck('measure_unit_id'))
-                ->merge(ProductList::where('product_id', $productId)->pluck('measure_unit_id'))
+                ->merge($productUnitIds)
+                ->merge($productListUnitIds)
                 ->filter()
                 ->unique()
                 ->values();
 
+            // Fetch measure unit details
             $measureUnits = MeasureUnit::whereIn('id', $unitIds)
                 ->whereNull('deleted_at')
                 ->get(['id', 'name', 'quantity'])

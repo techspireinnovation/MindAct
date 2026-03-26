@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [main, test-sever] # or your deployment branch
+    branches: [main, test-server] # or your deployment branch
 
 jobs:
   deploy:
@@ -39,7 +39,7 @@ jobs:
 
             
       - name: Deploy to VPS 2 via SSH KEY
-        if: github.ref == 'refs/heads/test-sever'
+        if: github.ref == 'refs/heads/test-server'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.SERVER2_HOST }}

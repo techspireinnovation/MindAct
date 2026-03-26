@@ -23,7 +23,7 @@ class StockController extends Controller
 
         try {
             $data = $this->repository->list($request->all());
-            return response()->json(['message' => 'Stocks retrieved successfully !', 'data' => $data], 201);
+            return response()->json(['message' => 'Stocks retrieved successfully !!', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock not found !!'], 404);

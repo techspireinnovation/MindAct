@@ -510,7 +510,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
            
             $newProduct['product_name'] = $product->product->name ?? null;
 
-            // Get measure unit IDs from Product and ProductList
+           
             $productId = $product->product_id;
 
             $productUnitIds = Product::where('id', $productId)

@@ -51,7 +51,7 @@ jobs:
 
             chmod -R 775 storage bootstrap/cache
             
-            git pull origin test-sever
+            git pull origin test-server
             composer install --no-interaction --prefer-dist --optimize-autoloader
             php artisan migrate --force --database=mysql
             php artisan app:migrate-tenants

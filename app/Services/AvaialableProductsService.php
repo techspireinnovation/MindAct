@@ -953,8 +953,8 @@ class AvaialableProductsService
             ->where('branch_id', $branchId)
             ->whereIn('stock_product_id', $stockProductIds)
             ->whereNull('deleted_at')
-            ->select('product_id', 'stock_product_id', 'quantity_index')
-            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->select('product_id', 'stock_product_id', 'quantity_index', 'key', 'value')
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index', 'key', 'value')
             ->get();
 
         $transactions = DB::table('transaction_pivots')
@@ -992,7 +992,9 @@ class AvaialableProductsService
                 return [
                     "product_id" => $variant->product_id,
                     "stock_product_id" => $variant->stock_product_id,
-                    "quantity_index" => $variant->quantity_index
+                    "quantity_index" => $variant->quantity_index,
+                    "key" => $variant->key,
+                    "value" => $variant->value,
                 ];
             }
 
@@ -1022,17 +1024,17 @@ class AvaialableProductsService
             'total_amount' => $stock->total_amount ?? null,
             'party_id' => $stock->party_id ?? null,
             'fiscal_year_id' => $stock->fiscal_year_id ?? null,
-        
+
             'company_id' => $stock->company_id ?? null,
             'branch_id' => $stock->branch_id ?? null,
             'store_id' => $stock->store_id ?? null,
             'type' => $stock->type ?? null,
 
 
-           
+
             'purchase_bill_number' => $stock->purchase_bill_number ?? null,
-          
-           
+
+
             'location_id' => $stock->location_id ?? null,
             'batch_no' => $stock->batch_no ?? null,
             'credit_days' => $stock->credit_days ?? null,
@@ -1052,7 +1054,7 @@ class AvaialableProductsService
             'freight_amount' => $stock->freight_amount ?? null,
             'roundoff_type' => $stock->roundoff_type ?? null,
             'roundoff_amount' => $stock->roundoff_amount ?? null,
-           
+
             'payment' => $stock->payment ?? null,
             'remarks' => $stock->remarks ?? null,
 

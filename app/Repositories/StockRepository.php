@@ -303,28 +303,63 @@ class StockRepository implements StockRepositoryInterface
 
     public function show($id)
     {
-        $stock = Stock::with('stockProducts.stockProductFieldValues')
+        $stock = Stock::with('stockProducts.stockProductFieldValues', 'stockProducts.product')
             ->whereNull('deleted_at')
             ->findOrFail($id);
 
         $stock->stockProducts->map(function ($stockProduct) {
 
+            $stockProduct->field_values = $stockProduct->stockProductFieldValues->map(function ($item) use ($stockProduct) {
 
-            $stockProduct->field_values = $stockProduct->stockProductFieldValues;
+                $productFieldNumber = $stockProduct->product->product_field_number ?? null;
+
+                $config = $productFieldNumber
+                    ? config("product_fields.{$productFieldNumber}")
+                    : null;
+
+                // find field config by key (IMPORTANT FIX: match by key, not name)
+                $fieldConfig = collect($config['fields'] ?? [])
+                    ->first(function ($field) use ($item) {
+                        return strtolower($field['key'] ?? '') === strtolower($item->key);
+                    });
+
+                $type = $fieldConfig['type'] ?? 'text';
+                $isDropdown = $type === 'dropdown';
+
+                return [
+                    'id' => $item->id,
+                    'stock_id' => $item->stock_id,
+                    'company_id' => $item->company_id,
+                    'branch_id' => $item->branch_id,
+                    'stock_product_id' => $item->stock_product_id,
+                    'stock_movement_id' => $item->stock_movement_id,
+                    'product_id' => $item->product_id,
+                    'quantity_index' => $item->quantity_index,
+                    'quantity_type' => $item->quantity_type,
+                    'key' => $item->key,
+                    'value' => $item->value,
+                    'created_at' => $item->created_at,
+                    'updated_at' => $item->updated_at,
+                    'deleted_at' => $item->deleted_at,
+
+                    // ✅ dropdown fix
+                    'type' => $type,
+                    'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
+                ];
+            });
+
             unset($stockProduct->stockProductFieldValues);
+
             $stockProduct->product_name = $stockProduct->product->name ?? null;
             unset($stockProduct->product);
 
             $productId = $stockProduct->product_id;
 
-
             $productUnitIds = Product::where('id', $productId)
                 ->pluck('measure_unit_id');
 
-
             $productListUnitIds = ProductList::where('product_id', $productId)
                 ->pluck('measure_unit_id');
-
 
             $unitIds = collect()
                 ->merge($productUnitIds)
@@ -332,7 +367,6 @@ class StockRepository implements StockRepositoryInterface
                 ->filter()
                 ->unique()
                 ->values();
-
 
             $measureUnits = MeasureUnit::whereIn('id', $unitIds)
                 ->whereNull('deleted_at')
@@ -344,7 +378,6 @@ class StockRepository implements StockRepositoryInterface
                         'measure_unit_quantity' => $unit->quantity ?? null,
                     ];
                 });
-
 
             $stockProduct->measure_units = $measureUnits;
 

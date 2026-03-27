@@ -6,6 +6,7 @@ use App\Models\Product;
 use App\Services\AvaialableProductsService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Facades\Log;
 
 use Illuminate\Http\Request;
 
@@ -127,15 +128,18 @@ class AvailableListController extends Controller
 
             $data = $this->availableProductsService->productListforTransactionBillWisePurchaseReturn($request->company_id, $request->branch_id);
             return response()->json([
-                "message" => "Product List Retrieved Successfully!!",
+                "message" => "Purchase Return Bills Retrieved Successfully!!",
                 "data" => $data
             ]);
 
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
-
+            Log::error('Database error', [
+                'message' => $e->getMessage(),
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings(),
+            ]);
             return response()->json(["message" => "Database error occurred !!"], 500);
 
         } catch (\Exception $e) {
@@ -211,7 +215,7 @@ class AvailableListController extends Controller
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
 
-            
+
             return response()->json(["message" => "Database error occurred !!"], 500);
 
         } catch (\Exception $e) {

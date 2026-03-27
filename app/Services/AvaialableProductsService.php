@@ -724,7 +724,7 @@ class AvaialableProductsService
             as available_quantity
         ')
             )
-
+            ->whereNotNull('s.bill_number')
             ->havingRaw('available_quantity > 0')
 
             ->pluck('s.bill_number')

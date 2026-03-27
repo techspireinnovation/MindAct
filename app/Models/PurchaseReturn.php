@@ -63,11 +63,11 @@ class PurchaseReturn extends BaseTenantModel
     use SoftDeletes;
     protected $dates = ['deleted_at'];
 
-    protected static function booted()
-    {
-        // self::observe(PurchaseReturnObserver::class);
-        static::addGlobalScope(new CompanyIdScope());
-    }
+    // protected static function booted()
+    // {
+    //     // self::observe(PurchaseReturnObserver::class);
+    //     static::addGlobalScope(new CompanyIdScope());
+    // }
 
     public function location()
     {

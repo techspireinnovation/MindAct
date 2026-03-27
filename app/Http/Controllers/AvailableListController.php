@@ -162,7 +162,7 @@ class AvailableListController extends Controller
             ]);
 
         } catch (ModelNotFoundException) {
-            return response()->json(["message" => "Item not Found !!"], 404);
+            return response()->json(["message" => "Item not Found !"], 404);
         } catch (QueryException $e) {
 
             dd($e->getMessage());

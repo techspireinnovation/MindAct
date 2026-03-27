@@ -80,6 +80,9 @@ use App\Repositories\StockSalesReturnItemWiseRepository;
 use App\Interfaces\VatRepositoryInterface;
 use App\Repositories\VatRepository;
 
+use App\Interfaces\StockAdjustmentRepositoryInterface;
+use App\Repositories\StockAdjustmentRepository;
+
 
 class RespositoryServiceProvider extends ServiceProvider
 {
@@ -111,6 +114,7 @@ class RespositoryServiceProvider extends ServiceProvider
         $this->app->bind(StockSalesReturnRepositoryInterface::class, StockSalesReturnRepository::class);
         $this->app->bind(StockSalesReturnItemWiseRepositoryInterface::class, StockSalesReturnItemWiseRepository::class);
         $this->app->bind(VatRepositoryInterface::class, VatRepository::class);
+        $this->app->bind(StockAdjustmentRepositoryInterface::class, StockAdjustmentRepository::class);
     }
 
     /**

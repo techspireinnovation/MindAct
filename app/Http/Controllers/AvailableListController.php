@@ -169,7 +169,7 @@ class AvailableListController extends Controller
             return response()->json(["message" => "Database error occurred !!"], 500);
 
         } catch (\Exception $e) {
-             dd($e->getMessage());
+            dd($e->getMessage());
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
 
         }

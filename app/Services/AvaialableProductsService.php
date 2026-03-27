@@ -913,6 +913,7 @@ class AvaialableProductsService
                     ->where('sp.branch_id', $branchId)
                     ->whereNull('sp.deleted_at');
             })
+            ->leftJoin('measure_units as mu', 'sp.measure_unit_id', '=', 'mu.id')
 
             ->select(
                 'p.id',
@@ -936,6 +937,7 @@ class AvaialableProductsService
                 'sp.expiry_date',
                 'sp.mfd',
                 'sp.measure_unit_id',
+                'mu.name as measure_unit_name',
                 'sp.is_vatable'
             )
             ->havingRaw('available_quantity > 0')

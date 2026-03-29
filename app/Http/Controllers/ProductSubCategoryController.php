@@ -258,7 +258,7 @@ class ProductSubCategoryController extends Controller
             Log::error('Database error deleting ProductSubCategory', [
                 'id' => $id,
                 'message' => $e->getMessage(),
-                'sql_error' => $e->getSqlState() ?? null,
+                
             ]);
             return response()->json([
                 'error' => 'query_error',
@@ -287,7 +287,7 @@ class ProductSubCategoryController extends Controller
             $companyId = $request->company_id;
 
             if (!$companyId) {
-                return response()->json(["error" => "No Associated company Found !!"], 404);
+                return response()->json(["error" => "No Associated company Found !"], 404);
             }
 
             $subCategories = ProductSubCategory::where('company_id', $companyId)

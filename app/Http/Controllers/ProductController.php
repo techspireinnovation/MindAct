@@ -190,7 +190,7 @@ class ProductController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Item not Found !!'], 404);
         } catch (QueryException $e) {
-            Log::error('Database error occurred !!', [
+            Log::error('Database error occurred !', [
 
                 'message' => $e->getMessage(),
             ]);

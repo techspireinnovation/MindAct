@@ -36,14 +36,14 @@ class StoreRequest extends FormRequest
             // 'bill_number' => 'nullable|string',
             // 'address' => 'nullable|string',
 
-        
+
             'party_id' => 'nullable|integer',
             'location_id' => 'nullable|integer',
-           
+
             'batch_no' => 'nullable|string|max:255',
             'credit_days' => 'nullable|string|max:255',
             'balance' => 'nullable|string|max:255',
-           
+
             'ref_bill_number' => 'nullable|string|max:255',
             'return_bill_number' => 'nullable|string|max:255',
             'reasons' => 'nullable|string|max:255',
@@ -61,29 +61,35 @@ class StoreRequest extends FormRequest
             'roundoff_amount' => 'nullable',
             'total_amount' => 'nullable',
             'payment' => 'nullable',
-            'remarks' => 'nullable',           
+            'remarks' => 'nullable',
             'stock_details' => 'required|array',
             'stock_details.*.product_id' => 'required|integer|exists:products,id',
             'stock_details.*.type' => 'nullable|string',
             'stock_details.*.stock_type' => 'nullable|string',
             'stock_details.*.measure_unit_id' => 'required|integer|exists:measure_units,id',
             'stock_details.*.quantity' => 'required|numeric',
-            'stock_details.*.is_vatable' => 'required|boolean',            
+            'stock_details.*.is_vatable' => 'required|boolean',
             'stock_details.*.stock_product_id' => 'nullable|integer',
             'stock_details.*.stock_movement_id' => 'nullable|integer',
             'stock_details.*.party_id' => 'nullable|integer',
             'stock_details.*.expiry_date' => 'nullable|string',
-            'stock_details.*.mfd' => 'nullable|string',           
+            'stock_details.*.mfd' => 'nullable|string',
             'stock_details.*.price' => 'nullable|numeric',
             'stock_details.*.discount_percent' => 'nullable|string',
             'stock_details.*.discount_amount' => 'nullable|string',
             'stock_details.*.amount' => 'nullable|string',
-            'stock_details.*.batch_no' => 'nullable|string',          
-            'stock_details.*.direction' => 'nullable|string',            
+            'stock_details.*.batch_no' => 'nullable|string',
+            'stock_details.*.direction' => 'nullable|string',
             'stock_details.*.field_values' => 'nullable|array',
             'stock_details.*.field_values.*' => 'array',
-            'stock_details.*.field_values.*.*.key' => 'required|string',
-            'stock_details.*.field_values.*.*.value' => 'required|string|max:255',
+            'stock_details.*.field_values.*.*.key' => 'nullable|string',
+            'stock_details.*.field_values.*.*.value' => 'nullable|string|max:255',
+            'stock_details.*.field_values.*.*.product_id' => 'nullable|numeric',
+
+            'stock_details.*.field_values.*.*.stock_product_id' => 'nullable|numeric',
+            'stock_details.*.field_values.*.*.stock_movement_id' => 'nullable|string|max:255',
+            'stock_details.*.field_values.*.*.quantity_index' => 'nullable|numeric',
+            'stock_details.*.field_values.*.*.quantity_type' => 'nullable|string|max:255',
 
 
 

@@ -11,6 +11,7 @@ class TransactionPivot extends Model
     use SoftDeletes;
     
     protected $fillable = [
+        
         'company_id',
         'branch_id',
         'stock_product_id',

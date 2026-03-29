@@ -1005,9 +1005,9 @@ class AvaialableProductsService
             return null;
         })
             ->filter()
-            ->unique(function ($item) {
-                return $item['stock_product_id'] . '-' . $item['quantity_index'];
-            })
+            // ->unique(function ($item) {
+            //     return $item['stock_product_id'] . '-' . $item['quantity_index'];
+            // })
             ->values();
 
         $products->transform(function ($product) use ($variants) {

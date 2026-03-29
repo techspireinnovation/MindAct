@@ -25,7 +25,7 @@ class UpdateRequest extends FormRequest
      */
     public function rules(): array
     {
-        $id = $this->route('stock');
+        $id = $this->route('stock-adjustment');
         return [
 
             'company_id' => 'required|integer',

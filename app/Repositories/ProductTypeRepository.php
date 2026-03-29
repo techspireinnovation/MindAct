@@ -28,18 +28,18 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
 
     }
 
-   
+
 
     public function productTypeDetails(array $filters)
     {
 
-        $name= $filters['type_name'] ?? null;
+        $name = $filters['type_name'] ?? null;
 
         $productTypeDetail = ProductType::where('name', $name)
             ->whereNull('deleted_at')
             ->firstorFail();
 
-        return new ProductTypeResource($productTypeDetail );
+        return new ProductTypeResource($productTypeDetail);
 
     }
 
@@ -94,7 +94,6 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
     public function delete($id)
     {
         $productType = ProductType::findOrFail($id);
-        $deleteStatus = $productType->delete_status;
 
         $usedIn = [];
 
@@ -102,18 +101,15 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
             $usedIn[] = 'products';
         }
 
-
-
         if (!empty($usedIn)) {
-
             throw new \Exception('in_use:' . implode(',', $usedIn));
         }
 
-        if ($deleteStatus === true) {
-
-            $productType->delete();
+        if (!$productType->delete_status) {
+            throw new \Exception('cannot_delete');
         }
 
+        $productType->delete();
         return true;
     }
 
@@ -131,7 +127,7 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
         $productTypes = ProductType::whereNull('deleted_at')
             ->where('is_active', true)
             ->get(['id', 'name', 'is_primary']);
-            
+
 
         $response = ($productTypes->count() > 0) ? ProductTypeResource::collection($productTypes)->map(function ($productType) {
             return collect($productType)->only(['id', 'name']);
@@ -139,7 +135,7 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
 
 
         return $response;
-        
+
 
     }
 

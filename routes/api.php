@@ -281,6 +281,7 @@ Route::middleware(['auth:sanctum', 'identify.tenant'])->prefix('company')->group
     Route::get('purchases/get-by-bill-number/{billNumber}', [PurchaseController::class, 'getItemByBillNumber']);
     Route::resource('purchases', PurchaseController::class);
     Route::resource('stocks', StockController::class);
+    Route::resource('stock-adjustments', StockAdjustmentController::class);
     Route::resource('stock-purchases', StockPurchaseController::class);
     Route::resource('stock-purchase-returns', StockPurchaseReturnController::class);
     Route::resource('stock-purchases-itemwise-returns', StockPurchaseReturnItemWiseController::class);

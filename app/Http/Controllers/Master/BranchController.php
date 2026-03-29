@@ -132,6 +132,8 @@ class BranchController extends Controller
         try {
             // Fetch branch using tenant connection
 
+            $data = $this->repository->delete($id);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Branch deleted successfully.'

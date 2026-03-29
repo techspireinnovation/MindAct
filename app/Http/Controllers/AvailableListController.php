@@ -57,17 +57,12 @@ class AvailableListController extends Controller
                 "message" => "Product Details Retrieved Successfully!!",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
-
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
-
         }
     }
 
@@ -81,17 +76,12 @@ class AvailableListController extends Controller
                 "message" => "Product List Retrieved Successfully!!",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
-
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
-
         }
     }
 
@@ -106,14 +96,10 @@ class AvailableListController extends Controller
                 "message" => "Product Details Retrieved Successfully !!",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
-
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
 
@@ -131,20 +117,12 @@ class AvailableListController extends Controller
                 "message" => "Purchase Return Bills Retrieved Successfully!!",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
-        } catch (QueryException $e) {
-            Log::error('Database error', [
-                'message' => $e->getMessage(),
-                'sql' => $e->getSql(),
-                'bindings' => $e->getBindings(),
-            ]);
+        } catch (QueryException $e) {           
             return response()->json(["message" => "Database error occurred !"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
-
         }
     }
 
@@ -160,16 +138,11 @@ class AvailableListController extends Controller
                 "message" => "Purchase Return Product Details Retrieved Successfully!!",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !"], 404);
         } catch (QueryException $e) {
-
-            dd($e->getMessage());
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
-            dd($e->getMessage());
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
 
         }
@@ -186,14 +159,10 @@ class AvailableListController extends Controller
                 "message" => "Product List Retrieved Successfully!!",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
-
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
 
@@ -211,14 +180,10 @@ class AvailableListController extends Controller
                 "message" => "Sales Return Product Details Retrieved Successfully !",
                 "data" => $data
             ]);
-
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
-
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
 
@@ -234,7 +199,6 @@ class AvailableListController extends Controller
         try {
             $productCode = $request->product_code;
             $productSku = $request->sku;
-
             $product = Product::where('product_code', $productCode)->orWhere('sku', $productSku)->first();
             $data = $this->availableProductsService->productListforTransactionDetails($request->company_id, $request->branch_id, $product->id);
             return response()->json([
@@ -245,13 +209,9 @@ class AvailableListController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
-
             return response()->json(["message" => "Database error occurred !!"], 500);
-
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
-
         }
     }
 }

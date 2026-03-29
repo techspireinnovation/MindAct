@@ -35,6 +35,7 @@ class Product extends BaseTenantModel
         'is_active',
         'deleted_at',
         'category_id',
+        'sub_category_id',
         'brand_id',
         'location_id',
         'measure_unit_id',

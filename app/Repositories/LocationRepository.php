@@ -100,18 +100,8 @@ class LocationRepository implements LocationRepositoryInterface
         if ($location->products()->exists()) {
             $usedIn[] = 'products';
         }
-        if ($location->purchases()->exists()) {
-            $usedIn[] = 'purchases';
-        }
-        if ($location->sales()->exists()) {
-            $usedIn[] = 'sales';
-        }
-        if ($location->productionAssembles()->exists()) {
-            $usedIn[] = 'production_assembles';
-        }
-        if ($location->stockAdjustments()->exists()) {
-            $usedIn[] = 'stock_adjustments';
-        }
+       
+       
 
         if (!empty($usedIn)) {
             throw new \Exception('in_use:' . implode(',', $usedIn));

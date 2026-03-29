@@ -20,6 +20,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('sub_category_id')->nullable();
             $table->unsignedBigInteger('brand_id')->nullable();
             $table->unsignedBigInteger('measure_unit_id')->nullable();
+            $table->integer('product_field_number')->nullable();
             $table->unsignedBigInteger('base_unit_id')->nullable();
             $table->unsignedBigInteger('location_id')->nullable();
             $table->boolean('is_vatable')->default(0);

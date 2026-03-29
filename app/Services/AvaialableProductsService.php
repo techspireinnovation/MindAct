@@ -956,8 +956,8 @@ class AvaialableProductsService
             ->where('branch_id', $branchId)
             ->whereIn('stock_product_id', $stockProductIds)
             ->whereNull('deleted_at')
-            ->select('product_id', 'stock_product_id', 'quantity_index', 'key', 'value')
-            ->groupBy('product_id', 'stock_product_id', 'quantity_index', 'key', 'value')
+            ->select('product_id', 'stock_product_id', 'quantity_index', 'quantity_type', 'key', 'value')
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index', 'quantity_type', 'key', 'value')
             ->get();
 
         $transactions = DB::table('transaction_pivots')
@@ -996,6 +996,7 @@ class AvaialableProductsService
                     "product_id" => $variant->product_id,
                     "stock_product_id" => $variant->stock_product_id,
                     "quantity_index" => $variant->quantity_index,
+                    "quantity_type" => $variant->quantity_type ?? null,
                     "key" => $variant->key,
                     "value" => $variant->value,
                 ];

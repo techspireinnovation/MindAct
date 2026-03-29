@@ -150,12 +150,12 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                             'stock_id' => $stock->id,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'stock_product_id' => $data['stock_product_id'] ?? null,
-                            'stock_movement_id' => $data['stock_movement_id'] ?? null,
+                            'stock_product_id' => $field['stock_product_id'] ?? null,
+                            'stock_movement_id' => $field['stock_movement_id'] ?? null,
                             'product_id' => $stockMovement->product_id,
-                            'quantity_index' => $data['quantity_index'],
-                            'key' => $field['key'],
-                            'value' => $field['value'],
+                            'quantity_index' => $field['quantity_index'],
+                            'quantity_type' => $field['quantity_type'] ?? 'regular',
+                            
                         ]);
                     }
                 }

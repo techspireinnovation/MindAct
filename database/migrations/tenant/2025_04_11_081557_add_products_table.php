@@ -32,8 +32,8 @@ return new class extends Migration {
             $table->decimal('retail_price', 14, 4)->nullable();
             $table->decimal('mrp_price', 14, 4)->nullable();
             $table->decimal('minimum_stock', 14, 4)->nullable();
-            $table->decimal('retail_sales_price_profit_percent', 14, 4)->nullable();
-            $table->decimal('wholesales_price_profit_percent', 14, 4)->nullable();
+            $table->decimal('wholesale_profit_percent', 14, 4)->nullable();
+            $table->decimal('retail_profit_percent', 14, 4)->nullable();
             $table->boolean('is_active')->default(true);
             $table->auditFields();
 

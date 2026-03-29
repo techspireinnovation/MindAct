@@ -38,7 +38,7 @@ class StockAdjustmentController extends Controller
 
         try {
             $data = $this->repository->create($request->validated());
-            return response()->json(['message' => 'Stock Adjustment created successfully !', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock Adjustment created successfully !!', 'data' => $data], 201);
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Adjustment not found !!'], 404);
         } catch (\Exception $e) {

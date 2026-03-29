@@ -1013,6 +1013,18 @@ class AvaialableProductsService
                 ->where('product_id', $product->id)
                 ->values();
 
+            $product->measure_unit = [
+                [
+                    "id" => $product->measure_unit_id,
+                    "name" => $product->measure_unit_name,
+                    "quantity" => $product->quantity
+                ]
+            ];
+
+
+            unset($product->measure_unit_id);
+            unset($product->measure_unit_name);
+
             return $product;
         });
 

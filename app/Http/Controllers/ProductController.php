@@ -215,7 +215,7 @@ class ProductController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['error' => 'Product not found!'], 404);
+            return response()->json(['error' => 'Product not found !!'], 404);
         } catch (QueryException $e) {
             return response()->json(['error' => 'Database query error occurred!'], 500);
         } catch (\Exception $e) {

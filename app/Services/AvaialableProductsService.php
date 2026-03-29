@@ -938,6 +938,7 @@ class AvaialableProductsService
                 'sp.mfd',
                 'sp.measure_unit_id',
                 'mu.name as measure_unit_name',
+                'mu.quantity as measure_unit_quantity',
                 'sp.is_vatable'
             )
             ->havingRaw('available_quantity > 0')
@@ -1017,7 +1018,7 @@ class AvaialableProductsService
                 [
                     "id" => $product->measure_unit_id,
                     "name" => $product->measure_unit_name,
-                    "quantity" => $product->quantity
+                    "quantity" => $product->measure_unit_quantity
                 ]
             ];
 

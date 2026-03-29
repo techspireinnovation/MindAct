@@ -37,7 +37,7 @@ class ProductSubCategory extends BaseTenantModel
     {
         return $this->belongsTo(ProductCategory::class, 'category_id');
     }
-    public function productscategory()
+    public function products()
     {
         return $this->hasMany(Product::class, 'sub_category_id');
     }

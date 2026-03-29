@@ -130,7 +130,7 @@ class LocationController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Location deleted successfully!'
+                'message' => 'Location deleted successfully!!'
             ]);
         } catch (ModelNotFoundException $e) {
 

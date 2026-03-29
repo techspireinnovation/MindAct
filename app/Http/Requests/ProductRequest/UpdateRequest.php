@@ -46,6 +46,7 @@ class UpdateRequest extends FormRequest
             'product_field_number' => 'nullable|numeric',
             'base_unit_id' => 'nullable|numeric|exists:measure_units,id',
             'category_id' => 'nullable|numeric',
+            'sub_category_id' => 'nullable|numeric',
             'brand_id' => 'nullable|numeric',
             'location_id' => 'nullable|integer',
             'measure_unit_id' => 'nullable|numeric',

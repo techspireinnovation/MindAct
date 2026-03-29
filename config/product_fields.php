@@ -8,7 +8,7 @@ return [
         'key' => 'bike',
         'label' => 'Bike',
         'fields' => [
-            ['key' => 'engine_capacity', 'label' => 'Engine Capacity', 'type' => 'number'],
+            ['key' => 'engine_capacity', 'label' => 'Engine Capacity', 'type' => 'text'],
             ['key' => 'engine_no', 'label' => 'Engine Number', 'type' => 'text'],
             ['key' => 'serial_no', 'label' => 'Engine Number', 'type' => 'text'],
             ['key' => 'vin_number', 'label' => 'VIN Number', 'type' => 'text'],
@@ -38,7 +38,7 @@ return [
         'fields' => [
             ['key' => 'storage', 'label' => 'Storage', 'type' => 'text'],
             ['key' => 'ram', 'label' => 'RAM', 'type' => 'text'],
-            ['key' => 'battery', 'label' => 'Battery Capacity', 'type' => 'number'],
+            ['key' => 'battery', 'label' => 'Battery Capacity', 'type' => 'text'],
             ['key' => 'color', 'label' => 'Color', 'type' => 'text'],
         ],
     ],

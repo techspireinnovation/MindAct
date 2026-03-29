@@ -225,7 +225,7 @@ class ProductSubCategoryController extends Controller
 
             $usedIn = [];
 
-            if ($unit->productscategory()->exists()) {
+            if ($unit->products()->exists()) {
                 $usedIn[] = 'products';
             }
 

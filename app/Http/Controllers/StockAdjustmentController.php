@@ -1,11 +1,9 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-
 use App\Interfaces\StockAdjustmentRepositoryInterface;
 use App\Http\Requests\StockAdjustmentRequest\StoreRequest;
 use App\Http\Requests\StockAdjustmentRequest\UpdateRequest;
@@ -26,7 +24,6 @@ class StockAdjustmentController extends Controller
         try {
             $data = $this->repository->list($request->all());
             return response()->json(['message' => 'Stock Adjsutment retrieved successfully !', 'data' => $data], 201);
-
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Adjsutment not found !!'], 404);
         } catch (\Exception $e) {
@@ -42,7 +39,6 @@ class StockAdjustmentController extends Controller
         try {
             $data = $this->repository->create($request->validated());
             return response()->json(['message' => 'Stock Adjustment created successfully !', 'data' => $data], 201);
-
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Adjustment not found !!'], 404);
         } catch (\Exception $e) {
@@ -57,7 +53,6 @@ class StockAdjustmentController extends Controller
         try {
             $data = $this->repository->show($id);
             return response()->json(['message' => 'Stock Adjustment retrieved successfully !', 'data' => $data], 201);
-
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Adjustment not found'], 404);
         } catch (\Exception $e) {
@@ -72,7 +67,6 @@ class StockAdjustmentController extends Controller
     {
 
         try {
-
             $data = $this->repository->update($id, $request->validated());
             return response()->json([
                 'success' => true,

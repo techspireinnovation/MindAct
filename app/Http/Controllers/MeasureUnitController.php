@@ -145,6 +145,7 @@ class MeasureUnitController extends Controller
         } catch (QueryException $e) {
 
             return response()->json([
+                
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Measure Unit.'
             ], 500);

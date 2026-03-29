@@ -1,6 +1,8 @@
 <?php
 
 namespace App\Repositories;
+use App\Models\StockMovement;
+use App\Models\TransactionPivot;
 use App\Services\TransactionImplementService;
 use Illuminate\Support\Facades\DB;
 use App\Models\Stock;
@@ -37,7 +39,9 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
         $fiscalYearId = FiscalYear::where('status', 1)
             ->whereNull('deleted_at')
             ->value('id');
+
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
+
         $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
 
         $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
@@ -50,7 +54,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
             'branch_id' => $data['branch_id'],
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
-            'type' => 'opening_stock',
+            'type' => 'stock_adjustment',
             'bill_number' => $data['bill_number'] ?? null,
             'address' => $data['address'] ?? null,
             'store_id' => $data['store_id'] ?? null,
@@ -86,7 +90,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
         $stock = Stock::create($stockValidated);
 
 
-        foreach ($data['stock_products'] as $product) {
+        foreach ($data['stock_details'] as $product) {
 
             $quantity = $this->unitConversionService->convertToBaseUnit(
 
@@ -99,7 +103,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                 'stock_id' => $stock->id,
                 'product_id' => $product['product_id'],
                 'measure_unit_id' => $product['measure_unit_id'],
-                'type' => 'opening_stock',
+                'type' => 'stock_adjustment',
                 'quantity' => $quantity,
                 'is_vatable' => $product['is_vatable'],
                 'stock_type' => $product['stock_type'] ?? null,
@@ -118,10 +122,10 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
             ];
 
 
-            $stockProduct = StockProduct::create($productValidated);
+            $stockMovement = StockMovement::create($productValidated);
 
 
-            if (!empty($product['field_values'])) {
+            if (!empty($product['field_values']) && $product['stock_type'] === 'add') {
 
                 foreach ($product['field_values'] as $quantityIndex => $group) {
                     foreach ($group as $field) {
@@ -130,9 +134,26 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                             'stock_id' => $stock->id,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],
-                            'stock_product_id' => $stockProduct->id,
-                            'product_id' => $stockProduct->product_id,
+                            'stock_movement_id' => $stockMovement->id,
+                            'product_id' => $stockMovement->product_id,
                             'quantity_index' => $quantityIndex,
+                            'key' => $field['key'],
+                            'value' => $field['value'],
+                        ]);
+                    }
+                }
+            } else {
+                foreach ($product['field_values'] as $quantityIndex => $group) {
+                    foreach ($group as $field) {
+
+                        TransactionPivot::create([
+                            'stock_id' => $stock->id,
+                            'company_id' => $data['company_id'],
+                            'branch_id' => $data['branch_id'],
+                            'stock_product_id' => $data['stock_product_id'] ?? null,
+                            'stock_movement_id' => $data['stock_movement_id'] ?? null,
+                            'product_id' => $stockMovement->product_id,
+                            'quantity_index' => $data['quantity_index'],
                             'key' => $field['key'],
                             'value' => $field['value'],
                         ]);
@@ -142,7 +163,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
         }
         DB::commit();
 
-        return $stock->load('stockProducts.stockProductFieldValues');
+        return $stock->load('stockMovements.stockProductFieldValues');
 
 
 
@@ -408,14 +429,8 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
             ->delete();
 
         $stock->delete();
-
         DB::commit();
-
         return true;
-
-
-
     }
 }
-
 ?>

@@ -103,18 +103,8 @@ class MeasureUnitRepository implements MeasureUnitRepositoryInterface
         if ($measureUnit->productLists()->exists()) {
             $usedIn[] = 'product lists';
         }
-        if ($measureUnit->productAssembleDetails()->exists()) {
-            $usedIn[] = 'production assemble details';
-        }
-        if ($measureUnit->productionSettings()->exists()) {
-            $usedIn[] = 'production settings';
-        }
-        if ($measureUnit->purchaseProducts()->exists()) {
-            $usedIn[] = 'purchase products';
-        }
-        if ($measureUnit->saleProducts()->exists()) {
-            $usedIn[] = 'sale products';
-        }
+        
+        
 
         if (!empty($usedIn)) {
 

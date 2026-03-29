@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Log;
 
 class ProductSubCategoryController extends Controller
 {
@@ -245,17 +246,33 @@ class ProductSubCategoryController extends Controller
             ]);
 
         } catch (ModelNotFoundException $e) {
+            Log::error('ProductSubCategory not found', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+            ]);
             return response()->json([
                 'error' => 'not_found',
                 'message' => 'Product category not found!'
             ], 404);
         } catch (QueryException $e) {
+            Log::error('Database error deleting ProductSubCategory', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+                
+            ]);
             return response()->json([
                 'error' => 'query_error',
                 'message' => 'A database error occurred while deleting the Product category !'
             ], 500);
 
         } catch (\Exception $e) {
+            Log::error('Unexpected error deleting ProductSubCategory', [
+                'id' => $id,
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json([
                 'error' => 'unexpected_error',
                 'message' => 'An unexpected error occurred while deleting the Product category.'
@@ -270,7 +287,7 @@ class ProductSubCategoryController extends Controller
             $companyId = $request->company_id;
 
             if (!$companyId) {
-                return response()->json(["error" => "No Associated company Found !!"], 404);
+                return response()->json(["error" => "No Associated company Found !"], 404);
             }
 
             $subCategories = ProductSubCategory::where('company_id', $companyId)

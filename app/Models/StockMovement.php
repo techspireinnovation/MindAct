@@ -48,6 +48,11 @@ class StockMovement extends Model
         return $this->hasMany(TransactionPivot::class);
     }
 
+    public function stockProductFieldValues()
+    {
+        return $this->hasMany(StockProductFieldValue::class);
+    }
+
 
 
 }

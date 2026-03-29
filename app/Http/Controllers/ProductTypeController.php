@@ -69,7 +69,7 @@ class ProductTypeController extends Controller
             ]);
 
 
-        } catch (ModelNotFoundException $e) {          
+        } catch (ModelNotFoundException $e) {
 
             return response()->json(["error" => "Not Item Found !!"], 404);
         } catch (QueryException $e) {
@@ -151,13 +151,12 @@ class ProductTypeController extends Controller
     public function destroy($id): JsonResponse
     {
         try {
-
             $this->repository->delete($id);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product Type deleted successfully!'
-            ]);
+            ], 200);
 
         } catch (ModelNotFoundException $e) {
 
@@ -166,14 +165,32 @@ class ProductTypeController extends Controller
                 'message' => 'Product Type not found!'
             ], 404);
 
-        } catch (QueryException $e) {
-
-            return response()->json([
-                'error' => 'query_error',
-                'message' => 'A database error occurred while deleting the product type.'
-            ], 500);
-
         } catch (\Exception $e) {
+
+            $message = $e->getMessage();
+
+            // Handle specific business exceptions
+            if (str_starts_with($message, 'in_use:')) {
+                $usedIn = explode(',', str_replace('in_use:', '', $message));
+                return response()->json([
+                    'error' => 'in_use',
+                    'message' => 'Cannot delete this product type because it is currently in use.',
+                    'used_in' => $usedIn
+                ], 422);
+            }
+
+            if ($message === 'cannot_delete') {
+                return response()->json([
+                    'error' => 'cannot_delete',
+                    'message' => 'This product type cannot be deleted.'
+                ], 422);
+            }
+
+            // Log the unexpected error for debugging
+            \Log::error('ProductType Delete Error: ' . $e->getMessage(), [
+                'id' => $id,
+                'trace' => $e->getTraceAsString()
+            ]);
 
             return response()->json([
                 'error' => 'unexpected_error',
@@ -181,7 +198,6 @@ class ProductTypeController extends Controller
             ], 500);
         }
     }
-
 
     public function activeProductTypeList(Request $request)
     {

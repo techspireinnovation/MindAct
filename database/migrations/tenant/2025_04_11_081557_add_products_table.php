@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->string('product_code')->nullable();
             $table->text('note')->nullable();
             $table->unsignedBigInteger('category_id')->nullable();
+            $table->unsignedBigInteger('sub_category_id')->nullable();
             $table->unsignedBigInteger('brand_id')->nullable();
             $table->unsignedBigInteger('measure_unit_id')->nullable();
             $table->unsignedBigInteger('base_unit_id')->nullable();

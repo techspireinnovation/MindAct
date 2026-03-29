@@ -70,7 +70,7 @@ class ProductController extends Controller
 
         } catch (ModelNotFoundException $e) {
 
-            return response()->json(["error" => "Product Name not Found ."], 404);
+            return response()->json(["error" => "Product Name not Found !!."], 404);
         } catch (QueryException $e) {
 
             return response()->json(["error" => "Database error occurred !!"], 500);

@@ -124,11 +124,11 @@ class BranchRepository implements BranchRepositoryInterface
             }
         }
 
-        if (Schema::connection($tenantConnection)->hasTable('stock_reconciliations')) {
-            if ($branch->stockReconciliation()->exists()) {
-                $usedIn[] = 'stock_reconciliation (tenant)';
-            }
-        }
+        // if (Schema::connection($tenantConnection)->hasTable('stock_reconciliations')) {
+        //     if ($branch->stockReconciliation()->exists()) {
+        //         $usedIn[] = 'stock_reconciliation (tenant)';
+        //     }
+        // }
 
         // Stop deletion if branch is in use
         if (!empty($usedIn)) {

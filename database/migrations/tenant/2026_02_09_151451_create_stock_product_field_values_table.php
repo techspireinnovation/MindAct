@@ -20,11 +20,11 @@ return new class extends Migration {
                 ->constrained('stocks')
                 ->onDelete('cascade');
 
-            $table->foreignId('stock_product_id')
+            $table->foreignId('stock_product_id')->nullable()
                 ->constrained('stock_products')
                 ->onDelete('cascade');
 
-            $table->foreignId('stock_movement_id')
+            $table->foreignId('stock_movement_id')->nullable()
                 ->constrained('stock_movements')
                 ->onDelete('cascade');
 

@@ -57,7 +57,6 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                 'branch_id' => $data['branch_id'],
                 'store_id' => $data['store_id'] ?? null,
                 'type' => 'stock_adjustment',
-
                 'bill_number' => $data['bill_number'] ?? null,
                 'invoice_date' => $data['invoice_date'] ?? null,
                 'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
@@ -81,8 +80,6 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                 'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
                 'roundoff_type' => $data['roundoff_type'] ?? null,
                 'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-
-
                 'total_amount' => $totalAmount + $vatAmount,
                 'payment' => json_encode($data['payment']) ?? null,
                 'remarks' => $data['remarks'] ?? null,
@@ -117,25 +114,24 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
 
                         foreach ($allocatedQtys as $alloc) {
 
-                            StockMovement::create([
+                            $stockMovementData = [
                                 'stock_id' => $stock->id,
                                 'fiscal_year_id' => $fiscalYearId,
                                 'source_type' => $alloc['source_type'],
                                 'source_id' => $alloc['source_id'],
                                 'stock_product_id' => $alloc['stock_product_id'],
                                 'stock_movement_id' => $alloc['stock_movement_id'] ?? null,
-
                                 'product_id' => $product['product_id'],
                                 'measure_unit_id' => $product['measure_unit_id'],
                                 'type' => 'stock_adjustment',
                                 'quantity' => $alloc['quantity'],
-
                                 'direction' => 'out',
                                 'stock_type' => 'subtract',
-
                                 'company_id' => $data['company_id'],
                                 'branch_id' => $data['branch_id'],
-                            ]);
+                            ];
+
+                            StockMovement::create($stockMovementData);
                         }
                     } else {
 
@@ -163,45 +159,43 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                         foreach ($grouped as $stockProductId => $dataGroup) {
 
                             $stockMovementId = $dataGroup['stock_movement_id'];
-
                             $sourceType = $stockMovementId ? 'stock_movement' : 'stock_product';
                             $sourceId = $stockMovementId ?? $stockProductId;
 
-                            $transaction = StockMovement::create([
-                                'stock_id' => $stock->id,
-                                'fiscal_year_id' => $fiscalYearId,
-                                'source_type' => $sourceType,
-                                'source_id' => $sourceId,
-                                'stock_product_id' => $stockProductId,
-                                'stock_movement_id' => $stockMovementId,
-
-                                'product_id' => $product['product_id'],
-                                'measure_unit_id' => $product['measure_unit_id'],
-                                'type' => 'stock_adjustment',
-                                'quantity' => $dataGroup['quantity'],
-
-                                'direction' => 'out',
-                                'stock_type' => 'subtract',
-
-                                'company_id' => $data['company_id'],
-                                'branch_id' => $data['branch_id'],
-                            ]);
+                            $stockDataMovement =
+                                [
+                                    'stock_id' => $stock->id,
+                                    'fiscal_year_id' => $fiscalYearId,
+                                    'source_type' => $sourceType,
+                                    'source_id' => $sourceId,
+                                    'stock_product_id' => $stockProductId,
+                                    'stock_movement_id' => $stockMovementId,
+                                    'product_id' => $product['product_id'],
+                                    'measure_unit_id' => $product['measure_unit_id'],
+                                    'type' => 'stock_adjustment',
+                                    'quantity' => $dataGroup['quantity'],
+                                    'direction' => 'out',
+                                    'stock_type' => 'subtract',
+                                    'company_id' => $data['company_id'],
+                                    'branch_id' => $data['branch_id'],
+                                ];
+                            $movement = StockMovement::create($stockDataMovement);
 
                             foreach ($dataGroup['fields'] as $field) {
 
-                                TransactionPivot::create([
+                                $transactionPivot = [
                                     'company_id' => $data['company_id'],
                                     'branch_id' => $data['branch_id'],
                                     'type' => 'stock_adjustment',
                                     'direction' => 'out',
-
                                     'stock_product_id' => $field['stock_product_id'] ?? null,
                                     'stock_movement_id' => $field['stock_movement_id'] ?? null,
-
                                     'product_id' => $product['product_id'],
                                     'quantity_index' => $field['quantity_index'],
                                     'quantity_type' => 'regular',
-                                ]);
+
+                                ];
+                                TransactionPivot::create($transactionPivot);
                             }
                         }
                     }
@@ -212,36 +206,39 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                         $product['quantity']
                     );
 
-                    $movement = StockMovement::create([
+                    $movementData = [
                         'stock_id' => $stock->id,
                         'product_id' => $product['product_id'],
                         'measure_unit_id' => $product['measure_unit_id'],
                         'quantity' => $quantity,
-
                         'type' => 'stock_adjustment',
                         'direction' => 'in',
                         'stock_type' => 'add',
-
                         'company_id' => $data['company_id'],
                         'branch_id' => $data['branch_id'],
-                    ]);
+
+                    ];
+
+                    $movement = StockMovement::create($movementData);
 
                     if (!empty($fieldValues)) {
 
                         foreach ($fieldValues as $index => $group) {
                             foreach ($group as $field) {
 
-                                StockProductFieldValue::create([
+                                $fieldValues = [
                                     'stock_id' => $stock->id,
                                     'company_id' => $data['company_id'],
                                     'branch_id' => $data['branch_id'],
-                                    'stock_movment_id' => $movement->id,
-
+                                    'stock_movement_id' => $movement->id,
                                     'product_id' => $product['product_id'],
                                     'quantity_index' => $index,
+                                    'quantity_type' => 'regular',
                                     'key' => $field['key'],
                                     'value' => $field['value'],
-                                ]);
+                                ];
+
+                                StockProductFieldValue::create($fieldValues);
                             }
                         }
                     }

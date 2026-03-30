@@ -13,11 +13,10 @@ class FiscalYear extends Model
     
 
     protected $fillable = [
-        'name',
-        'name_np',
-        'start_date',
-        'end_date',
-        'is_active',
+        'year_en',
+        'year_np',
+        'status'
+       
        
     ];
 }

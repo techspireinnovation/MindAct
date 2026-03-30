@@ -98,7 +98,7 @@ class SetupTenantJob implements ShouldQueue
             FiscalYear::create([
                 'year_en' => '2026-27',
                 'year_np' => '2082-83',
-
+                
                 'status' => true,
             ]);
 

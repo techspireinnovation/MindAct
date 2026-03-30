@@ -10,13 +10,15 @@ class FiscalYear extends Model
 {
 
     use SoftDeletes, HasFactory;
-    
+
+    protected $connection = 'tenant';
+
 
     protected $fillable = [
         'year_en',
         'year_np',
         'status'
-       
-       
+
+
     ];
 }

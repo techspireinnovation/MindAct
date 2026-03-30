@@ -34,6 +34,7 @@ class StoreRequest extends FormRequest
             'invoice_date_bs' => 'nullable|date_format:Y-m-d',
             'party_id' => 'nullable|integer',
             'location_id' => 'nullable|integer',
+            'store_id' => 'nullable|integer',
             'type' => 'nullable|string|max:255',
             'batch_no' => 'nullable|string|max:255',
             'credit_days' => 'nullable|string|max:255',

@@ -46,7 +46,7 @@ return new class extends Migration {
             $table->string('purchase_type')->nullable();
             $table->string('document_number')->nullable();
             $table->string('reasons')->nullable();
-            $table->string('dscount_type')->nullable();
+            $table->string('discount_type')->nullable();
             $table->decimal('discount_value', 15, 2)->nullable();
             $table->decimal('discount_after_vat', 15, 2)->nullable();
             $table->decimal('sub_total_before_discount', 15, 2)->nullable();

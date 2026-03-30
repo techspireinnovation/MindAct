@@ -14,8 +14,9 @@ use App\Models\MeasureUnit;
 use App\Models\ProductList;
 use App\Services\UnitConversionService;
 use App\Services\CurrencyFormatService;
-
+use App\Services\QuantityAllocationService;
 use App\Models\StockProductFieldValue;
+use Exception;
 
 use App\Interfaces\StockAdjustmentRepositoryInterface;
 
@@ -23,10 +24,12 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
 {
 
     protected $unitConversionService;
+
+    protected $quantityAllocationService;
     protected $currencyFormatService;
     protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
+    public function __construct(UnitConversionService $unitConversionService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService, QuantityAllocationService $quantityAllocationService, )
     {
         $this->unitConversionService = $unitConversionService;
         $this->currencyFormatService = $currencyFormatService;
@@ -34,139 +37,226 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
     }
     public function create(array $data)
     {
-
         DB::beginTransaction();
-        $fiscalYearId = FiscalYear::where('status', 1)
-            ->whereNull('deleted_at')
-            ->value('id');
 
-        $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
+        try {
 
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+            $fiscalYearId = FiscalYear::where('status', 1)
+                ->whereNull('deleted_at')
+                ->value('id');
 
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+            $appliedVat = Vat::where('is_active', 1)->value('vat_percent') ?? 0;
 
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
-        $stockValidated = [
+            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat, $taxableAmount) ?? 0;
 
-            'fiscal_year_id' => $fiscalYearId,
-            'company_id' => $data['company_id'],
-            'branch_id' => $data['branch_id'],
-            'invoice_date' => $data['invoice_date'] ?? null,
-            'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
-            'type' => 'stock_adjustment',
-            'bill_number' => $data['bill_number'] ?? null,
-            'address' => $data['address'] ?? null,
-            'store_id' => $data['store_id'] ?? null,
-            'party_id' => $data['party_id'] ?? null,
-            'location_id' => $data['location_id'] ?? null,
-            'batch_no' => $data['batch_no'] ?? null,
-            'credit_days' => $data['credit_days'] ?? null,
-            'balance' => $this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
-            'ref_bill_number' => $data['ref_bill_number'] ?? null,
-            'return_bill_no' => $data['return_bill_no'] ?? null,
-            'reasons' => $data['reasons'] ?? null,
-            'discount_type' => $data['discount_type'] ?? null,
-            'discount_value' => $this->currencyFormatService->cleanCurrency($data['discount_value'] ?? 0) ?? 0,
-            'discount_after_vat' => $this->currencyFormatService->cleanCurrency($data['discount_after_vat'] ?? 0) ?? 0,
-            'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['sub_total_before_discount'] ?? 0) ?? 0,
-            'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
-            'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['non_taxable_amount'] ?? 0) ?? 0,
-            'excise_duty' => $this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
-            'vat_percent' => $data['vat_percent'] ?? 0,
-            'health_insurance' => $this->currencyFormatService->cleanCurrency($data['health_insurance'] ?? 0) ?? 0,
-
-            'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
-            'roundoff_type' => $data['roundoff_type'] ?? null,
-            'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-
-
-            'total_amount' => $totalAmount + $vatAmount,
-            'payment' => json_encode($data['payment']) ?? null,
-            'remarks' => $data['remarks'] ?? null,
-
-        ];
-
-        $stock = Stock::create($stockValidated);
-
-
-        foreach ($data['stock_details'] as $product) {
-
-            $quantity = $this->unitConversionService->convertToBaseUnit(
-
-                $product['measure_unit_id'],
-                $product['quantity']
-            );
-
-
-            $productValidated = [
-                'stock_id' => $stock->id,
-                'product_id' => $product['product_id'],
-                'measure_unit_id' => $product['measure_unit_id'],
-                'type' => 'stock_adjustment',
-                'quantity' => $quantity,
-                'is_vatable' => $product['is_vatable'],
-                'stock_type' => $product['stock_type'] ?? null,
+            $stockData = [
                 'fiscal_year_id' => $fiscalYearId,
                 'company_id' => $data['company_id'],
                 'branch_id' => $data['branch_id'],
-                'direction' => $product['direction'] ?? 'in',
+                'store_id' => $data['store_id'] ?? null,
+                'type' => 'stock_adjustment',
+
+                'bill_number' => $data['bill_number'] ?? null,
+                'invoice_date' => $data['invoice_date'] ?? null,
+                'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
                 'party_id' => $data['party_id'] ?? null,
-                'expiry_date' => $product['expiry_date'] ?? null,
-                'mfd' => $product['mfd'] ?? null,
-                'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0),
-                'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0),
-                'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0),
-                'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0),
-                'batch_no' => $product['batch_no'] ?? null,
+                'location_id' => $data['location_id'] ?? null,
+                'batch_no' => $data['batch_no'] ?? null,
+                'credit_days' => $data['credit_days'] ?? null,
+                'balance' => $this->currencyFormatService->cleanCurrency($data['balance'] ?? 0) ?? 0,
+                'ref_bill_number' => $data['ref_bill_number'] ?? null,
+                'return_bill_no' => $data['return_bill_no'] ?? null,
+                'reasons' => $data['reasons'] ?? null,
+                'discount_type' => $data['discount_type'] ?? null,
+                'discount_value' => $this->currencyFormatService->cleanCurrency($data['discount_value'] ?? 0) ?? 0,
+                'discount_after_vat' => $this->currencyFormatService->cleanCurrency($data['discount_after_vat'] ?? 0) ?? 0,
+                'sub_total_before_discount' => $this->currencyFormatService->cleanCurrency($data['sub_total_before_discount'] ?? 0) ?? 0,
+                'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
+                'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['non_taxable_amount'] ?? 0) ?? 0,
+                'excise_duty' => $this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
+                'vat_percent' => $this->currencyFormatService->cleanCurrency($data['vat_percent'] ?? 0) ?? 0,
+                'health_insurance' => $this->currencyFormatService->cleanCurrency($data['health_insurance'] ?? 0) ?? 0,
+                'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
+                'roundoff_type' => $data['roundoff_type'] ?? null,
+                'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
+
+
+                'total_amount' => $totalAmount + $vatAmount,
+                'payment' => json_encode($data['payment']) ?? null,
+                'remarks' => $data['remarks'] ?? null,
             ];
 
+            $stock = Stock::create($stockData);
 
-            $stockMovement = StockMovement::create($productValidated);
+            foreach ($data['stock_details'] as $product) {
+
+                $fieldValues = $product['field_values'] ?? [];
 
 
-            if (!empty($product['field_values']) && $product['stock_type'] === 'add') {
+                if ($product['stock_type'] == "subtract") {
 
-                foreach ($product['field_values'] as $quantityIndex => $group) {
-                    foreach ($group as $field) {
 
-                        StockProductFieldValue::create([
-                            'stock_id' => $stock->id,
-                            'company_id' => $data['company_id'],
-                            'branch_id' => $data['branch_id'],
-                            'stock_movement_id' => $stockMovement->id,
-                            'product_id' => $stockMovement->product_id,
-                            'quantity_index' => $quantityIndex,
-                            'key' => $field['key'],
-                            'value' => $field['value'],
-                        ]);
+                    if (empty($fieldValues)) {
+
+                        $baseQuantity = $this->unitConversionService->convertToBaseUnit(
+                            $product['measure_unit_id'],
+                            $product['quantity']
+                        );
+
+                        $allocatedQtys = $this->quantityAllocationService
+                            ->allocateItemWiseWiseQuantity($product['product_id'], $baseQuantity);
+
+                        $totalAllocated = collect($allocatedQtys)->sum('quantity');
+
+                        if ($totalAllocated < $baseQuantity) {
+                            DB::rollBack();
+                            throw new Exception('Return quantity exceeds available stock');
+                        }
+
+                        foreach ($allocatedQtys as $alloc) {
+
+                            StockMovement::create([
+                                'stock_id' => $stock->id,
+                                'fiscal_year_id' => $fiscalYearId,
+                                'source_type' => $alloc['source_type'],
+                                'source_id' => $alloc['source_id'],
+                                'stock_product_id' => $alloc['stock_product_id'],
+                                'stock_movement_id' => $alloc['stock_movement_id'] ?? null,
+
+                                'product_id' => $product['product_id'],
+                                'measure_unit_id' => $product['measure_unit_id'],
+                                'type' => 'stock_adjustment',
+                                'quantity' => $alloc['quantity'],
+
+                                'direction' => 'out',
+                                'stock_type' => 'subtract',
+
+                                'company_id' => $data['company_id'],
+                                'branch_id' => $data['branch_id'],
+                            ]);
+                        }
+                    } else {
+
+                        $grouped = [];
+
+                        foreach ($fieldValues as $group) {
+                            foreach ($group as $field) {
+
+                                $stockProductId = $field['stock_product_id'];
+                                $stockMovementId = $field['stock_movement_id'] ?? null;
+
+                                if (!isset($grouped[$stockProductId])) {
+                                    $grouped[$stockProductId] = [
+                                        'stock_movement_id' => $stockMovementId,
+                                        'quantity' => 0,
+                                        'fields' => []
+                                    ];
+                                }
+
+                                $grouped[$stockProductId]['quantity']++;
+                                $grouped[$stockProductId]['fields'][] = $field;
+                            }
+                        }
+
+                        foreach ($grouped as $stockProductId => $dataGroup) {
+
+                            $stockMovementId = $dataGroup['stock_movement_id'];
+
+                            $sourceType = $stockMovementId ? 'stock_movement' : 'stock_product';
+                            $sourceId = $stockMovementId ?? $stockProductId;
+
+                            $transaction = StockMovement::create([
+                                'stock_id' => $stock->id,
+                                'fiscal_year_id' => $fiscalYearId,
+                                'source_type' => $sourceType,
+                                'source_id' => $sourceId,
+                                'stock_product_id' => $stockProductId,
+                                'stock_movement_id' => $stockMovementId,
+
+                                'product_id' => $product['product_id'],
+                                'measure_unit_id' => $product['measure_unit_id'],
+                                'type' => 'stock_adjustment',
+                                'quantity' => $dataGroup['quantity'],
+
+                                'direction' => 'out',
+                                'stock_type' => 'subtract',
+
+                                'company_id' => $data['company_id'],
+                                'branch_id' => $data['branch_id'],
+                            ]);
+
+                            foreach ($dataGroup['fields'] as $field) {
+
+                                TransactionPivot::create([
+                                    'company_id' => $data['company_id'],
+                                    'branch_id' => $data['branch_id'],
+                                    'type' => 'stock_adjustment',
+                                    'direction' => 'out',
+
+                                    'stock_product_id' => $field['stock_product_id'] ?? null,
+                                    'stock_movement_id' => $field['stock_movement_id'] ?? null,
+
+                                    'product_id' => $product['product_id'],
+                                    'quantity_index' => $field['quantity_index'],
+                                    'quantity_type' => 'regular',
+                                ]);
+                            }
+                        }
                     }
-                }
-            } else {
-                foreach ($product['field_values'] as $quantityIndex => $group) {
-                    foreach ($group as $field) {
+                } elseif ($product['stock_type'] == "add") {
 
-                        TransactionPivot::create([
-                            'stock_id' => $stock->id,
-                            'company_id' => $data['company_id'],
-                            'branch_id' => $data['branch_id'],
-                            'stock_product_id' => $field['stock_product_id'] ?? null,
-                            'stock_movement_id' => $field['stock_movement_id'] ?? null,
-                            'product_id' => $stockMovement->product_id,
-                            'quantity_index' => $field['quantity_index'],
-                            'quantity_type' => $field['quantity_type'] ?? 'regular',
-                            
-                        ]);
+                    $quantity = $this->unitConversionService->convertToBaseUnit(
+                        $product['measure_unit_id'],
+                        $product['quantity']
+                    );
+
+                    $movement = StockMovement::create([
+                        'stock_id' => $stock->id,
+                        'product_id' => $product['product_id'],
+                        'measure_unit_id' => $product['measure_unit_id'],
+                        'quantity' => $quantity,
+
+                        'type' => 'stock_adjustment',
+                        'direction' => 'in',
+                        'stock_type' => 'add',
+
+                        'company_id' => $data['company_id'],
+                        'branch_id' => $data['branch_id'],
+                    ]);
+
+                    if (!empty($fieldValues)) {
+
+                        foreach ($fieldValues as $index => $group) {
+                            foreach ($group as $field) {
+
+                                StockProductFieldValue::create([
+                                    'stock_id' => $stock->id,
+                                    'company_id' => $data['company_id'],
+                                    'branch_id' => $data['branch_id'],
+                                    'stock_movment_id' => $movement->id,
+
+                                    'product_id' => $product['product_id'],
+                                    'quantity_index' => $index,
+                                    'key' => $field['key'],
+                                    'value' => $field['value'],
+                                ]);
+                            }
+                        }
                     }
                 }
             }
+
+            DB::commit();
+
+            return $stock->load('stockTransactions');
+
+        } catch (\Exception $e) {
+
+            DB::rollBack();
+            throw $e;
         }
-        DB::commit();
-
-        return $stock->load('stockMovements.stockProductFieldValues');
-
-
-
     }
 
     public function update($id, array $data)

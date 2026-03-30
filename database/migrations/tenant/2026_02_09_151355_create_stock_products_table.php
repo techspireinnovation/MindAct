@@ -21,7 +21,7 @@ return new class extends Migration {
                 ->constrained('stocks')
                 ->onDelete('cascade');
 
-            $table->foreignId('party_id')
+            $table->foreignId('party_id')->nullable()
                 ->constrained('parties')
                 ->onDelete('cascade');
 

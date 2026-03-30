@@ -74,6 +74,21 @@ class AvaialableProductsService
             ->select('product_id', DB::raw('SUM(quantity) as movement_out'))
             ->groupBy('product_id');
 
+        $adjustmentOut = StockMovement::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'stock_adjustment')
+            ->where('stock_type', 'subtract')
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as adjustment_out'))
+            ->groupBy('product_id');
+
+        $adjustmentIn = StockMovement::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'stock_adjustment')
+            ->where('stock_type', 'add')
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as adjustment_in'))
+            ->groupBy('product_id');
 
         $transactionIn = StockTransaction::where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -110,6 +125,12 @@ class AvaialableProductsService
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
                 $join->on('p.id', '=', 'rmi.product_id');
             })
+            ->leftJoinSub($adjustmentOut, 'ao', function ($join) {
+                $join->on('p.id', '=', 'ao.product_id');
+            })
+            ->leftJoinSub($adjustmentIn, 'ai', function ($join) {
+                $join->on('p.id', '=', 'ai.product_id');
+            })
 
             ->select(
                 'p.id',
@@ -121,6 +142,8 @@ class AvaialableProductsService
                 + COALESCE(si.stock_in,0)
                 - COALESCE(mo.movement_out,0)
                 + COALESCE(rmi.return_movement_in,0)
+                - COALESCE(ao.adjustment_out,0)
+                + COALESCE(ai.adjustment_in,0)
 
                 as available_quantity
             ')
@@ -167,6 +190,24 @@ class AvaialableProductsService
             ->select('product_id', DB::raw('SUM(quantity) as movement_out'))
             ->groupBy('product_id');
 
+        $adjustmentOut = StockMovement::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'stock_adjustment')
+            ->where('stock_type', 'subtract')
+            ->where('product_id', $productId)
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as adjustment_out'))
+            ->groupBy('product_id');
+
+        $adjustmentIn = StockMovement::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'stock_adjustment')
+            ->where('stock_type', 'add')
+            ->where('product_id', $productId)
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as adjustment_in'))
+            ->groupBy('product_id');
+
 
         $transactionIn = StockTransaction::where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -204,6 +245,12 @@ class AvaialableProductsService
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
                 $join->on('p.id', '=', 'rmi.product_id');
             })
+            ->leftJoinSub($adjustmentIn, 'ai', function ($join) {
+                $join->on('p.id', '=', 'ai.product_id');
+            })
+            ->leftJoinSub($adjustmentOut, 'ao', function ($join) {
+                $join->on('p.id', '=', 'ao.product_id');
+            })
 
             ->select(
                 'p.id',
@@ -215,6 +262,9 @@ class AvaialableProductsService
                 + COALESCE(si.stock_in,0)
                 - COALESCE(mo.movement_out,0)
                 + COALESCE(rmi.return_movement_in,0)
+                - COALESCE(ao.adjustment_out,0)
+                + COALESCE(ai.adjustment_in,0)
+                
 
                 as available_quantity
             ')
@@ -228,8 +278,8 @@ class AvaialableProductsService
             ->where('branch_id', $branchId)
             ->where('product_id', $productId)
             ->whereNull('deleted_at')
-            ->select('product_id', 'stock_product_id', 'quantity_index')
-            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->select('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index')
+            ->groupBy('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index')
             ->get();
 
 
@@ -243,19 +293,22 @@ class AvaialableProductsService
             ->select(
                 'product_id',
                 'stock_product_id',
+                'stock_movement_id',
                 'quantity_index',
                 DB::raw("
                 SUM(
                     CASE
                         WHEN type = 'sale' THEN -1
                         WHEN type = 'purchase_return' THEN -1
+                        WHEN type = 'stock_adjustment' THEN -1
+                      
                         WHEN type = 'sales_return' THEN 1
                         ELSE 0
                     END
                 ) as effect
             ")
             )
-            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->groupBy('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index')
             ->get();
 
 
@@ -272,7 +325,8 @@ class AvaialableProductsService
             if ($available > 0) {
                 return [
                     "product_id" => $variant->product_id,
-                    "stock_product_id" => $variant->stock_product_id,
+                    "stock_product_id" => $variant->stock_product_id ?? null,
+                    "stock_movement_id" => $variant->stock_movement_id ?? null,
                     "quantity_index" => $variant->quantity_index
                 ];
             }

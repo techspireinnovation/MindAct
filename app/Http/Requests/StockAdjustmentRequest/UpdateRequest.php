@@ -34,13 +34,13 @@ class UpdateRequest extends FormRequest
             'invoice_date' => 'nullable|date_format:Y-m-d',
             'invoice_date_bs' => 'nullable|date_format:Y-m-d',
             'type' => 'nullable|string|max:255',
-            'bill_number' => [
-                'nullable',
-                'string',
-                Rule::unique('stocks')
-                    ->ignore($id)
-                    ->whereNull('deleted_at')
-            ],
+            // 'bill_number' => [
+            //     'nullable',
+            //     'string',
+            //     Rule::unique('stocks')
+            //         ->ignore($id)
+            //         ->whereNull('deleted_at')
+            // ],
 
 
             'party_id' => 'nullable|integer',

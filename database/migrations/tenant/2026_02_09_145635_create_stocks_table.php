@@ -16,21 +16,21 @@ return new class extends Migration {
                 ->constrained('fiscal_years')
                 ->onDelete('cascade');
             $table->unsignedBigInteger('company_id');
-            $table->foreignId('bank_id')
+            $table->foreignId('bank_id')->nullable()
                 ->constrained('banks')
                 ->onDelete('cascade');
             $table->foreignId('branch_id')
                 ->constrained('branches')
                 ->onDelete('cascade');
-            $table->foreignId('party_id')
+            $table->foreignId('party_id')->nullable()
                 ->constrained('parties')
                 ->onDelete('cascade');
 
-            $table->foreignId('store_id')
+            $table->foreignId('store_id')->nullable()
                 ->constrained('stores')
                 ->onDelete('cascade');
 
-            $table->foreignId('location_id')
+            $table->foreignId('location_id')->nullable()
                 ->constrained('locations')
                 ->onDelete('cascade');
             $table->string('type')->nullable();
@@ -46,7 +46,7 @@ return new class extends Migration {
             $table->string('purchase_type')->nullable();
             $table->string('document_number')->nullable();
             $table->string('reasons')->nullable();
-            $table->string('dscount_type')->nullable();
+            $table->string('discount_type')->nullable();
             $table->decimal('discount_value', 15, 2)->nullable();
             $table->decimal('discount_after_vat', 15, 2)->nullable();
             $table->decimal('sub_total_before_discount', 15, 2)->nullable();

@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\Branch;
+use App\Models\FiscalYear;
 use App\Models\PurchaseMasterKey;
 use App\Models\SalesMasterKey;
 use App\Models\ProductType;
@@ -92,6 +93,13 @@ class SetupTenantJob implements ShouldQueue
                 ['name' => 'Assets', 'delete_status' => 0, 'is_primary' => false],
                 ['name' => 'Service', 'delete_status' => 0, 'is_primary' => false],
                 ['name' => 'Raw Materials', 'delete_status' => 0, 'is_primary' => false],
+            ]);
+
+            FiscalYear::create([
+                'year_en' => '2026-27',
+                'year_np' => '2082-83',
+
+                'status' => true,
             ]);
 
 

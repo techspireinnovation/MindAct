@@ -272,7 +272,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
 
-                            'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                            // 'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
 
 
                             'is_vatable' => $product['is_vatable'],

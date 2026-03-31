@@ -92,7 +92,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => json_encode($data['payment']) ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
         ];
 
@@ -267,7 +267,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
 
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => json_encode($data['payment']) ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
         ];
 
@@ -537,7 +537,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
             //         return [$key => $field];
             //     });
 
-           
+
             $newProduct['field_values'] = collect($fieldValues)
                 ->map(function ($item) use ($configFields) {
 
@@ -546,7 +546,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                     $isDropdown = ($fieldConfig['type'] ?? null) == 'dropdown';
 
                     return [
-                      
+
                         'id' => $item['id'] ?? null,
                         'stock_id' => $item['stock_id'] ?? null,
                         'company_id' => $item['company_id'] ?? null,
@@ -562,7 +562,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                         'updated_at' => $item['updated_at'] ?? null,
                         'deleted_at' => $item['deleted_at'] ?? null,
 
-                       
+
                         'type' => $fieldConfig['type'] ?? 'text',
                         'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
                     ];
@@ -570,7 +570,7 @@ class StockPurchaseRepository implements StockPurchaseRepositoryInterface
                 ->values()
                 ->toArray();
 
-          
+
             $productId = $product->product_id;
 
             $productUnitIds = Product::where('id', $productId)

@@ -78,7 +78,7 @@ class StockRepository implements StockRepositoryInterface
 
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => json_encode($data['payment']) ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
         ];
@@ -197,7 +197,7 @@ class StockRepository implements StockRepositoryInterface
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => json_encode($data['payment']) ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
         ];

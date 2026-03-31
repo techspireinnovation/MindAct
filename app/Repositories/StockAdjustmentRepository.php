@@ -247,7 +247,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
 
             DB::commit();
 
-            return $stock->load('stockTransactions');
+            return $stock->load('stockMovements');
 
         } catch (\Exception $e) {
 

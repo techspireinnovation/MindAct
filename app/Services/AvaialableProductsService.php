@@ -305,8 +305,8 @@ class AvaialableProductsService
             ->where('branch_id', $branchId)
             ->where('product_id', $productId)
             ->whereNull('deleted_at')
-            ->select('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index')
-            ->groupBy('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index')
+            ->select('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index', 'key', 'value')
+            ->groupBy('product_id', 'stock_product_id', 'stock_movement_id', 'quantity_index', 'key', 'value')
             ->get();
 
 
@@ -354,7 +354,9 @@ class AvaialableProductsService
                     "product_id" => $variant->product_id,
                     "stock_product_id" => $variant->stock_product_id ?? null,
                     "stock_movement_id" => $variant->stock_movement_id ?? null,
-                    "quantity_index" => $variant->quantity_index
+                    "quantity_index" => $variant->quantity_index,
+                    "key" => $variant->key,
+                    "value" => $variant->value,
                 ];
             }
 

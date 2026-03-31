@@ -226,7 +226,25 @@ class AvaialableProductsService
             ->groupBy('product_id');
 
 
+        $measureUnits = DB::table('product_lists as pl')
+            ->join('measure_units as mu', 'pl.measure_unit_id', '=', 'mu.id')
+            ->whereNull('pl.deleted_at')
+            ->select(
+                'pl.product_id',
+                'pl.measure_unit_id as id',
+                'mu.name',
+
+                'pl.price',
+                'pl.discount',
+                'pl.final_price',
+                'pl.is_primary'
+            )
+            ->get()
+            ->groupBy('product_id');
+
+
         $products = DB::table('products as p')
+            ->leftJoin('measure_units as mu', 'p.measure_unit_id', '=', 'mu.id')
             ->leftJoinSub($movementIn, 'mi', function ($join) {
                 $join->on('p.id', '=', 'mi.product_id');
             })
@@ -255,6 +273,15 @@ class AvaialableProductsService
             ->select(
                 'p.id',
                 'p.name',
+                'p.purchase_rate',
+                'p.retail_price',
+                'p.wholesale_price',
+                'p.mrp_price',
+                'p.measure_unit_id',
+
+                'mu.name as measure_unit_name',
+                'mu.quantity as measure_unit_quantity',
+
                 DB::raw('
                 COALESCE(mi.movement_in,0)
                 + COALESCE(ti.transaction_in,0)
@@ -344,6 +371,28 @@ class AvaialableProductsService
                 ->where('product_id', $product->id)
                 ->values();
 
+            $baseUnit = [
+                "id" => $product->measure_unit_id,
+                "name" => $product->measure_unit_name,
+                "quantity" => $product->measure_unit_quantity
+
+            ];
+
+            $otherUnits = collect($measureUnits[$product->id] ?? [])
+                ->map(function ($unit) {
+                    return [
+                        "id" => $unit->id,
+                        "name" => $unit->name,
+                        "quantity" => $unit->quantity,
+
+
+                    ];
+                });
+
+            $product->measure_units = collect([$baseUnit])
+                ->merge($otherUnits)
+                ->unique('id')
+                ->values();
             return $product;
         });
 

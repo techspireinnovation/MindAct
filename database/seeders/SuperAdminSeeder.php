@@ -28,7 +28,7 @@ class SuperAdminSeeder extends Seeder
         $user = User::whereEmail('superadmin@mantraerp.com')->first();
         $user->assignRole($role);
 
-        // Create Company Admin
+       
         Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
     }
 }

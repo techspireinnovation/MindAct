@@ -64,6 +64,11 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
+        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+
+        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+
+        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
 
 
         $stockData = [
@@ -96,14 +101,9 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
-
-            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
-
-            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => $data['payment'] ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
         ];
@@ -381,6 +381,11 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
             ->whereNull('deleted_at')
             ->value('id');
 
+        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+
+        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+
+        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
 
         $stockValidated = [
             'fiscal_year_id' => $fiscalYearId,
@@ -413,7 +418,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
             'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
-            'payment' => $data['payment'] ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
         ];
 

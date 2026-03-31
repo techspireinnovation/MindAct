@@ -39,7 +39,7 @@ class StockController extends Controller
 
         try {
             $data = $this->repository->create($request->validated());
-            return response()->json(['message' => 'Stock created successfully !', 'data' => $data], 201);
+            return response()->json(['message' => 'Stock created successfully !!', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock not found !!'], 404);

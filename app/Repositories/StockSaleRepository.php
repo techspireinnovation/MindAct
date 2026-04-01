@@ -63,6 +63,11 @@ class StockSaleRepository implements StockSaleRepositoryInterface
 
         //@todo: generate bill numbers for this and it should be unique for the company and bill type
 
+        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+
+        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+
+        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
 
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
@@ -93,14 +98,9 @@ class StockSaleRepository implements StockSaleRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
-
-            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
-
-            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => $data['payment'] ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
         ];
@@ -276,7 +276,7 @@ class StockSaleRepository implements StockSaleRepositoryInterface
                             'branch_id' => $data['branch_id'],
                             'stock_product_id' => $stockProductId,
                             'sales_bill_number' => $data['bill_number'] ?? null,
-                            'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
+                            // 'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                             'is_vatable' => $product['is_vatable'],
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,

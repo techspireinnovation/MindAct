@@ -405,84 +405,6 @@ class AvaialableProductsService
     }
 
 
-    public function productListforTransactionItemWiseSalesReturn($companyId, $branchId)
-    {
-
-        $transactionIn = StockTransaction::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sale')
-            ->whereNull('deleted_at')
-            ->select('product_id', DB::raw('SUM(quantity) as transaction_in'))
-            ->groupBy('product_id');
-
-
-        $movementIn = StockMovement::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sale')
-
-            ->whereNull('deleted_at')
-            ->select('product_id', DB::raw('SUM(quantity) as movement_in'))
-            ->groupBy('product_id');
-
-
-        $transactionOut = StockTransaction::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-            ->whereNull('deleted_at')
-            ->select('product_id', DB::raw('SUM(quantity) as transaction_out'))
-            ->groupBy('product_id');
-
-        $movementOut = StockMovement::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-
-            ->whereNull('deleted_at')
-            ->select('product_id', DB::raw('SUM(quantity) as movement_out'))
-            ->groupBy('product_id');
-
-
-
-
-
-
-
-        $products = DB::table('products as p')
-            ->leftJoinSub($movementIn, 'mi', function ($join) {
-                $join->on('p.id', '=', 'mi.product_id');
-            })
-            ->leftJoinSub($transactionOut, 'to', function ($join) {
-                $join->on('p.id', '=', 'to.product_id');
-            })
-            ->leftJoinSub($transactionIn, 'ti', function ($join) {
-                $join->on('p.id', '=', 'ti.product_id');
-            })
-
-            ->leftJoinSub($movementOut, 'mo', function ($join) {
-                $join->on('p.id', '=', 'mo.product_id');
-            })
-
-
-            ->select(
-                'p.id',
-                'p.name',
-                DB::raw('
-                COALESCE(mi.movement_in,0)
-                + COALESCE(ti.transaction_in,0)
-                - COALESCE(to.transaction_out,0)
-                
-                - COALESCE(mo.movement_out,0)
-               
-
-                as available_quantity
-            ')
-            )
-            ->havingRaw('available_quantity > 0')
-            ->get();
-
-        return $products;
-    }
-
-
     public function productListforTransactionItemWiseSalesReturnDetails($companyId, $branchId, $productId)
     {
         $transactionIn = StockTransaction::where('company_id', $companyId)
@@ -522,9 +444,24 @@ class AvaialableProductsService
 
 
 
+        $measureUnits = DB::table('product_lists as pl')
+            ->join('measure_units as mu', 'pl.measure_unit_id', '=', 'mu.id')
+            ->whereNull('pl.deleted_at')
+            ->select(
+                'pl.product_id',
+                'pl.measure_unit_id as id',
+                'mu.name',
 
+                'pl.price',
+                'pl.discount',
+                'pl.final_price',
+                'pl.is_primary'
+            )
+            ->get()
+            ->groupBy('product_id');
 
         $products = DB::table('products as p')
+            ->leftJoin('measure_units as mu', 'p.measure_unit_id', '=', 'mu.id')
             ->leftJoinSub($movementIn, 'mi', function ($join) {
                 $join->on('p.id', '=', 'mi.product_id');
             })
@@ -543,6 +480,14 @@ class AvaialableProductsService
             ->select(
                 'p.id',
                 'p.name',
+                'p.purchase_rate',
+                'p.retail_price',
+                'p.wholesale_price',
+                'p.mrp_price',
+                'p.measure_unit_id',
+
+                'mu.name as measure_unit_name',
+                'mu.quantity as measure_unit_quantity',
                 DB::raw('
                 COALESCE(mi.movement_in,0)
                 + COALESCE(ti.transaction_in,0)
@@ -565,12 +510,18 @@ class AvaialableProductsService
             ->select(
                 'product_id',
                 'stock_product_id',
-                'quantity_index'
+                'quantity_index',
+                'quantity_type',
+                'key',
+                'value'
             )
             ->groupBy(
                 'product_id',
                 'stock_product_id',
-                'quantity_index'
+                'quantity_index',
+                'quantity_type',
+                'key',
+                'value'
             )
             ->get();
 
@@ -624,7 +575,9 @@ class AvaialableProductsService
                     "stock_product_id" => $variant->stock_product_id,
                     "stock_transaction_id" => $variant->stock_transaction_id ?? null,
                     "stock_movement_id" => $variant->stock_movement_id ?? null,
-                    "quantity_index" => $variant->quantity_index
+                    "quantity_index" => $variant->quantity_index,
+                    "key" => $variant->key,
+                    "value" => $variant->value,
                 ];
             }
 
@@ -641,6 +594,29 @@ class AvaialableProductsService
                 ->where('product_id', $product->id)
                 ->values();
 
+            $baseUnit = [
+                "id" => $product->measure_unit_id,
+                "name" => $product->measure_unit_name,
+                "quantity" => $product->measure_unit_quantity
+
+            ];
+
+            $otherUnits = collect($measureUnits[$product->id] ?? [])
+                ->map(function ($unit) {
+                    return [
+                        "id" => $unit->id,
+                        "name" => $unit->name,
+                        "quantity" => $unit->quantity,
+
+
+                    ];
+                });
+
+            $product->measure_units = collect([$baseUnit])
+                ->merge($otherUnits)
+                ->unique('id')
+                ->values();
+
             return $product;
         });
 
@@ -649,6 +625,82 @@ class AvaialableProductsService
 
 
     }
+
+
+    public function productListforTransactionItemWiseSalesReturn($companyId, $branchId)
+    {
+
+        $transactionIn = StockTransaction::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sale')
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as transaction_in'))
+            ->groupBy('product_id');
+
+
+        $movementIn = StockMovement::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sale')
+
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as movement_in'))
+            ->groupBy('product_id');
+
+
+        $transactionOut = StockTransaction::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sales_return')
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as transaction_out'))
+            ->groupBy('product_id');
+
+        $movementOut = StockMovement::where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sales_return')
+
+            ->whereNull('deleted_at')
+            ->select('product_id', DB::raw('SUM(quantity) as movement_out'))
+            ->groupBy('product_id');
+
+
+        $products = DB::table('products as p')
+            ->leftJoinSub($movementIn, 'mi', function ($join) {
+                $join->on('p.id', '=', 'mi.product_id');
+            })
+            ->leftJoinSub($transactionOut, 'to', function ($join) {
+                $join->on('p.id', '=', 'to.product_id');
+            })
+            ->leftJoinSub($transactionIn, 'ti', function ($join) {
+                $join->on('p.id', '=', 'ti.product_id');
+            })
+
+            ->leftJoinSub($movementOut, 'mo', function ($join) {
+                $join->on('p.id', '=', 'mo.product_id');
+            })
+
+
+            ->select(
+                'p.id',
+                'p.name',
+                DB::raw('
+                COALESCE(mi.movement_in,0)
+                + COALESCE(ti.transaction_in,0)
+                - COALESCE(to.transaction_out,0)
+                
+                - COALESCE(mo.movement_out,0)
+               
+
+                as available_quantity
+            ')
+            )
+            ->havingRaw('available_quantity > 0')
+            ->get();
+
+        return $products;
+    }
+
+
+
 
     public function productListforTransactionBillWisePurchaseReturn($companyId, $branchId)
     {
@@ -1450,7 +1502,7 @@ class AvaialableProductsService
                 $fields = $fieldValues
                     ->filter(function ($item) use ($variant) {
                         return (
-                            $item->product_id == $variant->product_id   
+                            $item->product_id == $variant->product_id
                             &&
                             (
                                 $item->stock_product_id == $variant->stock_product_id ||

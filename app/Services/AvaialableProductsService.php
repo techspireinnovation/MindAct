@@ -1450,8 +1450,12 @@ class AvaialableProductsService
                 $fields = $fieldValues
                     ->filter(function ($item) use ($variant) {
                         return (
-                            ($item->stock_product_id == $variant->stock_product_id ||
-                                $item->stock_movement_id == $variant->stock_movement_id)
+                            $item->product_id == $variant->product_id   
+                            &&
+                            (
+                                $item->stock_product_id == $variant->stock_product_id ||
+                                $item->stock_movement_id == $variant->stock_movement_id
+                            )
                             &&
                             $item->quantity_index == $variant->quantity_index
                         );

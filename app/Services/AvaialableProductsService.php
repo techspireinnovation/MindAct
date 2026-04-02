@@ -1480,9 +1480,9 @@ class AvaialableProductsService
 
             ->filter()
             ->flatten(1)
-            ->unique(function ($item) {
-                return ($item['stock_product_id'] ?? 'null') . '-' . ($item['quantity_index'] ?? '0');
-            })
+            // ->unique(function ($item) {
+            //     return ($item['stock_product_id'] ?? 'null') . '-' . ($item['quantity_index'] ?? '0');
+            // })
 
             ->values();
 

@@ -1502,7 +1502,7 @@ class AvaialableProductsService
                     "quantity" => $product->measure_unit_quantity
                 ]
             ];
-            unset($product->measure_unit_id);
+            // unset($product->measure_unit_id);
             unset($product->measure_unit_name);
 
             return $product;

@@ -87,7 +87,7 @@ class StoreRequest extends FormRequest
             'stock_details.*.field_values.*.*.product_id' => 'nullable|numeric',
 
             'stock_details.*.field_values.*.*.stock_product_id' => 'nullable|numeric',
-            'stock_details.*.field_values.*.*.stock_movement_id' => 'nullable|string|max:255',
+            'stock_details.*.field_values.*.*.stock_movement_id' => 'nullable|numeric',
             'stock_details.*.field_values.*.*.quantity_index' => 'nullable|numeric',
             'stock_details.*.field_values.*.*.quantity_type' => 'nullable|string|max:255',
 

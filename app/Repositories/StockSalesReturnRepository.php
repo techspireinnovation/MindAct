@@ -42,11 +42,6 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
 
 
 
-
-
-
-
-
     public function create(array $data)
     {
         DB::beginTransaction();
@@ -78,6 +73,13 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
         }
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
+        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+
+        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+
+        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
+
+
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
@@ -108,14 +110,9 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
-
-            $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
-
-            $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0,
 
             'total_amount' => $totalAmount + $vatAmount,
-            'payment' => $data['payment'] ?? null,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
         ];
@@ -445,6 +442,13 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             throw new Exception('Sales bill number is required for updating bill wise a sales return.');
         }
 
+        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
+
+        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
+
+        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
+
+
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
@@ -474,8 +478,8 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
-            'payment' => $data['payment'] ?? null,
+            'total_amount' => $totalAmount + $vatAmount,
+            'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
         ];

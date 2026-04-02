@@ -140,36 +140,44 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                         foreach ($fieldValues as $group) {
                             foreach ($group as $field) {
 
-                                $stockProductId = $field['stock_product_id'];
+                                $stockProductId = $field['stock_product_id'] ?? null;
                                 $stockMovementId = $field['stock_movement_id'] ?? null;
 
-                                if (!isset($grouped[$stockProductId])) {
-                                    $grouped[$stockProductId] = [
+                                if (!$stockProductId && !$stockMovementId) {
+                                    throw new Exception('Either stock_product_id or stock_movement_id is required');
+                                }
+
+                                $groupKey = $stockProductId ?: 'sm_' . $stockMovementId;
+
+                                if (!isset($grouped[$groupKey])) {
+                                    $grouped[$groupKey] = [
+                                        'stock_product_id' => $stockProductId,
                                         'stock_movement_id' => $stockMovementId,
                                         'quantity' => 0,
                                         'fields' => []
                                     ];
                                 }
 
-                                $grouped[$stockProductId]['quantity']++;
-                                $grouped[$stockProductId]['fields'][] = $field;
+                                $grouped[$groupKey]['quantity']++;
+                                $grouped[$groupKey]['fields'][] = $field;
                             }
                         }
 
-                        foreach ($grouped as $stockProductId => $dataGroup) {
+                        foreach ($grouped as $groupKey => $dataGroup) {
 
+                            $stockProductId = $dataGroup['stock_product_id'];
                             $stockMovementId = $dataGroup['stock_movement_id'];
-                            $sourceType = $stockMovementId ? 'stock_movement' : 'stock_product';
-                            $sourceId = $stockMovementId ?? $stockProductId;
 
+                            $sourceType = $stockMovementId ? 'stock_movement' : 'stock_product';
+                            $sourceId = $stockMovementId ?: $stockProductId;
                             $stockDataMovement =
                                 [
                                     'stock_id' => $stock->id,
                                     'fiscal_year_id' => $fiscalYearId,
                                     'source_type' => $sourceType,
                                     'source_id' => $sourceId,
-                                    'stock_product_id' => $stockProductId,
-                                    'stock_movement_id' => $stockMovementId,
+                                    'stock_product_id' => $stockProductId ?? null,
+                                    'stock_movement_id' => $stockMovementId ?? null,
                                     'product_id' => $product['product_id'],
                                     'measure_unit_id' => $product['measure_unit_id'],
                                     'type' => 'stock_adjustment',

@@ -1253,6 +1253,15 @@ class AvaialableProductsService
     public function productforTransactionBillWiseSalesReturnDetails($companyId, $branchId, $billNumber)
     {
 
+        $stock = DB::table('stocks')
+            ->where('bill_number', $billNumber)
+            ->where('company_id', $companyId)
+            ->first();
+
+        if (!$stock) {
+            return response()->json(["message" => "Bill not found !!"], 404);
+        }
+
         $movementOut = StockMovement::where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sale')
@@ -1296,6 +1305,8 @@ class AvaialableProductsService
             ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
                 $join->on('mo.id', '=', 'rmi.source_id');
             })
+            ->leftJoin('measure_units as mu', 'st.measure_unit_id', '=', 'mu.id')
+
 
             ->where('st.company_id', $companyId)
             ->where('st.branch_id', $branchId)
@@ -1305,18 +1316,36 @@ class AvaialableProductsService
 
             ->select(
                 'st.product_id',
+
                 'p.name as product_name',
+                'st.quantity',
+                'st.price',
+                'st.discount_amount',
+                'st.amount',
+                'st.measure_unit_id',
+                'mu.name as measure_unit_name',
+                'mu.quantity as measure_unit_quantity',
                 DB::raw('
                 SUM(st.quantity)
                 + COALESCE(SUM(mo.movement_out),0)
                 - COALESCE(SUM(ti.transaction_in),0)
                 - COALESCE(SUM(rmi.return_movement_in),0)
-                as quantity
+                as available_quantity
             ')
             )
 
-            ->groupBy('st.product_id', 'p.name')
-            ->havingRaw('quantity > 0')
+            ->groupBy(
+                'st.product_id',
+                'p.name',
+                'st.quantity',
+                'st.price',
+                'st.discount_amount',
+                'st.amount',
+                'st.measure_unit_id',
+                'mu.name',
+                'mu.quantity'
+            )
+            ->havingRaw('available_quantity > 0')
             ->get();
 
 
@@ -1336,7 +1365,10 @@ class AvaialableProductsService
                 'tp.stock_product_id',
                 'tp.stock_transaction_id',
                 'tp.stock_movement_id',
-                'tp.quantity_index'
+                'tp.quantity_index',
+                'tp.quantity_type'
+
+
             )
 
             ->groupBy(
@@ -1344,7 +1376,25 @@ class AvaialableProductsService
                 'tp.stock_product_id',
                 'tp.stock_transaction_id',
                 'tp.stock_movement_id',
-                'tp.quantity_index'
+                'tp.quantity_index',
+                'tp.quantity_type'
+
+
+            )
+            ->get();
+
+        $fieldValues = DB::table('stock_product_field_values')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'stock_movement_id',
+                'quantity_index',
+                'quantity_type',
+                'key',
+                'value'
             )
             ->get();
 
@@ -1361,6 +1411,8 @@ class AvaialableProductsService
                 'product_id',
                 'stock_product_id',
                 'quantity_index',
+                'quantity_type',
+
 
                 DB::raw("
                 SUM(
@@ -1376,7 +1428,9 @@ class AvaialableProductsService
             ->groupBy(
                 'product_id',
                 'stock_product_id',
-                'quantity_index'
+                'quantity_index',
+                'quantity_type',
+
             )
             ->get();
 
@@ -1384,7 +1438,7 @@ class AvaialableProductsService
 
 
 
-        $variants = $variantIndexes->map(function ($variant) use ($transactions) {
+        $variants = $variantIndexes->map(function ($variant) use ($transactions, $fieldValues) {
 
             $effect = $transactions
                 ->where('stock_product_id', $variant->stock_product_id)
@@ -1393,24 +1447,41 @@ class AvaialableProductsService
 
             if ($effect > 0) {
 
-                return [
-                    "product_id" => $variant->product_id,
-                    "stock_product_id" => $variant->stock_product_id,
-                    "stock_transaction_id" => $variant->stock_transaction_id ?? null,
-                    "stock_movement_id" => $variant->stock_movement_id ?? null,
-                    "quantity_index" => $variant->quantity_index
-                ];
+                $fields = $fieldValues
+                    ->filter(function ($item) use ($variant) {
+                        return (
+                            ($item->stock_product_id == $variant->stock_product_id ||
+                                $item->stock_movement_id == $variant->stock_movement_id)
+                            &&
+                            $item->quantity_index == $variant->quantity_index
+                        );
+                    })
+                    ->values();
+                return $fields->map(function ($field) use ($variant) {
+                    return [
+                        "product_id" => $variant->product_id,
+                        "stock_product_id" => $variant->stock_product_id,
+                        "stock_transaction_id" => $variant->stock_transaction_id ?? null,
+                        "stock_movement_id" => $variant->stock_movement_id ?? null,
+                        "quantity_index" => $variant->quantity_index,
+                        "quantity_type" => $variant->quantity_type ?? null,
+                        "key" => $field->key,
+                        "value" => $field->value,
+
+
+                    ];
+                });
 
             }
 
-            return null;
+            return collect([]);
 
         })
 
             ->filter()
-
+            ->flatten(1)
             ->unique(function ($item) {
-                return $item['stock_product_id'] . '-' . $item['quantity_index'];
+                return ($item['stock_product_id'] ?? 'null') . '-' . ($item['quantity_index'] ?? '0');
             })
 
             ->values();
@@ -1424,12 +1495,62 @@ class AvaialableProductsService
                 ->where('product_id', $product->product_id)
                 ->values();
 
+            $product->measure_unit = [
+                [
+                    "id" => $product->measure_unit_id,
+                    "name" => $product->measure_unit_name,
+                    "quantity" => $product->measure_unit_quantity
+                ]
+            ];
+            unset($product->measure_unit_id);
+            unset($product->measure_unit_name);
+
             return $product;
 
         });
 
 
-        return $products;
+        return [
+            'id' => $stock->id,
+            'bill_number' => $stock->bill_number ?? null,
+            'invoice_date' => $stock->invoice_date ?? null,
+            'invoice_date_bs' => $stock->invoice_date_bs ?? null,
+            'total_amount' => $stock->total_amount ?? null,
+            'party_id' => $stock->party_id ?? null,
+            'fiscal_year_id' => $stock->fiscal_year_id ?? null,
+
+            'company_id' => $stock->company_id ?? null,
+            'branch_id' => $stock->branch_id ?? null,
+            'store_id' => $stock->store_id ?? null,
+            'type' => $stock->type ?? null,
+
+            'purchase_bill_number' => $stock->purchase_bill_number ?? null,
+
+            'location_id' => $stock->location_id ?? null,
+            'batch_no' => $stock->batch_no ?? null,
+            'credit_days' => $stock->credit_days ?? null,
+            'balance' => $stock->balance ?? null,
+            'ref_bill_number' => $stock->ref_bill_number ?? null,
+            'return_bill_no' => $stock->return_bill_no ?? null,
+            'reasons' => $stock->reasons ?? null,
+            'discount_type' => $stock->discount_type ?? null,
+            'discount_value' => $stock->discount_value ?? null,
+            'discount_after_vat' => $stock->discount_after_vat ?? null,
+            'sub_total_before_discount' => $stock->sub_total_before_discount ?? null,
+            'taxable_amount' => $stock->taxable_amount ?? null,
+            'non_taxable_amount' => $stock->non_taxable_amount ?? null,
+            'excise_duty' => $stock->excise_duty ?? null,
+            'vat_percent' => $stock->vat_percent ?? null,
+            'health_insurance' => $stock->health_insurance ?? null,
+            'freight_amount' => $stock->freight_amount ?? null,
+            'roundoff_type' => $stock->roundoff_type ?? null,
+            'roundoff_amount' => $stock->roundoff_amount ?? null,
+
+            'payment' => $stock->payment ?? null,
+            'remarks' => $stock->remarks ?? null,
+
+            'products' => $products
+        ];
     }
 
 

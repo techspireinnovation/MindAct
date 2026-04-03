@@ -118,7 +118,7 @@ class CompanyController extends Controller
                 'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
 
-            // 1️⃣ Create company in CENTRAL database
+           
             $company = Company::create([
                 'name' => $validated['name'],
                 'licence_issue_date' => $validated['licence_issue_date'] ?? null,
@@ -436,130 +436,11 @@ class CompanyController extends Controller
         }
     }
 
-    // Store a new resource
 
-    public function updatePurchaseMasterKey(Request $request): JsonResponse
-    {
-        try {
-            $userId = $request->user_id;
 
-            $user = User::on('mysql')->where('id', $userId)->first();
 
-            if (!$user || !$user->hasAnyRole(['company_admin', 'company_user', 'master_user'])) {
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized: Not a company admin',
-                ], 403);
-            }
 
-            $validator = Validator::make($request->all(), [
-                'product_code' => 'nullable|boolean',
-                'free' => 'nullable|boolean',
-                'discount_percent' => 'nullable|boolean',
-                'discount_amount' => 'nullable|boolean',
-                'discount' => 'nullable|boolean',
-                'excise_duty' => 'nullable|boolean',
-                'health_insurance' => 'nullable|boolean',
-                'freight_charge' => 'nullable|boolean',
-                'discount_after_vat' => 'nullable|boolean',
-                'expiry_date' => 'nullable|boolean',
-                'batch_no' => 'nullable|boolean',
-                'mfd' => 'nullable|boolean',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors(),
-                ], 422);
-            }
-
-            $validated = $validator->validated();
-
-            return DB::transaction(function () use ($user, $validated, $request) {
-                $companyId = $request->company_id;
-                if (!$companyId) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'No company ID provided',
-                    ], 403);
-                }
-
-                $company = Company::on('mysql')->where('id', $companyId)
-                    ->whereNull('deleted_at')
-                    ->first();
-
-                if (!$company) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Company not found or deleted',
-                    ], 404);
-                }
-
-                $companyUser = CompanyUser::on('mysql')->where('user_id', $user->id)
-                    ->where('company_id', $companyId)
-                    ->first();
-
-                if (!$companyUser) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'User not associated with this company',
-                    ], 403);
-                }
-
-                $purchaseMaster = PurchaseMasterKey::where('company_id', $companyId)->first();
-
-                if (!$purchaseMaster) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Purchase master key not found for this company',
-                    ], 404);
-                }
-
-                $updateData = array_filter($validated, function ($value) {
-                    return !is_null($value);
-                });
-
-                $purchaseMaster->update($updateData);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Purchase master key updated successfully',
-                    'data' => $purchaseMaster,
-                ], 200);
-            });
-
-        } catch (ValidationException $e) {
-           
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation error',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (ModelNotFoundException $e) {
-           
-            return response()->json([
-                'success' => false,
-                'message' => 'Purchase master key not found',
-            ], 404);
-        } catch (QueryException $e) {
-
-          
-            return response()->json([
-                'success' => false,
-                'message' => 'Database error occurred',
-            ], 500);
-        } catch (\Exception $e) {
-
-          
-            return response()->json([
-                'success' => false,
-                'message' => 'An unexpected error occurred',
-            ], 500);
-        }
-    }
 
 
 
@@ -619,7 +500,7 @@ class CompanyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred',
+                'message' => 'An unexpected error occurred !',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }

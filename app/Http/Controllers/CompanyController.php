@@ -500,7 +500,7 @@ class CompanyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'An unexpected error occurred',
+                'message' => 'An unexpected error occurred !',
                 'error' => config('app.debug') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }

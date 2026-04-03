@@ -7,6 +7,7 @@ use App\Helpers\Helper;
 use App\Models\Brand;
 use App\Models\Location;
 use App\Models\MeasureUnit;
+use App\Models\StockMovement;
 use App\Models\ProductCategory;
 
 use App\Models\ProductType;
@@ -96,6 +97,11 @@ class Product extends BaseTenantModel
     public function productType()
     {
         return $this->belongsTo(ProductType::class, 'product_type_id');
+    }
+
+    public function stockMovement()
+    {
+        return $this->hasMany(StockMovement::class);
     }
 
 

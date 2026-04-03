@@ -53,6 +53,11 @@ class StockMovement extends Model
         return $this->hasMany(StockProductFieldValue::class);
     }
 
+    public function product()
+    {
+        return $this->belongsTo(Product::class, 'product_id');
+    }
+
 
 
 }

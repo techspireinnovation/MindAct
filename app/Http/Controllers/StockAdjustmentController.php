@@ -15,7 +15,6 @@ class StockAdjustmentController extends Controller
     public function __construct(StockAdjustmentRepositoryInterface $repository)
     {
         $this->repository = $repository;
-
     }
 
     public function index(Request $request)

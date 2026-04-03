@@ -422,7 +422,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
         $stock = Stock::with('stockMovements.stockProductFieldValues', 'stockMovements.product')
             ->whereNull('deleted_at')
             ->findOrFail($id);
-
+       
         $stock->stockProducts->map(function ($stockProduct) {
 
             $stockProduct->field_values = $stockProduct->stockProductFieldValues->map(function ($item) use ($stockProduct) {
@@ -507,20 +507,20 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
     {
         DB::beginTransaction();
 
-        $stock = Stock::where('type', 'opening_stock')
+        $stock = Stock::where('type', 'stock_adjustment')
             ->whereNull('deleted_at')
             ->findOrFail($id);
 
-        $stockProductIds = StockProduct::where('stock_id', $stock->id)
+        $stockMovementIds = StockMovement::where('stock_id', $stock->id)
             ->whereNull('deleted_at')
             ->pluck('id');
 
-        StockProductFieldValue::whereIn('stock_product_id', $stockProductIds)
+        StockProductFieldValue::whereIn('stock_movement_id', $stockMovementIds)
             ->whereNull('deleted_at')
             ->delete();
 
 
-        StockProduct::whereIn('id', $stockProductIds)
+        StockMovement::whereIn('id', $stockMovementIds)
             ->delete();
 
         $stock->delete();

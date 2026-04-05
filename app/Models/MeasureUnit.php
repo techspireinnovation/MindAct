@@ -23,6 +23,7 @@ class MeasureUnit extends BaseTenantModel
         'is_active',
         'is_primary',
         'quantity',
+        'base_unit_id',
         'deleted_at',       
         'symbol',
         
@@ -55,6 +56,11 @@ class MeasureUnit extends BaseTenantModel
     public function products()
     {
         return $this->hasMany(Product::class, 'measure_unit_id');
+    }
+
+    public function baseUnit()
+    {
+        return $this->belongsTo(MeasureUnit::class, 'base_unit_id');
     }
 
 }

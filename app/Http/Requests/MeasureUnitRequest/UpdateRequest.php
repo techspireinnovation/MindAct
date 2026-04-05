@@ -39,6 +39,7 @@ class UpdateRequest extends FormRequest
             ],
             'is_active' => 'sometimes|boolean|required',
             'is_primary' => 'sometimes|boolean',
+            'base_unit_id' => 'nullable|exists:measure_units,id',
             'quantity' => 'integer',
             'symbol' => 'nullable|string'
 

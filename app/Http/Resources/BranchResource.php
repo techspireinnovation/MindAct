@@ -18,6 +18,7 @@ class BranchResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            
             'is_active' => $this->is_active,
             'is_primary' => $this->is_primary,
             'branch_type' => $this->branch_type,

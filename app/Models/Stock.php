@@ -18,8 +18,8 @@ class Stock extends Model
         'branch_id',
         'store_id',
         'type',
-        
-        
+
+
         'bill_number',
         'purchase_bill_number',
         'invoice_date',
@@ -60,8 +60,13 @@ class Stock extends Model
         return $this->hasMany(StockMovement::class);
     }
 
-     public function stockTransactions()
+    public function stockTransactions()
     {
         return $this->hasMany(StockTransaction::class);
+    }
+
+    public function branch()
+    {
+        return $this->belongsTo(Branch::class, 'branch_id');
     }
 }

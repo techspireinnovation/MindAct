@@ -297,8 +297,21 @@ class StockRepository implements StockRepositoryInterface
 
     public function list(array $filters)
     {
-        return Stock::where('type', 'opening_stock')->whereNull('deleted_at')->get();
+        $stocks = Stock::with('branch')
+            ->where('type', 'opening_stock')
+            ->whereNull('deleted_at')
+            ->get();
 
+        return $stocks->map(function ($stock) {
+            return [
+                'id' => $stock->id,
+                'branch_id' => $stock->branch_id,
+                'branch' => $stock->branch?->name, 
+                'type' => $stock->type,
+                'total_amount' => $stock->total_amount,
+               
+            ];
+        });
     }
 
     public function show($id)
@@ -334,6 +347,7 @@ class StockRepository implements StockRepositoryInterface
                     'stock_product_id' => $item->stock_product_id,
                     'stock_movement_id' => $item->stock_movement_id,
                     'product_id' => $item->product_id,
+                    
                     'quantity_index' => $item->quantity_index,
                     'quantity_type' => $item->quantity_type,
                     'key' => $item->key,
@@ -351,6 +365,7 @@ class StockRepository implements StockRepositoryInterface
             unset($stockProduct->stockProductFieldValues);
 
             $stockProduct->product_name = $stockProduct->product->name ?? null;
+            $stockProduct->product_code = $stockProduct->product->product_code ?? null;
             unset($stockProduct->product);
 
             $productId = $stockProduct->product_id;

@@ -65,7 +65,7 @@ class StoreRequest extends FormRequest
             'product_lists.*.measure_unit_id' => 'nullable||integer|exists:measure_units,id',
 
 
-            'product_lists.*.is_primary' => 'boolean|nullable|',
+            'product_lists.*.is_primary' => 'boolean',
             'product_lists.*.barcode' => 'nullable|string',
             'product_lists.*.hs_code' => 'nullable|string',
             'product_lists.*.price' => 'nullable|numeric',

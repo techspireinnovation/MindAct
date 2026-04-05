@@ -17,8 +17,7 @@ class SalesMasterKey extends BaseTenantModel
     protected $connection = 'tenant';
 
     protected $fillable = [
-
-       
+        'company_id',
         'salesman_id',
         'salesman',
         'credit_days',
@@ -45,8 +44,8 @@ class SalesMasterKey extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-   
 
-    
+
+
 
 }

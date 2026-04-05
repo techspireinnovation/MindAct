@@ -87,7 +87,7 @@ class StockEntryController extends Controller
             $createdEntries = [];
 
             DB::transaction(function () use ($request, &$createdEntries) {
-                
+
                 $stockMain = StockMain::create([
                     'name' => $request->name,
                     'code' => $request->code,
@@ -103,17 +103,17 @@ class StockEntryController extends Controller
                     $productVatabale = Product::where('id', $entry['product_id'])->value('is_vatable');
                     $entry['is_vatable'] = $productVatabale;
 
-                    
+
                     $stockEntry = StockEntry::create($entry);
 
-                    
+
                     $entry['stock_product_id'] = $stockEntry->id;
                     $entry['measure_unit_id'] = $entry['uom'];
 
-                    
+
                     $purchaseStock = PurchaseStockProduct::create($entry);
 
-                    
+
                     if (!empty($entry['field_values']) && is_array($entry['field_values'])) {
                         foreach ($entry['field_values'] as $quantityIndex => $fieldGroup) {
                             foreach ($fieldGroup as $fieldValue) {

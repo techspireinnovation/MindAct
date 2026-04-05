@@ -27,6 +27,7 @@ class ProductList extends Model
         'final_price',        
         'primary_measure_unit_id',
         'measure_unit_id',
+        'is_primary',
         'is_active',
         'deleted_at'
     ];

@@ -118,7 +118,7 @@ class CompanyController extends Controller
                 'password' => 'sometimes|nullable|string|min:6|required_if:admin_selection,new|confirmed',
             ]);
 
-           
+
             $company = Company::create([
                 'name' => $validated['name'],
                 'licence_issue_date' => $validated['licence_issue_date'] ?? null,
@@ -146,7 +146,7 @@ class CompanyController extends Controller
                 'url_link' => $validated['url_link'] ?? '',
             ]);
 
-           
+
 
 
             $sluggedName = Str::slug($company->name);
@@ -173,14 +173,14 @@ class CompanyController extends Controller
 
                 if ($companyAdmin->trashed()) {
                     $companyAdmin->restore();
-                   
+
                 }
             }
 
             $role = Role::firstOrCreate(['name' => 'company_admin', 'guard_name' => 'api']);
             if (!$companyAdmin->hasRole('company_admin')) {
                 $companyAdmin->assignRole($role);
-               
+
             }
 
             CompanyUser::create([
@@ -199,14 +199,14 @@ class CompanyController extends Controller
             ], 201);
 
         } catch (ValidationException $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
-           
+
 
             return response()->json([
                 'success' => false,
@@ -262,7 +262,7 @@ class CompanyController extends Controller
                 ->toArray();
 
             if (empty($companies)) {
-               
+
                 return response()->json([
                     'success' => false,
                     'message' => 'No companies found',
@@ -275,13 +275,13 @@ class CompanyController extends Controller
                 'data' => $companies
             ], 200);
         } catch (QueryException $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -303,7 +303,7 @@ class CompanyController extends Controller
             $companyName = $request->input('name');
 
             if (!$companyName) {
-               
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Company name is required',
@@ -312,7 +312,7 @@ class CompanyController extends Controller
 
             $query = Company::where('name', $companyName)
                 ->whereNull('deleted_at');
-           
+
 
             $company = $query->firstOrFail();
 
@@ -322,7 +322,7 @@ class CompanyController extends Controller
                 'data' => $company
             ], 200);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found',
@@ -334,7 +334,7 @@ class CompanyController extends Controller
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -359,14 +359,14 @@ class CompanyController extends Controller
             $companyName = $request->input('name');
 
             if (!$companyId && !$companyName) {
-              
+
                 return response()->json([
                     'success' => false,
                     'message' => 'Either company ID or name is required',
                 ], 400);
             }
 
-            
+
 
             // Build query based on provided parameter
             $query = Company::whereNull('deleted_at')
@@ -385,13 +385,13 @@ class CompanyController extends Controller
                 $query->where('name', $companyName);
             }
 
-           
+
 
             $company = $query->firstOrFail();
 
             // Check if company has active branches
             if ($company->branches->isEmpty()) {
-               
+
                 return response()->json([
                     'success' => false,
                     'message' => 'No active branches found for the specified company',
@@ -416,19 +416,19 @@ class CompanyController extends Controller
                 'data' => $result
             ], 200);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Company not found with provided ID or name',
             ], 404);
         } catch (QueryException $e) {
-            
+
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -496,7 +496,7 @@ class CompanyController extends Controller
             return response()->json(['success' => true, 'data' => $purchaseMaster], 200);
 
         } catch (\Exception $e) {
-           
+
 
             return response()->json([
                 'success' => false,
@@ -589,7 +589,7 @@ class CompanyController extends Controller
                 }
 
                 // Find the SalesMasterKey for the company
-                $saleMaster = SalesMasterKey::where('company_id', $companyId)->first();
+                $saleMaster = SalesMasterKey::where('company_id', $companyId)->whereNull('deleted_at')->first();
 
                 if (!$saleMaster) {
                     return response()->json([
@@ -613,26 +613,27 @@ class CompanyController extends Controller
             });
 
         } catch (ValidationException $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
                 'errors' => $e->errors(),
             ], 422);
         } catch (ModelNotFoundException $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Sales master key not found',
             ], 404);
         } catch (QueryException $e) {
-           
+            dd($e->getMessage());
+
             return response()->json([
                 'success' => false,
                 'message' => 'Database error occurred',
             ], 500);
         } catch (\Exception $e) {
-          
+
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -658,7 +659,7 @@ class CompanyController extends Controller
 
             // Get company_id from middleware
             $companyId = $request->company_id;
-          
+
             if (!$companyId) {
                 return response()->json([
                     'success' => false,
@@ -690,7 +691,7 @@ class CompanyController extends Controller
 
             // Find the SalesMasterKey for the company
             $saleMaster = \App\Models\SalesMasterKey::where('company_id', $companyId)->first();
-           
+
             if (!$saleMaster) {
                 return response()->json([
                     'success' => false,
@@ -703,12 +704,12 @@ class CompanyController extends Controller
                 'data' => $saleMaster,
             ], 200);
         } catch (QueryException $e) {
-                return response()->json([
+            return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
             ], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'An unexpected error occurred',
@@ -902,7 +903,7 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ValidationException $e) {
-          
+
             return response()->json([
                 'success' => false,
                 'message' => 'Validation error',
@@ -910,7 +911,7 @@ class CompanyController extends Controller
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
-           
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to update company or admin details',
@@ -971,204 +972,204 @@ class CompanyController extends Controller
 
     // }
 
-public function show($id): JsonResponse
-{
-  
-    
-    try {
-        $user = Auth::user();
+    public function show($id): JsonResponse
+    {
 
-        if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+
+        try {
+            $user = Auth::user();
+
+            if (!$user || !$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Super admin required',
+                ], 403);
+            }
+
+
+
+            // Get company from CENTRAL database (without branches relationship)
+            $company = Company::findOrFail($id);
+
+
+            // Get tenant information
+            $tenant = Tenant::where('company_id', $company->id)->first();
+
+
+            // Get the first associated admin via pivot from CENTRAL database
+            $companyUser = CompanyUser::where('company_id', $company->id)->with('user')->first();
+
+
+
+            $admin = $companyUser->user ?? null;
+
+
+
+            $admin_selection = $admin ? 'existing' : 'new';
+            $existing_admin_id = $admin ? $admin->id : null;
+
+            // If you need branches data, you would need to switch to tenant context
+            // But for the show method in central admin, you might not need branches
+            $branches = collect([]); // Empty collection since branches are in tenant DB
+
+
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company details retrieved successfully',
+                'data' => [
+                    'company' => $company,
+                    'tenant' => $tenant, // Include tenant info
+                    'admin_selection' => $admin_selection,
+                    'existing_admin_id' => $existing_admin_id,
+                    'admin' => $admin,
+                    'branches' => $branches, // Empty or you can omit this
+                    // Note: Branches are in tenant database, not accessible from central context
+                ]
+            ], 200);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Super admin required',
-            ], 403);
+                'message' => 'Company not found'
+            ], 404);
+
+        } catch (\Exception $e) {
+
+
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred'
+            ], 500);
         }
-
-     
-        
-        // Get company from CENTRAL database (without branches relationship)
-        $company = Company::findOrFail($id);
-      
-
-        // Get tenant information
-        $tenant = Tenant::where('company_id', $company->id)->first();
-       
-
-        // Get the first associated admin via pivot from CENTRAL database
-        $companyUser = CompanyUser::where('company_id', $company->id)->with('user')->first();
-        
-       
-
-        $admin = $companyUser->user ?? null;
-        
-       
-
-        $admin_selection = $admin ? 'existing' : 'new';
-        $existing_admin_id = $admin ? $admin->id : null;
-
-        // If you need branches data, you would need to switch to tenant context
-        // But for the show method in central admin, you might not need branches
-        $branches = collect([]); // Empty collection since branches are in tenant DB
-        
-      
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Company details retrieved successfully',
-            'data' => [
-                'company' => $company,
-                'tenant' => $tenant, // Include tenant info
-                'admin_selection' => $admin_selection,
-                'existing_admin_id' => $existing_admin_id,
-                'admin' => $admin,
-                'branches' => $branches, // Empty or you can omit this
-                // Note: Branches are in tenant database, not accessible from central context
-            ]
-        ], 200);
-
-    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-       
-        return response()->json([
-            'success' => false,
-            'message' => 'Company not found'
-        ], 404);
-        
-    } catch (\Exception $e) {
-       
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'An unexpected error occurred'
-        ], 500);
     }
-}
 
 
 
 
-   
+
 
     public function updateCompany(Request $request, $id): JsonResponse
-{
-    try {
-        $user = Auth::user();
-        if (!$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+    {
+        try {
+            $user = Auth::user();
+            if (!$user->hasRole('super_admin') || !$user->tokenCan('super_admin')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized: Not a super admin',
+                ], 403); // Changed to 403 for consistency/
+            }
+
+            $company = Company::findOrFail($id);
+
+            $companyUser = CompanyUser::where('company_id', $company->id)->first();
+            if (!$companyUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No user associated with this company',
+                ], 404);
+            }
+
+            $userAdmin = $companyUser->user;
+            if (!$userAdmin) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No user associated with this company',
+                ], 404);
+            }
+
+            $validated = $request->validate([
+                'name' => 'sometimes|required|string|max:255',
+                'licence_issue_date' => 'nullable|string|max:255',
+                'working_date' => 'nullable|string|max:255',
+                'is_vatable' => 'nullable|boolean',
+                'reg_number' => 'nullable|string|max:255',
+                'pan_number' => 'nullable|string|max:255',
+                'full_address' => 'nullable|string|max:255',
+                'email_address' => 'nullable|string|email|max:255',
+                'website' => 'nullable|string|max:255',
+                'fax' => 'nullable|string|max:255',
+                'logo' => 'nullable|string|max:255',
+                'province' => 'nullable|string|max:255',
+                'district' => 'nullable|string|max:255',
+                'palika_name' => 'nullable|string|max:255',
+                'ward_number' => 'nullable|string|max:255',
+                'contact_number' => 'nullable|string|max:255',
+                'contact_person' => 'nullable|string|max:255',
+                'contact_person_position' => 'nullable|string|max:255',
+                'agreement_holder_name' => 'nullable|string|max:255',
+                'phone' => 'nullable|string|max:255',
+                'position' => 'nullable|string|max:255',
+                'license_number' => 'nullable|string|max:255',
+                'activation_key' => 'nullable|string|max:255',
+                'url_link' => 'nullable|string|max:255',
+                'admin_name' => 'sometimes|required|string|max:255',
+                'admin_selection' => 'required|in:existing,new',
+                'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
+                'password' => 'sometimes|required|string|min:6',
+            ]);
+
+            // Update company in CENTRAL database
+            $company->update($validated);
+
+            // Remove this line - it's trying to access tenant database from central context
+            // MainGroupStub::createMainGroups($company->id);
+
+            $userUpdates = [];
+            $newToken = null;
+
+            if ($request->has('admin_name')) {
+                $userUpdates['name'] = $validated['admin_name'];
+            }
+            if ($request->has('admin_email')) {
+                $userUpdates['email'] = $validated['admin_email'];
+            }
+            if ($request->has('password')) {
+                $userUpdates['password'] = Hash::make($validated['password']);
+
+                $userAdmin->tokens()->where('abilities', '["company_admin"]')->delete();
+
+                $newToken = $userAdmin->createToken('MatraErpToken', ['company_admin'])->plainTextToken;
+            }
+
+            if (!empty($userUpdates)) {
+                $userAdmin->update($userUpdates);
+            }
+
+            // If you need to update tenant-specific data, dispatch a job like in your store function
+            $tenant = Tenant::where('company_id', $company->id)->first();
+            if ($tenant) {
+                // Dispatch a job to handle any tenant database updates
+                UpdateTenantDataJob::dispatch($tenant, $company->id, $validated);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Company and admin details updated successfully',
+                'data' => [
+                    'company' => $company->fresh(),
+                    'user' => $userAdmin->fresh(),
+                    'new_token' => $newToken,
+                ],
+            ], 200);
+
+        } catch (ValidationException $e) {
+
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized: Not a super admin',
-            ], 403); // Changed to 403 for consistency/
-        }
+                'message' => 'Validation error',
+                'errors' => $e->errors(),
+            ], 422);
+        } catch (\Exception $e) {
 
-        $company = Company::findOrFail($id);
-
-        $companyUser = CompanyUser::where('company_id', $company->id)->first();
-        if (!$companyUser) {
             return response()->json([
                 'success' => false,
-                'message' => 'No user associated with this company',
-            ], 404);
+                'message' => 'An unexpected error occurred',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
+            ], 500);
         }
-
-        $userAdmin = $companyUser->user;
-        if (!$userAdmin) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No user associated with this company',
-            ], 404);
-        }
-
-        $validated = $request->validate([
-            'name' => 'sometimes|required|string|max:255',
-            'licence_issue_date' => 'nullable|string|max:255',
-            'working_date' => 'nullable|string|max:255',
-            'is_vatable' => 'nullable|boolean',
-            'reg_number' => 'nullable|string|max:255',
-            'pan_number' => 'nullable|string|max:255',
-            'full_address' => 'nullable|string|max:255',
-            'email_address' => 'nullable|string|email|max:255',
-            'website' => 'nullable|string|max:255',
-            'fax' => 'nullable|string|max:255',
-            'logo' => 'nullable|string|max:255',
-            'province' => 'nullable|string|max:255',
-            'district' => 'nullable|string|max:255',
-            'palika_name' => 'nullable|string|max:255',
-            'ward_number' => 'nullable|string|max:255',
-            'contact_number' => 'nullable|string|max:255',
-            'contact_person' => 'nullable|string|max:255',
-            'contact_person_position' => 'nullable|string|max:255',
-            'agreement_holder_name' => 'nullable|string|max:255',
-            'phone' => 'nullable|string|max:255',
-            'position' => 'nullable|string|max:255',
-            'license_number' => 'nullable|string|max:255',
-            'activation_key' => 'nullable|string|max:255',
-            'url_link' => 'nullable|string|max:255',
-            'admin_name' => 'sometimes|required|string|max:255',
-            'admin_selection' => 'required|in:existing,new',
-            'admin_email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $userAdmin->id,
-            'password' => 'sometimes|required|string|min:6',
-        ]);
-
-        // Update company in CENTRAL database
-        $company->update($validated);
-
-        // Remove this line - it's trying to access tenant database from central context
-        // MainGroupStub::createMainGroups($company->id);
-
-        $userUpdates = [];
-        $newToken = null;
-        
-        if ($request->has('admin_name')) {
-            $userUpdates['name'] = $validated['admin_name'];
-        }
-        if ($request->has('admin_email')) {
-            $userUpdates['email'] = $validated['admin_email'];
-        }
-        if ($request->has('password')) {
-            $userUpdates['password'] = Hash::make($validated['password']);
-
-            $userAdmin->tokens()->where('abilities', '["company_admin"]')->delete();
-
-            $newToken = $userAdmin->createToken('MatraErpToken', ['company_admin'])->plainTextToken;
-        }
-        
-        if (!empty($userUpdates)) {
-            $userAdmin->update($userUpdates);
-        }
-
-        // If you need to update tenant-specific data, dispatch a job like in your store function
-        $tenant = Tenant::where('company_id', $company->id)->first();
-        if ($tenant) {
-            // Dispatch a job to handle any tenant database updates
-            UpdateTenantDataJob::dispatch($tenant, $company->id, $validated);
-        }
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Company and admin details updated successfully',
-            'data' => [
-                'company' => $company->fresh(),
-                'user' => $userAdmin->fresh(),
-                'new_token' => $newToken,
-            ],
-        ], 200);
-
-    } catch (ValidationException $e) {
-       
-        return response()->json([
-            'success' => false,
-            'message' => 'Validation error',
-            'errors' => $e->errors(),
-        ], 422);
-    } catch (\Exception $e) {
-       
-        return response()->json([
-            'success' => false,
-            'message' => 'An unexpected error occurred',
-            'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
-        ], 500);
     }
-}
 
     // Update a resource
     /**
@@ -1216,7 +1217,7 @@ public function show($id): JsonResponse
 
         } catch (\Exception $e) {
             DB::rollBack();
-          
+
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete company',

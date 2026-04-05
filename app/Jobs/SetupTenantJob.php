@@ -48,7 +48,7 @@ class SetupTenantJob implements ShouldQueue
                 'database' => $this->databaseName,
             ]);
 
-            // 1️⃣ Create tenant database if not exists
+           
             $exists = DB::connection('mysql')->selectOne(
                 "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?",
                 [$this->databaseName]
@@ -61,14 +61,14 @@ class SetupTenantJob implements ShouldQueue
                 Log::info('Tenant database created', ['database' => $this->databaseName]);
             }
 
-            // 2️⃣ Switch tenant connection
+           
             config(['database.connections.tenant.database' => $this->databaseName]);
             DB::purge('tenant');
             DB::connection('tenant')->reconnect();
             Log::info('Connected to tenant database', ['database' => $this->databaseName]);
             app()->register(\App\Providers\AppServiceProvider::class);
 
-            // 3️⃣ Run tenant migrations
+           
             \Artisan::call('migrate', [
                 '--database' => 'tenant',
                 '--path' => 'database/migrations/tenant',
@@ -76,7 +76,7 @@ class SetupTenantJob implements ShouldQueue
             ]);
             Log::info('Tenant migrations completed', ['output' => \Artisan::output()]);
 
-            // 4️⃣ Insert initial tenant data
+
             Branch::create([
                 'name' => $this->validated['name'],
 
@@ -98,7 +98,7 @@ class SetupTenantJob implements ShouldQueue
             FiscalYear::create([
                 'year_en' => '2026-27',
                 'year_np' => '2082-83',
-                
+
                 'status' => true,
             ]);
 
@@ -132,7 +132,7 @@ class SetupTenantJob implements ShouldQueue
                 'execution_time' => microtime(true) - $start . ' seconds',
             ]);
 
-            // Cleanup partially created DB
+           
             try {
                 DB::connection('mysql')->statement("DROP DATABASE IF EXISTS `$this->databaseName`");
                 Log::info('Dropped tenant database due to failure', ['database' => $this->databaseName]);
@@ -140,7 +140,7 @@ class SetupTenantJob implements ShouldQueue
                 Log::error('Failed to drop tenant DB after failure', ['error' => $dropError->getMessage()]);
             }
 
-            throw $e; // Fail job
+            throw $e; 
         }
     }
 }

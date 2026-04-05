@@ -17,7 +17,7 @@ class PurchaseMasterKey extends BaseTenantModel
 
     protected $fillable = [
 
-        
+        'company_id',
         'product_code',
         'free',
         'discount_percent',
@@ -34,8 +34,8 @@ class PurchaseMasterKey extends BaseTenantModel
 
     protected $dates = ['deleted_at'];
 
-   
 
-    
+
+
 
 }

@@ -31,7 +31,7 @@ class StockPurchaseController extends Controller
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Purchase not found !!'], 404);
         } catch (\Exception $e) {
-            return response()->json(['message' => 'An error occurred while creating the stock', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while creating the stock !!', 'error' => $e->getMessage()], 500);
         } catch (QueryException $e) {
             return response()->json(['message' => 'Database error occurred while creating the stock !!', 'error' => $e->getMessage()], 500);
         }

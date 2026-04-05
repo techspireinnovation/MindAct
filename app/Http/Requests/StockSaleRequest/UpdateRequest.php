@@ -76,7 +76,7 @@ class UpdateRequest extends FormRequest
             'stock_transactions.*.price' => 'nullable|numeric',
             'stock_transactions.*.discount_percent' => 'nullable|numeric',
             'stock_transactions.*.discount_amount' => 'nullable|numeric',
-            'stock_transactions.*.amount' => 'nullable|string',
+            'stock_transactions.*.amount' => 'nullable|numeric',
             'stock_transactions.*.batch_no' => 'nullable|string',
 
 

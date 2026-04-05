@@ -21,6 +21,22 @@ class StockPurchaseReturnController extends Controller
 
     }
 
+    public function index(Request $request)
+    {
+
+        try {
+            $data = $this->repository->list($request->all());
+            return response()->json(['message' => 'Stock Purchase Return retrieved successfully !', 'data' => $data], 201);
+
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['message' => 'Stock Purchase Return not found !!'], 404);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'An error occurred while creating the stock purchase return!!', 'error' => $e->getMessage()], 500);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'Database error occurred while creating the stock purchase return !!', 'error' => $e->getMessage()], 500);
+        }
+    }
+
     public function store(StoreRequest $request)
     {
 
@@ -80,7 +96,7 @@ class StockPurchaseReturnController extends Controller
 
 
 
-     public function destroy($id)
+    public function destroy($id)
     {
 
         try {
@@ -90,8 +106,8 @@ class StockPurchaseReturnController extends Controller
                 'success' => true,
                 'message' => 'Stock Purchase Return Deleted Successfully !!',
                 'data' => $data,
-                
-            ],200);
+
+            ], 200);
 
         } catch (ModelNotFoundException $e) {
             return response()->json(['message' => 'Stock Purchase Return not found'], 404);

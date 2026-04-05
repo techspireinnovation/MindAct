@@ -72,10 +72,10 @@ class UpdateRequest extends FormRequest
             'stock_transactions.*.expiry_date' => 'nullable|string',
             'stock_transactions.*.mfd' => 'nullable|string',
             'stock_transactions.*.type' => 'nullable|string',
-            'stock_transactions.*.price' => 'nullable|string',
+            'stock_transactions.*.price' => 'nullable|nuemric',
             'stock_transactions.*.discount_percent' => 'nullable|numeric',
             'stock_transactions.*.discount_amount' => 'nullable|numeric',
-            'stock_transactions.*.amount' => 'nullable|string',
+            'stock_transactions.*.amount' => 'nullable|numeric',
             'stock_transactions.*.batch_no' => 'nullable|string',
 
 

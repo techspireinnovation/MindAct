@@ -356,7 +356,7 @@ class StockRepository implements StockRepositoryInterface
                     'updated_at' => $item->updated_at,
                     'deleted_at' => $item->deleted_at,
 
-                    // ✅ dropdown fix
+                    
                     'type' => $type,
                     'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
                 ];

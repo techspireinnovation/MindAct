@@ -652,6 +652,9 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
 
     public function list(array $filters)
     {
+        return Stock::where('type', 'purchase_return')
+            ->whereNull('deleted_at')
+            ->get();
 
     }
 

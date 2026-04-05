@@ -208,8 +208,8 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
-                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
                             'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
                             'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
@@ -682,6 +682,9 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
     public function list(array $filters)
     {
+        return Stock::where('type', 'purchase_return')
+            ->whereNull('deleted_at')
+            ->get();
 
     }
 

@@ -82,7 +82,7 @@ class MeasureUnitController extends Controller
             $item = $this->repository->update($id, $request->validated());
 
             return response()->json([
-                'success' => 'Updated Successfully !!',
+                'success' => 'Updated Successfully !',
                 'data' => $item
             ], 200);
         } catch (ModelNotFoundException $e) {

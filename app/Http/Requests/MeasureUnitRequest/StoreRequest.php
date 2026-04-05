@@ -37,6 +37,7 @@ class StoreRequest extends FormRequest
             ],
             'is_active' => 'boolean|required',
             'is_primary' => 'boolean',
+            'base_unit_id' => 'nullable|exists:measure_units,id',
             'quantity' => 'integer',
             'symbol' => 'nullable|string'
 

@@ -163,6 +163,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                         'stock_id' => $stock->id,
                         'fiscal_year_id' => $fiscalYearId,
                         'source_id' => $alloc['source_id'] ?? null,
+                        'source_type' => $alloc['source_type'] ?? null,
                         'stock_product_id' => $alloc['stock_product_id'] ?? null,
                         'stock_movement_id' => $alloc['source_type'] === 'stock_movement' ? $alloc['stock_movement_id'] : null,
                         'product_id' => $product['product_id'],
@@ -205,6 +206,8 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
                         $movementValidatedData = [
                             'stock_id' => $stock->id,
                             'stock_transaction_id' => $stockTransaction->id,
+                            'source_id' => $alloc['source_id'] ?? null,
+                            'source_type' => $alloc['source_type'] ?? null,
                             'fiscal_year_id' => $fiscalYearId,
                             'company_id' => $data['company_id'],
                             'branch_id' => $data['branch_id'],

@@ -14,11 +14,13 @@ class MeasureUnitResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        
+
         return [
             'id' => $this->id,
             'name' => $this->name,
             'quantity' => $this->quantity,
+            'base_unit_id' => $this->base_unit_id ?? null,
+            'base_unit_name' => $this->baseUnit->name ?? null,
             'is_active' => $this->is_active,
             'is_primary' => $this->is_primary,
             'symbol' => $this->symbol,
@@ -28,5 +30,5 @@ class MeasureUnitResource extends JsonResource
         ];
     }
 
-    
+
 }

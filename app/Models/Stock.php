@@ -69,4 +69,9 @@ class Stock extends Model
     {
         return $this->belongsTo(Branch::class, 'branch_id');
     }
+
+     public function party()
+    {
+        return $this->belongsTo(Party::class, 'party_id');
+    }
 }

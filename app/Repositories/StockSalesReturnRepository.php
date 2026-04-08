@@ -73,11 +73,6 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
         }
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
-
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
-
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
 
 
         $stockData = [
@@ -105,13 +100,13 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
             'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['non_taxable_amount'] ?? 0) ?? 0,
             'excise_duty' => $this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
-            'vat_percent' => $data['vat_percent'] ?? 0,
+            'vat_percent' => $this->currencyFormatService->cleanCurrency($data['vat_percent'] ?? 0) ?? 0,
             'health_insurance' => $this->currencyFormatService->cleanCurrency($data['health_insurance'] ?? 0) ?? 0,
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
 
-            'total_amount' => $totalAmount + $vatAmount,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -202,10 +197,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
                             'is_vatable' => $product['is_vatable'],
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
+                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
+                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
@@ -241,10 +236,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
                             'is_vatable' => $product['is_vatable'],
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
@@ -334,10 +329,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
+                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
+                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
                         $stockTransaction = StockTransaction::create($fieldValueValidated);
@@ -364,10 +359,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'batch_no' => $product['batch_no'] ?? null,
 
                         ];
@@ -442,12 +437,6 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             throw new Exception('Sales bill number is required for updating bill wise a sales return.');
         }
 
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
-
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
-
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
-
 
         $stockData = [
             'fiscal_year_id' => $fiscalYearId,
@@ -478,7 +467,7 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
-            'total_amount' => $totalAmount + $vatAmount,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -577,10 +566,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
                             'is_vatable' => $product['is_vatable'],
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
+                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
+                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
@@ -615,10 +604,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'sales_bill_number' => $data['bill_number'] ?? null,
                             'is_vatable' => $product['is_vatable'],
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
                             'batch_no' => $product['batch_no'] ?? null,
@@ -705,10 +694,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
+                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
+                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
+                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
                             'batch_no' => $product['batch_no'] ?? null,
 
                         ];
@@ -737,10 +726,10 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($data['price'] ?? 0) ?? 0,
-                            'discount_percent' => $product['discount_percent'] ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($data['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($data['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
                         $stockMovement = StockMovement::create($stockValidatedData);

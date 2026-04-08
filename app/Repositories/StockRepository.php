@@ -37,12 +37,10 @@ class StockRepository implements StockRepositoryInterface
         $fiscalYearId = FiscalYear::where('status', 1)
             ->whereNull('deleted_at')
             ->value('id');
+            
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
 
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
 
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
         $stockValidated = [
 
             'fiscal_year_id' => $fiscalYearId,
@@ -69,7 +67,7 @@ class StockRepository implements StockRepositoryInterface
             'taxable_amount' => $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0,
             'non_taxable_amount' => $this->currencyFormatService->cleanCurrency($data['non_taxable_amount'] ?? 0) ?? 0,
             'excise_duty' => $this->currencyFormatService->cleanCurrency($data['excise_duty'] ?? 0) ?? 0,
-            'vat_percent' => $data['vat_percent'] ?? 0,
+            'vat_percent' => $this->currencyFormatService->cleanCurrency($data['vat_percent'] ?? 0) ?? 0,
             'health_insurance' => $this->currencyFormatService->cleanCurrency($data['health_insurance'] ?? 0) ?? 0,
 
             'freight_amount' => $this->currencyFormatService->cleanCurrency($data['freight_amount'] ?? 0) ?? 0,
@@ -77,7 +75,7 @@ class StockRepository implements StockRepositoryInterface
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
 
 
-            'total_amount' => $totalAmount + $vatAmount,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -87,6 +85,18 @@ class StockRepository implements StockRepositoryInterface
 
 
         foreach ($data['stock_products'] as $product) {
+
+            $existingProduct = StockProduct::where('product_id', $product['product_id'])
+                ->where('type', 'opening_stock')
+                ->whereNull('deleted_at')
+                ->when(!empty($product['id']), function ($q) use ($product) {
+                    $q->where('id', '!=', $product['id']);
+                })
+                ->exists();
+
+            if ($existingProduct) {
+                throw new \Exception('Item already entered for this product');
+            }
 
             $quantity = $this->unitConversionService->convertToBaseUnit(
 
@@ -159,11 +169,7 @@ class StockRepository implements StockRepositoryInterface
 
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
 
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
-
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
 
         $stockValidated = [
             'fiscal_year_id' => $fiscalYearId,
@@ -196,7 +202,7 @@ class StockRepository implements StockRepositoryInterface
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
 
-            'total_amount' => $totalAmount + $vatAmount,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -215,6 +221,18 @@ class StockRepository implements StockRepositoryInterface
             ->delete();
 
         foreach ($data['stock_products'] as $product) {
+
+            $existingProduct = StockProduct::where('product_id', $product['product_id'])
+                ->where('type', 'opening_stock')
+                ->whereNull('deleted_at')
+                ->when(!empty($product['id']), function ($q) use ($product) {
+                    $q->where('id', '!=', $product['id']);
+                })
+                ->exists();
+
+            if ($existingProduct) {
+                throw new \Exception('Item already entered for this product');
+            }
             $quantity = $this->unitConversionService->convertToBaseUnit(
 
                 $product['measure_unit_id'],
@@ -306,10 +324,10 @@ class StockRepository implements StockRepositoryInterface
             return [
                 'id' => $stock->id,
                 'branch_id' => $stock->branch_id,
-                'branch' => $stock->branch?->name, 
+                'branch' => $stock->branch?->name,
                 'type' => $stock->type,
                 'total_amount' => $stock->total_amount,
-               
+
             ];
         });
     }
@@ -347,7 +365,7 @@ class StockRepository implements StockRepositoryInterface
                     'stock_product_id' => $item->stock_product_id,
                     'stock_movement_id' => $item->stock_movement_id,
                     'product_id' => $item->product_id,
-                    
+
                     'quantity_index' => $item->quantity_index,
                     'quantity_type' => $item->quantity_type,
                     'key' => $item->key,
@@ -356,7 +374,7 @@ class StockRepository implements StockRepositoryInterface
                     'updated_at' => $item->updated_at,
                     'deleted_at' => $item->deleted_at,
 
-                    
+
                     'type' => $type,
                     'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
                 ];

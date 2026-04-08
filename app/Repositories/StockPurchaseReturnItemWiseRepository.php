@@ -64,11 +64,6 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
 
         $appliedVat = Vat::where('is_active', 1)->pluck('vat_percent')->first() ?? 0;
 
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
-
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
-
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
 
 
         $stockData = [
@@ -102,7 +97,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
             'roundoff_type' => $data['roundoff_type'] ?? null,
             'roundoff_amount' => $this->currencyFormatService->cleanCurrency($data['roundoff_amount'] ?? 0) ?? 0,
 
-            'total_amount' => $totalAmount + $vatAmount,
+            'total_amount' => $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0,
             'payment' => isset($data['payment']) ? json_encode($data['payment']) : null,
             'remarks' => $data['remarks'] ?? null,
 
@@ -210,8 +205,8 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'mfd' => $product['mfd'] ?? null,
                             'price' => null,
                             'discount_percent' => null,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'batch_no' => $product['batch_no'] ?? null,
                             'stock_product_id' => $alloc['stock_product_id'] ?? null,
 
@@ -315,10 +310,10 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
-                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
 
@@ -381,12 +376,7 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
             ->whereNull('deleted_at')
             ->value('id');
 
-        $totalAmount = $this->currencyFormatService->cleanCurrency($data['total_amount'] ?? 0) ?? 0;
-
-        $taxableAmount = $this->currencyFormatService->cleanCurrency($data['taxable_amount'] ?? 0) ?? 0;
-
-        $vatAmount = $this->taxImplementService->transactionImplement($appliedVat ?? 0, $taxableAmount) ?? 0;
-
+        
         $stockValidated = [
             'fiscal_year_id' => $fiscalYearId,
             'company_id' => $data['company_id'],
@@ -526,10 +516,10 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
-                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'batch_no' => $product['batch_no'] ?? null,
                             'stock_product_id' => $alloc['stock_product_id'] ?? null,
 
@@ -621,10 +611,10 @@ class StockPurchaseReturnItemWiseRepository implements StockPurchaseReturnItemWi
                             'party_id' => $data['party_id'] ?? null,
                             'expiry_date' => $product['expiry_date'] ?? null,
                             'mfd' => $product['mfd'] ?? null,
-                            'price' => $this->currencyFormatService->cleanCurrency($product['price'] ?? 0) ?? 0,
-                            'discount_percent' => $this->currencyFormatService->cleanCurrency($product['discount_percent'] ?? 0) ?? 0,
-                            'discount_amount' => $this->currencyFormatService->cleanCurrency($product['discount_amount'] ?? 0) ?? 0,
-                            'amount' => $this->currencyFormatService->cleanCurrency($product['amount'] ?? 0) ?? 0,
+                            'price' => null,
+                            'discount_percent' => null,
+                            'discount_amount' => null,
+                            'amount' => null,
                             'batch_no' => $product['batch_no'] ?? null,
                         ];
                         $stockMovement = StockMovement::create($movementTransactionData);

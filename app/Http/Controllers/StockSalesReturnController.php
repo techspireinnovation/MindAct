@@ -29,7 +29,7 @@ class StockSalesReturnController extends Controller
             return response()->json(['message' => 'Stock Sales Return retrieved successfully', 'data' => $data], 201);
 
         } catch (ModelNotFoundException $e) {
-            return response()->json(['message' => 'Stock Sales Return not found'], 404);
+            return response()->json(['message' => 'Stock Sales Return not found !!'], 404);
         } catch (QueryException $e) {
             return response()->json(['message' => 'Database error occurred while listing the stock sales return', 'error' => $e->getMessage()], 500);
         } catch (\Exception $e) {

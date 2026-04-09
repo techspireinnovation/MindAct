@@ -1240,186 +1240,104 @@ class AvaialableProductsService
 
     public function productListforTransactionBillWiseSalesReturn($companyId, $branchId)
     {
-        \Log::info('=== productListforTransactionBillWiseSalesReturn START ===', [
-            'company_id' => $companyId,
-            'branch_id' => $branchId,
-        ]);
+        \Log::info('=== Sales Return Bill List Started ===', compact('companyId', 'branchId'));
 
-        // 1. Get all sales (regular sales in stock_transactions + free in stock_movements)
-        $saleTransactions = DB::table('stock_transactions as st')
+        // Get all sales (regular + free)
+        $sales = collect();
+
+        // Regular sales from stock_transactions
+        $transSales = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
             ->where('st.company_id', $companyId)
             ->where('st.branch_id', $branchId)
             ->where('st.type', 'sale')
             ->whereNull('st.deleted_at')
-            ->select(
-                's.bill_number',
-                'st.id as source_id',           // this id will be matched with returns' source_id
-                'st.quantity'
-            )
+            ->select('s.bill_number', 'st.id as source_id', DB::raw('SUM(st.quantity) as qty'))
+            ->groupBy('s.bill_number', 'st.id')
             ->get();
 
-        $saleMovements = DB::table('stock_movements as sm')
-            ->where('sm.company_id', $companyId)
-            ->where('sm.branch_id', $branchId)
-            ->where('sm.type', 'sale')
-            ->whereNull('sm.deleted_at')
-            ->whereNotNull('sm.sales_bill_number')
-            ->select(
-                'sm.sales_bill_number as bill_number',
-                'sm.id as source_id',           // this id will be matched with returns' source_id
-                'sm.quantity'
-            )
+        // Free / movement sales
+        $moveSales = DB::table('stock_movements')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sale')
+            ->whereNull('deleted_at')
+            ->whereNotNull('sales_bill_number')
+            ->select('sales_bill_number as bill_number', 'id as source_id', DB::raw('SUM(quantity) as qty'))
+            ->groupBy('sales_bill_number', 'id')
             ->get();
 
-        \Log::info('Sales Data', [
-            'transactions' => $saleTransactions->toArray(),
-            'movements' => $saleMovements->toArray(),
-        ]);
+        $allSales = $transSales->concat($moveSales);
 
-        // 2. Get all returns
-        $returnTransactions = DB::table('stock_transactions')
+        // Get all returns
+        $returns = DB::table('stock_transactions')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
             ->whereNotNull('source_id')
             ->whereNull('deleted_at')
-            ->select('source_id', 'quantity')
+            ->select('source_id', DB::raw('SUM(quantity) as qty'))
+            ->groupBy('source_id')
             ->get();
 
-        $returnMovements = DB::table('stock_movements')
+        $moveReturns = DB::table('stock_movements')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
             ->whereNotNull('source_id')
             ->whereNull('deleted_at')
-            ->select('source_id', 'quantity')
+            ->select('source_id', DB::raw('SUM(quantity) as qty'))
+            ->groupBy('source_id')
             ->get();
 
-        \Log::info('Return Data', [
-            'from_transactions' => $returnTransactions->toArray(),
-            'from_movements' => $returnMovements->toArray(),
-        ]);
+        $allReturns = $returns->concat($moveReturns);
 
-      
-        $billSummary = [];
+        // Calculate per bill
+        $availableBills = [];
 
-       
-        $allSales = $saleTransactions->groupBy('bill_number')
-            ->map(function ($items) {
-                return $items->sum('quantity');
-            });
+        foreach ($allSales->groupBy('bill_number') as $bill => $items) {
+            $totalSold = $items->sum('qty');
 
-        $allSales->put('from_movements', $saleMovements->groupBy('bill_number')
-            ->map(function ($items) {
-                return $items->sum('quantity');
-            }));
+            $sourceIds = $items->pluck('source_id');
 
-       
-        $billsWithAvailable = [];
+            $totalReturned = $allReturns->whereIn('source_id', $sourceIds)->sum('qty');
 
-        foreach ($saleTransactions->groupBy('bill_number') as $bill => $trans) {
-            $soldFromTrans = $trans->sum('quantity');
-            $soldFromMove = $saleMovements->where('bill_number', $bill)->sum('quantity');
-            $totalSold = $soldFromTrans + $soldFromMove;
+            $available = $totalSold - $totalReturned;
 
-          
-            $sourceIdsFromTrans = $trans->pluck('source_id');
-            $sourceIdsFromMove = $saleMovements->where('bill_number', $bill)->pluck('source_id');
-            $allSourceIds = $sourceIdsFromTrans->merge($sourceIdsFromMove);
-
-            // Total returned linked to these source_ids
-            $returned = $returnTransactions->whereIn('source_id', $allSourceIds)->sum('quantity')
-                + $returnMovements->whereIn('source_id', $allSourceIds)->sum('quantity');
-
-            $available = $totalSold - $returned;
-
-            $billSummary[$bill] = [
+            \Log::info("Bill: {$bill}", [
                 'total_sold' => $totalSold,
-                'total_returned' => $returned,
-                'available' => $available,
-            ];
+                'total_returned' => $totalReturned,
+                'available' => $available
+            ]);
 
             if ($available > 0) {
-                $billsWithAvailable[] = $bill;
+                $availableBills[] = $bill;
             }
-
-            \Log::info("Bill Calculation: {$bill}", [
-                'total_sold' => $totalSold,
-                'total_returned' => $returned,
-                'available_qty' => $available,
-                'will_show' => $available > 0 ? 'YES' : 'NO'
-            ]);
         }
 
-        \Log::info('Final Bills with available quantity', $billsWithAvailable);
+        \Log::info('Final available bills for sales return', $availableBills);
 
-        // Return only bills that still have remaining quantity
-        return collect($billsWithAvailable);
+        return $availableBills;
     }
 
     public function productforTransactionBillWiseSalesReturnDetails($companyId, $branchId, $billNumber)
     {
-
         $stock = DB::table('stocks as s')
             ->leftJoin('parties as p', 's.party_id', '=', 'p.id')
-            ->where('bill_number', $billNumber)
-            ->where('company_id', $companyId)
-            ->select(
-                's.*',
-                'p.name as party_name'
-            )
+            ->where('s.bill_number', $billNumber)
+            ->where('s.company_id', $companyId)
+            ->select('s.*', 'p.name as party_name')
             ->first();
 
         if (!$stock) {
             return response()->json(["message" => "Bill not found !!"], 404);
         }
 
-        $movementOut = StockMovement::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sale')
-            ->whereNull('deleted_at')
-            ->select('id', 'stock_id', 'product_id', DB::raw('SUM(quantity) as movement_out'))
-            ->groupBy('id', 'stock_id', 'product_id');
-
-
-
-
-        $transactionIn = StockTransaction::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-            ->whereNotNull('source_id')
-            ->whereNull('deleted_at')
-            ->select('source_id', DB::raw('SUM(quantity) as transaction_in'))
-            ->groupBy('source_id');
-
-        $returnMovementIn = StockMovement::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-            ->whereNotNull('source_id')
-            ->whereNull('deleted_at')
-            ->select('source_id', DB::raw('SUM(quantity) as return_movement_in'))
-            ->groupBy('source_id');
-
-
+        // FIXED & STABLE VERSION - Avoids 'st.id' in where clause inside GROUP BY
         $products = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
             ->join('products as p', 'st.product_id', '=', 'p.id')
-
-            ->leftJoinSub($movementOut, 'mo', function ($join) {
-                $join->on('st.stock_id', '=', 'mo.stock_id')
-                    ->on('st.product_id', '=', 'mo.product_id');
-            })
-
-            ->leftJoinSub($transactionIn, 'ti', function ($join) {
-                $join->on('st.id', '=', 'ti.source_id');
-            })
-
-            ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
-                $join->on('mo.id', '=', 'rmi.source_id');
-            })
             ->leftJoin('measure_units as mu', 'st.measure_unit_id', '=', 'mu.id')
-
 
             ->where('st.company_id', $companyId)
             ->where('st.branch_id', $branchId)
@@ -1429,21 +1347,38 @@ class AvaialableProductsService
 
             ->select(
                 'st.product_id',
-
                 'p.name as product_name',
-                'st.quantity',
+                'st.quantity as original_quantity',
                 'st.price',
                 'st.discount_amount',
                 'st.amount',
                 'st.measure_unit_id',
                 'mu.name as measure_unit_name',
                 'mu.quantity as measure_unit_quantity',
+
+                // Final Available Quantity Calculation (Stable)
                 DB::raw('
-                SUM(st.quantity)
-                + COALESCE(SUM(mo.movement_out),0)
-                - COALESCE(SUM(ti.transaction_in),0)
-                - COALESCE(SUM(rmi.return_movement_in),0)
-                as available_quantity
+                SUM(st.quantity) 
+                + COALESCE((
+                    SELECT SUM(sm.quantity) 
+                    FROM stock_movements sm 
+                    WHERE sm.stock_id = st.stock_id 
+                      AND sm.type = "sale" 
+                      AND sm.sales_bill_number = s.bill_number
+                ), 0)
+                - (
+                    SELECT COALESCE(SUM(all_returns.quantity), 0)
+                    FROM (
+                        SELECT quantity, source_id 
+                        FROM stock_transactions 
+                        WHERE type = "sales_return" 
+                        UNION ALL
+                        SELECT quantity, source_id 
+                        FROM stock_movements 
+                        WHERE type = "sales_return"
+                    ) AS all_returns
+                    WHERE all_returns.source_id = st.id
+                ) as available_quantity
             ')
             )
 
@@ -1456,14 +1391,15 @@ class AvaialableProductsService
                 'st.amount',
                 'st.measure_unit_id',
                 'mu.name',
-                'mu.quantity'
+                'mu.quantity',
+                'st.stock_id',
+                's.bill_number',
+                'st.id'
             )
             ->havingRaw('available_quantity > 0')
             ->get();
 
-
-
-
+        // ====================== YOUR ORIGINAL CODE (UNCHANGED FROM HERE) ======================
         $variantIndexes = DB::table('transaction_pivots as tp')
             ->join('stock_transactions as st', 'tp.stock_transaction_id', '=', 'st.id')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
@@ -1472,7 +1408,6 @@ class AvaialableProductsService
             ->where('s.bill_number', $billNumber)
             ->where('tp.type', 'sale')
             ->whereNull('tp.deleted_at')
-
             ->select(
                 'tp.product_id',
                 'tp.stock_product_id',
@@ -1480,10 +1415,7 @@ class AvaialableProductsService
                 'tp.stock_movement_id',
                 'tp.quantity_index',
                 'tp.quantity_type'
-
-
             )
-
             ->groupBy(
                 'tp.product_id',
                 'tp.stock_product_id',
@@ -1491,8 +1423,6 @@ class AvaialableProductsService
                 'tp.stock_movement_id',
                 'tp.quantity_index',
                 'tp.quantity_type'
-
-
             )
             ->get();
 
@@ -1511,22 +1441,15 @@ class AvaialableProductsService
             )
             ->get();
 
-
-
-
-
         $transactions = DB::table('transaction_pivots')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->whereNull('deleted_at')
-
             ->select(
                 'product_id',
                 'stock_product_id',
                 'quantity_index',
                 'quantity_type',
-
-
                 DB::raw("
                 SUM(
                     CASE
@@ -1537,43 +1460,32 @@ class AvaialableProductsService
                 ) as effect
             ")
             )
-
             ->groupBy(
                 'product_id',
                 'stock_product_id',
                 'quantity_index',
-                'quantity_type',
-
+                'quantity_type'
             )
             ->get();
 
-
-
-
-
         $variants = $variantIndexes->map(function ($variant) use ($transactions, $fieldValues) {
-
             $effect = $transactions
                 ->where('stock_product_id', $variant->stock_product_id)
                 ->where('quantity_index', $variant->quantity_index)
                 ->sum('effect');
 
             if ($effect > 0) {
+                $fields = $fieldValues->filter(function ($item) use ($variant) {
+                    return (
+                        $item->product_id == $variant->product_id &&
+                        (
+                            $item->stock_product_id == $variant->stock_product_id ||
+                            $item->stock_movement_id == $variant->stock_movement_id
+                        ) &&
+                        $item->quantity_index == $variant->quantity_index
+                    );
+                })->values();
 
-                $fields = $fieldValues
-                    ->filter(function ($item) use ($variant) {
-                        return (
-                            $item->product_id == $variant->product_id
-                            &&
-                            (
-                                $item->stock_product_id == $variant->stock_product_id ||
-                                $item->stock_movement_id == $variant->stock_movement_id
-                            )
-                            &&
-                            $item->quantity_index == $variant->quantity_index
-                        );
-                    })
-                    ->values();
                 return $fields->map(function ($field) use ($variant) {
                     return [
                         "product_id" => $variant->product_id,
@@ -1584,30 +1496,17 @@ class AvaialableProductsService
                         "quantity_type" => $variant->quantity_type ?? null,
                         "key" => $field->key,
                         "value" => $field->value,
-
-
                     ];
                 });
-
             }
 
             return collect([]);
-
         })
-
             ->filter()
             ->flatten(1)
-            // ->unique(function ($item) {
-            //     return ($item['stock_product_id'] ?? 'null') . '-' . ($item['quantity_index'] ?? '0');
-            // })
-
             ->values();
 
-
-
-
         $products->transform(function ($product) use ($variants) {
-
             $product->field_values = $variants
                 ->where('product_id', $product->product_id)
                 ->values();
@@ -1619,13 +1518,10 @@ class AvaialableProductsService
                     "quantity" => $product->measure_unit_quantity
                 ]
             ];
-            // unset($product->measure_unit_id);
             unset($product->measure_unit_name);
 
             return $product;
-
         });
-
 
         return [
             'id' => $stock->id,
@@ -1636,14 +1532,11 @@ class AvaialableProductsService
             'party_id' => $stock->party_id ?? null,
             'party_name' => $stock->party_name ?? null,
             'fiscal_year_id' => $stock->fiscal_year_id ?? null,
-
             'company_id' => $stock->company_id ?? null,
             'branch_id' => $stock->branch_id ?? null,
             'store_id' => $stock->store_id ?? null,
             'type' => $stock->type ?? null,
-
             'purchase_bill_number' => $stock->purchase_bill_number ?? null,
-
             'location_id' => $stock->location_id ?? null,
             'batch_no' => $stock->batch_no ?? null,
             'credit_days' => $stock->credit_days ?? null,
@@ -1663,10 +1556,8 @@ class AvaialableProductsService
             'freight_amount' => $stock->freight_amount ?? null,
             'roundoff_type' => $stock->roundoff_type ?? null,
             'roundoff_amount' => $stock->roundoff_amount ?? null,
-
             'payment' => $stock->payment ?? null,
             'remarks' => $stock->remarks ?? null,
-
             'products' => $products
         ];
     }

@@ -277,7 +277,6 @@ class AvaialableProductsService
                 'p.retail_price',
                 'p.wholesale_price',
                 'p.mrp_price',
-                'p.is_vatable',
                 'p.measure_unit_id',
 
                 'mu.name as measure_unit_name',
@@ -568,7 +567,7 @@ class AvaialableProductsService
                 ->where('quantity_index', $variant->quantity_index)
                 ->sum('effect');
 
-           
+            // $available = $effect;
 
             if ($effect > 0) {
                 return [
@@ -1241,89 +1240,130 @@ class AvaialableProductsService
 
     public function productListforTransactionBillWiseSalesReturn($companyId, $branchId)
     {
-        \Log::info('=== Sales Return Bill List Started ===', compact('companyId', 'branchId'));
+        \Log::info("===== SALES RETURN BILL DEBUG START =====", compact('companyId', 'branchId'));
 
-
-        $sales = collect();
-
-        // Regular sales from stock_transactions
+        /**
+         * =========================
+         * SALES
+         * =========================
+         */
         $transSales = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
             ->where('st.company_id', $companyId)
             ->where('st.branch_id', $branchId)
             ->where('st.type', 'sale')
             ->whereNull('st.deleted_at')
-            ->select('s.bill_number', 'st.id as source_id', DB::raw('SUM(st.quantity) as qty'))
-            ->groupBy('s.bill_number', 'st.id')
-            ->get();
+            ->select(
+                's.bill_number',
+                'st.id as source_id',
+                DB::raw("'stock_transaction' as source_type"),
+                'st.quantity as qty'
+            );
 
-        // Free / movement sales
-        $moveSales = DB::table('stock_movements')
-            ->where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sale')
-            ->whereNull('deleted_at')
-            ->whereNotNull('sales_bill_number')
-            ->select('sales_bill_number as bill_number', 'id as source_id', DB::raw('SUM(quantity) as qty'))
-            ->groupBy('sales_bill_number', 'id')
-            ->get();
+        $moveSales = DB::table('stock_movements as sm')
+            ->where('sm.company_id', $companyId)
+            ->where('sm.branch_id', $branchId)
+            ->where('sm.type', 'sale')
+            ->whereNull('sm.deleted_at')
+            ->whereNotNull('sm.sales_bill_number')
+            ->select(
+                'sm.sales_bill_number as bill_number',
+                'sm.id as source_id',
+                DB::raw("'stock_movement' as source_type"),
+                'sm.quantity as qty'
+            );
 
-        $allSales = $transSales->concat($moveSales);
+        $allSales = $transSales->unionAll($moveSales);
 
-        // Get all returns
-        $returns = DB::table('stock_transactions')
+        /**
+         * =========================
+         * RETURNS (FIXED 🔥)
+         * =========================
+         */
+        $returnsUnion = DB::table('stock_transactions')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
             ->where('type', 'sales_return')
-            ->whereNotNull('source_id')
             ->whereNull('deleted_at')
-            ->select('source_id', DB::raw('SUM(quantity) as qty'))
-            ->groupBy('source_id')
+            ->select(
+                'source_id',
+                'source_type',
+                'quantity as qty'
+            )
+            ->unionAll(
+                DB::table('stock_movements')
+                    ->where('company_id', $companyId)
+                    ->where('branch_id', $branchId)
+                    ->where('type', 'sales_return')
+                    ->whereNull('deleted_at')
+                    ->select(
+                        'source_id',
+                        'source_type',
+                        'quantity as qty'
+                    )
+            );
+
+        // ✅ CRITICAL FIX: GROUP AFTER UNION
+        $allReturns = DB::query()
+            ->fromSub($returnsUnion, 'r')
+            ->select(
+                'source_id',
+                'source_type',
+                DB::raw('SUM(qty) as qty')
+            )
+            ->groupBy('source_id', 'source_type');
+
+        /**
+         * =========================
+         * DEBUG RAW DATA
+         * =========================
+         */
+        \Log::info("---- SALES DATA ----", DB::query()->fromSub($allSales, 's')->get()->toArray());
+        \Log::info("---- RETURNS DATA (AFTER FIX) ----", DB::query()->fromSub($allReturns, 'r')->get()->toArray());
+
+        /**
+         * =========================
+         * FINAL CALCULATION
+         * =========================
+         */
+        $result = DB::query()
+            ->fromSub($allSales, 's')
+            ->leftJoinSub($allReturns, 'r', function ($join) {
+                $join->on('s.source_id', '=', 'r.source_id')
+                    ->on('s.source_type', '=', 'r.source_type');
+            })
+            ->select(
+                's.bill_number',
+                DB::raw('SUM(s.qty) as total_sold'),
+                DB::raw('COALESCE(SUM(r.qty),0) as total_returned'),
+                DB::raw('SUM(s.qty) - COALESCE(SUM(r.qty),0) as available_quantity')
+            )
+            ->groupBy('s.bill_number')
             ->get();
 
-        $moveReturns = DB::table('stock_movements')
-            ->where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-            ->whereNotNull('source_id')
-            ->whereNull('deleted_at')
-            ->select('source_id', DB::raw('SUM(quantity) as qty'))
-            ->groupBy('source_id')
-            ->get();
-
-        $allReturns = $returns->concat($moveReturns);
-
-        // Calculate per bill
-        $availableBills = [];
-
-        foreach ($allSales->groupBy('bill_number') as $bill => $items) {
-            $totalSold = $items->sum('qty');
-
-            $sourceIds = $items->pluck('source_id');
-
-            $totalReturned = $allReturns->whereIn('source_id', $sourceIds)->sum('qty');
-
-            $available = $totalSold - $totalReturned;
-
-            \Log::info("Bill: {$bill}", [
-                'total_sold' => $totalSold,
-                'total_returned' => $totalReturned,
-                'available' => $available
+      
+        foreach ($result as $row) {
+            \Log::info("BILL CALCULATION", [
+                'bill_number' => $row->bill_number,
+                'total_sold' => $row->total_sold,
+                'total_returned' => $row->total_returned,
+                'available_quantity' => $row->available_quantity,
             ]);
-
-            if ($available > 0) {
-                $availableBills[] = $bill;
-            }
         }
 
-        \Log::info('Final available bills for sales return', $availableBills);
+      
+        $final = collect($result)
+            ->filter(fn($r) => $r->available_quantity > 0)
+            ->pluck('bill_number')
+            ->values();
 
-        return $availableBills;
+        \Log::info("===== FINAL AVAILABLE BILLS =====", $final->toArray());
+
+        return $final;
     }
 
     public function productforTransactionBillWiseSalesReturnDetails($companyId, $branchId, $billNumber)
     {
-        
         $stock = DB::table('stocks as s')
             ->leftJoin('parties as p', 's.party_id', '=', 'p.id')
             ->where('s.bill_number', $billNumber)
@@ -1337,7 +1377,11 @@ class AvaialableProductsService
 
         $stockId = $stock->id;
 
-        
+        /**
+         * =========================
+         * SALES (transactions + movements)
+         * =========================
+         */
         $salesTransactions = DB::table('stock_transactions')
             ->where('stock_id', $stockId)
             ->where('type', 'sale')
@@ -1347,10 +1391,13 @@ class AvaialableProductsService
                 'stock_id',
                 'product_id',
                 'quantity',
+                'price',
+                'amount',
+                'discount_amount',
+                'measure_unit_id',
                 DB::raw("'stock_transaction' as source_type")
             );
 
-       
         $salesMovements = DB::table('stock_movements')
             ->where('stock_id', $stockId)
             ->where('type', 'sale')
@@ -1360,107 +1407,271 @@ class AvaialableProductsService
                 'stock_id',
                 'product_id',
                 'quantity',
+                DB::raw("NULL as price"),
+                DB::raw("NULL as amount"),
+                DB::raw("NULL as discount_amount"),
+                DB::raw("NULL as measure_unit_id"),
                 DB::raw("'stock_movement' as source_type")
             );
 
-       
         $allSales = $salesTransactions->unionAll($salesMovements)->get();
 
-       
-        $returnFromTransactions = DB::table('stock_transactions as rt')
-            
-            ->where('rt.type', 'sales_return')
-            ->whereNull('rt.deleted_at')
+        /**
+         * =========================
+         * RETURNS (BOTH TABLES FIXED)
+         * =========================
+         */
+        $returnTransactions = DB::table('stock_transactions')
+            ->where('type', 'sales_return')
+            ->whereNull('deleted_at')
             ->select(
-                'rt.source_id',
-                'rt.source_type',
-                'rt.product_id',
-                DB::raw('SUM(rt.quantity) as return_qty')
+                'source_id',
+                'source_type',
+                'product_id',
+                DB::raw('SUM(quantity) as return_qty')
             )
-            ->groupBy('rt.source_id', 'rt.source_type', 'rt.product_id');
+            ->groupBy('source_id', 'source_type', 'product_id');
 
-       
-        $returnFromMovements = DB::table('stock_movements as rm')
-           
-            ->where('rm.type', 'sales_return')
-            ->whereNull('rm.deleted_at')
+        $returnMovements = DB::table('stock_movements')
+            ->where('type', 'sales_return')
+            ->whereNull('deleted_at')
             ->select(
-                'rm.source_id',
-                'rm.source_type',
-                'rm.product_id',
-                DB::raw('SUM(rm.quantity) as return_qty')
+                'source_id',
+                'source_type',
+                'product_id',
+                DB::raw('SUM(quantity) as return_qty')
             )
-            ->groupBy('rm.source_id', 'rm.source_type', 'rm.product_id');
+            ->groupBy('source_id', 'source_type', 'product_id');
 
-      
-        $allReturns = $returnFromTransactions->unionAll($returnFromMovements)->get();
+        $allReturns = $returnTransactions->unionAll($returnMovements)->get();
 
-       
+        /**
+         * =========================
+         * RETURN MAP
+         * =========================
+         */
         $returnMap = [];
 
         foreach ($allReturns as $r) {
             $key = $r->source_type . '_' . $r->source_id . '_' . $r->product_id;
-
-            if (!isset($returnMap[$key])) {
-                $returnMap[$key] = 0;
-            }
-
-            $returnMap[$key] += $r->return_qty;
+            $returnMap[$key] = ($returnMap[$key] ?? 0) + $r->return_qty;
         }
 
-       
+        /**
+         * =========================
+         * BUILD PRODUCTS (FIXED)
+         * =========================
+         */
         $products = [];
 
-        foreach ($allSales as $s) {
+        foreach ($allSales as $sale) {
 
-            $key = $s->source_type . '_' . $s->source_id . '_' . $s->product_id;
-
+            $key = $sale->source_type . '_' . $sale->source_id . '_' . $sale->product_id;
             $returnedQty = $returnMap[$key] ?? 0;
 
-            if (!isset($products[$s->product_id])) {
-                $products[$s->product_id] = [
-                    'product_id' => $s->product_id,
-                    'sold_qty' => 0,
-                    'returned_qty' => 0,
+            if (!isset($products[$sale->product_id])) {
+
+                $productInfo = DB::table('products')
+                    ->where('id', $sale->product_id)
+                    ->first();
+
+                $products[$sale->product_id] = [
+                    "product_id" => $sale->product_id,
+                    "product_name" => $productInfo->name ?? null,
+
+                    // ✅ KEEP REAL VALUES (NO NULL OVERWRITE)
+                    "quantity" => 0,
+                    "price" => $sale->price ?? null,
+                    "amount" => $sale->amount ?? null,
+                    "discount_amount" => $sale->discount_amount ?? null,
+
+                    "measure_unit_id" => $sale->measure_unit_id ?? null,
+                    "measure_unit_quantity" => null,
+
+                    "available_quantity" => 0,
+                    "field_values" => [],
+                    "measure_unit" => []
                 ];
             }
 
-            $products[$s->product_id]['sold_qty'] += $s->quantity;
-            $products[$s->product_id]['returned_qty'] += $returnedQty;
+            $products[$sale->product_id]["quantity"] += $sale->quantity;
+
+            // ✅ correct stock after returns
+            $products[$sale->product_id]["available_quantity"] += ($sale->quantity - $returnedQty);
         }
 
-       
+        /**
+         * =========================
+         * MEASURE UNIT FIX
+         * =========================
+         */
         foreach ($products as &$p) {
-            $p['available_quantity'] = $p['sold_qty'] - $p['returned_qty'];
+
+            if ($p["measure_unit_id"]) {
+                $unit = DB::table('measure_units')
+                    ->where('id', $p["measure_unit_id"])
+                    ->first();
+
+                if ($unit) {
+                    $p["measure_unit"] = [
+                        [
+                            "id" => $unit->id,
+                            "name" => $unit->name,
+                            "quantity" => $unit->quantity
+                        ]
+                    ];
+
+                    $p["measure_unit_quantity"] = $unit->quantity;
+                }
+            }
         }
 
-       
-        $result = collect($products)->values()->map(function ($p) {
-            $product = DB::table('products')->where('id', $p['product_id'])->first();
+        /**
+         * =========================
+         * VARIANTS (UNCHANGED)
+         * =========================
+         */
+        $variantIndexes = DB::table('transaction_pivots as tp')
+            ->join('stock_transactions as st', 'tp.stock_transaction_id', '=', 'st.id')
+            ->join('stocks as s', 'st.stock_id', '=', 's.id')
+            ->where('tp.company_id', $companyId)
+            ->where('tp.branch_id', $branchId)
+            ->where('s.bill_number', $billNumber)
+            ->where('tp.type', 'sale')
+            ->whereNull('tp.deleted_at')
+            ->select(
+                'tp.product_id',
+                'tp.stock_product_id',
+                'tp.stock_transaction_id',
+                'tp.stock_movement_id',
+                'tp.quantity_index',
+                'tp.quantity_type'
+            )
+            ->groupBy(
+                'tp.product_id',
+                'tp.stock_product_id',
+                'tp.stock_transaction_id',
+                'tp.stock_movement_id',
+                'tp.quantity_index',
+                'tp.quantity_type'
+            )
+            ->get();
 
-            $unit = null;
-            if ($product && $product->measure_unit_id) {
-                $unit = DB::table('measure_units')->where('id', $product->measure_unit_id)->first();
+        $fieldValues = DB::table('stock_product_field_values')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->get();
+
+        $transactions = DB::table('transaction_pivots')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->whereNull('deleted_at')
+            ->select(
+                'product_id',
+                'stock_product_id',
+                'quantity_index',
+                DB::raw("
+                SUM(
+                    CASE
+                        WHEN direction = 'out' THEN 1
+                        WHEN direction = 'in' THEN -1
+                        ELSE 0
+                    END
+                ) as effect
+            ")
+            )
+            ->groupBy('product_id', 'stock_product_id', 'quantity_index')
+            ->get();
+
+        $variants = $variantIndexes->map(function ($variant) use ($transactions, $fieldValues) {
+
+            $effect = $transactions
+                ->where('stock_product_id', $variant->stock_product_id)
+                ->where('quantity_index', $variant->quantity_index)
+                ->sum('effect');
+
+            if ($effect > 0) {
+
+                $fields = $fieldValues->where('product_id', $variant->product_id);
+
+                return $fields->map(function ($field) use ($variant) {
+                    return [
+                        "product_id" => $variant->product_id,
+                        "stock_product_id" => $variant->stock_product_id,
+                        "stock_transaction_id" => $variant->stock_transaction_id,
+                        "stock_movement_id" => $variant->stock_movement_id,
+                        "quantity_index" => $variant->quantity_index,
+                        "quantity_type" => $variant->quantity_type,
+                        "key" => $field->key,
+                        "value" => $field->value,
+                    ];
+                });
             }
 
-            return [
-                'product_id' => $p['product_id'],
-                'product_name' => $product->name ?? null,
-                'sold_qty' => $p['sold_qty'],
-                'returned_qty' => $p['returned_qty'],
-                'available_quantity' => $p['available_quantity'],
-                'measure_unit_name' => $unit->name ?? null,
-                'measure_unit_quantity' => $unit->quantity ?? null,
-            ];
-        });
+            return collect([]);
+        })
+            ->filter()
+            ->flatten(1)
+            ->values();
 
+        /**
+         * =========================
+         * ATTACH FIELD VALUES
+         * =========================
+         */
+        foreach ($products as &$product) {
+            $product["field_values"] = $variants
+                ->where("product_id", $product["product_id"])
+                ->values();
+        }
+
+        /**
+         * =========================
+         * FINAL RESPONSE (UNCHANGED)
+         * =========================
+         */
         return [
             'id' => $stock->id,
             'bill_number' => $stock->bill_number,
+            'invoice_date' => $stock->invoice_date,
+            'invoice_date_bs' => $stock->invoice_date_bs,
+            'total_amount' => $stock->total_amount,
+            'party_id' => $stock->party_id,
             'party_name' => $stock->party_name,
-            'products' => $result
+            'fiscal_year_id' => $stock->fiscal_year_id,
+            'company_id' => $stock->company_id,
+            'branch_id' => $stock->branch_id,
+            'store_id' => $stock->store_id,
+            'type' => $stock->type,
+            'purchase_bill_number' => $stock->purchase_bill_number,
+            'location_id' => $stock->location_id,
+            'batch_no' => $stock->batch_no,
+            'credit_days' => $stock->credit_days,
+            'balance' => $stock->balance,
+            'ref_bill_number' => $stock->ref_bill_number,
+            'return_bill_no' => $stock->return_bill_no,
+            'reasons' => $stock->reasons,
+            'discount_type' => $stock->discount_type,
+            'discount_value' => $stock->discount_value,
+            'discount_after_vat' => $stock->discount_after_vat,
+            'sub_total_before_discount' => $stock->sub_total_before_discount,
+            'taxable_amount' => $stock->taxable_amount,
+            'non_taxable_amount' => $stock->non_taxable_amount,
+            'excise_duty' => $stock->excise_duty,
+            'vat_percent' => $stock->vat_percent,
+            'health_insurance' => $stock->health_insurance,
+            'freight_amount' => $stock->freight_amount,
+            'roundoff_type' => $stock->roundoff_type,
+            'roundoff_amount' => $stock->roundoff_amount,
+            'payment' => $stock->payment,
+            'remarks' => $stock->remarks,
+            'products' => array_values($products)
         ];
     }
+
+
+
 
 
 }

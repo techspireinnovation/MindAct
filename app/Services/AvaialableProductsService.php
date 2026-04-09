@@ -1301,10 +1301,10 @@ class AvaialableProductsService
             'from_movements' => $returnMovements->toArray(),
         ]);
 
-        // 3. Calculate net quantity per bill
+      
         $billSummary = [];
 
-        // Combine all sales by bill_number
+       
         $allSales = $saleTransactions->groupBy('bill_number')
             ->map(function ($items) {
                 return $items->sum('quantity');
@@ -1315,7 +1315,7 @@ class AvaialableProductsService
                 return $items->sum('quantity');
             }));
 
-        // Better way: calculate total sold and total returned per bill
+       
         $billsWithAvailable = [];
 
         foreach ($saleTransactions->groupBy('bill_number') as $bill => $trans) {
@@ -1323,7 +1323,7 @@ class AvaialableProductsService
             $soldFromMove = $saleMovements->where('bill_number', $bill)->sum('quantity');
             $totalSold = $soldFromTrans + $soldFromMove;
 
-            // Get all source_ids for this bill (both transaction and movement ids)
+          
             $sourceIdsFromTrans = $trans->pluck('source_id');
             $sourceIdsFromMove = $saleMovements->where('bill_number', $bill)->pluck('source_id');
             $allSourceIds = $sourceIdsFromTrans->merge($sourceIdsFromMove);

@@ -422,7 +422,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
         $stock = Stock::with('stockMovements.stockProductFieldValues', 'stockMovements.product')
             ->whereNull('deleted_at')
             ->findOrFail($id);
-       
+
         $stock->stockProducts->map(function ($stockProduct) {
 
             $stockProduct->field_values = $stockProduct->stockProductFieldValues->map(function ($item) use ($stockProduct) {
@@ -458,7 +458,7 @@ class StockAdjustmentRepository implements StockAdjustmentRepositoryInterface
                     'updated_at' => $item->updated_at,
                     'deleted_at' => $item->deleted_at,
 
-                    // ✅ dropdown fix
+
                     'type' => $type,
                     'options' => $isDropdown ? ($fieldConfig['options'] ?? []) : null,
                 ];

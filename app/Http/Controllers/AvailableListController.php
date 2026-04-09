@@ -183,13 +183,13 @@ class AvailableListController extends Controller
             $billNumber = $request->bill_number;
             $data = $this->availableProductsService->productforTransactionBillWiseSalesReturnDetails($request->company_id, $request->branch_id, $billNumber);
             return response()->json([
-                "message" => "Sales Return Product Details Retrieved Successfully !",
+                "message" => "Sales Return Product Details Retrieved Successfully !!",
                 "data" => $data
             ]);
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
-
+            dd($e->getMessage());
             return response()->json(["message" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
 

@@ -1240,66 +1240,122 @@ class AvaialableProductsService
 
     public function productListforTransactionBillWiseSalesReturn($companyId, $branchId)
     {
-        // Total quantity sold via StockMovement
-        $movementOut = StockMovement::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sale')
-            ->whereNull('deleted_at')
-            ->select('id', 'stock_id', 'product_id', DB::raw('SUM(quantity) as movement_out'))
-            ->groupBy('id', 'stock_id', 'product_id');
+        \Log::info('=== productListforTransactionBillWiseSalesReturn START ===', [
+            'company_id' => $companyId,
+            'branch_id' => $branchId,
+        ]);
 
-        // Sales returns linked to StockTransaction
-        $transactionIn = StockTransaction::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-            ->whereNotNull('source_id')
-            ->whereNull('deleted_at')
-            ->select('source_id', DB::raw('SUM(quantity) as transaction_in'))
-            ->groupBy('source_id');
-
-        // Sales returns linked to StockMovement
-        $returnMovementIn = StockMovement::where('company_id', $companyId)
-            ->where('branch_id', $branchId)
-            ->where('type', 'sales_return')
-            ->whereNotNull('source_id')
-            ->whereNull('deleted_at')
-            ->select('source_id', DB::raw('SUM(quantity) as return_movement_in'))
-            ->groupBy('source_id');
-
-        // Join sold transactions with their returns and stocks to get bill numbers
-        $bills = DB::table('stock_transactions as st')
+        // 1. Get all sales (regular sales in stock_transactions + free in stock_movements)
+        $saleTransactions = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
-            ->leftJoinSub($movementOut, 'mo', function ($join) {
-                $join->on('st.stock_id', '=', 'mo.stock_id')
-                    ->on('st.product_id', '=', 'mo.product_id');
-            })
-            ->leftJoinSub($transactionIn, 'ti', function ($join) {
-                $join->on('st.id', '=', 'ti.source_id'); // Link returns to original transaction
-            })
-            ->leftJoinSub($returnMovementIn, 'rmi', function ($join) {
-                $join->on('mo.id', '=', 'rmi.source_id'); // Link returns from movements
-            })
             ->where('st.company_id', $companyId)
             ->where('st.branch_id', $branchId)
             ->where('st.type', 'sale')
             ->whereNull('st.deleted_at')
             ->select(
                 's.bill_number',
-                DB::raw('
-                SUM(st.quantity)           -- quantity sold in StockTransaction
-                + COALESCE(SUM(mo.movement_out), 0)   -- quantity sold in StockMovement
-                - COALESCE(SUM(ti.transaction_in), 0) -- quantity returned from StockTransaction
-                - COALESCE(SUM(rmi.return_movement_in), 0) -- quantity returned from StockMovement
-                as available_quantity
-            ')
+                'st.id as source_id',           // this id will be matched with returns' source_id
+                'st.quantity'
             )
-            ->groupBy('s.bill_number')
-            ->havingRaw('available_quantity > 0')
-            ->pluck('s.bill_number') // only get bill numbers
-            ->unique()
-            ->values();
+            ->get();
 
-        return $bills;
+        $saleMovements = DB::table('stock_movements as sm')
+            ->where('sm.company_id', $companyId)
+            ->where('sm.branch_id', $branchId)
+            ->where('sm.type', 'sale')
+            ->whereNull('sm.deleted_at')
+            ->whereNotNull('sm.sales_bill_number')
+            ->select(
+                'sm.sales_bill_number as bill_number',
+                'sm.id as source_id',           // this id will be matched with returns' source_id
+                'sm.quantity'
+            )
+            ->get();
+
+        \Log::info('Sales Data', [
+            'transactions' => $saleTransactions->toArray(),
+            'movements' => $saleMovements->toArray(),
+        ]);
+
+        // 2. Get all returns
+        $returnTransactions = DB::table('stock_transactions')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sales_return')
+            ->whereNotNull('source_id')
+            ->whereNull('deleted_at')
+            ->select('source_id', 'quantity')
+            ->get();
+
+        $returnMovements = DB::table('stock_movements')
+            ->where('company_id', $companyId)
+            ->where('branch_id', $branchId)
+            ->where('type', 'sales_return')
+            ->whereNotNull('source_id')
+            ->whereNull('deleted_at')
+            ->select('source_id', 'quantity')
+            ->get();
+
+        \Log::info('Return Data', [
+            'from_transactions' => $returnTransactions->toArray(),
+            'from_movements' => $returnMovements->toArray(),
+        ]);
+
+        // 3. Calculate net quantity per bill
+        $billSummary = [];
+
+        // Combine all sales by bill_number
+        $allSales = $saleTransactions->groupBy('bill_number')
+            ->map(function ($items) {
+                return $items->sum('quantity');
+            });
+
+        $allSales->put('from_movements', $saleMovements->groupBy('bill_number')
+            ->map(function ($items) {
+                return $items->sum('quantity');
+            }));
+
+        // Better way: calculate total sold and total returned per bill
+        $billsWithAvailable = [];
+
+        foreach ($saleTransactions->groupBy('bill_number') as $bill => $trans) {
+            $soldFromTrans = $trans->sum('quantity');
+            $soldFromMove = $saleMovements->where('bill_number', $bill)->sum('quantity');
+            $totalSold = $soldFromTrans + $soldFromMove;
+
+            // Get all source_ids for this bill (both transaction and movement ids)
+            $sourceIdsFromTrans = $trans->pluck('source_id');
+            $sourceIdsFromMove = $saleMovements->where('bill_number', $bill)->pluck('source_id');
+            $allSourceIds = $sourceIdsFromTrans->merge($sourceIdsFromMove);
+
+            // Total returned linked to these source_ids
+            $returned = $returnTransactions->whereIn('source_id', $allSourceIds)->sum('quantity')
+                + $returnMovements->whereIn('source_id', $allSourceIds)->sum('quantity');
+
+            $available = $totalSold - $returned;
+
+            $billSummary[$bill] = [
+                'total_sold' => $totalSold,
+                'total_returned' => $returned,
+                'available' => $available,
+            ];
+
+            if ($available > 0) {
+                $billsWithAvailable[] = $bill;
+            }
+
+            \Log::info("Bill Calculation: {$bill}", [
+                'total_sold' => $totalSold,
+                'total_returned' => $returned,
+                'available_qty' => $available,
+                'will_show' => $available > 0 ? 'YES' : 'NO'
+            ]);
+        }
+
+        \Log::info('Final Bills with available quantity', $billsWithAvailable);
+
+        // Return only bills that still have remaining quantity
+        return collect($billsWithAvailable);
     }
 
     public function productforTransactionBillWiseSalesReturnDetails($companyId, $branchId, $billNumber)

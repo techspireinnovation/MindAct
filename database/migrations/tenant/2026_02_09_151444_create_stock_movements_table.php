@@ -33,6 +33,7 @@ return new class extends Migration {
                 ->onDelete('cascade');
             $table->string('type')->nullable();
             $table->string('stock_type')->nullable();
+            $table->string('sales_bill_number')->nullable();
             $table->decimal('quantity', 14, 4);
             $table->string('direction')->nullable();
             $table->unsignedInteger('measure_unit_id')->constrained('measure_units')->onDelete('cascade');

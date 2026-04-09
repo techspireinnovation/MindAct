@@ -130,7 +130,7 @@ class ProductTypeRepository implements ProductTypeRepositoryInterface
 
 
         $response = ($productTypes->count() > 0) ? ProductTypeResource::collection($productTypes)->map(function ($productType) {
-            return collect($productType)->only(['id', 'name']);
+            return collect($productType)->only(['id', 'name','is_primary']);
         }) : [];
 
 

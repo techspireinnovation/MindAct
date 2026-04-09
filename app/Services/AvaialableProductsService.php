@@ -568,7 +568,7 @@ class AvaialableProductsService
                 ->where('quantity_index', $variant->quantity_index)
                 ->sum('effect');
 
-            // $available = $effect;
+           
 
             if ($effect > 0) {
                 return [

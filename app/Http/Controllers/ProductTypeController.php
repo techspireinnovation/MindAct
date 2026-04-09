@@ -194,7 +194,7 @@ class ProductTypeController extends Controller
 
             return response()->json([
                 'error' => 'unexpected_error',
-                'message' => 'An unexpected error occurred while deleting the product type.'
+                'message' => 'An unexpected error occurred while deleting the product type !'
             ], 500);
         }
     }

@@ -1177,55 +1177,200 @@ class CompanyController extends Controller
      */
     public function destroy($id): JsonResponse
     {
+        $centralConnection = 'mysql';
+
         try {
-            $company = Company::find($id);
+            \Log::info('===== COMPANY DELETE START =====', ['company_id' => $id]);
+
+            // STEP 1: Load company
+            $company = Company::on($centralConnection)->find($id);
 
             if (!$company) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Company not found'
-                ], 404);
+                \Log::error('Company not found', ['company_id' => $id]);
+                return response()->json(['message' => 'Company not found'], 404);
             }
+
+            \Log::info('Company loaded', [
+                'id' => $company->id,
+                'name' => $company->name,
+                'user_id' => $company->user_id
+            ]);
+
+            $backupFile = null;
+
+            // STEP 2: Resolve tenant (HYBRID SAFE METHOD)
+            $tenant = Tenant::on('mysql')->where('data->company_id', $company->id)->first();
+                
+
+            \Log::info('Tenant resolved', [
+                'tenant_found' => (bool) $tenant,
+                'tenant_id' => $tenant?->id,
+                'database' => $tenant?->database,
+                'data' => $tenant?->data
+            ]);
+
+
+            $tenantDbName = $tenant->data['database'] ?? null;
+
+            dd($tenantDbName);
+            
+
+            \Log::info('Resolved tenant DB', [
+                'db_name' => $tenantDbName
+            ]);
 
             DB::beginTransaction();
 
-            $companyUserIds = CompanyUser::where('company_id', $company->id)->pluck('user_id');
+            // STEP 3: Backup + Drop DB
+            if ($tenant && $tenantDbName) {
 
-            CompanyUser::where('company_id', $company->id)->delete();
+                \Log::info('Starting backup process', [
+                    'tenant_id' => $tenant->id,
+                    'db_name' => $tenantDbName
+                ]);
 
-            foreach ($companyUserIds as $userId) {
-                $remainingCompanies = CompanyUser::where('user_id', $userId)->count();
-                if ($remainingCompanies === 0) {
-                    User::where('id', $userId)->delete();
+                // Check DB exists
+                $dbExists = DB::connection($centralConnection)
+                    ->select("SHOW DATABASES LIKE '{$tenantDbName}'");
+
+                \Log::info('Database existence check', [
+                    'exists' => !empty($dbExists)
+                ]);
+
+                if (!empty($dbExists)) {
+
+                    // Backup folder
+                    $backupFolder = storage_path('app/company_backups');
+
+                    if (!file_exists($backupFolder)) {
+                        mkdir($backupFolder, 0755, true);
+                        \Log::info('Backup folder created', ['path' => $backupFolder]);
+                    }
+
+                    // Clean old backups
+                    foreach (glob($backupFolder . '/*.sql') as $file) {
+                        if (filemtime($file) < now()->subDays(7)->timestamp) {
+                            @unlink($file);
+                        }
+                    }
+
+                    $timestamp = now()->format('Y_m_d_His');
+                    $backupFile = "{$backupFolder}/{$tenantDbName}_backup_{$timestamp}.sql";
+
+                    // ENV configs
+                    $dbUser = env('DB_BACKUP_USER');
+                    $dbPass = env('DB_BACKUP_PASSWORD');
+                    $dbHost = env('DB_BACKUP_HOST', '127.0.0.1');
+                    $mysqldumpPath = env('MYSQLDUMP_PATH', '/usr/bin/mysqldump');
+
+                    $command = "\"{$mysqldumpPath}\" -h {$dbHost} -u {$dbUser} " .
+                        (!empty($dbPass) ? "-p'{$dbPass}' " : "") .
+                        "--single-transaction --routines --triggers --quick " .
+                        "--result-file=\"{$backupFile}\" {$tenantDbName}";
+
+                    \Log::info('Executing mysqldump', ['command' => $command]);
+
+                    exec($command . ' 2>&1', $output, $returnVar);
+
+                    \Log::info('mysqldump result', [
+                        'return_code' => $returnVar,
+                        'output' => implode("\n", $output),
+                        'file_exists' => file_exists($backupFile),
+                        'file_size' => file_exists($backupFile) ? filesize($backupFile) : 0
+                    ]);
+
+                    // ❌ STOP if backup fails
+                    if ($returnVar !== 0 || !file_exists($backupFile) || filesize($backupFile) === 0) {
+                        DB::rollBack();
+
+                        \Log::error('❌ Backup failed. Aborting delete.');
+
+                        return response()->json([
+                            'message' => 'Backup failed. Deletion stopped.',
+                            'error' => implode("\n", $output)
+                        ], 500);
+                    }
+
+                    \Log::info('✅ Backup successful', ['file' => $backupFile]);
+
+                    // Clear tenant context
+                    if (class_exists(\Stancl\Tenancy\Tenancy::class)) {
+                        app(\Stancl\Tenancy\Tenancy::class)->end();
+                        \Log::info('Tenancy context cleared');
+                    }
+
+                    // Drop DB
+                    DB::connection($centralConnection)
+                        ->statement("DROP DATABASE IF EXISTS `{$tenantDbName}`");
+
+                    \Log::info('✅ Tenant DB dropped', ['db_name' => $tenantDbName]);
+                } else {
+                    \Log::warning('Database not found, skipping drop', [
+                        'db_name' => $tenantDbName
+                    ]);
                 }
+
+                // Delete tenant record
+                $tenant->delete();
+
+                \Log::info('Tenant deleted', ['tenant_id' => $tenant->id]);
+
+            } else {
+
+                // STEP 4: ORPHAN CLEANUP
+                \Log::warning('No valid tenant DB → cleaning orphan tenants');
+
+                $deleted = Tenant::on($centralConnection)
+                    ->get()
+                    ->filter(function ($t) use ($company) {
+                        return data_get($t->data, 'company_id') == $company->id;
+                    })
+                    ->each(function ($t) {
+                        $t->delete();
+                    });
+
+                \Log::info('Orphan tenants cleaned');
             }
 
-            $branchIds = Branch::where('company_id', $company->id)->pluck('id');
+            // STEP 5: Delete admin
+            if ($company->user_id) {
+                User::on($centralConnection)
+                    ->where('id', $company->user_id)
+                    ->delete();
 
-            DB::table('branch_user')->whereIn('branch_id', $branchIds)->delete();
+                \Log::info('Admin deleted', ['user_id' => $company->user_id]);
+            }
 
-            Branch::where('company_id', $company->id)->delete();
-
+            // STEP 6: Delete company
             $company->delete();
+
+            \Log::info('Company deleted', ['company_id' => $company->id]);
 
             DB::commit();
 
+            \Log::info('===== COMPANY DELETE SUCCESS =====');
+
             return response()->json([
-                'success' => true,
-                'message' => 'Company, associated records, and exclusive users deleted successfully'
+                'message' => "Company '{$company->name}' deleted successfully.",
+                'backup_file' => $backupFile ? basename($backupFile) : null,
+                'backup_path' => $backupFile,
             ], 200);
 
         } catch (\Exception $e) {
+
             DB::rollBack();
 
+            \Log::error('🔥 COMPANY DELETE FAILED', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete company',
-                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
+                'message' => 'Error deleting company',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error',
             ], 500);
         }
     }
-
 
 
 

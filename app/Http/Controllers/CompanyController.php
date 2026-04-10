@@ -1220,7 +1220,7 @@ class CompanyController extends Controller
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete company',
+                'message' => 'Failed to delete company !',
                 'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }

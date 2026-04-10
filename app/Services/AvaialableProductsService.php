@@ -1242,11 +1242,7 @@ class AvaialableProductsService
     {
         \Log::info("===== SALES RETURN BILL DEBUG START =====", compact('companyId', 'branchId'));
 
-        /**
-         * =========================
-         * SALES
-         * =========================
-         */
+       
         $transSales = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
             ->where('st.company_id', $companyId)
@@ -1275,11 +1271,7 @@ class AvaialableProductsService
 
         $allSales = $transSales->unionAll($moveSales);
 
-        /**
-         * =========================
-         * RETURNS (FIXED 🔥)
-         * =========================
-         */
+        
         $returnsUnion = DB::table('stock_transactions')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -1303,7 +1295,7 @@ class AvaialableProductsService
                     )
             );
 
-        // ✅ CRITICAL FIX: GROUP AFTER UNION
+        
         $allReturns = DB::query()
             ->fromSub($returnsUnion, 'r')
             ->select(
@@ -1313,19 +1305,11 @@ class AvaialableProductsService
             )
             ->groupBy('source_id', 'source_type');
 
-        /**
-         * =========================
-         * DEBUG RAW DATA
-         * =========================
-         */
+        
         \Log::info("---- SALES DATA ----", DB::query()->fromSub($allSales, 's')->get()->toArray());
         \Log::info("---- RETURNS DATA (AFTER FIX) ----", DB::query()->fromSub($allReturns, 'r')->get()->toArray());
 
-        /**
-         * =========================
-         * FINAL CALCULATION
-         * =========================
-         */
+        
         $result = DB::query()
             ->fromSub($allSales, 's')
             ->leftJoinSub($allReturns, 'r', function ($join) {
@@ -1344,7 +1328,7 @@ class AvaialableProductsService
       
         foreach ($result as $row) {
             \Log::info("BILL CALCULATION", [
-                'bill_number' => $row->bill_number,
+                // 'bill_number' => $row->bill_number,
                 'total_sold' => $row->total_sold,
                 'total_returned' => $row->total_returned,
                 'available_quantity' => $row->available_quantity,

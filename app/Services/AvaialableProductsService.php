@@ -277,6 +277,7 @@ class AvaialableProductsService
                 'p.retail_price',
                 'p.wholesale_price',
                 'p.mrp_price',
+                'p.is_vatable',
                 'p.measure_unit_id',
 
                 'mu.name as measure_unit_name',

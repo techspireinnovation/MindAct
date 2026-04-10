@@ -1177,124 +1177,55 @@ class CompanyController extends Controller
      */
     public function destroy($id): JsonResponse
     {
-
-
         try {
-            $company = Company::on('mysql')->findOrFail($id);
-            $tenant = Tenant::on('mysql')->where('data->company_id', $company->id)->first();
+            $company = Company::find($id);
 
-            $backupFile = null;
-
-            if ($tenant) {
-                $tenantDbName = $tenant->data['database'] ?? null;
-                \Log::info('DESTROY STEP 3 - Tenant DB extracted', [
-                    'data_column' => $tenant->data,
-                    'tenant_db_name' => $tenantDbName,
-                ]);
-
-
-                $databaseExists = DB::select("SHOW DATABASES LIKE '{$tenantDbName}'");
-              
-                \Log::info('DESTROY STEP 4 - Database check', [
-                    'db_name' => $tenantDbName,
-                    'db_exists_result' => $databaseExists,
-                ]);
-
-                if (!empty($databaseExists)) {
-
-                    $backupFolder = storage_path('app/company_backups');
-                    \Log::info('DESTROY STEP 5 - Backup folder', [
-                        'folder' => $backupFolder,
-                        'exists_before' => file_exists($backupFolder),
-                    ]);
-                    if (!file_exists($backupFolder)) {
-                        mkdir($backupFolder, 0755, true);
-                    }
-
-
-                    foreach (glob($backupFolder . '/*.sql') as $file) {
-                        if (filemtime($file) < now()->subDays(7)->timestamp) {
-                            @unlink($file);
-                        }
-                    }
-
-
-                    $timestamp = now()->format('Y_m_d_His');
-                    $backupFile = "{$backupFolder}/{$tenantDbName}backup{$timestamp}.sql";
-                    \Log::info('DESTROY STEP 6 - Backup file created', [
-                        'backup_file' => $backupFile,
-                        'timestamp' => $timestamp,
-                    ]);
-
-                    $dbUser = env('DB_BACKUP_USER');
-                    $dbPass = env('DB_BACKUP_PASSWORD');
-                    $dbHost = env('DB_BACKUP_HOST', '127.0.0.1');
-                    $mysqldumpPath = env('MYSQLDUMP_PATH', '/usr/bin/mysqldump');
-
-                    $command = "\"{$mysqldumpPath}\" -h {$dbHost} -u {$dbUser} " .
-                        (!empty($dbPass) ? "-p'{$dbPass}' " : "") .
-                        "--result-file=\"{$backupFile}\" {$tenantDbName}";
-                    \Log::info('DESTROY STEP 7 - mysqldump command', [
-                        'command' => $command,
-                        'db_user' => $dbUser,
-                        'db_host' => $dbHost,
-                        'db_name' => $tenantDbName,
-                    ]);
-
-                    exec($command . ' 2>&1', $output, $returnVar);
-                    \Log::info('DESTROY STEP 8 - mysqldump result', [
-                        'output' => $output,
-                        'return_var' => $returnVar,
-                    ]);
-
-                    if ($returnVar !== 0) {
-                        \Log::error('DESTROY FAILED - backup error', [
-                            'output' => $output,
-                            'command' => $command,
-                        ]);
-                        return response()->json([
-                            'message' => 'Database backup failed. Company not deleted.',
-                            'error' => implode("\n", $output),
-                            'command' => $command,
-                        ], 500);
-                    }
-                }
-
-                DB::statement("DROP DATABASE IF EXISTS `{$tenantDbName}`");
-                $tenant->delete();
-            } else {
-                \Log::info('DESTROY STEP 9 - No tenant found, deleting fallback');
-                Tenant::on('mysql')->where('company_id', $company->id)->delete();
+            if (!$company) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Company not found'
+                ], 404);
             }
 
+            DB::beginTransaction();
+
+            $companyUserIds = CompanyUser::where('company_id', $company->id)->pluck('user_id');
+
+            CompanyUser::where('company_id', $company->id)->delete();
+
+            foreach ($companyUserIds as $userId) {
+                $remainingCompanies = CompanyUser::where('user_id', $userId)->count();
+                if ($remainingCompanies === 0) {
+                    User::where('id', $userId)->delete();
+                }
+            }
+
+            $branchIds = Branch::where('company_id', $company->id)->pluck('id');
+
+            DB::table('branch_user')->whereIn('branch_id', $branchIds)->delete();
+
+            Branch::where('company_id', $company->id)->delete();
 
             $company->delete();
-            \Log::info('DESTROY SUCCESS - Company deleted', [
-                'company_id' => $company->id,
-                'backup_file' => $backupFile,
-            ]);
+
+            DB::commit();
 
             return response()->json([
-                'message' => "Company '{$company->name}' deleted successfully !!",
-                'backup_file' => $backupFile,
+                'success' => true,
+                'message' => 'Company, associated records, and exclusive users deleted successfully'
             ], 200);
 
-        } catch (ModelNotFoundException $e) {
-            \Log::error('DESTROY ERROR - Company not found', [
-                'id' => $id,
-            ]);
-            return response()->json(['message' => 'Company not found'], 404);
-
         } catch (\Exception $e) {
-            \Log::error('DESTROY ERROR - Company not found', [
-                'id' => $id,
-            ]);
+            DB::rollBack();
+
             return response()->json([
-                'message' => 'Error deleting company',
-                'error' => $e->getMessage(),
+                'success' => false,
+                'message' => 'Failed to delete company',
+                'error' => env('APP_DEBUG') ? $e->getMessage() : 'Internal server error'
             ], 500);
         }
     }
+
 
 
 

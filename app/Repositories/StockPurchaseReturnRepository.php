@@ -13,7 +13,7 @@ use App\Models\StockMovement;
 use App\Models\FiscalYear;
 use Illuminate\Support\Facades\Log;
 use App\Services\UnitConversionService;
-use App\Services\currencyFormatService;
+use App\Services\CurrencyFormatService;
 use App\Services\QuantityAllocationService;
 use App\Models\StockProductFieldValue;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -29,7 +29,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
     protected $currencyFormatService;
     protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, currencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
+    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityAllocationService = $quantityAllocationService;

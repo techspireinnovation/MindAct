@@ -29,7 +29,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
     protected $currencyFormatService;
     protected $taxImplementService;
 
-    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, CurrencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
+    public function __construct(UnitConversionService $unitConversionService, QuantityAllocationService $quantityAllocationService, currencyFormatService $currencyFormatService, TransactionImplementService $taxImplementService)
     {
         $this->unitConversionService = $unitConversionService;
         $this->quantityAllocationService = $quantityAllocationService;

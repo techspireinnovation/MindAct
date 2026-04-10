@@ -1242,7 +1242,7 @@ class AvaialableProductsService
     {
         \Log::info("===== SALES RETURN BILL DEBUG START =====", compact('companyId', 'branchId'));
 
-       
+
         $transSales = DB::table('stock_transactions as st')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
             ->where('st.company_id', $companyId)
@@ -1271,7 +1271,7 @@ class AvaialableProductsService
 
         $allSales = $transSales->unionAll($moveSales);
 
-        
+
         $returnsUnion = DB::table('stock_transactions')
             ->where('company_id', $companyId)
             ->where('branch_id', $branchId)
@@ -1295,7 +1295,7 @@ class AvaialableProductsService
                     )
             );
 
-        
+
         $allReturns = DB::query()
             ->fromSub($returnsUnion, 'r')
             ->select(
@@ -1305,11 +1305,11 @@ class AvaialableProductsService
             )
             ->groupBy('source_id', 'source_type');
 
-        
+
         \Log::info("---- SALES DATA ----", DB::query()->fromSub($allSales, 's')->get()->toArray());
         \Log::info("---- RETURNS DATA (AFTER FIX) ----", DB::query()->fromSub($allReturns, 'r')->get()->toArray());
 
-        
+
         $result = DB::query()
             ->fromSub($allSales, 's')
             ->leftJoinSub($allReturns, 'r', function ($join) {
@@ -1325,7 +1325,7 @@ class AvaialableProductsService
             ->groupBy('s.bill_number')
             ->get();
 
-      
+
         foreach ($result as $row) {
             \Log::info("BILL CALCULATION", [
                 // 'bill_number' => $row->bill_number,
@@ -1335,7 +1335,7 @@ class AvaialableProductsService
             ]);
         }
 
-      
+
         $final = collect($result)
             ->filter(fn($r) => $r->available_quantity > 0)
             ->pluck('bill_number')
@@ -1361,11 +1361,6 @@ class AvaialableProductsService
 
         $stockId = $stock->id;
 
-        /**
-         * =========================
-         * SALES (transactions + movements)
-         * =========================
-         */
         $salesTransactions = DB::table('stock_transactions')
             ->where('stock_id', $stockId)
             ->where('type', 'sale')
@@ -1400,11 +1395,7 @@ class AvaialableProductsService
 
         $allSales = $salesTransactions->unionAll($salesMovements)->get();
 
-        /**
-         * =========================
-         * RETURNS (BOTH TABLES FIXED)
-         * =========================
-         */
+
         $returnTransactions = DB::table('stock_transactions')
             ->where('type', 'sales_return')
             ->whereNull('deleted_at')
@@ -1429,11 +1420,7 @@ class AvaialableProductsService
 
         $allReturns = $returnTransactions->unionAll($returnMovements)->get();
 
-        /**
-         * =========================
-         * RETURN MAP
-         * =========================
-         */
+
         $returnMap = [];
 
         foreach ($allReturns as $r) {
@@ -1441,11 +1428,7 @@ class AvaialableProductsService
             $returnMap[$key] = ($returnMap[$key] ?? 0) + $r->return_qty;
         }
 
-        /**
-         * =========================
-         * BUILD PRODUCTS (FIXED)
-         * =========================
-         */
+
         $products = [];
 
         foreach ($allSales as $sale) {
@@ -1463,7 +1446,7 @@ class AvaialableProductsService
                     "product_id" => $sale->product_id,
                     "product_name" => $productInfo->name ?? null,
 
-                    // ✅ KEEP REAL VALUES (NO NULL OVERWRITE)
+
                     "quantity" => 0,
                     "price" => $sale->price ?? null,
                     "amount" => $sale->amount ?? null,
@@ -1480,15 +1463,11 @@ class AvaialableProductsService
 
             $products[$sale->product_id]["quantity"] += $sale->quantity;
 
-            // ✅ correct stock after returns
+
             $products[$sale->product_id]["available_quantity"] += ($sale->quantity - $returnedQty);
         }
 
-        /**
-         * =========================
-         * MEASURE UNIT FIX
-         * =========================
-         */
+
         foreach ($products as &$p) {
 
             if ($p["measure_unit_id"]) {
@@ -1510,11 +1489,7 @@ class AvaialableProductsService
             }
         }
 
-        /**
-         * =========================
-         * VARIANTS (UNCHANGED)
-         * =========================
-         */
+
         $variantIndexes = DB::table('transaction_pivots as tp')
             ->join('stock_transactions as st', 'tp.stock_transaction_id', '=', 'st.id')
             ->join('stocks as s', 'st.stock_id', '=', 's.id')
@@ -1577,7 +1552,20 @@ class AvaialableProductsService
 
             if ($effect > 0) {
 
-                $fields = $fieldValues->where('product_id', $variant->product_id);
+                $fields = $fieldValues
+                    ->filter(function ($item) use ($variant) {
+                        return (
+                            $item->product_id == $variant->product_id
+                            &&
+                            (
+                                $item->stock_product_id == $variant->stock_product_id ||
+                                $item->stock_movement_id == $variant->stock_movement_id
+                            )
+                            &&
+                            $item->quantity_index == $variant->quantity_index
+                        );
+                    })
+                    ->values();
 
                 return $fields->map(function ($field) use ($variant) {
                     return [
@@ -1599,22 +1587,14 @@ class AvaialableProductsService
             ->flatten(1)
             ->values();
 
-        /**
-         * =========================
-         * ATTACH FIELD VALUES
-         * =========================
-         */
+
         foreach ($products as &$product) {
             $product["field_values"] = $variants
                 ->where("product_id", $product["product_id"])
                 ->values();
         }
 
-        /**
-         * =========================
-         * FINAL RESPONSE (UNCHANGED)
-         * =========================
-         */
+
         return [
             'id' => $stock->id,
             'bill_number' => $stock->bill_number,

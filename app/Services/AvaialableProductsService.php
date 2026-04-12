@@ -233,6 +233,7 @@ class AvaialableProductsService
                 'pl.product_id',
                 'pl.measure_unit_id as id',
                 'mu.name',
+                'mu.quantity',
 
                 'pl.price',
                 'pl.discount',
@@ -368,7 +369,7 @@ class AvaialableProductsService
 
 
 
-        $products->transform(function ($product) use ($variants) {
+        $products->transform(function ($product) use ($variants, $measureUnits) {
 
             $product->field_values = $variants
                 ->where('product_id', $product->id)
@@ -391,6 +392,13 @@ class AvaialableProductsService
 
                     ];
                 });
+
+            $units = collect();
+
+            if (!empty($baseUnit['id'])) {
+                $units->push($baseUnit);
+            }
+
 
             $product->measure_units = collect([$baseUnit])
                 ->merge($otherUnits)

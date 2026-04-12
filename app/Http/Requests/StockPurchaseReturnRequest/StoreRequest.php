@@ -39,7 +39,7 @@ class StoreRequest extends FormRequest
             'credit_days' => 'nullable|string|max:255',
             'balance' => 'nullable|numeric',
             'purchase_bill_number' => 'nullable|string',
-            'bill_number' => 'nullable|string',
+            'bill_number' => 'required|string',
             'ref_bill_number' => 'nullable|string|max:255',
             'return_bill_number' => 'nullable|string|max:255',
             'reasons' => 'nullable|string|max:255',

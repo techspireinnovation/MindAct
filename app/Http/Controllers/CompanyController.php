@@ -1257,7 +1257,7 @@ class CompanyController extends Controller
             $company->delete();
 
             return response()->json([
-                'message' => "Company '{$company->name}' deleted successfully.",
+                'message' => "Company '{$company->name}' deleted successfully !!",
                 'backup_file' => $backupFile,
             ], 200);
 

@@ -1265,7 +1265,7 @@ class CompanyController extends Controller
                         ]);
 
                         return response()->json([
-                            'message' => 'Database backup failed. Company not deleted.',
+                            'message' => 'Database backup failed. Company not deleted !!',
                             'error' => implode("\n", $output),
                             'command' => $command,
                         ], 500);

@@ -86,6 +86,7 @@ class StockPurchaseReturnRepository implements StockPurchaseReturnRepositoryInte
             'store_id' => $data['store_id'] ?? null,
             'type' => 'purchase_return',
             'bill_number' => $data['bill_number'] ?? null,
+            'purchase_bill_number' => $data['purchase_bill_number'] ?? null,
             'invoice_date' => $data['invoice_date'] ?? null,
             'invoice_date_bs' => $data['invoice_date_bs'] ?? null,
             'party_id' => $data['party_id'] ?? null,

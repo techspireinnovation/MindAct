@@ -37,6 +37,7 @@ use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role;
 use App\Models\Tenant;
 
+
 use Stancl\Tenancy\Database\Models\Domain;
 use Stancl\Tenancy\Features\TenantDatabase;
 use Str;
@@ -1176,63 +1177,93 @@ class CompanyController extends Controller
     /**
      * Update the specified company in storage.
      */
+   
+
     public function destroy($id): JsonResponse
     {
+        Log::info("===== DELETE COMPANY START =====", ['company_id' => $id]);
+
         try {
             $company = Company::findOrFail($id);
+            Log::info("Company found", ['company' => $company]);
 
             $tenant = DB::connection('mysql')
                 ->table('tenants')
                 ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(data, '$.company_id')) = ?", [$company->id])
-                ->first(['id', 'data']); // Only fetch needed columns
+                ->first(['id', 'data']);
+
+            Log::info("Tenant query result", ['tenant' => $tenant]);
 
             if (!$tenant) {
+                Log::error("Tenant not found", ['company_id' => $company->id]);
                 abort(404, "Tenant not found for company {$company->id}");
             }
 
             $data = json_decode($tenant->data, true);
-            $databaseName = $data['database'];
-          
+            Log::info("Tenant data decoded", ['data' => $data]);
 
+            $databaseName = $data['database'] ?? null;
+            Log::info("Database name", ['database' => $databaseName]);
 
             $backupFile = null;
 
             if ($tenant) {
 
-
                 $databaseExists = DB::select("SHOW DATABASES LIKE '{$databaseName}'");
-              
+                Log::info("Database exists check", ['result' => $databaseExists]);
 
                 if (!empty($databaseExists)) {
 
                     $backupFolder = storage_path('app/company_backups');
+                    Log::info("Backup folder path", ['path' => $backupFolder]);
+
                     if (!file_exists($backupFolder)) {
                         mkdir($backupFolder, 0755, true);
+                        Log::info("Backup folder created");
                     }
-
 
                     foreach (glob($backupFolder . '/*.sql') as $file) {
                         if (filemtime($file) < now()->subDays(7)->timestamp) {
                             @unlink($file);
+                            Log::info("Old backup deleted", ['file' => $file]);
                         }
                     }
 
-
                     $timestamp = now()->format('Y_m_d_His');
                     $backupFile = "{$backupFolder}/{$databaseName}backup{$timestamp}.sql";
+
+                    Log::info("Backup file path", ['backup_file' => $backupFile]);
 
                     $dbUser = env('DB_BACKUP_USER');
                     $dbPass = env('DB_BACKUP_PASSWORD');
                     $dbHost = env('DB_BACKUP_HOST', '127.0.0.1');
                     $mysqldumpPath = env('MYSQLDUMP_PATH', '/usr/bin/mysqldump');
 
+                    Log::info("Backup ENV", [
+                        'dbUser' => $dbUser,
+                        'dbHost' => $dbHost,
+                        'mysqldumpPath' => $mysqldumpPath
+                    ]);
+
                     $command = "\"{$mysqldumpPath}\" -h {$dbHost} -u {$dbUser} " .
                         (!empty($dbPass) ? "-p'{$dbPass}' " : "") .
                         "--result-file=\"{$backupFile}\" {$databaseName}";
 
+                    Log::info("Executing mysqldump", ['command' => $command]);
+
                     exec($command . ' 2>&1', $output, $returnVar);
 
+                    Log::info("Backup command result", [
+                        'returnVar' => $returnVar,
+                        'output' => $output
+                    ]);
+
                     if ($returnVar !== 0) {
+                        Log::error("Database backup failed", [
+                            'output' => $output,
+                            'command' => $command
+                        ]);
+
                         return response()->json([
                             'message' => 'Database backup failed. Company not deleted.',
                             'error' => implode("\n", $output),
@@ -1241,20 +1272,26 @@ class CompanyController extends Controller
                     }
                 }
 
+                Log::info("Dropping database", ['database' => $databaseName]);
                 DB::statement("DROP DATABASE IF EXISTS `{$databaseName}`");
 
                 $deleteTenant = DeleteTenant::where('id', $tenant->id)->first();
-                if ($deleteTenant) {
+                Log::info("DeleteTenant found", ['deleteTenant' => $deleteTenant]);
 
+                if ($deleteTenant) {
                     $deleteTenant->delete();
+                    Log::info("Tenant soft deleted", ['tenant_id' => $tenant->id]);
                 }
+
             } else {
+                Log::warning("Fallback tenant delete triggered");
                 Tenant::where('company_id', $company->id)->delete();
             }
 
-
-
             $company->delete();
+            Log::info("Company deleted successfully", ['company_id' => $company->id]);
+
+            Log::info("===== DELETE COMPANY END =====");
 
             return response()->json([
                 'message' => "Company '{$company->name}' deleted successfully !!",
@@ -1262,9 +1299,15 @@ class CompanyController extends Controller
             ], 200);
 
         } catch (ModelNotFoundException $e) {
+            Log::error("Company not found exception", ['error' => $e->getMessage()]);
             return response()->json(['message' => 'Company not found'], 404);
 
         } catch (\Exception $e) {
+            Log::error("General exception during delete", [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
             return response()->json([
                 'message' => 'Error deleting company',
                 'error' => $e->getMessage(),

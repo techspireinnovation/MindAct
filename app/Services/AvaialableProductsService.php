@@ -236,6 +236,7 @@ class AvaialableProductsService
                 'mu.quantity',
 
                 'pl.price',
+                'pl.final_price',
                 'pl.discount',
                 'pl.final_price',
                 'pl.is_primary'
@@ -280,6 +281,7 @@ class AvaialableProductsService
                 'p.mrp_price',
                 'p.is_vatable',
                 'p.measure_unit_id',
+
 
                 'mu.name as measure_unit_name',
                 'mu.quantity as measure_unit_quantity',
@@ -378,7 +380,9 @@ class AvaialableProductsService
             $baseUnit = [
                 "id" => $product->measure_unit_id,
                 "name" => $product->measure_unit_name,
-                "quantity" => $product->measure_unit_quantity
+                "quantity" => $product->measure_unit_quantity,
+                "price" => $product->purchase_rate,
+               
 
             ];
 
@@ -388,6 +392,8 @@ class AvaialableProductsService
                         "id" => $unit->id,
                         "name" => $unit->name,
                         "quantity" => $unit->quantity,
+                        "price" => $unit->price,
+                        "final_price" => $unit->final_price,
 
 
                     ];

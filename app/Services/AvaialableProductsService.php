@@ -271,6 +271,7 @@ class AvaialableProductsService
             ->leftJoinSub($adjustmentOut, 'ao', function ($join) {
                 $join->on('p.id', '=', 'ao.product_id');
             })
+            ->where('p.id', $productId)
 
             ->select(
                 'p.id',
@@ -300,7 +301,7 @@ class AvaialableProductsService
                 as available_quantity
             ')
             )
-            ->havingRaw('available_quantity > 0')
+            // ->havingRaw('available_quantity > 0')
             ->get();
 
 

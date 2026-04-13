@@ -300,7 +300,7 @@ class AvaialableProductsService
                 as available_quantity
             ')
             )
-            // ->havingRaw('available_quantity > 0')
+            ->havingRaw('available_quantity > 0')
             ->get();
 
 

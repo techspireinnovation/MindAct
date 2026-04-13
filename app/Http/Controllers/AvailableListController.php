@@ -65,7 +65,7 @@ class AvailableListController extends Controller
            
             if ($product->available_quantity <= 0) {
                 return response()->json([
-                    "message" => "Product is out of stock",
+                    "message" => "Product is out of stock !",
                     "data" => $product
                 ]);
             }

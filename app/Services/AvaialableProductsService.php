@@ -1452,6 +1452,7 @@ class AvaialableProductsService
                 $products[$sale->product_id] = [
                     "product_id" => $sale->product_id,
                     "product_name" => $productInfo->name ?? null,
+                    "is_vatable" => $productInfo->is_vatable ?? null,
 
 
                     "quantity" => 0,

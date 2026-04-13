@@ -781,15 +781,47 @@ class StockSalesReturnRepository implements StockSalesReturnRepositoryInterface
 
     public function list(array $filters)
     {
-
         return Stock::where('type', 'sales_return')
             ->whereNull('deleted_at')
-            ->when($filters['company_id'] ?? null, function ($query, $companyId) {
-                $query->where('company_id', $companyId);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
-
+            ->with('party')                    // Eager load the party relationship
+            ->get()
+            ->map(function ($stock) {
+                return [
+                    'id' => $stock->id,
+                    'fiscal_year_id' => $stock->fiscal_year_id,
+                    'bank_id' => $stock->bank_id ?? null,
+                    'branch_id' => $stock->branch_id ?? null,
+                    'party_id' => $stock->party_id ?? null,
+                    'party_name' => $stock->party?->name ?? 'N/A',   // ← This is what you want
+                    'location_id' => $stock->location_id ?? null,
+                    'type' => $stock->type ?? null,
+                    'company_id' => $stock->company_id,
+                    'store_id' => $stock->store_id ?? null,
+                    'invoice_date' => $stock->invoice_date ?? null,
+                    'invoice_date_bs' => $stock->invoice_date_bs ?? null,
+                    'purchase_bill_number' => $stock->purchaseBill?->bill_number ?? null,
+                    'bill_number' => $stock->bill_number ?? null,
+                    'ref_bill_number' => $stock->ref_bill_number ?? null,
+                    'reasons' => $stock->reasons ?? null,
+                    'discount_type' => $stock->discount_type ?? null,
+                    'discount_value' => $stock->discount_value ?? null,
+                    'discount_after_vat' => $stock->discount_after_vat ?? null,
+                    'sub_total_before_discount' => $stock->sub_total_before_discount ?? null,
+                    'excise_duty' => $stock->excise_duty ?? null,
+                    'vat_percent' => $stock->vat_percent ?? null,
+                    'health_insurance' => $stock->health_insurance ?? null,
+                    'freight_amount' => $stock->freight_amount ?? null,
+                    'roundoff_type' => $stock->roundoff_type ?? null,
+                    'roundoff_amount' => $stock->roundoff_amount ?? null,
+                    'payment' => $stock->payment ? json_decode($stock->payment, true) : null,
+                    'taxable_amount' => $stock->taxable_amount ?? null,
+                    'non_taxable_amount' => $stock->non_taxable_amount ?? null,
+                    'total_amount' => $stock->total_amount ?? null,
+                    'remarks' => $stock->remarks,
+                    'created_at' => $stock->created_at,
+                   
+                ];
+            });
     }
 
     public function show($id)

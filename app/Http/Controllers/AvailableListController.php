@@ -65,7 +65,7 @@ class AvailableListController extends Controller
            
             if ($product->available_quantity <= 0) {
                 return response()->json([
-                    "message" => "Product is out of stock !",
+                    "message" => "Product is out of stock !!",
                     "data" => $product
                 ]);
             }
@@ -78,7 +78,7 @@ class AvailableListController extends Controller
             return response()->json(["message" => "Item not Found !!"], 404);
         } catch (QueryException $e) {
 
-            return response()->json(["message" => "Database error occurred !"], 500);
+            return response()->json(["message" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
 
             return response()->json(["message" => "An unexpected error occurred !!"], 500);

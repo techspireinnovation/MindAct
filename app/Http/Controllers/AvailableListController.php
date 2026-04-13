@@ -53,6 +53,23 @@ class AvailableListController extends Controller
         try {
             $productId = $request->product_id;
             $data = $this->availableProductsService->productListforTransactionDetails($request->company_id, $request->branch_id, $productId);
+
+            if ($data->isEmpty()) {
+                return response()->json([
+                    "message" => "Product not found"
+                ], 404);
+            }
+
+            $product = $data->first();
+
+           
+            if ($product->available_quantity <= 0) {
+                return response()->json([
+                    "message" => "Product is out of stock !",
+                    "data" => $product
+                ]);
+            }
+
             return response()->json([
                 "message" => "Product Details Retrieved Successfully!!",
                 "data" => $data
@@ -63,7 +80,7 @@ class AvailableListController extends Controller
 
             return response()->json(["message" => "Database error occurred !"], 500);
         } catch (\Exception $e) {
-           
+
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
         }
     }
@@ -167,7 +184,7 @@ class AvailableListController extends Controller
         } catch (ModelNotFoundException) {
             return response()->json(["message" => "Item not Found !"], 404);
         } catch (QueryException $e) {
-              dd($e->getMessage());
+            dd($e->getMessage());
             return response()->json(["message" => "Database error occurred !"], 500);
         } catch (\Exception $e) {
             return response()->json(["message" => "An unexpected error occurred !!"], 500);
@@ -194,10 +211,10 @@ class AvailableListController extends Controller
                 'sql' => $e->getSql(),
                 'bindings' => $e->getBindings()
             ]);
-            
+
             return response()->json(["message" => "Database error occurred !"], 500);
         } catch (\Exception $e) {
-            
+
 
 
             return response()->json(["message" => "An unexpected error occurred !!"], 500);

